@@ -1,0 +1,6 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "cms", "runtimeExecutable": "php", "runtimeArgs": ["artisan", "serve", "--port=8931", "--host=127.0.0.1"], "port": 8931 }
+  ]
+}
