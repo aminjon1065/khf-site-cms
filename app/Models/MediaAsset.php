@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasResponsiveThumbnails;
 use Database\Factories\MediaAssetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,17 +17,20 @@ use Spatie\MediaLibrary\InteractsWithMedia;
  * @property int $id
  * @property string|null $title
  * @property string|null $alt
+ * @property string|null $caption
  * @property int|null $uploaded_by
  */
 class MediaAsset extends Model implements HasMedia
 {
     /** @use HasFactory<MediaAssetFactory> */
-    use HasFactory, InteractsWithMedia;
+    use HasFactory, HasResponsiveThumbnails, InteractsWithMedia {
+        HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
+    }
 
     /**
      * @var list<string>
      */
-    protected $fillable = ['title', 'alt', 'uploaded_by'];
+    protected $fillable = ['title', 'alt', 'caption', 'uploaded_by'];
 
     public function registerMediaCollections(): void
     {

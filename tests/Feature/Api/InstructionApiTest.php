@@ -60,6 +60,6 @@ it('omits sections and internal fields from the list', function () {
     $item = $this->getJson('/api/v1/instructions')->json('data.0');
 
     expect(array_keys($item))->toEqualCanonicalizing([
-        'slug', 'title', 'summary', 'hazard', 'hazard_label', 'hazard_icon', 'priority', 'image',
+        'slug', 'title', 'summary', 'hazard', 'hazard_label', 'hazard_icon', 'priority', 'image', 'image_srcset',
     ]);
 });

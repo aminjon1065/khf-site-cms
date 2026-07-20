@@ -45,10 +45,12 @@ class PublicInstructionResource extends JsonResource
             'hazard_icon' => $this->hazard_type?->icon(),
             'priority' => (bool) $this->is_priority,
             'image' => $this->imageUrl(),
+            'image_srcset' => $this->thumbnailSrcset('image'),
         ];
 
         if ($this->withSections) {
             $data['sections'] = $this->localizedSections($locale);
+            $data['body'] = $this->tr('body', $locale);
         }
 
         return $data;
@@ -85,11 +87,11 @@ class PublicInstructionResource extends JsonResource
     {
         $value = $this->getTranslation($field, $locale, false);
 
-        if (trim($value) !== '') {
+        if (is_string($value) && trim($value) !== '') {
             return $value;
         }
 
-        return $this->getTranslation($field, 'ru', false);
+        return (string) $this->getTranslation($field, 'ru', false);
     }
 
     private function imageUrl(): ?string

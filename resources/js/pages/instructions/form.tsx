@@ -1,15 +1,28 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, Plus, Save, Send, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+    ArrowLeft,
+    ChevronDown,
+    Images,
+    Plus,
+    Save,
+    Send,
+    Upload,
+    X,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton, LinkButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
+import { MediaPicker  } from '@/ui/MediaPicker';
+import type {MediaItem} from '@/ui/MediaPicker';
 import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
+import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type StepMap = { ru: string[]; tg: string[]; en: string[] };
@@ -26,6 +39,7 @@ interface InstructionData {
     id: number;
     name: LocaleMap;
     summary: LocaleMap;
+    body: LocaleMap;
     slug: string | null;
     status: ContentStatus;
     hazard_type: string | null;
@@ -60,16 +74,21 @@ export default function InstructionForm({ instruction, reference }: Props) {
     const can = useCan();
     const isEdit = !!instruction;
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [imagePicker, setImagePicker] = useState(false);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const imageFileRef = useRef<HTMLInputElement>(null);
 
     const form = useForm({
         name: { ...EMPTY, ...instruction?.name } as LocaleMap,
         summary: { ...EMPTY, ...instruction?.summary } as LocaleMap,
+        body: { ...EMPTY, ...instruction?.body } as LocaleMap,
         slug: instruction?.slug ?? '',
         hazard_type: (instruction?.hazard_type ?? '') as string,
         is_priority: instruction?.is_priority ?? false,
         sort: instruction?.sort ?? 0,
         sections: (instruction?.sections ?? emptySections()) as Sections,
         image: null as File | null,
+        image_media_id: null as number | null,
         image_remove: false,
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
@@ -78,6 +97,21 @@ export default function InstructionForm({ instruction, reference }: Props) {
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
+
+    const pickImageFromLibrary = (item: MediaItem) => {
+        setData('image', null);
+        setData('image_media_id', item.id);
+        setData('image_remove', false);
+        setImagePreview(item.url);
+        setImagePicker(false);
+    };
+
+    // Превью: свежий выбор (файл/медиатека) приоритетнее существующего файла.
+    const imageSrc =
+        imagePreview ??
+        (instruction?.image_url && !data.image_remove
+            ? instruction.image_url
+            : null);
 
     const completeness = (locale: ContentLocale): number => {
         const filled = (['name', 'summary'] as const).filter(
@@ -92,7 +126,10 @@ export default function InstructionForm({ instruction, reference }: Props) {
         en: completeness('en'),
     };
 
-    const setLocaleField = (field: 'name' | 'summary', value: string) => {
+    const setLocaleField = (
+        field: 'name' | 'summary' | 'body',
+        value: string,
+    ) => {
         setData(field, { ...data[field], [lang]: value });
     };
 
@@ -119,19 +156,31 @@ export default function InstructionForm({ instruction, reference }: Props) {
     const removeStep = (section: SectionKey, i: number) =>
         mutateSteps(section, (steps) => steps.filter((_, idx) => idx !== i));
 
-    const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
+    const submit = (
+        action: 'draft' | 'submit',
+        mode?: PublishMode,
+        stay = false,
+    ) => {
         form.transform((d) => ({
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
+            stay,
             ...(isEdit ? { _method: 'put' } : {}),
         }));
 
-        form.post(isEdit ? `/instructions/${instruction!.id}` : '/instructions', {
-            forceFormData: true,
-            preserveScroll: true,
-        });
+        form.post(
+            isEdit ? `/instructions/${instruction!.id}` : '/instructions',
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                preserveState: stay,
+            },
+        );
     };
+
+    // Ctrl/Cmd+S — сохранить черновик и остаться в редакторе (stay = true).
+    useSaveShortcut(() => submit('draft', undefined, true), !processing);
 
     return (
         <>
@@ -363,6 +412,32 @@ export default function InstructionForm({ instruction, reference }: Props) {
                             </div>
                         ))}
                     </Blueprint>
+
+                    {/* ------------------------------------ detail body */}
+                    <Blueprint style={{ padding: 20 }}>
+                        <h3
+                            className="ui-card-title"
+                            style={{ marginTop: 0, marginBottom: 4 }}
+                        >
+                            Подробное описание
+                        </h3>
+                        <p
+                            style={{
+                                margin: '0 0 12px',
+                                fontSize: 12.5,
+                                color: 'var(--color-neutral-600)',
+                            }}
+                        >
+                            Необязательный развёрнутый текст под шагами (язык:{' '}
+                            <b>{lang.toUpperCase()}</b>).
+                        </p>
+                        <RichEditor
+                            key={lang}
+                            value={data.body[lang]}
+                            onChange={(html) => setLocaleField('body', html)}
+                            placeholder="Развёрнутое описание, контекст, ссылки на документы…"
+                        />
+                    </Blueprint>
                 </div>
 
                 {/* --------------------------------------------- sidebar */}
@@ -431,9 +506,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
                         >
                             Иллюстрация
                         </h3>
-                        {instruction?.image_url && !data.image_remove && (
+                        {imageSrc && (
                             <img
-                                src={instruction.image_url}
+                                src={imageSrc}
                                 alt=""
                                 style={{
                                     width: '100%',
@@ -443,14 +518,42 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                 }}
                             />
                         )}
+
                         <input
+                            ref={imageFileRef}
                             type="file"
                             accept="image/png,image/jpeg,image/webp"
-                            onChange={(e) =>
-                                setData('image', e.target.files?.[0] ?? null)
-                            }
-                            style={{ fontSize: 13 }}
+                            hidden
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null;
+
+                                if (file) {
+                                    setData('image', file);
+                                    setData('image_media_id', null);
+                                    setData('image_remove', false);
+                                    setImagePreview(URL.createObjectURL(file));
+                                }
+
+                                e.target.value = '';
+                            }}
                         />
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <Button
+                                variant="secondary"
+                                icon={<Upload size={15} strokeWidth={1.75} />}
+                                onClick={() => imageFileRef.current?.click()}
+                            >
+                                Загрузить
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                icon={<Images size={15} strokeWidth={1.75} />}
+                                onClick={() => setImagePicker(true)}
+                            >
+                                Из медиатеки
+                            </Button>
+                        </div>
+
                         {fieldError('image') && (
                             <div
                                 style={{
@@ -472,6 +575,12 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                 }
                             />
                         )}
+
+                        <MediaPicker
+                            open={imagePicker}
+                            onClose={() => setImagePicker(false)}
+                            onSelect={pickImageFromLibrary}
+                        />
                     </Blueprint>
                 </div>
             </div>

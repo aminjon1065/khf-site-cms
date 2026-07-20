@@ -11,11 +11,13 @@ use App\Http\Resources\ProjectResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class ProjectController extends Controller
 {
@@ -103,7 +105,7 @@ class ProjectController extends Controller
         $this->syncMedia($project, $request);
         $this->runPublishAction($project, $request);
 
-        return redirect('/projects')->with('success', $this->savedMessage($request));
+        return $this->redirectAfterSave($project, $request);
     }
 
     public function update(ProjectRequest $request, Project $project): RedirectResponse
@@ -116,7 +118,7 @@ class ProjectController extends Controller
         $this->syncMedia($project, $request);
         $this->runPublishAction($project, $request);
 
-        return redirect('/projects')->with('success', $this->savedMessage($request));
+        return $this->redirectAfterSave($project, $request);
     }
 
     public function destroy(Project $project): RedirectResponse
@@ -297,7 +299,8 @@ class ProjectController extends Controller
             $project->slug = $request->string('slug')->toString();
         }
 
-        foreach (['title', 'summary', 'body'] as $field) {
+        // Plain-text fields: keep non-empty locales verbatim.
+        foreach (['title', 'summary'] as $field) {
             /** @var array<string, string|null> $values */
             $values = $request->input($field, []);
             $project->setTranslations($field, array_filter(
@@ -305,6 +308,9 @@ class ProjectController extends Controller
                 fn (?string $v): bool => $v !== null && trim($v) !== '',
             ));
         }
+
+        // Rich-text body: sanitise HTML from the Tiptap editor per locale.
+        $project->setTranslations('body', RichText::sanitizeTranslations($request->input('body', [])));
     }
 
     /**
@@ -416,6 +422,14 @@ class ProjectController extends Controller
         if ($request->hasFile('cover')) {
             $project->clearMediaCollection('cover');
             $project->addMediaFromRequest('cover')->toMediaCollection('cover');
+        } elseif ($request->filled('cover_media_id')) {
+            // Cover chosen from the media library: copy the source file into the
+            // project's own `cover` collection so it is independent of the library.
+            $source = Media::find($request->integer('cover_media_id'));
+            if ($source !== null) {
+                $project->clearMediaCollection('cover');
+                $source->copy($project, 'cover');
+            }
         }
     }
 
@@ -440,6 +454,20 @@ class ProjectController extends Controller
         } else {
             $this->workflow->transition($project, ContentStatus::Review, $user, force: true);
         }
+    }
+
+    /**
+     * After a save, stay on the editor (Ctrl+S / `stay` flag) or return to the
+     * list. A freshly created draft lands on its own edit page so subsequent
+     * saves update it instead of creating duplicates.
+     */
+    private function redirectAfterSave(Project $project, ProjectRequest $request): RedirectResponse
+    {
+        $message = $this->savedMessage($request);
+
+        return $request->boolean('stay')
+            ? redirect("/projects/{$project->id}/edit")->with('success', $message)
+            : redirect('/projects')->with('success', $message);
     }
 
     private function savedMessage(ProjectRequest $request): string

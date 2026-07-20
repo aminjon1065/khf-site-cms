@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, Save, Send } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, ChevronDown, Images, Save, Send, Upload } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
@@ -14,9 +15,12 @@ import {
     Select,
     Textarea,
 } from '@/ui/Field';
+import { MediaPicker  } from '@/ui/MediaPicker';
+import type {MediaItem} from '@/ui/MediaPicker';
 import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
+import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type PublishMode = 'now' | 'schedule' | 'review';
@@ -66,6 +70,11 @@ export default function NewsForm({ news, reference }: Props) {
     const can = useCan();
     const isEdit = !!news;
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [coverPicker, setCoverPicker] = useState(false);
+    // Превью обложки: для загрузки файла строим из File, для выбора из медиатеки
+    // берём URL ассета; иначе показываем существующую news.cover_url.
+    const [coverPreview, setCoverPreview] = useState<string | null>(null);
+    const coverFileRef = useRef<HTMLInputElement>(null);
 
     const form = useForm({
         title: { ...EMPTY, ...news?.title } as LocaleMap,
@@ -75,6 +84,7 @@ export default function NewsForm({ news, reference }: Props) {
         category_id: (news?.category_id ?? '') as number | '',
         tags: (news?.tags ?? []) as number[],
         cover: null as File | null,
+        cover_media_id: null as number | null,
         cover_remove: false,
         cover_alt: news?.cover_alt ?? '',
         is_pinned: news?.is_pinned ?? false,
@@ -92,6 +102,25 @@ export default function NewsForm({ news, reference }: Props) {
     // Laravel returns dotted keys for nested fields (title.ru, seo.title).
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
+
+    const pickCoverFromLibrary = (item: MediaItem) => {
+        setData('cover', null);
+        setData('cover_media_id', item.id);
+        setData('cover_remove', false);
+        setCoverPreview(item.url);
+
+        if (!data.cover_alt && item.name) {
+            setData('cover_alt', item.name);
+        }
+
+        setCoverPicker(false);
+    };
+
+    // Что показать в превью обложки: свежий выбор (файл/медиатека) приоритетнее
+    // существующей обложки; при отметке «убрать» превью скрывается.
+    const coverSrc =
+        coverPreview ??
+        (news?.cover_url && !data.cover_remove ? news.cover_url : null);
 
     const completeness = (locale: ContentLocale): number => {
         const filled = CONTENT_FIELDS.filter(
@@ -122,19 +151,28 @@ export default function NewsForm({ news, reference }: Props) {
         );
     };
 
-    const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
+    const submit = (
+        action: 'draft' | 'submit',
+        mode?: PublishMode,
+        stay = false,
+    ) => {
         form.transform((d) => ({
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
+            stay,
             ...(isEdit ? { _method: 'put' } : {}),
         }));
 
         form.post(isEdit ? `/news/${news!.id}` : '/news', {
             forceFormData: true,
             preserveScroll: true,
+            preserveState: stay,
         });
     };
+
+    // Ctrl/Cmd+S — сохранить черновик и остаться в редакторе (stay = true).
+    useSaveShortcut(() => submit('draft', undefined, true), !processing);
 
     return (
         <>
@@ -241,12 +279,11 @@ export default function NewsForm({ news, reference }: Props) {
                         </Field>
 
                         <Field label="Текст новости">
-                            <Textarea
+                            <RichEditor
+                                key={lang}
                                 value={data.body[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('body', e.target.value)
-                                }
-                                style={{ minHeight: 260 }}
+                                onChange={(html) => setLocaleField('body', html)}
+                                placeholder="Начните писать текст новости…"
                             />
                         </Field>
                     </Blueprint>
@@ -402,9 +439,9 @@ export default function NewsForm({ news, reference }: Props) {
                         >
                             Обложка
                         </h3>
-                        {news?.cover_url && !data.cover_remove && (
+                        {coverSrc && (
                             <img
-                                src={news.cover_url}
+                                src={coverSrc}
                                 alt={data.cover_alt}
                                 style={{
                                     width: '100%',
@@ -414,14 +451,44 @@ export default function NewsForm({ news, reference }: Props) {
                                 }}
                             />
                         )}
+
                         <input
+                            ref={coverFileRef}
                             type="file"
                             accept="image/png,image/jpeg,image/webp"
-                            onChange={(e) =>
-                                setData('cover', e.target.files?.[0] ?? null)
-                            }
-                            style={{ fontSize: 13 }}
+                            hidden
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null;
+
+                                if (file) {
+                                    setData('cover', file);
+                                    setData('cover_media_id', null);
+                                    setData('cover_remove', false);
+                                    setCoverPreview(URL.createObjectURL(file));
+                                }
+
+                                e.target.value = '';
+                            }}
                         />
+                        <div
+                            style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+                        >
+                            <Button
+                                variant="secondary"
+                                icon={<Upload size={15} strokeWidth={1.75} />}
+                                onClick={() => coverFileRef.current?.click()}
+                            >
+                                Загрузить
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                icon={<Images size={15} strokeWidth={1.75} />}
+                                onClick={() => setCoverPicker(true)}
+                            >
+                                Из медиатеки
+                            </Button>
+                        </div>
+
                         {fieldError('cover') && (
                             <div
                                 style={{
@@ -452,6 +519,12 @@ export default function NewsForm({ news, reference }: Props) {
                                 placeholder="Описание изображения"
                             />
                         </Field>
+
+                        <MediaPicker
+                            open={coverPicker}
+                            onClose={() => setCoverPicker(false)}
+                            onSelect={pickCoverFromLibrary}
+                        />
                     </Blueprint>
                 </div>
             </div>

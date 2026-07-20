@@ -7,6 +7,7 @@ use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
+use App\Models\Concerns\HasResponsiveThumbnails;
 use Database\Factories\InstructionFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -38,14 +39,16 @@ use Spatie\Translatable\HasTranslations;
 class Instruction extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<InstructionFactory> */
-    use HasFactory, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness;
+    use HasFactory, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
+        HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
+    }
 
     use HasTranslations;
 
     /**
      * @var list<string>
      */
-    public array $translatable = ['name', 'summary'];
+    public array $translatable = ['name', 'summary', 'body'];
 
     /**
      * @var list<string>
@@ -53,6 +56,7 @@ class Instruction extends Model implements HasMedia, Workflowable
     protected $fillable = [
         'name',
         'summary',
+        'body',
         'slug',
         'hazard_type',
         'is_priority',

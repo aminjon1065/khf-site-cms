@@ -11,6 +11,7 @@ use App\Models\MediaAsset;
 use App\Models\News;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,7 @@ class MediaController extends Controller
         $search = $request->string('search')->toString();
         $perPage = max(1, min((int) $request->integer('per_page', 24), 100));
 
-        $query = Media::query()->latest('id');
+        $query = Media::query()->with('model')->latest('id');
 
         if ($kind === 'image') {
             $query->where('mime_type', 'like', 'image/%');
@@ -110,6 +111,96 @@ class MediaController extends Controller
         return back()->with('success', 'Файл удалён.');
     }
 
+    /**
+     * JSON list of library images for the in-editor media picker (paginated,
+     * searchable). Only images are returned — the picker inserts <img> nodes.
+     */
+    public function library(Request $request): JsonResponse
+    {
+        abort_unless((bool) $request->user()?->can('media.view'), 403);
+
+        $search = $request->string('search')->toString();
+        $perPage = max(1, min((int) $request->integer('per_page', 24), 60));
+
+        $query = Media::query()->with('model')->where('mime_type', 'like', 'image/%')->latest('id');
+        if ($search !== '') {
+            $query->where(function (Builder $q) use ($search): void {
+                $q->where('file_name', 'like', "%{$search}%")
+                    ->orWhere('name', 'like', "%{$search}%");
+            });
+        }
+
+        $media = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => array_map(fn (Media $m): array => $this->present($m), $media->items()),
+            'meta' => [
+                'current_page' => $media->currentPage(),
+                'last_page' => $media->lastPage(),
+                'total' => $media->total(),
+            ],
+        ]);
+    }
+
+    /**
+     * Upload a reusable image from the editor and return it as JSON so the
+     * picker can insert it immediately without a full-page reload.
+     */
+    public function upload(MediaUploadRequest $request): JsonResponse
+    {
+        abort_unless((bool) $request->user()?->can('media.create'), 403);
+
+        $userId = $request->user()->id;
+
+        $media = DB::transaction(function () use ($request, $userId): Media {
+            $asset = new MediaAsset;
+            $asset->title = $request->input('title');
+            $asset->alt = $request->input('alt');
+            $asset->uploaded_by = $userId;
+            $asset->save();
+
+            return $asset->addMediaFromRequest('file')->toMediaCollection('asset');
+        });
+
+        return response()->json(['data' => $this->present($media)]);
+    }
+
+    /**
+     * Edit metadata (display name, alt-text, caption) of a library-owned asset.
+     * Alt and caption are used as defaults when the image is inserted into a body.
+     */
+    public function update(Request $request, Media $media): RedirectResponse
+    {
+        abort_unless((bool) $request->user()?->can('media.create'), 403);
+
+        $asset = $media->model;
+        if ($media->model_type !== MediaAsset::class || ! $asset instanceof MediaAsset) {
+            return back()->with('error', 'Метаданные можно менять только у файлов медиабиблиотеки.');
+        }
+
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'alt' => ['nullable', 'string', 'max:255'],
+            'caption' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $name = $validated['name'] ?? null;
+
+        $asset->update([
+            'title' => $name,
+            'alt' => $validated['alt'] ?? null,
+            'caption' => $validated['caption'] ?? null,
+        ]);
+
+        // Keep the displayed media name in sync with the title.
+        if ($name !== null && $name !== '') {
+            $media->name = $name;
+            $media->save();
+        }
+
+        return back()->with('success', 'Метаданные обновлены.');
+    }
+
     // ---------------------------------------------------------------- helpers
 
     /**
@@ -118,6 +209,7 @@ class MediaController extends Controller
     private function present(Media $m): array
     {
         $mime = (string) $m->mime_type;
+        $asset = $m->model instanceof MediaAsset ? $m->model : null;
 
         return [
             'id' => $m->id,
@@ -127,10 +219,14 @@ class MediaController extends Controller
             'ext' => strtoupper(pathinfo($m->file_name, PATHINFO_EXTENSION) ?: 'FILE'),
             'mime' => $mime,
             'kind' => str_starts_with($mime, 'image/') ? 'image' : 'file',
+            'srcset' => str_starts_with($mime, 'image/') ? MediaAsset::srcsetFromMedia($m) : null,
             'size' => $this->humanSize((int) $m->size),
             'collection' => $m->collection_name,
             'usage' => $this->usageLabel($m->model_type),
             'owned' => $m->model_type === MediaAsset::class,
+            'title' => $asset?->title,
+            'alt' => $asset?->alt,
+            'caption' => $asset?->caption,
             'uploaded_at' => $m->created_at?->toIso8601String(),
         ];
     }

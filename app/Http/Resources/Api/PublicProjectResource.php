@@ -41,6 +41,7 @@ class PublicProjectResource extends JsonResource
             'budget' => $this->budget,
             'desc' => $this->tr('summary', $locale),
             'image' => $this->coverUrl(),
+            'image_srcset' => $this->thumbnailSrcset('cover'),
         ];
 
         if ($this->withDetail) {
@@ -79,7 +80,11 @@ class PublicProjectResource extends JsonResource
     {
         $value = $this->getTranslation($field, $locale, false);
 
-        return trim($value) !== '' ? $value : $this->getTranslation($field, 'ru', false);
+        if (is_string($value) && trim($value) !== '') {
+            return $value;
+        }
+
+        return (string) $this->getTranslation($field, 'ru', false);
     }
 
     private function coverUrl(): ?string

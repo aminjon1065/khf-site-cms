@@ -46,6 +46,7 @@ class PublicNewsResource extends JsonResource
             'date' => $this->localizedDate($this->published_at, $locale),
             'datetime' => $this->published_at?->toIso8601String(),
             'image' => $this->coverUrl(),
+            'image_srcset' => $this->thumbnailSrcset('cover'),
             'featured' => (bool) $this->is_pinned,
         ];
 

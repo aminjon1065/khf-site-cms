@@ -1,15 +1,28 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, Plus, Save, Send, X } from 'lucide-react';
-import { useState } from 'react';
+import {
+    ArrowLeft,
+    ChevronDown,
+    Images,
+    Plus,
+    Save,
+    Send,
+    Upload,
+    X,
+} from 'lucide-react';
+import { useRef, useState } from 'react';
+import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton, LinkButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
+import { MediaPicker  } from '@/ui/MediaPicker';
+import type {MediaItem} from '@/ui/MediaPicker';
 import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
+import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type GoalMap = { ru: string[]; tg: string[]; en: string[] };
@@ -71,6 +84,9 @@ export default function ProjectForm({ project, reference }: Props) {
     const can = useCan();
     const isEdit = !!project;
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [coverPicker, setCoverPicker] = useState(false);
+    const [coverPreview, setCoverPreview] = useState<string | null>(null);
+    const coverFileRef = useRef<HTMLInputElement>(null);
 
     const form = useForm({
         title: { ...EMPTY, ...project?.title } as LocaleMap,
@@ -92,6 +108,7 @@ export default function ProjectForm({ project, reference }: Props) {
             email: '',
         }) as Direction,
         cover: null as File | null,
+        cover_media_id: null as number | null,
         cover_remove: false,
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
@@ -100,6 +117,19 @@ export default function ProjectForm({ project, reference }: Props) {
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
+
+    const pickCoverFromLibrary = (item: MediaItem) => {
+        setData('cover', null);
+        setData('cover_media_id', item.id);
+        setData('cover_remove', false);
+        setCoverPreview(item.url);
+        setCoverPicker(false);
+    };
+
+    // Превью: свежий выбор (файл/медиатека) приоритетнее существующей обложки.
+    const coverSrc =
+        coverPreview ??
+        (project?.cover_url && !data.cover_remove ? project.cover_url : null);
 
     const completeness = (locale: ContentLocale): number => {
         const filled = CONTENT_FIELDS.filter(
@@ -150,19 +180,28 @@ export default function ProjectForm({ project, reference }: Props) {
     const setDirection = (key: keyof Direction, value: string) =>
         setData('direction', { ...data.direction, [key]: value });
 
-    const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
+    const submit = (
+        action: 'draft' | 'submit',
+        mode?: PublishMode,
+        stay = false,
+    ) => {
         form.transform((d) => ({
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
+            stay,
             ...(isEdit ? { _method: 'put' } : {}),
         }));
 
         form.post(isEdit ? `/projects/${project!.id}` : '/projects', {
             forceFormData: true,
             preserveScroll: true,
+            preserveState: stay,
         });
     };
+
+    // Ctrl/Cmd+S — сохранить черновик и остаться в редакторе (stay = true).
+    useSaveShortcut(() => submit('draft', undefined, true), !processing);
 
     return (
         <>
@@ -267,12 +306,13 @@ export default function ProjectForm({ project, reference }: Props) {
                         </Field>
 
                         <Field label="Подробное описание">
-                            <Textarea
+                            <RichEditor
+                                key={lang}
                                 value={data.body[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('body', e.target.value)
+                                onChange={(html) =>
+                                    setLocaleField('body', html)
                                 }
-                                style={{ minHeight: 160 }}
+                                placeholder="Подробно опишите проект…"
                             />
                         </Field>
                     </Blueprint>
@@ -588,9 +628,9 @@ export default function ProjectForm({ project, reference }: Props) {
                         >
                             Обложка
                         </h3>
-                        {project?.cover_url && !data.cover_remove && (
+                        {coverSrc && (
                             <img
-                                src={project.cover_url}
+                                src={coverSrc}
                                 alt=""
                                 style={{
                                     width: '100%',
@@ -600,14 +640,42 @@ export default function ProjectForm({ project, reference }: Props) {
                                 }}
                             />
                         )}
+
                         <input
+                            ref={coverFileRef}
                             type="file"
                             accept="image/png,image/jpeg,image/webp"
-                            onChange={(e) =>
-                                setData('cover', e.target.files?.[0] ?? null)
-                            }
-                            style={{ fontSize: 13 }}
+                            hidden
+                            onChange={(e) => {
+                                const file = e.target.files?.[0] ?? null;
+
+                                if (file) {
+                                    setData('cover', file);
+                                    setData('cover_media_id', null);
+                                    setData('cover_remove', false);
+                                    setCoverPreview(URL.createObjectURL(file));
+                                }
+
+                                e.target.value = '';
+                            }}
                         />
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                            <Button
+                                variant="secondary"
+                                icon={<Upload size={15} strokeWidth={1.75} />}
+                                onClick={() => coverFileRef.current?.click()}
+                            >
+                                Загрузить
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                icon={<Images size={15} strokeWidth={1.75} />}
+                                onClick={() => setCoverPicker(true)}
+                            >
+                                Из медиатеки
+                            </Button>
+                        </div>
+
                         {project?.cover_url && (
                             <Checkbox
                                 className="mt-2"
@@ -618,6 +686,12 @@ export default function ProjectForm({ project, reference }: Props) {
                                 }
                             />
                         )}
+
+                        <MediaPicker
+                            open={coverPicker}
+                            onClose={() => setCoverPicker(false)}
+                            onSelect={pickCoverFromLibrary}
+                        />
                     </Blueprint>
                 </div>
             </div>

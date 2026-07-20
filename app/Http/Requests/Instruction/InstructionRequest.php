@@ -34,6 +34,11 @@ class InstructionRequest extends FormRequest
             'summary.tg' => ['nullable', 'string', 'max:1000'],
             'summary.en' => ['nullable', 'string', 'max:1000'],
 
+            'body' => ['array'],
+            'body.ru' => ['nullable', 'string', 'max:20000'],
+            'body.tg' => ['nullable', 'string', 'max:20000'],
+            'body.en' => ['nullable', 'string', 'max:20000'],
+
             'hazard_type' => ['nullable', Rule::enum(HazardType::class)],
             'is_priority' => ['boolean'],
             'sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
@@ -50,10 +55,12 @@ class InstructionRequest extends FormRequest
             'sections.*.*.*' => ['nullable', 'string', 'max:1000'],
 
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'image_remove' => ['boolean'],
 
             'publish_mode' => ['nullable', 'in:now,schedule,review'],
             'action' => ['nullable', 'in:draft,submit'],
+            'stay' => ['nullable', 'boolean'],
         ];
     }
 

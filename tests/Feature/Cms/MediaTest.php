@@ -112,3 +112,79 @@ it('lists media with a usage label', function () {
             ->where('items.0.owned', false),
         );
 });
+
+it('lists only images as json for the in-editor picker', function () {
+    actingAs(mediaUser('editor'))->post('/media', [
+        'file' => UploadedFile::fake()->image('scene.jpg'),
+        'title' => 'Сцена',
+    ]);
+    // A non-image asset must not appear in the picker.
+    actingAs(mediaUser('editor'))->post('/media', [
+        'file' => UploadedFile::fake()->create('plan.pdf', 20, 'application/pdf'),
+    ]);
+
+    actingAs(mediaUser('editor'))->getJson('/media/library')
+        ->assertOk()
+        ->assertJsonStructure([
+            'data' => [['id', 'url', 'name', 'file_name', 'ext', 'size', 'kind']],
+            'meta' => ['current_page', 'last_page', 'total'],
+        ])
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.kind', 'image');
+});
+
+it('uploads an image through the picker and returns it as json', function () {
+    actingAs(mediaUser('editor'))->post('/media/library', [
+        'file' => UploadedFile::fake()->image('insert.png'),
+        'title' => 'Вставка',
+    ], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonPath('data.kind', 'image');
+
+    expect(MediaAsset::query()->count())->toBe(1);
+});
+
+it('forbids a user without media permission from browsing the picker', function () {
+    actingAs(User::factory()->create())->getJson('/media/library')->assertForbidden();
+});
+
+it('updates alt, caption and name of a library asset', function () {
+    $editor = mediaUser('editor');
+    actingAs($editor)->post('/media', ['file' => UploadedFile::fake()->image('p.jpg')]);
+    $media = Media::query()->latest('id')->firstOrFail();
+
+    actingAs($editor)->put("/media/{$media->id}", [
+        'name' => 'Учения',
+        'alt' => 'Спасатели на учениях',
+        'caption' => 'Фото: пресс-служба КЧС',
+    ])->assertRedirect();
+
+    $asset = MediaAsset::query()->firstOrFail();
+    expect($asset->alt)->toBe('Спасатели на учениях')
+        ->and($asset->caption)->toBe('Фото: пресс-служба КЧС')
+        ->and($asset->title)->toBe('Учения')
+        ->and($media->fresh()->name)->toBe('Учения');
+});
+
+it('refuses to edit metadata of content (non-library) media', function () {
+    $news = News::factory()->create();
+    $news->addMedia(UploadedFile::fake()->image('cover.jpg'))->toMediaCollection('cover');
+    $media = $news->getFirstMedia('cover');
+
+    actingAs(mediaUser('editor'))->put("/media/{$media->id}", ['alt' => 'x'])
+        ->assertRedirect();
+
+    expect(MediaAsset::query()->count())->toBe(0);
+});
+
+it('exposes alt and caption in the picker JSON', function () {
+    $editor = mediaUser('editor');
+    actingAs($editor)->post('/media', ['file' => UploadedFile::fake()->image('p.jpg')]);
+    $media = Media::query()->latest('id')->firstOrFail();
+    actingAs($editor)->put("/media/{$media->id}", ['alt' => 'Описание', 'caption' => 'Подпись']);
+
+    actingAs($editor)->getJson('/media/library')
+        ->assertOk()
+        ->assertJsonPath('data.0.alt', 'Описание')
+        ->assertJsonPath('data.0.caption', 'Подпись');
+});

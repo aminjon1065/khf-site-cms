@@ -137,3 +137,120 @@ it('soft-deletes news for an authorized user', function () {
     expect(News::query()->find($news->id))->toBeNull()
         ->and(News::withTrashed()->find($news->id))->not->toBeNull();
 });
+
+it('sanitises the rich-text body: keeps formatting, strips scripts and unsafe attributes', function () {
+    actingAs(newsUser('chief_editor'))->post('/news', [
+        'title' => ['ru' => 'Материал с форматированием', 'tg' => '', 'en' => ''],
+        'body' => [
+            'ru' => '<h2>Заголовок</h2>'
+                .'<p style="text-align:center;color:red">Текст <b>жирный</b><script>alert(1)</script></p>'
+                .'<a href="https://khf.tj" onclick="steal()">ссылка</a>'
+                .'<img src="/storage/1/a.jpg" alt="фото" onerror="hack()">'
+                .'<iframe src="https://evil.example"></iframe>',
+            'tg' => '',
+            'en' => '',
+        ],
+        'action' => 'draft',
+    ])->assertRedirect('/news');
+
+    $body = News::query()->first()->getTranslation('body', 'ru');
+
+    expect($body)
+        ->toContain('<h2>Заголовок</h2>')
+        ->toContain('<b>жирный</b>')
+        ->toContain('text-align:center') // разрешённое выравнивание сохранено
+        ->not->toContain('<script')      // скрипт вырезан
+        ->not->toContain('onclick')      // обработчики событий вырезаны
+        ->not->toContain('onerror')
+        ->not->toContain('<iframe')      // iframe запрещён
+        ->not->toContain('color:red');   // недопустимое CSS-свойство убрано
+});
+
+it('drops an empty rich-text body instead of storing empty markup', function () {
+    actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => 'Без текста', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => '<p></p>', 'tg' => '', 'en' => ''],
+        'action' => 'draft',
+    ])->assertRedirect('/news');
+
+    expect(News::query()->first()->getTranslation('body', 'ru'))->toBeEmpty();
+});
+
+it('allows text colour and YouTube embeds but strips other CSS and unsafe iframes', function () {
+    actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => 'Цвет и видео', 'tg' => '', 'en' => ''],
+        'body' => [
+            'ru' => '<p><span style="color:#b3362a">важно</span> '
+                .'<span style="color:red;font-size:40px">текст</span></p>'
+                .'<div data-youtube-video><iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" '
+                .'width="640" height="360" allowfullscreen></iframe></div>'
+                .'<iframe src="https://evil.example/x"></iframe>',
+            'tg' => '',
+            'en' => '',
+        ],
+        'action' => 'draft',
+    ])->assertRedirect('/news');
+
+    $body = News::query()->first()->getTranslation('body', 'ru');
+
+    expect($body)
+        ->toContain('<span style="color:')                  // цвет текста разрешён
+        ->toContain('youtube.com/embed/dQw4w9WgXcQ')        // безопасный YouTube-эмбед сохранён
+        ->not->toContain('font-size')                       // прочий inline-CSS отброшен
+        ->not->toContain('evil.example');                   // чужой iframe вырезан
+});
+
+it('stays on the editor when saving a draft with the stay flag (Ctrl+S)', function () {
+    $response = actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => 'Черновик со stay', 'tg' => '', 'en' => ''],
+        'action' => 'draft',
+        'stay' => true,
+    ]);
+
+    $news = News::query()->firstOrFail();
+    $response->assertRedirect("/news/{$news->id}/edit");
+});
+
+it('keeps image figure, caption and align/size classes when sanitising', function () {
+    actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => 'Картинка с подписью', 'tg' => '', 'en' => ''],
+        'body' => [
+            'ru' => '<figure class="re-figure align-center size-medium">'
+                .'<img src="/storage/1/a.jpg" class="re-img" alt="фото">'
+                .'<figcaption>Подпись к фото</figcaption></figure>'
+                .'<img src="/storage/2/b.jpg" class="re-img align-right size-small" alt="карт" onerror="x()">',
+            'tg' => '',
+            'en' => '',
+        ],
+        'action' => 'draft',
+    ])->assertRedirect('/news');
+
+    $body = News::query()->first()->getTranslation('body', 'ru');
+
+    expect($body)
+        ->toContain('<figure class="re-figure align-center size-medium">') // figure + классы
+        ->toContain('<figcaption>Подпись к фото</figcaption>')             // подпись сохранена
+        ->toContain('align-right size-small')                             // классы на bare-img
+        ->not->toContain('onerror');                                      // обработчик вырезан
+});
+
+it('preserves image srcset and sizes for responsive images', function () {
+    actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => 'Адаптивная картинка', 'tg' => '', 'en' => ''],
+        'body' => [
+            'ru' => '<img src="/storage/1/x.jpg" '
+                .'srcset="/storage/1/conversions/x-sm.jpg 480w, /storage/1/conversions/x-md.jpg 960w" '
+                .'sizes="(max-width: 920px) 50vw, 360px" class="re-img size-medium" alt="ф">',
+            'tg' => '',
+            'en' => '',
+        ],
+        'action' => 'draft',
+    ])->assertRedirect('/news');
+
+    $body = News::query()->first()->getTranslation('body', 'ru');
+
+    expect($body)
+        ->toContain('srcset="/storage/1/conversions/x-sm.jpg 480w')
+        ->toContain('sizes=')
+        ->toContain('size-medium');
+});

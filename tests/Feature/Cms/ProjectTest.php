@@ -5,6 +5,9 @@ use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -106,4 +109,55 @@ it('soft-deletes a project for an authorized user', function () {
 
     expect(Project::query()->find($project->id))->toBeNull()
         ->and(Project::withTrashed()->find($project->id))->not->toBeNull();
+});
+
+it('sanitises the project detail body, keeping formatting but stripping scripts', function () {
+    actingAs(projUser('editor'))->post('/projects', [
+        'title' => ['ru' => 'Проект с описанием', 'tg' => '', 'en' => ''],
+        'lifecycle_status' => 'implementing',
+        'body' => [
+            'ru' => '<h2>О проекте</h2><p>Текст <b>важное</b><script>alert(1)</script></p>'
+                .'<img src="/x.jpg" alt="фото" onerror="hack()">',
+            'tg' => '',
+            'en' => '',
+        ],
+        'action' => 'draft',
+    ])->assertRedirect('/projects');
+
+    $body = Project::query()->first()->getTranslation('body', 'ru');
+
+    expect($body)
+        ->toContain('<h2>О проекте</h2>')
+        ->toContain('<b>важное</b>')
+        ->not->toContain('<script')
+        ->not->toContain('onerror');
+});
+
+it('sets the project cover from a media-library asset', function () {
+    Storage::fake('public');
+    $editor = projUser('editor');
+
+    actingAs($editor)->post('/media', ['file' => UploadedFile::fake()->image('lib.jpg')]);
+    $sourceId = Media::query()->latest('id')->firstOrFail()->id;
+
+    actingAs($editor)->post('/projects', [
+        'title' => ['ru' => 'Проект с обложкой из медиатеки', 'tg' => '', 'en' => ''],
+        'lifecycle_status' => 'implementing',
+        'cover_media_id' => $sourceId,
+        'action' => 'draft',
+    ])->assertRedirect('/projects');
+
+    expect(Project::query()->first()->getFirstMedia('cover'))->not->toBeNull();
+});
+
+it('stays on the editor when saving a draft with the stay flag (Ctrl+S)', function () {
+    $response = actingAs(projUser('editor'))->post('/projects', [
+        'title' => ['ru' => 'Черновик со stay', 'tg' => '', 'en' => ''],
+        'lifecycle_status' => 'preparation',
+        'action' => 'draft',
+        'stay' => true,
+    ]);
+
+    $project = Project::query()->firstOrFail();
+    $response->assertRedirect("/projects/{$project->id}/edit");
 });

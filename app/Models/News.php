@@ -7,6 +7,7 @@ use App\Concerns\HasWorkflow;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
+use App\Models\Concerns\HasResponsiveThumbnails;
 use Database\Factories\NewsFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -41,7 +42,9 @@ use Spatie\Translatable\HasTranslations;
 class News extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<NewsFactory> */
-    use HasFactory, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness;
+    use HasFactory, HasResponsiveThumbnails, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
+        HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
+    }
 
     use HasTranslations;
 

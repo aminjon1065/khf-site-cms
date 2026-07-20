@@ -11,11 +11,13 @@ use App\Http\Resources\InstructionResource;
 use App\Models\Instruction;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class InstructionController extends Controller
 {
@@ -105,7 +107,7 @@ class InstructionController extends Controller
         $this->syncMedia($instruction, $request);
         $this->runPublishAction($instruction, $request);
 
-        return redirect('/instructions')->with('success', $this->savedMessage($request));
+        return $this->redirectAfterSave($instruction, $request);
     }
 
     public function update(InstructionRequest $request, Instruction $instruction): RedirectResponse
@@ -118,7 +120,7 @@ class InstructionController extends Controller
         $this->syncMedia($instruction, $request);
         $this->runPublishAction($instruction, $request);
 
-        return redirect('/instructions')->with('success', $this->savedMessage($request));
+        return $this->redirectAfterSave($instruction, $request);
     }
 
     public function destroy(Instruction $instruction): RedirectResponse
@@ -270,6 +272,7 @@ class InstructionController extends Controller
             'id' => $instruction->id,
             'name' => $instruction->getTranslations('name'),
             'summary' => $instruction->getTranslations('summary'),
+            'body' => $instruction->getTranslations('body'),
             'slug' => $instruction->slug,
             'status' => $instruction->status->value,
             'hazard_type' => $instruction->hazard_type?->value,
@@ -303,6 +306,9 @@ class InstructionController extends Controller
                 fn (?string $v): bool => $v !== null && trim($v) !== '',
             ));
         }
+
+        // Rich-text detail body: sanitise HTML from the Tiptap editor per locale.
+        $instruction->setTranslations('body', RichText::sanitizeTranslations($request->input('body', [])));
     }
 
     /**
@@ -367,6 +373,14 @@ class InstructionController extends Controller
         if ($request->hasFile('image')) {
             $instruction->clearMediaCollection('image');
             $instruction->addMediaFromRequest('image')->toMediaCollection('image');
+        } elseif ($request->filled('image_media_id')) {
+            // Image chosen from the media library: copy the source file into the
+            // instruction's own `image` collection so it is independent of it.
+            $source = Media::find($request->integer('image_media_id'));
+            if ($source !== null) {
+                $instruction->clearMediaCollection('image');
+                $source->copy($instruction, 'image');
+            }
         }
     }
 
@@ -391,6 +405,20 @@ class InstructionController extends Controller
         } else {
             $this->workflow->transition($instruction, ContentStatus::Review, $user, force: true);
         }
+    }
+
+    /**
+     * After a save, stay on the editor (Ctrl+S / `stay` flag) or return to the
+     * list. A freshly created draft lands on its own edit page so subsequent
+     * saves update it instead of creating duplicates.
+     */
+    private function redirectAfterSave(Instruction $instruction, InstructionRequest $request): RedirectResponse
+    {
+        $message = $this->savedMessage($request);
+
+        return $request->boolean('stay')
+            ? redirect("/instructions/{$instruction->id}/edit")->with('success', $message)
+            : redirect('/instructions')->with('success', $message);
     }
 
     private function savedMessage(InstructionRequest $request): string

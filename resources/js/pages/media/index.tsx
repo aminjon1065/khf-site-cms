@@ -1,5 +1,5 @@
 import { Head, router } from '@inertiajs/react';
-import { Check, Copy, FileText, Trash2, Upload } from 'lucide-react';
+import { Check, Copy, FileText, Pencil, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useCan } from '@/lib/auth';
@@ -7,9 +7,9 @@ import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
 import { Pagination } from '@/ui/DataTable';
-import { Select } from '@/ui/Field';
+import { Field, Input, Select, Textarea } from '@/ui/Field';
 import { FilterBar, SearchInput } from '@/ui/Filters';
-import { ConfirmDialog } from '@/ui/Overlay';
+import { ConfirmDialog, Modal } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
 interface MediaItem {
@@ -24,6 +24,9 @@ interface MediaItem {
     collection: string;
     usage: string;
     owned: boolean;
+    title: string | null;
+    alt: string | null;
+    caption: string | null;
     uploaded_at: string | null;
 }
 
@@ -56,6 +59,31 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
     const [copied, setCopied] = useState<number | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<MediaItem | null>(null);
     const [processing, setProcessing] = useState(false);
+    const [editTarget, setEditTarget] = useState<MediaItem | null>(null);
+    const [editForm, setEditForm] = useState({ name: '', alt: '', caption: '' });
+    const [editSaving, setEditSaving] = useState(false);
+
+    const openEdit = (item: MediaItem) => {
+        setEditForm({
+            name: item.title ?? item.name ?? '',
+            alt: item.alt ?? '',
+            caption: item.caption ?? '',
+        });
+        setEditTarget(item);
+    };
+
+    const saveEdit = () => {
+        if (!editTarget) {
+            return;
+        }
+
+        setEditSaving(true);
+        router.put(`/media/${editTarget.id}`, editForm, {
+            preserveScroll: true,
+            onSuccess: () => setEditTarget(null),
+            onFinish: () => setEditSaving(false),
+        });
+    };
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -305,6 +333,20 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                                             <Copy size={15} strokeWidth={1.5} />
                                         )}
                                     </IconButton>
+                                    {item.owned &&
+                                        item.kind === 'image' &&
+                                        can('media.create') && (
+                                            <IconButton
+                                                label="Редактировать"
+                                                variant="ghost"
+                                                onClick={() => openEdit(item)}
+                                            >
+                                                <Pencil
+                                                    size={15}
+                                                    strokeWidth={1.5}
+                                                />
+                                            </IconButton>
+                                        )}
                                     {item.owned && can('media.delete') && (
                                         <IconButton
                                             label="Удалить"
@@ -375,6 +417,67 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                     });
                 }}
             />
+
+            <Modal
+                open={!!editTarget}
+                onClose={() => setEditTarget(null)}
+                title="Метаданные изображения"
+                width={520}
+                footer={
+                    <>
+                        <Button
+                            variant="ghost"
+                            onClick={() => setEditTarget(null)}
+                        >
+                            Отмена
+                        </Button>
+                        <Button
+                            variant="primary"
+                            loading={editSaving}
+                            onClick={saveEdit}
+                        >
+                            Сохранить
+                        </Button>
+                    </>
+                }
+            >
+                <Field label="Название">
+                    <Input
+                        value={editForm.name}
+                        onChange={(e) =>
+                            setEditForm({ ...editForm, name: e.target.value })
+                        }
+                        maxLength={255}
+                        placeholder="Название файла"
+                    />
+                </Field>
+                <Field
+                    label="Alt-текст"
+                    hint="Для доступности и SEO; подставляется при вставке картинки в текст."
+                >
+                    <Input
+                        value={editForm.alt}
+                        onChange={(e) =>
+                            setEditForm({ ...editForm, alt: e.target.value })
+                        }
+                        maxLength={255}
+                        placeholder="Что изображено на картинке"
+                    />
+                </Field>
+                <Field
+                    label="Подпись"
+                    hint="Показывается под изображением при вставке в статью."
+                >
+                    <Textarea
+                        value={editForm.caption}
+                        onChange={(e) =>
+                            setEditForm({ ...editForm, caption: e.target.value })
+                        }
+                        maxLength={500}
+                        style={{ minHeight: 60 }}
+                    />
+                </Field>
+            </Modal>
         </>
     );
 }

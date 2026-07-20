@@ -110,6 +110,10 @@ Route::middleware(['auth'])->group(function () {
     // Media library (browse all media, upload reusable assets, remove them).
     Route::get('media', [MediaController::class, 'index'])->name('media');
     Route::post('media', [MediaController::class, 'store'])->name('media.store');
+    // JSON endpoints for the in-editor media picker (list + inline upload).
+    Route::get('media/library', [MediaController::class, 'library'])->name('media.library');
+    Route::post('media/library', [MediaController::class, 'upload'])->name('media.upload');
+    Route::put('media/{media}', [MediaController::class, 'update'])->name('media.update');
     Route::delete('media/{media}', [MediaController::class, 'destroy'])->name('media.destroy');
 
     // Editorial taxonomy manager (news categories + tags).

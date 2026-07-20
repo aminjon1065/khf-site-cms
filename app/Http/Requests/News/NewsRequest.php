@@ -47,6 +47,7 @@ class NewsRequest extends FormRequest
             'tags.*' => ['integer', 'exists:tags,id'],
 
             'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'cover_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'cover_remove' => ['boolean'],
             'cover_alt' => ['nullable', 'string', 'max:255'],
 
@@ -61,6 +62,7 @@ class NewsRequest extends FormRequest
 
             'publish_mode' => ['nullable', 'in:now,schedule,review'],
             'action' => ['nullable', 'in:draft,submit'],
+            'stay' => ['nullable', 'boolean'],
         ];
     }
 
