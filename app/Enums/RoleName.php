@@ -54,4 +54,19 @@ enum RoleName: string
     {
         return $this === self::RegionalEditor;
     }
+
+    /**
+     * @return list<array{value: string, label: string, description: string}>
+     */
+    public static function options(): array
+    {
+        return array_map(
+            fn (self $case): array => [
+                'value' => $case->value,
+                'label' => $case->label(),
+                'description' => $case->description(),
+            ],
+            self::cases(),
+        );
+    }
 }

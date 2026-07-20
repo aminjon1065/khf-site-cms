@@ -1432,6 +1432,27 @@ h6 {
     }
 }
 
+/* ---- content form (news / editorial) ---- */
+.ui-card-title {
+    font-family: var(--font-heading);
+    font-weight: 600;
+    font-size: 15px;
+    color: var(--color-text);
+}
+.news-form-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 16px;
+    padding: 12px 16px;
+    background: var(--color-surface, #fff);
+    border: 1px solid var(--color-divider);
+    box-shadow: var(--shadow-md);
+}
+
 /* responsive grids for dashboard / wizard */
 @media (max-width: 1200px) {
     .cms-metrics-grid {

@@ -31,7 +31,9 @@ class InstructionSeeder extends Seeder
             ['Наводнение', 'Обхезӣ', HazardType::Flood, 'Действия при подъёме уровня воды', '2026-07-05', ContentStatus::Published, true],
         ];
 
-        foreach ($items as $it) {
+        $priorityHazards = [HazardType::Earthquake, HazardType::Mudflow, HazardType::Avalanche];
+
+        foreach ($items as $index => $it) {
             [$nameRu, $nameTg, $hazard, $summaryRu, $updated, $status, $enComplete] = $it;
 
             $sections = [
@@ -63,6 +65,8 @@ class InstructionSeeder extends Seeder
                     'name' => ['ru' => $nameRu, 'tg' => $nameTg, 'en' => $enComplete ? $nameRu : ''],
                     'summary' => ['ru' => $summaryRu, 'tg' => $summaryRu, 'en' => $enComplete ? $summaryRu : ''],
                     'hazard_type' => $hazard,
+                    'is_priority' => $hazard !== null && in_array($hazard, $priorityHazards, true),
+                    'sort' => $index,
                     'sections' => $sections,
                     'status' => $status,
                     'published_at' => $status === ContentStatus::Published ? Carbon::parse($updated) : null,

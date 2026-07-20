@@ -7,6 +7,7 @@ use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\DocType;
 use Database\Factories\DocumentFactory;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -26,6 +27,7 @@ use Spatie\Translatable\HasTranslations;
  * @property Carbon|null $doc_date
  * @property string|null $section
  * @property ContentStatus $status
+ * @property Carbon|null $published_at
  * @property int|null $author_id
  */
 class Document extends Model implements HasMedia, Workflowable
@@ -50,6 +52,7 @@ class Document extends Model implements HasMedia, Workflowable
         'doc_date',
         'section',
         'status',
+        'published_at',
         'author_id',
     ];
 
@@ -62,7 +65,31 @@ class Document extends Model implements HasMedia, Workflowable
             'doc_type' => DocType::class,
             'status' => ContentStatus::class,
             'doc_date' => 'date',
+            'published_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Publicly visible documents (a public status), newest first.
+     *
+     * @param  Builder<Document>  $query
+     */
+    public function scopePublic(Builder $query): void
+    {
+        $public = array_map(
+            fn (ContentStatus $s): string => $s->value,
+            array_filter(ContentStatus::cases(), fn (ContentStatus $s): bool => $s->isPublic()),
+        );
+
+        $query->whereIn('status', $public);
+    }
+
+    /**
+     * @param  Builder<Document>  $query
+     */
+    public function scopeOrdered(Builder $query): void
+    {
+        $query->orderByDesc('doc_date')->orderByDesc('id');
     }
 
     public function getActivitylogOptions(): LogOptions

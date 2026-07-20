@@ -56,6 +56,8 @@ class DocumentSeeder extends Seeder
         ];
 
         foreach ($docs as $d) {
+            $published = $d['status'] === ContentStatus::Published;
+
             $attributes = [
                 'name' => ['ru' => $d['ru'], 'tg' => $d['tg'], 'en' => ''],
                 'doc_type' => $d['type'],
@@ -63,6 +65,7 @@ class DocumentSeeder extends Seeder
                 'doc_date' => Carbon::parse($d['date']),
                 'section' => $d['section'],
                 'status' => $d['status'],
+                'published_at' => $published ? Carbon::parse($d['date']) : null,
                 'author_id' => $users[$d['author']] ?? null,
             ];
 
@@ -71,8 +74,46 @@ class DocumentSeeder extends Seeder
             if ($document) {
                 $document->update($attributes);
             } else {
-                Document::create($attributes);
+                $document = Document::create($attributes);
+            }
+
+            if ($published && empty($d['noFile'])) {
+                $this->attachSampleFiles($document, $d['type'] === DocType::Resolution);
             }
         }
+    }
+
+    /**
+     * Attach a small placeholder PDF per language so the public library has
+     * working downloads. Idempotent: skips a collection that already has a file.
+     */
+    private function attachSampleFiles(Document $document, bool $withEn): void
+    {
+        $locales = $withEn ? ['tg', 'ru', 'en'] : ['tg', 'ru'];
+
+        foreach ($locales as $locale) {
+            $collection = "file_{$locale}";
+
+            if ($document->hasMedia($collection)) {
+                continue;
+            }
+
+            $document->addMediaFromString($this->samplePdf())
+                ->usingFileName("document-{$locale}.pdf")
+                ->toMediaCollection($collection);
+        }
+    }
+
+    /**
+     * A minimal, valid, single blank A4 page PDF (placeholder for seed data).
+     */
+    private function samplePdf(): string
+    {
+        return "%PDF-1.4\n"
+            ."1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+            ."2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+            ."3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 595 842]>>endobj\n"
+            ."trailer<</Root 1 0 R>>\n"
+            .'%%EOF';
     }
 }

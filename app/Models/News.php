@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
@@ -94,9 +95,54 @@ class News extends Model implements HasMedia, Workflowable
             ->useLogName('news');
     }
 
+    protected static function booted(): void
+    {
+        // Guarantee a stable, unique slug. Generated once from the Russian
+        // title on first save; existing slugs are never silently rewritten
+        // (published URLs must stay stable — see redirects for renames).
+        static::saving(function (News $news): void {
+            if (blank($news->slug)) {
+                $source = $news->getTranslation('title', 'ru', false)
+                    ?: $news->getTranslation('title', 'tg', false);
+                $news->slug = self::uniqueSlug($source, $news->getKey());
+            }
+        });
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('cover')->singleFile();
+    }
+
+    /**
+     * A URL-safe slug unique across the table (including trashed rows), with a
+     * numeric suffix on collision.
+     */
+    public static function uniqueSlug(string $source, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($source, '-', 'ru');
+
+        if ($base === '') {
+            $base = 'news-'.Str::lower(Str::random(6));
+        }
+
+        $slug = $base;
+        $suffix = 2;
+
+        while (self::slugExists($slug, $ignoreId)) {
+            $slug = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $slug;
+    }
+
+    private static function slugExists(string $slug, ?int $ignoreId): bool
+    {
+        return self::withTrashed()
+            ->where('slug', $slug)
+            ->when($ignoreId !== null, fn (Builder $q) => $q->whereKeyNot($ignoreId))
+            ->exists();
     }
 
     /**
@@ -121,5 +167,23 @@ class News extends Model implements HasMedia, Workflowable
     public function scopePublished(Builder $query): void
     {
         $query->where('status', ContentStatus::Published->value);
+    }
+
+    /**
+     * Publicly visible on the site: a public status and a publish date that is
+     * not in the future. Used by the public API.
+     *
+     * @param  Builder<News>  $query
+     */
+    public function scopePublic(Builder $query): void
+    {
+        $public = array_map(
+            fn (ContentStatus $s): string => $s->value,
+            array_filter(ContentStatus::cases(), fn (ContentStatus $s): bool => $s->isPublic()),
+        );
+
+        $query->whereIn('status', $public)
+            ->whereNotNull('published_at')
+            ->where('published_at', '<=', now());
     }
 }

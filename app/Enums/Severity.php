@@ -39,6 +39,22 @@ enum Severity: string
     }
 
     /**
+     * The public-site alert level (5-point `none|info|warning|danger|critical`
+     * scale used by the map and badges). `none` is not produced here — it means
+     * "no active alert".
+     */
+    public function level(): string
+    {
+        return match ($this) {
+            self::Info => 'info',
+            self::Attention => 'warning',
+            self::Warning => 'warning',
+            self::Danger => 'danger',
+            self::Critical => 'critical',
+        };
+    }
+
+    /**
      * Whether publishing this level requires the alert_operator role and confirmation.
      */
     public function requiresOperator(): bool

@@ -10,6 +10,7 @@ import {
     Gauge,
     Home,
     Image,
+    Inbox,
     LayoutDashboard,
     Map,
     Megaphone,
@@ -91,6 +92,13 @@ export const NAV: NavGroup[] = [
                 href: '/section/contacts',
                 icon: Phone,
             },
+            {
+                key: 'submissions',
+                labelKey: 'Обращения граждан',
+                href: '/submissions',
+                icon: Inbox,
+                permission: 'submissions.view',
+            },
         ],
     },
     {
@@ -113,8 +121,9 @@ export const NAV: NavGroup[] = [
             {
                 key: 'pages',
                 labelKey: 'nav.pages',
-                href: '/section/pages',
+                href: '/pages',
                 icon: FileText,
+                permission: 'pages.view',
             },
             {
                 key: 'documents',
@@ -126,20 +135,23 @@ export const NAV: NavGroup[] = [
             {
                 key: 'announcements',
                 labelKey: 'nav.announcements',
-                href: '/section/announcements',
+                href: '/announcements',
                 icon: Megaphone,
+                permission: 'announcements.view',
             },
             {
                 key: 'projects',
                 labelKey: 'Проекты',
-                href: '/section/projects',
+                href: '/projects',
                 icon: FolderKanban,
+                permission: 'projects.view',
             },
             {
                 key: 'regions',
-                labelKey: 'Региональные подразделения',
-                href: '/section/regions',
+                labelKey: 'Регионы и районы',
+                href: '/regions',
                 icon: Building2,
+                permission: 'regions.view',
             },
         ],
     },
@@ -156,14 +168,16 @@ export const NAV: NavGroup[] = [
             {
                 key: 'taxonomy',
                 labelKey: 'Категории и теги',
-                href: '/section/taxonomy',
+                href: '/taxonomy',
                 icon: Tags,
+                permission: 'taxonomy.view',
             },
             {
                 key: 'menu',
                 labelKey: 'Меню сайта',
-                href: '/section/menu',
+                href: '/menu',
                 icon: Map,
+                permission: 'settings.view',
             },
             {
                 key: 'home',
@@ -245,9 +259,21 @@ export const CREATE_ITEMS: {
         permission: 'documents.create',
     },
     {
+        key: 'project',
+        labelKey: 'Проекты',
+        href: '/projects/create',
+        permission: 'projects.create',
+    },
+    {
         key: 'announcement',
         labelKey: 'nav.announcements',
-        href: '/section/announcements',
+        href: '/announcements/create',
+        permission: 'announcements.create',
     },
-    { key: 'page', labelKey: 'nav.pages', href: '/section/pages' },
+    {
+        key: 'page',
+        labelKey: 'nav.pages',
+        href: '/pages/create',
+        permission: 'pages.create',
+    },
 ];

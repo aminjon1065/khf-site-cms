@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -41,6 +43,19 @@ class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::createUsersUsing(CreateNewUser::class);
+
+        // Only active accounts may authenticate — a deactivated user is locked
+        // out immediately, even with valid credentials.
+        Fortify::authenticateUsing(function (Request $request): ?User {
+            /** @var User|null $user */
+            $user = User::query()->where('email', $request->string('email'))->first();
+
+            if ($user === null || ! $user->is_active) {
+                return null;
+            }
+
+            return Hash::check((string) $request->input('password'), $user->password) ? $user : null;
+        });
     }
 
     /**

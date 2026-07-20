@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
@@ -24,6 +25,7 @@ use Spatie\Translatable\HasTranslations;
 /**
  * @property int $id
  * @property string $internal_title
+ * @property string|null $slug
  * @property array<string, string> $title
  * @property array<string, string> $summary
  * @property array<string, string> $body
@@ -76,6 +78,7 @@ class Alert extends Model implements HasMedia, Workflowable
      */
     protected $fillable = [
         'internal_title',
+        'slug',
         'title',
         'summary',
         'body',
@@ -122,6 +125,62 @@ class Alert extends Model implements HasMedia, Workflowable
             ->logOnly(['internal_title', 'severity', 'status', 'starts_at', 'ends_at', 'published_at'])
             ->logOnlyDirty()
             ->useLogName('alerts');
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Alert $alert): void {
+            if (blank($alert->slug)) {
+                $source = $alert->getTranslation('title', 'ru', false) ?: $alert->internal_title;
+                $alert->slug = self::uniqueSlug($source, $alert->getKey());
+            }
+        });
+    }
+
+    /**
+     * A URL-safe slug unique across the table (including trashed rows).
+     */
+    public static function uniqueSlug(string $source, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($source, '-', 'ru');
+
+        if ($base === '') {
+            $base = 'alert-'.Str::lower(Str::random(6));
+        }
+
+        $slug = $base;
+        $suffix = 2;
+
+        while (self::slugExists($slug, $ignoreId)) {
+            $slug = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $slug;
+    }
+
+    private static function slugExists(string $slug, ?int $ignoreId): bool
+    {
+        return self::withTrashed()
+            ->where('slug', $slug)
+            ->when($ignoreId !== null, fn (Builder $q) => $q->whereKeyNot($ignoreId))
+            ->exists();
+    }
+
+    /**
+     * Publicly visible for a detail page: a public status (published/updated/
+     * completed) — includes recently-ended alerts so links don't 404.
+     *
+     * @param  Builder<Alert>  $query
+     */
+    public function scopePublic(Builder $query): void
+    {
+        $public = array_map(
+            fn (ContentStatus $s): string => $s->value,
+            array_filter(ContentStatus::cases(), fn (ContentStatus $s): bool => $s->isPublic()),
+        );
+
+        $query->whereIn('status', $public);
     }
 
     public function registerMediaCollections(): void

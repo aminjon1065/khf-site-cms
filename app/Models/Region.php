@@ -11,11 +11,14 @@ use Spatie\Translatable\HasTranslations;
 /**
  * @property int $id
  * @property array<string, string> $name
+ * @property array<string, string>|null $head
  * @property string $code
  * @property RegionType $type
  * @property string|null $regional_center
+ * @property array<string, string>|null $address
  * @property string|null $phone
  * @property string|null $duty_phone
+ * @property string|null $email
  * @property int $districts_count
  * @property string $status
  * @property int $sort
@@ -27,18 +30,21 @@ class Region extends Model
     /**
      * @var list<string>
      */
-    public array $translatable = ['name'];
+    public array $translatable = ['name', 'head', 'address'];
 
     /**
      * @var list<string>
      */
     protected $fillable = [
         'name',
+        'head',
         'code',
         'type',
         'regional_center',
+        'address',
         'phone',
         'duty_phone',
+        'email',
         'districts_count',
         'status',
         'sort',
