@@ -15,6 +15,7 @@ use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -33,9 +34,9 @@ class ProjectController extends Controller
         $this->authorize('viewAny', Project::class);
 
         $view = $request->string('view', 'all')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
-        $query = Project::query()->with(['author', 'media']);
+        $query = Project::query()->accessibleTo($request->user())->with(['author', 'media']);
         $this->applyView($query, $view, $request->user());
         $this->applyFilters($query, $request);
         $this->applySort($query, $request);
@@ -96,14 +97,18 @@ class ProjectController extends Controller
     {
         $this->authorize('create', Project::class);
 
-        $project = new Project;
-        $this->fill($project, $request);
-        $project->author_id = $request->user()?->id;
-        $project->status = ContentStatus::Draft;
-        $project->save();
+        $project = DB::transaction(function () use ($request): Project {
+            $project = new Project;
+            $this->fill($project, $request);
+            $project->author_id = $request->user()?->id;
+            $project->status = ContentStatus::Draft;
+            $project->save();
 
-        $this->syncMedia($project, $request);
-        $this->runPublishAction($project, $request);
+            $this->syncMedia($project, $request);
+            $this->runPublishAction($project, $request);
+
+            return $project;
+        });
 
         return $this->redirectAfterSave($project, $request);
     }
@@ -112,11 +117,13 @@ class ProjectController extends Controller
     {
         $this->authorize('update', $project);
 
-        $this->fill($project, $request);
-        $project->save();
+        DB::transaction(function () use ($project, $request): void {
+            $this->fill($project, $request);
+            $project->save();
 
-        $this->syncMedia($project, $request);
-        $this->runPublishAction($project, $request);
+            $this->syncMedia($project, $request);
+            $this->runPublishAction($project, $request);
+        });
 
         return $this->redirectAfterSave($project, $request);
     }
@@ -131,6 +138,7 @@ class ProjectController extends Controller
 
     public function duplicate(Project $project): RedirectResponse
     {
+        $this->authorize('view', $project);
         $this->authorize('create', Project::class);
 
         $copy = $project->replicate(['slug', 'published_at']);
@@ -148,7 +156,7 @@ class ProjectController extends Controller
     public function publish(Request $request, Project $project): RedirectResponse
     {
         $this->authorize('publish', $project);
-        $this->workflow->transition($project, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($project, ContentStatus::Published, $request->user());
 
         return back()->with('success', 'Проект опубликован.');
     }
@@ -159,7 +167,7 @@ class ProjectController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($project, ContentStatus::Archived, $request->user(), $validated['comment'], force: true);
+        $this->workflow->transition($project, ContentStatus::Archived, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Проект снят с публикации.');
     }
@@ -229,7 +237,7 @@ class ProjectController extends Controller
         ];
 
         return array_map(function (array $v) use ($request): array {
-            $q = Project::query();
+            $q = Project::query()->accessibleTo($request->user());
             $this->applyView($q, $v['key'], $request->user());
             $v['count'] = $q->count();
 
@@ -443,16 +451,16 @@ class ProjectController extends Controller
 
         match ($request->input('publish_mode', 'review')) {
             'now' => $this->authorizeAndPublish($project, $user),
-            default => $this->workflow->transition($project, ContentStatus::Review, $user, force: true),
+            default => $this->workflow->transition($project, ContentStatus::Review, $user),
         };
     }
 
     private function authorizeAndPublish(Project $project, ?User $user): void
     {
         if ($user && $user->can('publish', $project)) {
-            $this->workflow->transition($project, ContentStatus::Published, $user, force: true);
+            $this->workflow->transition($project, ContentStatus::Published, $user);
         } else {
-            $this->workflow->transition($project, ContentStatus::Review, $user, force: true);
+            $this->workflow->transition($project, ContentStatus::Review, $user);
         }
     }
 

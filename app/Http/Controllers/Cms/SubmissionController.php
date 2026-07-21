@@ -23,7 +23,7 @@ class SubmissionController extends Controller
         $this->authorize('viewAny', Submission::class);
 
         $view = $request->string('view', 'all')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
         $query = Submission::query()->with('assignee');
         $this->applyView($query, $view, $request->user());

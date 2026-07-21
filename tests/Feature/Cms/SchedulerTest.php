@@ -50,3 +50,17 @@ it('notifies the author about an alert expiring within 24 hours', function () {
     Notification::assertSentTo($author, WorkflowNotification::class);
     expect($alert->fresh()->expiry_notified_at)->not->toBeNull();
 });
+
+it('uses the Dushanbe timezone for editorial and scheduled dates', function () {
+    expect(config('app.timezone'))->toBe('Asia/Dushanbe')
+        ->and(config('app.schedule_timezone'))->toBe('Asia/Dushanbe');
+});
+
+it('does not treat a published alert as active before its start time', function () {
+    $futureAlert = Alert::factory()->published()->create([
+        'starts_at' => now()->addHour(),
+        'ends_at' => now()->addHours(2),
+    ]);
+
+    expect(Alert::query()->active()->whereKey($futureAlert)->exists())->toBeFalse();
+});

@@ -1,5 +1,12 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { KeyRound, MoreVertical, Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import {
+    KeyRound,
+    MoreVertical,
+    Pencil,
+    Plus,
+    ShieldCheck,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
@@ -78,7 +85,14 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
             key: 'name',
             header: 'Сотрудник',
             render: (r) => (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        minWidth: 0,
+                    }}
+                >
                     <span
                         aria-hidden
                         style={{
@@ -101,14 +115,23 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                         {can('users.edit') ? (
                             <Link
                                 href={`/users/${r.id}/edit`}
-                                style={{ fontWeight: 600, color: 'var(--color-text)', textDecoration: 'none' }}
+                                style={{
+                                    fontWeight: 600,
+                                    color: 'var(--color-text)',
+                                    textDecoration: 'none',
+                                }}
                             >
                                 {r.name}
                             </Link>
                         ) : (
                             <span style={{ fontWeight: 600 }}>{r.name}</span>
                         )}
-                        <div style={{ fontSize: 11.5, color: 'var(--color-neutral-500)' }}>
+                        <div
+                            style={{
+                                fontSize: 11.5,
+                                color: 'var(--color-neutral-500)',
+                            }}
+                        >
                             {r.email}
                             {r.position ? ` · ${r.position}` : ''}
                         </div>
@@ -121,10 +144,17 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
             header: 'Роль',
             width: 180,
             render: (r) => (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                <div
+                    style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
+                >
                     <Tag tone="accent">{r.role ?? '—'}</Tag>
                     {r.region && (
-                        <span style={{ fontSize: 11, color: 'var(--color-neutral-500)' }}>
+                        <span
+                            style={{
+                                fontSize: 11,
+                                color: 'var(--color-neutral-500)',
+                            }}
+                        >
                             {r.region}
                         </span>
                     )}
@@ -162,7 +192,9 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
             header: 'Последний вход',
             width: 160,
             render: (r) => (
-                <span style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}>
+                <span
+                    style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}
+                >
                     {fmt(r.last_login_at)}
                 </span>
             ),
@@ -177,7 +209,11 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                     <Dropdown
                         align="right"
                         trigger={({ toggle }) => (
-                            <IconButton label="Действия" onClick={toggle} variant="ghost">
+                            <IconButton
+                                label="Действия"
+                                onClick={toggle}
+                                variant="ghost"
+                            >
                                 <MoreVertical size={17} strokeWidth={1.5} />
                             </IconButton>
                         )}
@@ -186,8 +222,16 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                                 ? [
                                       {
                                           label: 'Редактировать',
-                                          icon: <Pencil size={15} strokeWidth={1.5} />,
-                                          onSelect: () => router.visit(`/users/${r.id}/edit`),
+                                          icon: (
+                                              <Pencil
+                                                  size={15}
+                                                  strokeWidth={1.5}
+                                              />
+                                          ),
+                                          onSelect: () =>
+                                              router.visit(
+                                                  `/users/${r.id}/edit`,
+                                              ),
                                       },
                                   ]
                                 : []),
@@ -196,7 +240,12 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                                       { separator: true },
                                       {
                                           label: 'Удалить…',
-                                          icon: <Trash2 size={15} strokeWidth={1.5} />,
+                                          icon: (
+                                              <Trash2
+                                                  size={15}
+                                                  strokeWidth={1.5}
+                                              />
+                                          ),
                                           danger: true,
                                           onSelect: () => setDeleteTarget(r),
                                       },
@@ -285,12 +334,20 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                 perPage={meta.per_page}
                 onPrev={
                     meta.prev
-                        ? () => router.visit(meta.prev!, { preserveState: true, preserveScroll: true })
+                        ? () =>
+                              router.visit(meta.prev!, {
+                                  preserveState: true,
+                                  preserveScroll: true,
+                              })
                         : undefined
                 }
                 onNext={
                     meta.next
-                        ? () => router.visit(meta.next!, { preserveState: true, preserveScroll: true })
+                        ? () =>
+                              router.visit(meta.next!, {
+                                  preserveState: true,
+                                  preserveScroll: true,
+                              })
                         : undefined
                 }
             />

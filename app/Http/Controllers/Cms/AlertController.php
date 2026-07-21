@@ -18,6 +18,7 @@ use App\Services\WorkflowService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,7 +32,7 @@ class AlertController extends Controller
 
         $user = $request->user();
         $view = $request->string('view', 'active')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
         $base = fn (): Builder => $this->scopedQuery($request);
 
@@ -65,7 +66,7 @@ class AlertController extends Controller
                 'dir' => $request->string('dir', 'desc')->toString(),
             ],
             'savedViews' => $this->savedViewCounts($request),
-            'options' => $this->filterOptions(),
+            'options' => $this->filterOptions($request->user()),
         ]);
     }
 
@@ -75,7 +76,7 @@ class AlertController extends Controller
 
         return Inertia::render('alerts/wizard', [
             'alert' => null,
-            'reference' => $this->reference(),
+            'reference' => $this->reference($request->user()),
         ]);
     }
 
@@ -87,7 +88,7 @@ class AlertController extends Controller
 
         return Inertia::render('alerts/wizard', [
             'alert' => $this->wizardPayload($alert),
-            'reference' => $this->reference(),
+            'reference' => $this->reference($request->user()),
         ]);
     }
 
@@ -95,14 +96,16 @@ class AlertController extends Controller
     {
         $this->authorize('create', Alert::class);
 
-        $alert = new Alert;
-        $this->fill($alert, $request);
-        $alert->author_id = $request->user()?->id;
-        $alert->status = ContentStatus::Draft;
-        $alert->save();
+        DB::transaction(function () use ($request): void {
+            $alert = new Alert;
+            $this->fill($alert, $request);
+            $alert->author_id = $request->user()?->id;
+            $alert->status = ContentStatus::Draft;
+            $alert->save();
 
-        $this->syncRelations($alert, $request);
-        $this->runPublishAction($alert, $request);
+            $this->syncRelations($alert, $request);
+            $this->runPublishAction($alert, $request);
+        });
 
         return redirect('/alerts')->with('success', $this->savedMessage($request));
     }
@@ -111,10 +114,12 @@ class AlertController extends Controller
     {
         $this->authorize('update', $alert);
 
-        $this->fill($alert, $request);
-        $alert->save();
-        $this->syncRelations($alert, $request);
-        $this->runPublishAction($alert, $request);
+        DB::transaction(function () use ($alert, $request): void {
+            $this->fill($alert, $request);
+            $alert->save();
+            $this->syncRelations($alert, $request);
+            $this->runPublishAction($alert, $request);
+        });
 
         return redirect('/alerts')->with('success', $this->savedMessage($request));
     }
@@ -129,15 +134,21 @@ class AlertController extends Controller
 
     public function duplicate(Alert $alert): RedirectResponse
     {
+        $this->authorize('view', $alert);
         $this->authorize('create', Alert::class);
 
-        $copy = $alert->replicate(['published_at', 'scheduled_at']);
-        $copy->internal_title = $alert->internal_title.' (копия)';
-        $copy->status = ContentStatus::Draft;
-        $copy->author_id = request()->user()?->id;
-        $copy->save();
-        $copy->regions()->sync($alert->regions->pluck('id'));
-        $copy->districts()->sync($alert->districts->pluck('id'));
+        $copy = DB::transaction(function () use ($alert): Alert {
+            $copy = $alert->replicate(['published_at', 'scheduled_at']);
+            $copy->internal_title = $alert->internal_title.' (копия)';
+            $copy->status = ContentStatus::Draft;
+            $copy->author_id = request()->user()?->id;
+            $copy->save();
+            $copy->regions()->sync($alert->regions()->pluck('regions.id'));
+            $copy->districts()->sync($alert->districts()->pluck('districts.id'));
+            $copy->relatedInstructions()->sync($alert->relatedInstructions()->pluck('instructions.id'));
+
+            return $copy;
+        });
 
         return redirect('/alerts/'.$copy->id.'/edit')->with('success', 'Создана копия предупреждения.');
     }
@@ -145,7 +156,7 @@ class AlertController extends Controller
     public function publish(Request $request, Alert $alert): RedirectResponse
     {
         $this->authorize('publish', $alert);
-        $this->workflow->transition($alert, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($alert, ContentStatus::Published, $request->user());
 
         return back()->with('success', 'Предупреждение опубликовано.');
     }
@@ -168,14 +179,7 @@ class AlertController extends Controller
      */
     private function scopedQuery(Request $request): Builder
     {
-        $query = Alert::query();
-        $user = $request->user();
-
-        if ($user && $user->hasRole(RoleName::RegionalEditor->value) && $user->region_id) {
-            $query->whereHas('regions', fn (Builder $q) => $q->whereKey($user->region_id));
-        }
-
-        return $query;
+        return Alert::query()->accessibleTo($request->user());
     }
 
     /**
@@ -262,13 +266,13 @@ class AlertController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function filterOptions(): array
+    private function filterOptions(?User $user): array
     {
         return [
             'severities' => Severity::options(),
             'statuses' => ContentStatus::options(),
             'hazards' => HazardType::options(),
-            'regions' => Region::query()->orderBy('sort')->get()->map(fn (Region $r): array => [
+            'regions' => $this->regionOptionsQuery($user)->get()->map(fn (Region $r): array => [
                 'value' => $r->code,
                 'label' => $r->getTranslation('name', 'ru'),
             ])->all(),
@@ -278,13 +282,13 @@ class AlertController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function reference(): array
+    private function reference(?User $user): array
     {
         return [
             'severities' => Severity::options(),
             'hazards' => HazardType::options(),
             'channels' => Channel::options(),
-            'regions' => Region::query()->with('districts')->orderBy('sort')->get()->map(fn (Region $r): array => [
+            'regions' => $this->regionOptionsQuery($user)->with('districts')->get()->map(fn (Region $r): array => [
                 'id' => $r->id,
                 'code' => $r->code,
                 'name' => $r->getTranslation('name', 'ru'),
@@ -303,6 +307,19 @@ class AlertController extends Controller
                 'id' => $i->id, 'name' => $i->getTranslation('name', 'ru'),
             ])->all(),
         ];
+    }
+
+    /**
+     * @return Builder<Region>
+     */
+    private function regionOptionsQuery(?User $user): Builder
+    {
+        return Region::query()
+            ->when(
+                $user?->hasRole(RoleName::RegionalEditor->value),
+                fn (Builder $query): Builder => $query->whereKey($user?->region_id),
+            )
+            ->orderBy('sort');
     }
 
     /**
@@ -379,17 +396,17 @@ class AlertController extends Controller
 
         match ($mode) {
             'now' => $this->authorizeAndPublish($alert, $user),
-            'schedule' => $this->workflow->transition($alert, ContentStatus::Scheduled, $user, force: true),
-            default => $this->workflow->transition($alert, ContentStatus::Review, $user, force: true),
+            'schedule' => $this->workflow->transition($alert, ContentStatus::Scheduled, $user),
+            default => $this->workflow->transition($alert, ContentStatus::Review, $user),
         };
     }
 
     private function authorizeAndPublish(Alert $alert, ?User $user): void
     {
         if ($user && $user->can('publish', $alert)) {
-            $this->workflow->transition($alert, ContentStatus::Published, $user, force: true);
+            $this->workflow->transition($alert, ContentStatus::Published, $user);
         } else {
-            $this->workflow->transition($alert, ContentStatus::Review, $user, force: true);
+            $this->workflow->transition($alert, ContentStatus::Review, $user);
         }
     }
 

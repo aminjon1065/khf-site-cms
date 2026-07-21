@@ -6,6 +6,7 @@ use App\Concerns\HasWorkflow;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
+use App\Enums\RoleName;
 use App\Enums\Severity;
 use Database\Factories\AlertFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -183,6 +184,27 @@ class Alert extends Model implements HasMedia, Workflowable
         $query->whereIn('status', $public);
     }
 
+    /**
+     * Limit operational alert data to the region assigned to a regional editor.
+     *
+     * @param  Builder<Alert>  $query
+     * @return Builder<Alert>
+     */
+    public function scopeAccessibleTo(Builder $query, ?User $user): Builder
+    {
+        if (! $user?->hasRole(RoleName::RegionalEditor->value)) {
+            return $query;
+        }
+
+        if ($user->region_id === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query
+            ->where('territory_type', 'regions')
+            ->whereHas('regions', fn (Builder $regionQuery) => $regionQuery->whereKey($user->region_id));
+    }
+
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('image')->singleFile();
@@ -238,6 +260,9 @@ class Alert extends Model implements HasMedia, Workflowable
     {
         $query
             ->whereIn('status', [ContentStatus::Published->value, ContentStatus::Updated->value])
+            ->where(function (Builder $q): void {
+                $q->whereNull('starts_at')->orWhere('starts_at', '<=', now());
+            })
             ->where(function (Builder $q): void {
                 $q->whereNull('ends_at')->orWhere('ends_at', '>', now());
             });

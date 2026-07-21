@@ -18,17 +18,31 @@ class CategoryController extends Controller
         $type = $request->query('type', 'news');
         $locale = app()->getLocale();
 
+        $perPage = min(max($request->integer('per_page', 50), 1), 50);
         $categories = Category::query()
             ->when(is_string($type) && $type !== '', fn ($q) => $q->where('type', $type))
             ->orderBy('sort')
-            ->get();
+            ->paginate($perPage)
+            ->withQueryString();
 
         $data = array_values(array_map(fn (Category $c): array => [
             'slug' => $c->slug,
             'name' => (string) $c->getTranslation('name', $locale, true),
             'type' => $c->type,
-        ], $categories->all()));
+        ], $categories->items()));
 
-        return response()->json(['data' => $data]);
+        return response()->json([
+            'data' => $data,
+            'meta' => [
+                'current_page' => $categories->currentPage(),
+                'last_page' => $categories->lastPage(),
+                'per_page' => $categories->perPage(),
+                'total' => $categories->total(),
+            ],
+            'links' => [
+                'prev' => $categories->previousPageUrl(),
+                'next' => $categories->nextPageUrl(),
+            ],
+        ]);
     }
 }

@@ -87,7 +87,11 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
             { id: null, name: { ...EMPTY }, slug: '' },
         ]);
     const updateCat = (i: number, patch: Partial<CategoryRow>) =>
-        setCats(data.categories.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+        setCats(
+            data.categories.map((r, idx) =>
+                idx === i ? { ...r, ...patch } : r,
+            ),
+        );
     const removeCat = (i: number) =>
         setCats(data.categories.filter((_, idx) => idx !== i));
     const moveCat = (i: number, dir: -1 | 1) => {
@@ -107,7 +111,9 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
     const addTag = () =>
         setTags([...data.tags, { id: null, name: { ...EMPTY }, slug: '' }]);
     const updateTag = (i: number, patch: Partial<TagRow>) =>
-        setTags(data.tags.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+        setTags(
+            data.tags.map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
+        );
     const removeTag = (i: number) =>
         setTags(data.tags.filter((_, idx) => idx !== i));
 
@@ -202,8 +208,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                             key={row.id ?? `new-${i}`}
                             style={{
                                 display: 'grid',
-                                gridTemplateColumns:
-                                    '26px 1fr 1fr 96px 28px',
+                                gridTemplateColumns: '26px 1fr 1fr 96px 28px',
                                 gap: 6,
                                 alignItems: 'center',
                             }}

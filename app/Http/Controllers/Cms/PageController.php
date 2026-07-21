@@ -12,6 +12,7 @@ use App\Services\WorkflowService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -24,9 +25,9 @@ class PageController extends Controller
         $this->authorize('viewAny', Page::class);
 
         $view = $request->string('view', 'all')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
-        $query = Page::query()->with(['author', 'parent']);
+        $query = Page::query()->accessibleTo($request->user())->with(['author', 'parent']);
         $this->applyView($query, $view, $request->user());
         $this->applyFilters($query, $request);
         $this->applySort($query, $request);
@@ -83,13 +84,15 @@ class PageController extends Controller
     {
         $this->authorize('create', Page::class);
 
-        $page = new Page;
-        $this->fill($page, $request);
-        $page->author_id = $request->user()?->id;
-        $page->status = ContentStatus::Draft;
-        $page->save();
+        DB::transaction(function () use ($request): void {
+            $page = new Page;
+            $this->fill($page, $request);
+            $page->author_id = $request->user()?->id;
+            $page->status = ContentStatus::Draft;
+            $page->save();
 
-        $this->runPublishAction($page, $request);
+            $this->runPublishAction($page, $request);
+        });
 
         return redirect('/pages')->with('success', $this->savedMessage($request));
     }
@@ -98,10 +101,12 @@ class PageController extends Controller
     {
         $this->authorize('update', $page);
 
-        $this->fill($page, $request);
-        $page->save();
+        DB::transaction(function () use ($page, $request): void {
+            $this->fill($page, $request);
+            $page->save();
 
-        $this->runPublishAction($page, $request);
+            $this->runPublishAction($page, $request);
+        });
 
         return redirect('/pages')->with('success', $this->savedMessage($request));
     }
@@ -116,6 +121,7 @@ class PageController extends Controller
 
     public function duplicate(Page $page): RedirectResponse
     {
+        $this->authorize('view', $page);
         $this->authorize('create', Page::class);
 
         $copy = $page->replicate(['published_at', 'slug']);
@@ -133,7 +139,7 @@ class PageController extends Controller
     public function publish(Request $request, Page $page): RedirectResponse
     {
         $this->authorize('publish', $page);
-        $this->workflow->transition($page, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($page, ContentStatus::Published, $request->user());
 
         return back()->with('success', 'Страница опубликована.');
     }
@@ -144,7 +150,7 @@ class PageController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($page, ContentStatus::Archived, $request->user(), $validated['comment'], force: true);
+        $this->workflow->transition($page, ContentStatus::Archived, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Страница снята с публикации.');
     }
@@ -210,7 +216,7 @@ class PageController extends Controller
         ];
 
         return array_map(function (array $v) use ($request): array {
-            $q = Page::query();
+            $q = Page::query()->accessibleTo($request->user());
             $this->applyView($q, $v['key'], $request->user());
             $v['count'] = $q->count();
 
@@ -224,7 +230,7 @@ class PageController extends Controller
     private function reference(?Page $current): array
     {
         return [
-            'parents' => Page::query()
+            'parents' => Page::query()->accessibleTo(request()->user())
                 ->when($current !== null, fn (Builder $q) => $q->whereKeyNot($current?->id))
                 ->orderBy('title->ru')
                 ->get()
@@ -283,16 +289,16 @@ class PageController extends Controller
 
         match ($request->input('publish_mode', 'review')) {
             'now' => $this->authorizeAndPublish($page, $user),
-            default => $this->workflow->transition($page, ContentStatus::Review, $user, force: true),
+            default => $this->workflow->transition($page, ContentStatus::Review, $user),
         };
     }
 
     private function authorizeAndPublish(Page $page, ?User $user): void
     {
         if ($user && $user->can('publish', $page)) {
-            $this->workflow->transition($page, ContentStatus::Published, $user, force: true);
+            $this->workflow->transition($page, ContentStatus::Published, $user);
         } else {
-            $this->workflow->transition($page, ContentStatus::Review, $user, force: true);
+            $this->workflow->transition($page, ContentStatus::Review, $user);
         }
     }
 

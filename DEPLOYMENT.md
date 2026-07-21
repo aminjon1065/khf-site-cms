@@ -4,7 +4,7 @@
 
 | Приложение | Репозиторий | Роль | Технологии |
 |---|---|---|---|
-| **CMS / API** | `khf-site-cms` (Laravel) | Панель управления + публичный API `/api/v1` | PHP 8.3+, Laravel 13, MySQL, Inertia/React, Fortify |
+| **CMS / API** | `khf-site-cms` (Laravel) | Панель управления + публичный API `/api/v1` | PHP 8.5, Laravel 13, MySQL, Inertia/React, Fortify |
 | **Публичный сайт** | `khf-site-front` (Next.js) | Сайт для граждан (SSR/ISR) | Node 20+, Next.js 16, React 19 |
 
 Публичный сайт получает данные только через API CMS. Схема:
@@ -18,10 +18,10 @@
 
 ## 1. Требования к серверу
 
-- **PHP 8.3+** (разработка велась на 8.5) с расширениями: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `gd` (медиа), `bcmath`, `ctype`, `json`, `tokenizer`, `xml`, `curl`, `zip`, `intl`.
+- **PHP 8.5** с расширениями: `pdo_mysql`, `mbstring`, `openssl`, `fileinfo`, `gd` (медиа), `bcmath`, `ctype`, `json`, `tokenizer`, `xml`, `curl`, `zip`, `intl`.
 - **Composer 2**.
 - **MySQL 8** (или MariaDB 10.6+).
-- **Node.js 20 LTS** + npm (для сборки админ-ассетов CMS и запуска публичного сайта).
+- **Node.js 22 LTS** + npm (для сборки админ-ассетов CMS и запуска публичного сайта).
 - **Веб-сервер**: Nginx (рекомендуется) + PHP-FPM.
 - **HTTPS** обязателен (сессии, cookie, 2FA).
 
@@ -46,6 +46,7 @@ APP_NAME="КЧС Республики Таджикистан"
 APP_ENV=production
 APP_DEBUG=false
 APP_URL=https://cms.khf.tj
+APP_TIMEZONE=Asia/Dushanbe
 
 # Язык интерфейса и контента по умолчанию — русский
 APP_LOCALE=ru
@@ -82,7 +83,7 @@ MAIL_FROM_ADDRESS=noreply@khf.tj
 MAIL_FROM_NAME="КЧС Республики Таджикистан"
 ```
 
-> ⚠️ `.env.example` в репозитории содержит значения по умолчанию Laravel (sqlite, `APP_LOCALE=en`). Для production обязательно переопределите БД, локаль и `APP_DEBUG=false`.
+> Для production обязательно переопределите реквизиты БД, почты, `APP_URL`, CORS origins и оставьте `APP_DEBUG=false`. Бизнес-таймзона CMS — `Asia/Dushanbe`.
 
 ### 2.3. Ключ, миграции, данные
 
@@ -158,15 +159,21 @@ npm run build   # Vite: собирает Inertia/React-панель в public/bu
 * * * * * cd /var/www/khf-site-cms && php artisan schedule:run >> /dev/null 2>&1
 ```
 
-### 2.8. Очередь (опционально)
+### 2.8. Очередь (обязательно)
 
-`QUEUE_CONNECTION=database`, но задач `ShouldQueue` в текущей версии нет — уведомления отправляются синхронно. Отдельный воркер не требуется. Если в будущем появятся очереди, запустите supervisor:
+Workflow-уведомления реализуют `ShouldQueue`. При `QUEUE_CONNECTION=database` должен постоянно работать queue worker под Supervisor или systemd:
 
 ```bash
 php artisan queue:work --tries=3 --max-time=3600
 ```
 
-### 2.9. Nginx (пример)
+После каждого deploy выполните `php artisan queue:restart`, чтобы воркеры загрузили новый код.
+
+### 2.9. Политика 2FA
+
+Fortify 2FA включён. Настройки `security.require_2fa` и `security.require_2fa_from` определяют дату обязательного включения для привилегированных ролей. До этой даты администраторы должны настроить TOTP и сохранить recovery codes в защищённом месте.
+
+### 2.10. Nginx (пример)
 
 ```nginx
 server {
@@ -191,7 +198,10 @@ server {
 }
 ```
 
-Проверка API после старта: `https://cms.khf.tj/api/v1/health` → `{"status":"ok"}`.
+Проверки после старта:
+
+- `GET https://cms.khf.tj/api/v1/health` — liveness и соединение с БД;
+- `GET https://cms.khf.tj/api/v1/ready` — БД, writable storage и heartbeat планировщика (команда должна выполняться не реже раза в 15 минут).
 
 ---
 
@@ -293,12 +303,14 @@ systemctl restart khf-front     # или: pm2 reload khf-front
 ## 5. Проверка после развёртывания
 
 - [ ] `https://cms.khf.tj/api/v1/health` → `{"status":"ok"}`.
+- [ ] После первого запуска scheduler `https://cms.khf.tj/api/v1/ready` → `{"status":"ready"}`.
 - [ ] Вход в панель под созданным администратором; демо-пароль не работает.
 - [ ] Публичный сайт открывается, шапка/подвал/меню приходят из CMS.
 - [ ] `/api/v1/settings`, `/api/v1/menu`, `/api/v1/regions` возвращают данные.
 - [ ] Форма обращения на `/contacts` отправляется (проверяет CORS + throttle).
 - [ ] Загрузка файла в медиабиблиотеку и `php artisan storage:link` работают (файл доступен по URL).
 - [ ] Cron `schedule:run` активен (`php artisan schedule:list`).
+- [ ] Queue worker активен и перезапущен после deploy (`php artisan queue:restart`).
 
 ---
 

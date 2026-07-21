@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Notifications\WorkflowNotification;
 use App\Services\WorkflowService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 
 class ProcessScheduledContent extends Command
 {
@@ -22,6 +23,8 @@ class ProcessScheduledContent extends Command
         $completed = $this->completeExpired($workflow);
         $notified = $this->notifyExpiring();
 
+        Cache::put('health.scheduler.last_run', now()->toIso8601String(), now()->addHour());
+
         $this->info("Опубликовано: {$published} · завершено: {$completed} · уведомлений об истечении: {$notified}");
 
         return self::SUCCESS;
@@ -32,12 +35,12 @@ class ProcessScheduledContent extends Command
         $count = 0;
 
         foreach (Alert::query()->where('status', ContentStatus::Scheduled->value)->where('scheduled_at', '<=', now())->get() as $alert) {
-            $workflow->transition($alert, ContentStatus::Published, null, force: true);
+            $workflow->transition($alert, ContentStatus::Published);
             $count++;
         }
 
         foreach (News::query()->where('status', ContentStatus::Scheduled->value)->where('scheduled_at', '<=', now())->get() as $news) {
-            $workflow->transition($news, ContentStatus::Published, null, force: true);
+            $workflow->transition($news, ContentStatus::Published);
             $count++;
         }
 
@@ -55,7 +58,7 @@ class ProcessScheduledContent extends Command
             ->get();
 
         foreach ($alerts as $alert) {
-            $workflow->transition($alert, ContentStatus::Completed, null, force: true);
+            $workflow->transition($alert, ContentStatus::Completed);
             $count++;
         }
 

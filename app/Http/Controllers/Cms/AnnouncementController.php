@@ -14,6 +14,7 @@ use App\Services\WorkflowService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -26,9 +27,9 @@ class AnnouncementController extends Controller
         $this->authorize('viewAny', Announcement::class);
 
         $view = $request->string('view', 'all')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
-        $query = Announcement::query()->with('author');
+        $query = Announcement::query()->accessibleTo($request->user())->with('author');
         $this->applyView($query, $view, $request->user());
         $this->applyFilters($query, $request);
         $this->applySort($query, $request);
@@ -86,13 +87,15 @@ class AnnouncementController extends Controller
     {
         $this->authorize('create', Announcement::class);
 
-        $announcement = new Announcement;
-        $this->fill($announcement, $request);
-        $announcement->author_id = $request->user()?->id;
-        $announcement->status = ContentStatus::Draft;
-        $announcement->save();
+        DB::transaction(function () use ($request): void {
+            $announcement = new Announcement;
+            $this->fill($announcement, $request);
+            $announcement->author_id = $request->user()?->id;
+            $announcement->status = ContentStatus::Draft;
+            $announcement->save();
 
-        $this->runPublishAction($announcement, $request);
+            $this->runPublishAction($announcement, $request);
+        });
 
         return redirect('/announcements')->with('success', $this->savedMessage($request));
     }
@@ -101,10 +104,12 @@ class AnnouncementController extends Controller
     {
         $this->authorize('update', $announcement);
 
-        $this->fill($announcement, $request);
-        $announcement->save();
+        DB::transaction(function () use ($announcement, $request): void {
+            $this->fill($announcement, $request);
+            $announcement->save();
 
-        $this->runPublishAction($announcement, $request);
+            $this->runPublishAction($announcement, $request);
+        });
 
         return redirect('/announcements')->with('success', $this->savedMessage($request));
     }
@@ -119,6 +124,7 @@ class AnnouncementController extends Controller
 
     public function duplicate(Announcement $announcement): RedirectResponse
     {
+        $this->authorize('view', $announcement);
         $this->authorize('create', Announcement::class);
 
         $copy = $announcement->replicate(['published_at']);
@@ -135,7 +141,7 @@ class AnnouncementController extends Controller
     public function publish(Request $request, Announcement $announcement): RedirectResponse
     {
         $this->authorize('publish', $announcement);
-        $this->workflow->transition($announcement, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($announcement, ContentStatus::Published, $request->user());
 
         return back()->with('success', 'Объявление опубликовано.');
     }
@@ -146,7 +152,7 @@ class AnnouncementController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($announcement, ContentStatus::Archived, $request->user(), $validated['comment'], force: true);
+        $this->workflow->transition($announcement, ContentStatus::Archived, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Объявление снято с публикации.');
     }
@@ -216,7 +222,7 @@ class AnnouncementController extends Controller
         ];
 
         return array_map(function (array $v) use ($request): array {
-            $q = Announcement::query();
+            $q = Announcement::query()->accessibleTo($request->user());
             $this->applyView($q, $v['key'], $request->user());
             $v['count'] = $q->count();
 
@@ -286,16 +292,16 @@ class AnnouncementController extends Controller
 
         match ($request->input('publish_mode', 'review')) {
             'now' => $this->authorizeAndPublish($announcement, $user),
-            default => $this->workflow->transition($announcement, ContentStatus::Review, $user, force: true),
+            default => $this->workflow->transition($announcement, ContentStatus::Review, $user),
         };
     }
 
     private function authorizeAndPublish(Announcement $announcement, ?User $user): void
     {
         if ($user && $user->can('publish', $announcement)) {
-            $this->workflow->transition($announcement, ContentStatus::Published, $user, force: true);
+            $this->workflow->transition($announcement, ContentStatus::Published, $user);
         } else {
-            $this->workflow->transition($announcement, ContentStatus::Review, $user, force: true);
+            $this->workflow->transition($announcement, ContentStatus::Review, $user);
         }
     }
 

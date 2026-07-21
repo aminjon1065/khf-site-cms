@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Alert;
 use App\Models\Region;
+use App\Models\User;
 use Illuminate\Support\Collection;
 
 /**
@@ -34,11 +35,17 @@ class AlertMapService
      *
      * @return array{state: string, count: int, regions: list<array{key: string, name: string, level: string, count: int, statusText: string}>}
      */
-    public function snapshot(string $locale = 'ru'): array
+    public function snapshot(string $locale = 'ru', ?User $user = null): array
     {
         /** @var Collection<int, Alert> $alerts */
-        $alerts = Alert::query()->active()->with('regions')->get();
-        $regions = Region::query()->orderBy('sort')->get();
+        $alerts = Alert::query()->accessibleTo($user)->active()->with('regions')->get();
+        $regions = Region::query()
+            ->when(
+                $user?->hasRole('regional_editor'),
+                fn ($query) => $query->whereKey($user->region_id ?? 0),
+            )
+            ->orderBy('sort')
+            ->get();
 
         $statuses = [];
         $maxRank = 0;

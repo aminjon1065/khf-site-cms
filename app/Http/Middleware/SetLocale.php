@@ -13,7 +13,7 @@ class SetLocale
         /** @var string $locale */
         $locale = $request->session()->get('locale', config('app.locale', 'ru'));
 
-        if (in_array($locale, ['ru', 'tg', 'en'], true)) {
+        if (in_array($locale, ['ru', 'tg'], true)) {
             app()->setLocale($locale);
         }
 

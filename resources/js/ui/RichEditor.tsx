@@ -41,8 +41,8 @@ import type { ReactNode } from 'react';
 import { postForm } from '@/lib/http';
 import { MediaPicker } from './MediaPicker';
 import type { MediaItem } from './MediaPicker';
-import { RichImage   } from './rich-image';
-import type {ImageAlign, ImageSize} from './rich-image';
+import { RichImage } from './rich-image';
+import type { ImageAlign, ImageSize } from './rich-image';
 
 interface Props {
     value: string;
@@ -67,7 +67,7 @@ function Btn({
     return (
         <button
             type="button"
-            className={`re-btn${active ? ' is-active' : ''}`}
+            className={`re-btn${active ? 'is-active' : ''}`}
             title={label}
             aria-label={label}
             aria-pressed={active}
@@ -196,9 +196,9 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
             attributes: { class: 're-content' },
             // Перетаскивание картинки в текст: грузим в медиатеку и вставляем.
             handleDrop: (view, event) => {
-                const files = Array.from(event.dataTransfer?.files ?? []).filter(
-                    (f) => f.type.startsWith('image/'),
-                );
+                const files = Array.from(
+                    event.dataTransfer?.files ?? [],
+                ).filter((f) => f.type.startsWith('image/'));
 
                 if (files.length === 0) {
                     return false;
@@ -330,7 +330,11 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
 
     return (
         <div className="re-shell">
-            <div className="re-toolbar" role="toolbar" aria-label="Форматирование">
+            <div
+                className="re-toolbar"
+                role="toolbar"
+                aria-label="Форматирование"
+            >
                 <Btn
                     icon={<Undo2 size={16} />}
                     label="Отменить"
@@ -402,7 +406,7 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
                 <span className="re-color">
                     <button
                         type="button"
-                        className={`re-btn${editor.isActive('textStyle') ? ' is-active' : ''}`}
+                        className={`re-btn${editor.isActive('textStyle') ? 'is-active' : ''}`}
                         title="Цвет текста"
                         aria-label="Цвет текста"
                         onMouseDown={(e) => e.preventDefault()}
@@ -545,7 +549,11 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
                         editor
                             .chain()
                             .focus()
-                            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+                            .insertTable({
+                                rows: 3,
+                                cols: 3,
+                                withHeaderRow: true,
+                            })
                             .run()
                     }
                 />
@@ -591,13 +599,17 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
             </div>
 
             {imageActive && (
-                <div className="re-imagebar" role="toolbar" aria-label="Параметры изображения">
+                <div
+                    className="re-imagebar"
+                    role="toolbar"
+                    aria-label="Параметры изображения"
+                >
                     <span className="re-imagebar-label">Обтекание:</span>
                     {IMG_ALIGN.map((o) => (
                         <button
                             key={o.label}
                             type="button"
-                            className={`re-pill${(imageAttrs.align ?? null) === o.value ? ' is-active' : ''}`}
+                            className={`re-pill${(imageAttrs.align ?? null) === o.value ? 'is-active' : ''}`}
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => setImageAttr({ align: o.value })}
                         >
@@ -610,7 +622,7 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
                         <button
                             key={o.value ?? 'none'}
                             type="button"
-                            className={`re-pill${(imageAttrs.size ?? null) === o.value ? ' is-active' : ''}`}
+                            className={`re-pill${(imageAttrs.size ?? null) === o.value ? 'is-active' : ''}`}
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => setImageAttr({ size: o.value })}
                         >
@@ -620,7 +632,7 @@ export function RichEditor({ value, onChange, placeholder }: Props) {
                     <span className="re-sep" aria-hidden />
                     <button
                         type="button"
-                        className={`re-pill${imageAttrs.caption ? ' is-active' : ''}`}
+                        className={`re-pill${imageAttrs.caption ? 'is-active' : ''}`}
                         onMouseDown={(e) => e.preventDefault()}
                         onClick={editCaption}
                     >

@@ -24,6 +24,13 @@ it('lets a chief editor open the submissions list', function () {
     actingAs(subUser('chief_editor'))->get('/submissions')->assertOk();
 });
 
+it('clamps an excessive submissions page size', function () {
+    actingAs(subUser('chief_editor'))->get('/submissions?per_page=999999')
+        ->assertInertia(fn ($page) => $page
+            ->component('submissions/index')
+            ->where('meta.per_page', 100));
+});
+
 it('forbids a role without submissions access from the list', function () {
     actingAs(subUser('editor'))->get('/submissions')->assertForbidden();
 });

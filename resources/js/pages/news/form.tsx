@@ -1,5 +1,12 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, Images, Save, Send, Upload } from 'lucide-react';
+import {
+    ArrowLeft,
+    ChevronDown,
+    Images,
+    Save,
+    Send,
+    Upload,
+} from 'lucide-react';
 import { useRef, useState } from 'react';
 import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
@@ -15,8 +22,8 @@ import {
     Select,
     Textarea,
 } from '@/ui/Field';
-import { MediaPicker  } from '@/ui/MediaPicker';
-import type {MediaItem} from '@/ui/MediaPicker';
+import { MediaPicker } from '@/ui/MediaPicker';
+import type { MediaItem } from '@/ui/MediaPicker';
 import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
@@ -215,7 +222,11 @@ export default function NewsForm({ news, reference }: Props) {
             >
                 {/* ------------------------------------------------ main */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <div
@@ -282,7 +293,9 @@ export default function NewsForm({ news, reference }: Props) {
                             <RichEditor
                                 key={lang}
                                 value={data.body[lang]}
-                                onChange={(html) => setLocaleField('body', html)}
+                                onChange={(html) =>
+                                    setLocaleField('body', html)
+                                }
                                 placeholder="Начните писать текст новости…"
                             />
                         </Field>
@@ -302,7 +315,9 @@ export default function NewsForm({ news, reference }: Props) {
                         >
                             <Input
                                 value={data.slug}
-                                onChange={(e) => setData('slug', e.target.value)}
+                                onChange={(e) =>
+                                    setData('slug', e.target.value)
+                                }
                                 hasError={!!fieldError('slug')}
                                 placeholder="naprimer-ucheniya-2026"
                             />
@@ -343,7 +358,11 @@ export default function NewsForm({ news, reference }: Props) {
 
                 {/* --------------------------------------------- sidebar */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <h3
@@ -353,7 +372,10 @@ export default function NewsForm({ news, reference }: Props) {
                             Параметры
                         </h3>
 
-                        <Field label="Категория" error={fieldError('category_id')}>
+                        <Field
+                            label="Категория"
+                            error={fieldError('category_id')}
+                        >
                             <Select
                                 value={
                                     data.category_id === ''
@@ -389,7 +411,9 @@ export default function NewsForm({ news, reference }: Props) {
                                         <Checkbox
                                             key={t.value}
                                             label={t.label}
-                                            checked={data.tags.includes(t.value)}
+                                            checked={data.tags.includes(
+                                                t.value,
+                                            )}
                                             onChange={() => toggleTag(t.value)}
                                         />
                                     ))}
@@ -471,7 +495,11 @@ export default function NewsForm({ news, reference }: Props) {
                             }}
                         />
                         <div
-                            style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+                            style={{
+                                display: 'flex',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                            }}
                         >
                             <Button
                                 variant="secondary"

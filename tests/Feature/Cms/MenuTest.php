@@ -62,6 +62,32 @@ it('drops rows without a Russian label', function () {
     expect(MenuItem::query()->where('url', '/orphan')->exists())->toBeFalse();
 });
 
+it('preserves nested items that are not represented by the root-only editor', function () {
+    $parent = MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Раздел'],
+        'url' => '/section',
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+    $child = MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Дочерний пункт'],
+        'url' => '/section/child',
+        'parent_id' => $parent->id,
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+
+    actingAs(menuUser('admin'))->put('/menu', [
+        'items' => ['main' => [], 'footer' => []],
+    ])->assertRedirect();
+
+    expect($parent->fresh())->not->toBeNull()
+        ->and($child->fresh())->not->toBeNull()
+        ->and($child->fresh()->parent_id)->toBe($parent->id);
+});
+
 it('forbids a non-admin from saving the menu', function () {
     actingAs(menuUser('chief_editor'))->put('/menu', [
         'items' => ['main' => [], 'footer' => []],

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicPageResource;
 use App\Models\Page;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,15 +16,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class PageController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
         $pages = Page::query()
             ->public()
             ->orderBy('sort')
-            ->orderBy('id')
-            ->get();
+            ->orderBy('id');
 
-        return PublicPageResource::collection($pages);
+        $perPage = min(max($request->integer('per_page', 50), 1), 50);
+
+        return PublicPageResource::collection($pages->paginate($perPage)->withQueryString());
     }
 
     public function show(string $slug): JsonResource

@@ -122,7 +122,7 @@ it('detaches a removed category from its news (FK nullOnDelete)', function () {
     $cat = newsCategory('Категория', 'kategoriya');
     $news = News::factory()->create(['category_id' => $cat->id]);
 
-    actingAs(taxUser('editor'))->put('/taxonomy', [
+    actingAs(taxUser('chief_editor'))->put('/taxonomy', [
         'categories' => [],
         'tags' => [],
     ])->assertRedirect();
@@ -136,13 +136,33 @@ it('removes a tag and cascades its assignments', function () {
     $news = News::factory()->create();
     $news->tags()->attach($tag->id);
 
-    actingAs(taxUser('editor'))->put('/taxonomy', [
+    actingAs(taxUser('chief_editor'))->put('/taxonomy', [
         'categories' => [],
         'tags' => [],
     ])->assertRedirect();
 
     expect(Tag::query()->find($tag->id))->toBeNull()
         ->and($news->refresh()->tags()->count())->toBe(0);
+});
+
+it('enforces create and delete permissions separately from edit', function () {
+    $category = newsCategory('Существующая', 'existing');
+
+    actingAs(taxUser('translator'))->put('/taxonomy', [
+        'categories' => [
+            ['id' => $category->id, 'name' => ['ru' => 'Существующая'], 'slug' => 'existing'],
+            ['id' => null, 'name' => ['ru' => 'Новая'], 'slug' => 'new'],
+        ],
+        'tags' => [],
+    ])->assertForbidden();
+
+    actingAs(taxUser('editor'))->put('/taxonomy', [
+        'categories' => [],
+        'tags' => [],
+    ])->assertForbidden();
+
+    expect($category->fresh())->not->toBeNull()
+        ->and(Category::query()->where('type', 'news')->count())->toBe(1);
 });
 
 it('suffixes a duplicate category slug within the type', function () {

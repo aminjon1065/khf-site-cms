@@ -256,7 +256,9 @@ export default function DocumentsIndex({
                             ? [
                                   {
                                       label: 'Дублировать',
-                                      icon: <Copy size={15} strokeWidth={1.5} />,
+                                      icon: (
+                                          <Copy size={15} strokeWidth={1.5} />
+                                      ),
                                       onSelect: () =>
                                           router.post(
                                               `/documents/${r.id}/duplicate`,

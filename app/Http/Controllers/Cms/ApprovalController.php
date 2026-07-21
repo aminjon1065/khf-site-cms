@@ -7,9 +7,12 @@ use App\Enums\Channel;
 use App\Enums\ContentStatus;
 use App\Http\Controllers\Controller;
 use App\Models\Alert;
+use App\Models\Announcement;
 use App\Models\Document;
 use App\Models\Instruction;
 use App\Models\News;
+use App\Models\Page;
+use App\Models\Project;
 use App\Models\User;
 use App\Models\WorkflowTransition;
 use App\Services\WorkflowService;
@@ -17,6 +20,7 @@ use App\Support\ContentTypes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -27,6 +31,8 @@ class ApprovalController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        abort_unless($user && $this->canApproveAny($user), 403);
+
         $queue = $this->buildQueue($user);
 
         $selectedType = $request->string('type')->toString() ?: (string) ($queue[0]['type'] ?? '');
@@ -34,8 +40,13 @@ class ApprovalController extends Controller
 
         $detail = null;
         if ($selectedType !== '' && $selectedId > 0) {
+            abort_unless(collect($queue)->contains(
+                fn (array $item): bool => $item['type'] === $selectedType && $item['id'] === $selectedId,
+            ), 404);
+
             $model = ContentTypes::resolve($selectedType, $selectedId);
-            if ($model instanceof Workflowable) {
+            if ($model !== null) {
+                $this->authorize('approve', $model);
                 $detail = $this->detail($model, $selectedType, $user);
             }
         }
@@ -51,7 +62,7 @@ class ApprovalController extends Controller
         $model = $this->resolveOrFail($request);
         $this->authorize('approve', $model);
 
-        $this->workflow->transition($model, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($model, ContentStatus::Published, $request->user());
 
         return redirect('/approvals')->with('success', 'Материал согласован и передан на публикацию.');
     }
@@ -77,12 +88,12 @@ class ApprovalController extends Controller
     private function resolveOrFail(Request $request): Model&Workflowable
     {
         $validated = $request->validate([
-            'type' => ['required', 'in:alert,news,instruction,document'],
+            'type' => ['required', Rule::in(array_keys(ContentTypes::MAP))],
             'id' => ['required', 'integer'],
         ]);
 
         $model = ContentTypes::resolve($validated['type'], (int) $validated['id']);
-        abort_unless($model instanceof Workflowable, 404);
+        abort_unless($model !== null, 404);
 
         return $model;
     }
@@ -98,30 +109,35 @@ class ApprovalController extends Controller
 
         $items = [];
 
-        if ($user->can('alerts.approve')) {
-            foreach (Alert::query()->whereIn('status', ['review', 'translation_check'])->with('author')->get() as $alert) {
-                $items[] = $this->queueItem($alert, 'alert', urgent: true);
+        foreach (ContentTypes::MAP as $type => $modelClass) {
+            if (! $user->can(ContentTypes::module($type).'.approve')) {
+                continue;
             }
-        }
-        if ($user->can('news.approve')) {
-            foreach (News::query()->where('status', 'review')->with('author')->get() as $news) {
-                $items[] = $this->queueItem($news, 'news');
-            }
-        }
-        if ($user->can('instructions.approve')) {
-            foreach (Instruction::query()->where('status', 'review')->with('author')->get() as $instruction) {
-                $items[] = $this->queueItem($instruction, 'instruction');
-            }
-        }
-        if ($user->can('documents.approve')) {
-            foreach (Document::query()->where('status', 'review')->with('author')->get() as $document) {
-                $items[] = $this->queueItem($document, 'document');
+
+            foreach ($modelClass::query()
+                ->whereIn('status', [ContentStatus::Review->value, ContentStatus::TranslationCheck->value])
+                ->with('author')
+                ->get() as $model) {
+                if ($user->can('approve', $model)) {
+                    $items[] = $this->queueItem($model, $type, urgent: $type === 'alert');
+                }
             }
         }
 
         usort($items, fn (array $a, array $b): int => [$b['urgent'], $b['submitted_ts']] <=> [$a['urgent'], $a['submitted_ts']]);
 
         return $items;
+    }
+
+    private function canApproveAny(User $user): bool
+    {
+        foreach (array_keys(ContentTypes::MAP) as $type) {
+            if ($user->can(ContentTypes::module($type).'.approve')) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -174,7 +190,7 @@ class ApprovalController extends Controller
 
         $field = in_array($type, ['instruction', 'document'], true) ? 'name' : 'title';
 
-        /** @var Alert|News|Instruction|Document $model */
+        /** @var Alert|News|Instruction|Document|Project|Announcement|Page $model */
         return $model->getTranslation($field, 'ru', false) ?: '—';
     }
 
@@ -196,7 +212,8 @@ class ApprovalController extends Controller
     {
         return match (true) {
             $model instanceof Alert => $model->getTranslation('body', 'ru', false) ?: $model->getTranslation('summary', 'ru', false),
-            $model instanceof News, $model instanceof Instruction => $model->getTranslation('summary', 'ru', false),
+            $model instanceof News, $model instanceof Instruction, $model instanceof Project => $model->getTranslation('summary', 'ru', false),
+            $model instanceof Announcement, $model instanceof Page => $model->getTranslation('body', 'ru', false),
             default => '',
         };
     }

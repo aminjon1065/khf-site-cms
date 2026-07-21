@@ -23,7 +23,9 @@ class ProjectController extends Controller
             $query->where('lifecycle_status', $lifecycle);
         }
 
-        return PublicProjectResource::collection($query->get());
+        $perPage = min(max($request->integer('per_page', 20), 1), 50);
+
+        return PublicProjectResource::collection($query->paginate($perPage)->withQueryString());
     }
 
     public function show(string $slug): JsonResource

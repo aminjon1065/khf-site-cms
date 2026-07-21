@@ -7,6 +7,7 @@ use App\Http\Resources\Api\PublicRegionResource;
 use App\Models\Region;
 use App\Services\AlertMapService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
@@ -25,13 +26,14 @@ class RegionController extends Controller
     /**
      * Regional-management directory: office name, address and contacts.
      */
-    public function directory(): AnonymousResourceCollection
+    public function directory(Request $request): AnonymousResourceCollection
     {
         $regions = Region::query()
             ->with('districts')
-            ->orderBy('sort')
-            ->get();
+            ->orderBy('sort');
 
-        return PublicRegionResource::collection($regions);
+        $perPage = min(max($request->integer('per_page', 20), 1), 50);
+
+        return PublicRegionResource::collection($regions->paginate($perPage)->withQueryString());
     }
 }

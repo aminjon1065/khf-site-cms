@@ -64,6 +64,20 @@ it('validates a mismatched password confirmation', function () {
     ])->assertSessionHasErrors('password');
 });
 
+it('rejects an interface locale that has no CMS translations', function () {
+    actingAs(asRole('admin'))->post('/users', [
+        'name' => 'English User',
+        'email' => 'english@khf.tj',
+        'password' => 'Secret12345',
+        'password_confirmation' => 'Secret12345',
+        'role' => 'editor',
+        'interface_locale' => 'en',
+        'is_active' => true,
+    ])->assertSessionHasErrors('interface_locale');
+
+    expect(User::query()->where('email', 'english@khf.tj')->exists())->toBeFalse();
+});
+
 it('updates a user without changing the password when left blank', function () {
     $user = asRole('editor');
     $original = $user->password;

@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Translatable\HasTranslations;
 
 /**
@@ -15,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class Category extends Model
 {
-    use HasTranslations;
+    use HasTranslations, LogsActivity;
 
     /**
      * @var list<string>
@@ -26,6 +28,14 @@ class Category extends Model
      * @var list<string>
      */
     protected $fillable = ['type', 'name', 'slug', 'sort'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['type', 'name', 'slug', 'sort'])
+            ->logOnlyDirty()
+            ->useLogName('categories');
+    }
 
     /**
      * @return HasMany<News, $this>

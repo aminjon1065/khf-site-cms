@@ -1,5 +1,7 @@
 <?php
 
+use App\Enums\RegionType;
+use App\Models\Region;
 use App\Models\Submission;
 
 function validPayload(array $overrides = []): array
@@ -40,6 +42,25 @@ it('requires consent', function () {
     $this->postJson('/api/v1/submissions', validPayload(['consent' => false]))
         ->assertStatus(422)
         ->assertJsonValidationErrors('consent');
+});
+
+it('validates and stores the selected region', function () {
+    $region = Region::query()->create([
+        'name' => ['ru' => 'Согдийская область'],
+        'code' => 'sughd-submission',
+        'type' => RegionType::Oblast,
+        'districts_count' => 18,
+        'sort' => 1,
+    ]);
+
+    $this->postJson('/api/v1/submissions', validPayload(['region_id' => $region->id]))
+        ->assertCreated();
+
+    expect(Submission::query()->first()->region_id)->toBe($region->id);
+
+    $this->postJson('/api/v1/submissions', validPayload(['region_id' => 999999]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('region_id');
 });
 
 it('validates the required fields', function () {

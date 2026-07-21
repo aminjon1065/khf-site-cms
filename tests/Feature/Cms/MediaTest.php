@@ -144,6 +144,42 @@ it('uploads an image through the picker and returns it as json', function () {
     expect(MediaAsset::query()->count())->toBe(1);
 });
 
+it('rejects a document upload through the image picker', function () {
+    actingAs(mediaUser('editor'))->post('/media/library', [
+        'file' => UploadedFile::fake()->create('plan.pdf', 20, 'application/pdf'),
+    ], ['Accept' => 'application/json'])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('file');
+
+    expect(MediaAsset::query()->count())->toBe(0);
+});
+
+it('does not expose media attached to content in the reusable picker', function () {
+    $editor = mediaUser('editor');
+    actingAs($editor)->post('/media', [
+        'file' => UploadedFile::fake()->image('library.jpg'),
+    ]);
+
+    $news = News::factory()->create();
+    $news->addMedia(UploadedFile::fake()->image('private-draft.jpg'))->toMediaCollection('cover');
+
+    actingAs($editor)->getJson('/media/library')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.usage', 'Библиотека');
+});
+
+it('requires media edit permission to change metadata', function () {
+    $asset = MediaAsset::factory()->create();
+    $media = $asset->addMedia(UploadedFile::fake()->image('p.jpg'))->toMediaCollection('asset');
+
+    actingAs(mediaUser('alert_operator'))->put("/media/{$media->id}", [
+        'name' => 'Недопустимое изменение',
+    ])->assertForbidden();
+
+    expect($asset->fresh()->title)->not->toBe('Недопустимое изменение');
+});
+
 it('forbids a user without media permission from browsing the picker', function () {
     actingAs(User::factory()->create())->getJson('/media/library')->assertForbidden();
 });

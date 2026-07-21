@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { CheckCircle2, ClipboardCheck } from 'lucide-react';
 import { useState } from 'react';
+import ApprovalController from '@/actions/App/Http/Controllers/Cms/ApprovalController';
 import type { ContentStatus, Severity } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
 import { LanguageBadges, SeverityBadge, StatusBadge, Tag } from '@/ui/Badge';
@@ -53,7 +54,7 @@ export default function Approvals({
 
     const select = (item: QueueItem) => {
         router.get(
-            '/approvals',
+            ApprovalController.index.url(),
             { type: item.type, id: item.id },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -66,7 +67,7 @@ export default function Approvals({
 
         setProcessing(true);
         router.post(
-            '/approvals/approve',
+            ApprovalController.approve.url(),
             { type: detail.type, id: detail.id },
             { onFinish: () => setProcessing(false) },
         );
@@ -79,7 +80,7 @@ export default function Approvals({
 
         setProcessing(true);
         router.post(
-            '/approvals/return',
+            ApprovalController.returnToAuthor.url(),
             { type: detail.type, id: detail.id, comment },
             {
                 onFinish: () => {

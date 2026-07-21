@@ -40,18 +40,19 @@ it('renders the alert wizard', function () {
     actingAs(admin())->get('/alerts/create')->assertOk();
 });
 
-it('renders the section stub and settings/profile stubs', function () {
+it('renders the implemented operational workspace pages', function () {
     $user = admin();
-    actingAs($user)->get('/section/pages')->assertOk();
     actingAs($user)->get('/control')->assertOk();
+    actingAs($user)->get('/contacts')->assertOk();
+    actingAs($user)->get('/notifications')->assertOk();
     actingAs($user)->get('/approvals')->assertOk();
 });
 
-it('logs in directly without a two-factor challenge (2FA disabled for testing)', function () {
+it('requires a two-factor challenge for a protected account', function () {
     $user = User::factory()->withTwoFactor()->create(['password' => bcrypt('password')]);
 
     $this->post('/login', ['email' => $user->email, 'password' => 'password'])
-        ->assertRedirect('/dashboard');
+        ->assertRedirect('/two-factor-challenge');
 
-    $this->assertAuthenticatedAs($user);
+    $this->assertGuest();
 });

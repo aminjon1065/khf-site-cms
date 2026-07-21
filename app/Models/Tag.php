@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Translatable\HasTranslations;
 
 /**
@@ -12,7 +14,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class Tag extends Model
 {
-    use HasTranslations;
+    use HasTranslations, LogsActivity;
 
     /**
      * @var list<string>
@@ -23,4 +25,12 @@ class Tag extends Model
      * @var list<string>
      */
     protected $fillable = ['name', 'slug'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'slug'])
+            ->logOnlyDirty()
+            ->useLogName('tags');
+    }
 }

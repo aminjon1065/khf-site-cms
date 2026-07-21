@@ -25,9 +25,9 @@ trait HasResponsiveThumbnails
     {
         foreach ($this->thumbnailWidths as $name => $width) {
             $this->addMediaConversion($name)
+                ->nonQueued()
                 ->fit(Fit::Max, $width, $width * 4)
-                ->format('jpg')
-                ->nonQueued();
+                ->format('jpg');
         }
     }
 

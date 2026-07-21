@@ -34,7 +34,7 @@ class AnnouncementRequest extends FormRequest
             'org' => ['nullable', 'string', 'max:255'],
             'deadline' => ['nullable', 'date'],
 
-            'publish_mode' => ['nullable', 'in:now,schedule,review'],
+            'publish_mode' => ['nullable', 'in:now,review'],
             'action' => ['nullable', 'in:draft,submit'],
         ];
     }

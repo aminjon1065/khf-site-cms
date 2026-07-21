@@ -4,8 +4,10 @@ use App\Http\Controllers\Cms\ActivityController;
 use App\Http\Controllers\Cms\AlertController;
 use App\Http\Controllers\Cms\AnnouncementController;
 use App\Http\Controllers\Cms\ApprovalController;
+use App\Http\Controllers\Cms\ControlController;
 use App\Http\Controllers\Cms\DashboardController;
 use App\Http\Controllers\Cms\DocumentController;
+use App\Http\Controllers\Cms\EmergencyContactController;
 use App\Http\Controllers\Cms\HomeBlockController;
 use App\Http\Controllers\Cms\InstructionController;
 use App\Http\Controllers\Cms\LocaleController;
@@ -17,21 +19,21 @@ use App\Http\Controllers\Cms\PageController;
 use App\Http\Controllers\Cms\ProjectController;
 use App\Http\Controllers\Cms\RegionController;
 use App\Http\Controllers\Cms\RoleController;
-use App\Http\Controllers\Cms\SectionController;
 use App\Http\Controllers\Cms\SettingController;
 use App\Http\Controllers\Cms\SubmissionController;
 use App\Http\Controllers\Cms\TaxonomyController;
 use App\Http\Controllers\Cms\UserController;
 use Illuminate\Support\Facades\Route;
-use Inertia\Inertia;
 
 Route::get('/', fn () => redirect('/dashboard'))->name('home');
 
 // Interface language toggle (available to guests on the login screen).
 Route::post('locale', LocaleController::class)->name('locale');
 
-Route::middleware(['auth'])->group(function () {
+Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('control', [ControlController::class, 'index'])->name('control');
+    Route::get('contacts', [EmergencyContactController::class, 'index'])->name('contacts');
 
     // Alerts — the reference module.
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');
@@ -167,18 +169,10 @@ Route::middleware(['auth'])->group(function () {
     Route::get('activity/export', [ActivityController::class, 'export'])->name('activity.export');
 
     // Notifications
+    Route::get('notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::post('notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read_all');
     Route::post('notifications/{id}/read', [NotificationController::class, 'markRead'])->name('notifications.read');
 
-    // Sections not yet built out — render the generic "Раздел в структуре" screen.
-    $stubs = [
-        'control' => 'Центр контроля',
-        'profile' => 'Профиль пользователя',
-    ];
-    foreach ($stubs as $path => $title) {
-        Route::get($path, fn () => Inertia::render('section', ['sectionKey' => $path, 'title' => $title]))
-            ->name(str_replace('-', '_', $path));
-    }
-
-    Route::get('section/{key}', SectionController::class)->name('section');
 });
+
+require __DIR__.'/settings.php';

@@ -2,20 +2,24 @@
 
 use App\Enums\ContentStatus;
 use App\Models\Page;
+use App\Models\Region;
 use App\Models\User;
 use Database\Seeders\PageSeeder;
+use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
 
 beforeEach(function () {
-    seed(RolePermissionSeeder::class);
+    seed([RolePermissionSeeder::class, RegionSeeder::class]);
 });
 
 function pageUser(string $role): User
 {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'region_id' => $role === 'regional_editor' ? Region::query()->value('id') : null,
+    ]);
     $user->assignRole($role);
 
     return $user;
@@ -119,6 +123,19 @@ it('rejects a page without a Russian title', function () {
     actingAs(pageUser('admin'))->post('/pages', [
         'title' => ['tg' => 'Танҳо тоҷикӣ'],
     ])->assertSessionHasErrors('title.ru');
+});
+
+it('rejects a parent that would create a page tree cycle', function () {
+    $parent = Page::factory()->create();
+    $child = Page::factory()->create(['parent_id' => $parent->id]);
+
+    actingAs(pageUser('admin'))->put("/pages/{$parent->id}", [
+        'title' => ['ru' => 'Родитель'],
+        'parent_id' => $child->id,
+        'action' => 'draft',
+    ])->assertSessionHasErrors('parent_id');
+
+    expect($parent->fresh()->parent_id)->toBeNull();
 });
 
 it('re-seeds pages idempotently even after one was soft-deleted', function () {

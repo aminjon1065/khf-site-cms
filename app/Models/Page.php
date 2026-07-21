@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
@@ -33,7 +34,7 @@ use Spatie\Translatable\HasTranslations;
 class Page extends Model implements Workflowable
 {
     /** @use HasFactory<PageFactory> */
-    use HasFactory, HasWorkflow, LogsActivity, SoftDeletes, TracksTranslationCompleteness;
+    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, SoftDeletes, TracksTranslationCompleteness;
 
     use HasTranslations;
 

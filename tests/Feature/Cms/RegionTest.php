@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\RegionType;
+use App\Models\Activity;
 use App\Models\Alert;
 use App\Models\District;
 use App\Models\Region;
@@ -69,7 +70,8 @@ it('creates a region with curated districts', function () {
         ->and($region->getTranslation('name', 'ru'))->toBe('Согдийская область')
         ->and($region->getTranslation('head', 'ru'))->toBe('Управление по Согдийской области')
         ->and($region->email)->toBe('sughd@khf.tj')
-        ->and($region->districts()->count())->toBe(2);
+        ->and($region->districts()->count())->toBe(2)
+        ->and(Activity::query()->where('log_name', 'regions')->where('subject_id', $region->id)->exists())->toBeTrue();
 });
 
 it('forbids a view-only role from creating a region', function () {

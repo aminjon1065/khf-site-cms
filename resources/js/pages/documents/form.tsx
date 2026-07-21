@@ -12,7 +12,7 @@ import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
 type LocaleMap = { ru: string; tg: string; en: string };
-type PublishMode = 'now' | 'schedule' | 'review';
+type PublishMode = 'now' | 'review';
 type FileLocale = 'tg' | 'ru' | 'en';
 
 interface Option {
@@ -139,7 +139,11 @@ export default function DocumentForm({ document, reference }: Props) {
             >
                 {/* ------------------------------------------------ main */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <div
@@ -166,7 +170,9 @@ export default function DocumentForm({ document, reference }: Props) {
                             label="Название документа"
                             required={lang === 'ru'}
                             error={
-                                lang === 'ru' ? fieldError('name.ru') : undefined
+                                lang === 'ru'
+                                    ? fieldError('name.ru')
+                                    : undefined
                             }
                         >
                             <Input
@@ -177,7 +183,9 @@ export default function DocumentForm({ document, reference }: Props) {
                                         [lang]: e.target.value,
                                     })
                                 }
-                                hasError={lang === 'ru' && !!fieldError('name.ru')}
+                                hasError={
+                                    lang === 'ru' && !!fieldError('name.ru')
+                                }
                                 placeholder={
                                     lang === 'ru'
                                         ? 'Например: Закон РТ «О…»'
@@ -215,8 +223,7 @@ export default function DocumentForm({ document, reference }: Props) {
                         >
                             {FILE_LOCALES.map(({ key, label }) => {
                                 const existing = document?.files?.[key] ?? null;
-                                const removeKey =
-                                    `file_${key}_remove` as const;
+                                const removeKey = `file_${key}_remove` as const;
                                 const fileKey = `file_${key}` as const;
 
                                 return (
@@ -288,7 +295,11 @@ export default function DocumentForm({ document, reference }: Props) {
 
                 {/* --------------------------------------------- sidebar */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <h3
@@ -325,7 +336,10 @@ export default function DocumentForm({ document, reference }: Props) {
                             />
                         </Field>
 
-                        <Field label="Дата документа" error={fieldError('doc_date')}>
+                        <Field
+                            label="Дата документа"
+                            error={fieldError('doc_date')}
+                        >
                             <DatePicker
                                 value={data.doc_date}
                                 onChange={(e) =>

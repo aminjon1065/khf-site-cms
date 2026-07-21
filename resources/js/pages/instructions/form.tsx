@@ -17,8 +17,8 @@ import { StatusBadge } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton, LinkButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
-import { MediaPicker  } from '@/ui/MediaPicker';
-import type {MediaItem} from '@/ui/MediaPicker';
+import { MediaPicker } from '@/ui/MediaPicker';
+import type { MediaItem } from '@/ui/MediaPicker';
 import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
@@ -28,7 +28,7 @@ type LocaleMap = { ru: string; tg: string; en: string };
 type StepMap = { ru: string[]; tg: string[]; en: string[] };
 type SectionKey = 'before' | 'during' | 'after' | 'prohibited';
 type Sections = Record<SectionKey, StepMap>;
-type PublishMode = 'now' | 'schedule' | 'review';
+type PublishMode = 'now' | 'review';
 
 interface Option {
     value: string;
@@ -227,7 +227,11 @@ export default function InstructionForm({ instruction, reference }: Props) {
             >
                 {/* ------------------------------------------------ main */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <div
@@ -254,7 +258,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
                             label="Название"
                             required={lang === 'ru'}
                             error={
-                                lang === 'ru' ? fieldError('name.ru') : undefined
+                                lang === 'ru'
+                                    ? fieldError('name.ru')
+                                    : undefined
                             }
                         >
                             <Input
@@ -262,7 +268,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                 onChange={(e) =>
                                     setLocaleField('name', e.target.value)
                                 }
-                                hasError={lang === 'ru' && !!fieldError('name.ru')}
+                                hasError={
+                                    lang === 'ru' && !!fieldError('name.ru')
+                                }
                                 placeholder={
                                     lang === 'ru'
                                         ? 'Например: Действия при землетрясении'
@@ -328,7 +336,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                     <Button
                                         variant="ghost"
                                         size="sm"
-                                        icon={<Plus size={14} strokeWidth={2} />}
+                                        icon={
+                                            <Plus size={14} strokeWidth={2} />
+                                        }
                                         onClick={() => addStep(key)}
                                     >
                                         Шаг
@@ -360,7 +370,8 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                                     style={{
                                                         display: 'flex',
                                                         gap: 6,
-                                                        alignItems: 'flex-start',
+                                                        alignItems:
+                                                            'flex-start',
                                                     }}
                                                 >
                                                     <span
@@ -442,7 +453,11 @@ export default function InstructionForm({ instruction, reference }: Props) {
 
                 {/* --------------------------------------------- sidebar */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <h3
@@ -452,7 +467,10 @@ export default function InstructionForm({ instruction, reference }: Props) {
                             Параметры
                         </h3>
 
-                        <Field label="Тип события" error={fieldError('hazard_type')}>
+                        <Field
+                            label="Тип события"
+                            error={fieldError('hazard_type')}
+                        >
                             <Select
                                 value={data.hazard_type}
                                 onChange={(e) =>
@@ -484,7 +502,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
                         >
                             <Input
                                 value={data.slug}
-                                onChange={(e) => setData('slug', e.target.value)}
+                                onChange={(e) =>
+                                    setData('slug', e.target.value)
+                                }
                                 hasError={!!fieldError('slug')}
                                 placeholder="deystviya-pri-zemletryasenii"
                             />
@@ -537,7 +557,13 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                 e.target.value = '';
                             }}
                         />
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                            }}
+                        >
                             <Button
                                 variant="secondary"
                                 icon={<Upload size={15} strokeWidth={1.75} />}

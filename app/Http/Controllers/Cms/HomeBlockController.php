@@ -7,6 +7,7 @@ use App\Http\Requests\HomeBlock\HomeBlockRequest;
 use App\Models\HomeBlock;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -62,35 +63,37 @@ class HomeBlockController extends Controller
         /** @var array<int, array<string, mixed>> $rows */
         $rows = $request->input('blocks', []);
 
-        foreach (array_values($rows) as $sort => $row) {
-            $block = HomeBlock::query()->find((int) $row['id']);
+        DB::transaction(function () use ($rows): void {
+            foreach (array_values($rows) as $sort => $row) {
+                $block = HomeBlock::query()->find((int) $row['id']);
 
-            if ($block === null) {
-                continue;
+                if ($block === null) {
+                    continue;
+                }
+
+                $block->enabled = (bool) ($row['enabled'] ?? false);
+                $block->sort = $sort;
+
+                /** @var array<string, string|null> $title */
+                $title = is_array($row['title'] ?? null) ? $row['title'] : [];
+                $block->setTranslations('title', array_filter(
+                    $title,
+                    fn (?string $v): bool => $v !== null && trim($v) !== '',
+                ));
+
+                $config = $block->config ?? [];
+                $limit = $row['limit'] ?? null;
+
+                if ($limit !== null && $limit !== '') {
+                    $config['limit'] = (int) $limit;
+                } else {
+                    unset($config['limit']);
+                }
+
+                $block->config = $config;
+                $block->save();
             }
-
-            $block->enabled = (bool) ($row['enabled'] ?? false);
-            $block->sort = $sort;
-
-            /** @var array<string, string|null> $title */
-            $title = is_array($row['title'] ?? null) ? $row['title'] : [];
-            $block->setTranslations('title', array_filter(
-                $title,
-                fn (?string $v): bool => $v !== null && trim($v) !== '',
-            ));
-
-            $config = $block->config ?? [];
-            $limit = $row['limit'] ?? null;
-
-            if ($limit !== null && $limit !== '') {
-                $config['limit'] = (int) $limit;
-            } else {
-                unset($config['limit']);
-            }
-
-            $block->config = $config;
-            $block->save();
-        }
+        });
 
         return back()->with('success', 'Главная страница обновлена.');
     }

@@ -7,6 +7,8 @@ use Database\Factories\MediaAssetFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\InteractsWithMedia;
 
@@ -23,7 +25,7 @@ use Spatie\MediaLibrary\InteractsWithMedia;
 class MediaAsset extends Model implements HasMedia
 {
     /** @use HasFactory<MediaAssetFactory> */
-    use HasFactory, HasResponsiveThumbnails, InteractsWithMedia {
+    use HasFactory, HasResponsiveThumbnails, InteractsWithMedia, LogsActivity {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 
@@ -31,6 +33,14 @@ class MediaAsset extends Model implements HasMedia
      * @var list<string>
      */
     protected $fillable = ['title', 'alt', 'caption', 'uploaded_by'];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['title', 'alt', 'caption', 'uploaded_by'])
+            ->logOnlyDirty()
+            ->useLogName('media_assets');
+    }
 
     public function registerMediaCollections(): void
     {

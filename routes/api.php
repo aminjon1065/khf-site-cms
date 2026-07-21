@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\DocumentController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\InstructionController;
 use App\Http\Controllers\Api\MenuController;
@@ -11,6 +12,7 @@ use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\PageController;
 use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RegionController;
+use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\SubmissionController;
 use Illuminate\Support\Facades\Route;
@@ -21,12 +23,8 @@ use Illuminate\Support\Facades\Route;
  * Locale is resolved per request by App\Http\Middleware\ResolveApiLocale.
  */
 
-Route::get('health', fn (): array => [
-    'status' => 'ok',
-    'service' => 'khf-cms-api',
-    'locale' => app()->getLocale(),
-    'version' => 'v1',
-])->name('api.health');
+Route::get('health', [HealthController::class, 'health'])->name('api.health');
+Route::get('ready', [HealthController::class, 'ready'])->name('api.ready');
 
 // Home-page composition (enabled blocks + denormalized data).
 Route::get('home', [HomeController::class, 'index'])->name('api.home');
@@ -34,6 +32,7 @@ Route::get('home', [HomeController::class, 'index'])->name('api.home');
 // Site settings (footer/header) + navigation menus.
 Route::get('settings', [SettingController::class, 'index'])->name('api.settings');
 Route::get('menu', [MenuController::class, 'index'])->name('api.menu');
+Route::get('search', [SearchController::class, 'index'])->middleware('throttle:60,1')->name('api.search');
 
 // News & official statements.
 Route::get('news', [NewsController::class, 'index'])->name('api.news.index');

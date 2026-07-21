@@ -84,9 +84,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                 }
             />
 
-            <div
-                style={{ display: 'flex', flexDirection: 'column', gap: 10 }}
-            >
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {data.blocks.map((block, i) => (
                     <Blueprint
                         key={block.id}
@@ -211,7 +209,9 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                                 limit:
                                                     e.target.value === ''
                                                         ? null
-                                                        : Number(e.target.value),
+                                                        : Number(
+                                                              e.target.value,
+                                                          ),
                                             })
                                         }
                                         disabled={!editable}

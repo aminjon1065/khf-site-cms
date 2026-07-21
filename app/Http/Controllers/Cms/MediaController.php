@@ -122,7 +122,11 @@ class MediaController extends Controller
         $search = $request->string('search')->toString();
         $perPage = max(1, min((int) $request->integer('per_page', 24), 60));
 
-        $query = Media::query()->with('model')->where('mime_type', 'like', 'image/%')->latest('id');
+        $query = Media::query()
+            ->with('model')
+            ->where('model_type', MediaAsset::class)
+            ->where('mime_type', 'like', 'image/%')
+            ->latest('id');
         if ($search !== '') {
             $query->where(function (Builder $q) use ($search): void {
                 $q->where('file_name', 'like', "%{$search}%")
@@ -171,7 +175,7 @@ class MediaController extends Controller
      */
     public function update(Request $request, Media $media): RedirectResponse
     {
-        abort_unless((bool) $request->user()?->can('media.create'), 403);
+        abort_unless((bool) $request->user()?->can('media.edit'), 403);
 
         $asset = $media->model;
         if ($media->model_type !== MediaAsset::class || ! $asset instanceof MediaAsset) {

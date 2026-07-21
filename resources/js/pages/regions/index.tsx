@@ -80,7 +80,10 @@ export default function RegionsIndex({ regions }: Props) {
             width: 160,
             render: (r) => (
                 <span
-                    style={{ fontSize: 12.5, color: 'var(--color-neutral-700)' }}
+                    style={{
+                        fontSize: 12.5,
+                        color: 'var(--color-neutral-700)',
+                    }}
                 >
                     {r.regional_center ?? '—'}
                 </span>
@@ -92,7 +95,10 @@ export default function RegionsIndex({ regions }: Props) {
             width: 130,
             render: (r) => (
                 <span
-                    style={{ fontSize: 12.5, color: 'var(--color-neutral-700)' }}
+                    style={{
+                        fontSize: 12.5,
+                        color: 'var(--color-neutral-700)',
+                    }}
                     title="В справочнике / всего официально"
                 >
                     {r.curated_count} / {r.districts_count}

@@ -17,8 +17,8 @@ import { StatusBadge } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton, LinkButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
-import { MediaPicker  } from '@/ui/MediaPicker';
-import type {MediaItem} from '@/ui/MediaPicker';
+import { MediaPicker } from '@/ui/MediaPicker';
+import type { MediaItem } from '@/ui/MediaPicker';
 import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
@@ -28,7 +28,7 @@ type LocaleMap = { ru: string; tg: string; en: string };
 type GoalMap = { ru: string[]; tg: string[]; en: string[] };
 type TimelineItem = { date: string; text: string; tone: string };
 type Direction = { address: string; phone: string; email: string };
-type PublishMode = 'now' | 'schedule' | 'review';
+type PublishMode = 'now' | 'review';
 
 interface Option {
     value: string;
@@ -93,7 +93,8 @@ export default function ProjectForm({ project, reference }: Props) {
         summary: { ...EMPTY, ...project?.summary } as LocaleMap,
         body: { ...EMPTY, ...project?.body } as LocaleMap,
         slug: project?.slug ?? '',
-        lifecycle_status: (project?.lifecycle_status ?? 'preparation') as string,
+        lifecycle_status: (project?.lifecycle_status ??
+            'preparation') as string,
         code: project?.code ?? '',
         years: project?.years ?? '',
         customer: project?.customer ?? 'КЧС Республики Таджикистан',
@@ -164,7 +165,11 @@ export default function ProjectForm({ project, reference }: Props) {
             ...data.timeline,
             { date: '', text: '', tone: 'info' },
         ]);
-    const updateTimeline = (i: number, key: keyof TimelineItem, value: string) =>
+    const updateTimeline = (
+        i: number,
+        key: keyof TimelineItem,
+        value: string,
+    ) =>
         setData(
             'timeline',
             data.timeline.map((t, idx) =>
@@ -205,9 +210,7 @@ export default function ProjectForm({ project, reference }: Props) {
 
     return (
         <>
-            <Head
-                title={isEdit ? 'Редактирование проекта' : 'Новый проект'}
-            />
+            <Head title={isEdit ? 'Редактирование проекта' : 'Новый проект'} />
 
             <PageHeader
                 eyebrow={
@@ -244,7 +247,11 @@ export default function ProjectForm({ project, reference }: Props) {
             >
                 {/* ------------------------------------------------ main */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <div
@@ -281,7 +288,9 @@ export default function ProjectForm({ project, reference }: Props) {
                                 onChange={(e) =>
                                     setLocaleField('title', e.target.value)
                                 }
-                                hasError={lang === 'ru' && !!fieldError('title.ru')}
+                                hasError={
+                                    lang === 'ru' && !!fieldError('title.ru')
+                                }
                                 placeholder={
                                     lang === 'ru'
                                         ? 'Например: Модернизация системы оповещения'
@@ -510,7 +519,11 @@ export default function ProjectForm({ project, reference }: Props) {
 
                 {/* --------------------------------------------- sidebar */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <h3
@@ -536,7 +549,9 @@ export default function ProjectForm({ project, reference }: Props) {
                         <Field label="Код проекта">
                             <Input
                                 value={data.code}
-                                onChange={(e) => setData('code', e.target.value)}
+                                onChange={(e) =>
+                                    setData('code', e.target.value)
+                                }
                                 placeholder="Проект 01"
                             />
                         </Field>
@@ -581,7 +596,9 @@ export default function ProjectForm({ project, reference }: Props) {
                         >
                             <Input
                                 value={data.slug}
-                                onChange={(e) => setData('slug', e.target.value)}
+                                onChange={(e) =>
+                                    setData('slug', e.target.value)
+                                }
                                 hasError={!!fieldError('slug')}
                                 placeholder="early-warning-system"
                             />
@@ -659,7 +676,13 @@ export default function ProjectForm({ project, reference }: Props) {
                                 e.target.value = '';
                             }}
                         />
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                            }}
+                        >
                             <Button
                                 variant="secondary"
                                 icon={<Upload size={15} strokeWidth={1.75} />}

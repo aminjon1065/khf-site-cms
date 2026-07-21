@@ -28,7 +28,9 @@ class InstructionController extends Controller
             $query->where('hazard_type', $hazard);
         }
 
-        return PublicInstructionResource::collection($query->get());
+        $perPage = min(max($request->integer('per_page', 20), 1), 50);
+
+        return PublicInstructionResource::collection($query->paginate($perPage)->withQueryString());
     }
 
     public function show(string $slug): JsonResource

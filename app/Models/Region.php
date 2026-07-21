@@ -6,6 +6,8 @@ use App\Enums\RegionType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Translatable\HasTranslations;
 
 /**
@@ -25,7 +27,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class Region extends Model
 {
-    use HasTranslations;
+    use HasTranslations, LogsActivity;
 
     /**
      * @var list<string>
@@ -58,6 +60,14 @@ class Region extends Model
         return [
             'type' => RegionType::class,
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['name', 'code', 'type', 'regional_center', 'phone', 'duty_phone', 'email', 'districts_count', 'sort'])
+            ->logOnlyDirty()
+            ->useLogName('regions');
     }
 
     /**

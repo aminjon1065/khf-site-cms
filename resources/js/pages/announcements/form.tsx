@@ -12,7 +12,7 @@ import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
 type LocaleMap = { ru: string; tg: string; en: string };
-type PublishMode = 'now' | 'schedule' | 'review';
+type PublishMode = 'now' | 'review';
 
 interface Option {
     value: string;
@@ -133,7 +133,11 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
             >
                 {/* ------------------------------------------------ main */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <div
@@ -170,7 +174,9 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                                 onChange={(e) =>
                                     setLocaleField('title', e.target.value)
                                 }
-                                hasError={lang === 'ru' && !!fieldError('title.ru')}
+                                hasError={
+                                    lang === 'ru' && !!fieldError('title.ru')
+                                }
                                 placeholder={
                                     lang === 'ru'
                                         ? 'Например: Оператор службы 112'
@@ -198,7 +204,11 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
 
                 {/* --------------------------------------------- sidebar */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <h3
@@ -216,7 +226,9 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                             <Select
                                 value={data.kind}
                                 options={reference.kinds}
-                                onChange={(e) => setData('kind', e.target.value)}
+                                onChange={(e) =>
+                                    setData('kind', e.target.value)
+                                }
                             />
                         </Field>
 

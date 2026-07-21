@@ -5,6 +5,7 @@ namespace App\Http\Requests\Page;
 use App\Models\Page;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Validator;
 
 class PageRequest extends FormRequest
 {
@@ -46,6 +47,38 @@ class PageRequest extends FormRequest
             'publish_mode' => ['nullable', 'in:now,review'],
             'action' => ['nullable', 'in:draft,submit'],
         ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [function (Validator $validator): void {
+            /** @var Page|null $page */
+            $page = $this->route('page');
+            $parentId = $this->integer('parent_id');
+
+            if ($page === null || $parentId === 0) {
+                return;
+            }
+
+            $visited = [];
+            $parent = Page::query()->find($parentId);
+
+            while ($parent !== null) {
+                if ($parent->is($page) || in_array($parent->id, $visited, true)) {
+                    $validator->errors()->add('parent_id', 'Страница не может быть вложена в собственного потомка.');
+
+                    return;
+                }
+
+                $visited[] = $parent->id;
+                $parent = $parent->parent_id !== null
+                    ? Page::query()->find($parent->parent_id)
+                    : null;
+            }
+        }];
     }
 
     /**

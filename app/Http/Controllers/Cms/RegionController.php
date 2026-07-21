@@ -9,6 +9,7 @@ use App\Models\District;
 use App\Models\Region;
 use App\Services\AlertMapService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -78,10 +79,12 @@ class RegionController extends Controller
     {
         $this->authorize('create', Region::class);
 
-        $region = new Region;
-        $this->fill($region, $request);
-        $region->save();
-        $this->syncDistricts($region, $request);
+        DB::transaction(function () use ($request): void {
+            $region = new Region;
+            $this->fill($region, $request);
+            $region->save();
+            $this->syncDistricts($region, $request);
+        });
 
         return redirect('/regions')->with('success', 'Регион создан.');
     }
@@ -90,9 +93,11 @@ class RegionController extends Controller
     {
         $this->authorize('update', $region);
 
-        $this->fill($region, $request);
-        $region->save();
-        $this->syncDistricts($region, $request);
+        DB::transaction(function () use ($region, $request): void {
+            $this->fill($region, $request);
+            $region->save();
+            $this->syncDistricts($region, $request);
+        });
 
         return redirect('/regions')->with('success', 'Регион обновлён.');
     }

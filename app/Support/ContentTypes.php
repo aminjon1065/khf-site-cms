@@ -4,9 +4,12 @@ namespace App\Support;
 
 use App\Contracts\Workflowable;
 use App\Models\Alert;
+use App\Models\Announcement;
 use App\Models\Document;
 use App\Models\Instruction;
 use App\Models\News;
+use App\Models\Page;
+use App\Models\Project;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -16,13 +19,16 @@ use Illuminate\Database\Eloquent\Model;
 class ContentTypes
 {
     /**
-     * @var array<string, class-string<Model>>
+     * @var array<string, class-string<Model&Workflowable>>
      */
     public const MAP = [
         'alert' => Alert::class,
         'news' => News::class,
         'instruction' => Instruction::class,
         'document' => Document::class,
+        'project' => Project::class,
+        'announcement' => Announcement::class,
+        'page' => Page::class,
     ];
 
     /**
@@ -33,6 +39,9 @@ class ContentTypes
         'news' => ['module' => 'news', 'label' => 'Новость', 'route' => '/news'],
         'instruction' => ['module' => 'instructions', 'label' => 'Инструкция', 'route' => '/instructions'],
         'document' => ['module' => 'documents', 'label' => 'Документ', 'route' => '/documents'],
+        'project' => ['module' => 'projects', 'label' => 'Проект', 'route' => '/projects'],
+        'announcement' => ['module' => 'announcements', 'label' => 'Объявление', 'route' => '/announcements'],
+        'page' => ['module' => 'pages', 'label' => 'Страница', 'route' => '/pages'],
     ];
 
     public static function slugFor(Model $model): ?string
@@ -53,7 +62,7 @@ class ContentTypes
 
         $model = $class::query()->find($id);
 
-        return $model instanceof Workflowable ? $model : null;
+        return $model;
     }
 
     public static function label(string $type): string

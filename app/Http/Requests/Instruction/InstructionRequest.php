@@ -58,7 +58,7 @@ class InstructionRequest extends FormRequest
             'image_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'image_remove' => ['boolean'],
 
-            'publish_mode' => ['nullable', 'in:now,schedule,review'],
+            'publish_mode' => ['nullable', 'in:now,review'],
             'action' => ['nullable', 'in:draft,submit'],
             'stay' => ['nullable', 'boolean'],
         ];

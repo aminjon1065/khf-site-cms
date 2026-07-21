@@ -65,7 +65,9 @@ export default function PagesIndex({
 }: Props) {
     const can = useCan();
     const [deleteTarget, setDeleteTarget] = useState<PageRow | null>(null);
-    const [unpublishTarget, setUnpublishTarget] = useState<PageRow | null>(null);
+    const [unpublishTarget, setUnpublishTarget] = useState<PageRow | null>(
+        null,
+    );
     const [processing, setProcessing] = useState(false);
 
     const reload = (patch: Partial<Props['filters']>) => {
@@ -154,9 +156,13 @@ export default function PagesIndex({
                             ? [
                                   {
                                       label: 'Дублировать',
-                                      icon: <Copy size={15} strokeWidth={1.5} />,
+                                      icon: (
+                                          <Copy size={15} strokeWidth={1.5} />
+                                      ),
                                       onSelect: () =>
-                                          router.post(`/pages/${r.id}/duplicate`),
+                                          router.post(
+                                              `/pages/${r.id}/duplicate`,
+                                          ),
                                   },
                               ]
                             : []),
@@ -176,7 +182,9 @@ export default function PagesIndex({
                                   { separator: true },
                                   {
                                       label: 'Удалить…',
-                                      icon: <Trash2 size={15} strokeWidth={1.5} />,
+                                      icon: (
+                                          <Trash2 size={15} strokeWidth={1.5} />
+                                      ),
                                       danger: true,
                                       onSelect: () => setDeleteTarget(r),
                                   },

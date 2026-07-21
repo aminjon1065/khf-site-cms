@@ -101,97 +101,97 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
                 onClose={onClose}
                 title="Медиабиблиотека"
                 width={720}
-            footer={
-                <>
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        accept={ACCEPT}
-                        hidden
-                        onChange={(e) => {
-                            const file = e.target.files?.[0];
+                footer={
+                    <>
+                        <input
+                            ref={fileRef}
+                            type="file"
+                            accept={ACCEPT}
+                            hidden
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
 
-                            if (file) {
-                                void upload(file);
-                            }
+                                if (file) {
+                                    void upload(file);
+                                }
 
-                            e.target.value = '';
-                        }}
+                                e.target.value = '';
+                            }}
+                        />
+                        <Button
+                            variant="secondary"
+                            icon={<Upload size={15} strokeWidth={1.75} />}
+                            loading={uploading}
+                            onClick={() => fileRef.current?.click()}
+                        >
+                            Загрузить файл
+                        </Button>
+                        <div style={{ flex: 1 }} />
+                        <Button variant="ghost" onClick={onClose}>
+                            Закрыть
+                        </Button>
+                    </>
+                }
+            >
+                <div style={{ marginBottom: 14 }}>
+                    <Input
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        placeholder="Поиск по имени файла…"
                     />
-                    <Button
-                        variant="secondary"
-                        icon={<Upload size={15} strokeWidth={1.75} />}
-                        loading={uploading}
-                        onClick={() => fileRef.current?.click()}
+                </div>
+
+                {error && (
+                    <div
+                        style={{
+                            color: 'var(--danger)',
+                            fontSize: 13,
+                            marginBottom: 12,
+                        }}
                     >
-                        Загрузить файл
-                    </Button>
-                    <div style={{ flex: 1 }} />
-                    <Button variant="ghost" onClick={onClose}>
-                        Закрыть
-                    </Button>
-                </>
-            }
-        >
-            <div style={{ marginBottom: 14 }}>
-                <Input
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Поиск по имени файла…"
-                />
-            </div>
+                        {error}
+                    </div>
+                )}
 
-            {error && (
-                <div
-                    style={{
-                        color: 'var(--danger)',
-                        fontSize: 13,
-                        marginBottom: 12,
-                    }}
-                >
-                    {error}
-                </div>
-            )}
-
-            {loading ? (
-                <div className="media-picker-empty">Загрузка…</div>
-            ) : items.length === 0 ? (
-                <div className="media-picker-empty">
-                    <ImageOff size={22} strokeWidth={1.5} />
-                    <span>
-                        {search
-                            ? 'Ничего не найдено.'
-                            : 'В библиотеке пока нет изображений — загрузите первое.'}
-                    </span>
-                </div>
-            ) : (
-                <div className="media-picker-grid">
-                    {items.map((item) => (
-                        <div key={item.id} className="media-tile">
-                            <button
-                                type="button"
-                                className="media-tile-main"
-                                title={item.name ?? item.file_name}
-                                onClick={() => onSelect(item)}
-                            >
-                                <img src={item.url} alt={item.name ?? ''} />
-                                <span className="media-tile-name">
-                                    {item.name ?? item.file_name}
-                                </span>
-                            </button>
-                            <button
-                                type="button"
-                                className="media-tile-edit"
-                                title="Редактировать"
-                                aria-label="Редактировать изображение"
-                                onClick={() => setEditing(item)}
-                            >
-                                <Pencil size={13} />
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
+                {loading ? (
+                    <div className="media-picker-empty">Загрузка…</div>
+                ) : items.length === 0 ? (
+                    <div className="media-picker-empty">
+                        <ImageOff size={22} strokeWidth={1.5} />
+                        <span>
+                            {search
+                                ? 'Ничего не найдено.'
+                                : 'В библиотеке пока нет изображений — загрузите первое.'}
+                        </span>
+                    </div>
+                ) : (
+                    <div className="media-picker-grid">
+                        {items.map((item) => (
+                            <div key={item.id} className="media-tile">
+                                <button
+                                    type="button"
+                                    className="media-tile-main"
+                                    title={item.name ?? item.file_name}
+                                    onClick={() => onSelect(item)}
+                                >
+                                    <img src={item.url} alt={item.name ?? ''} />
+                                    <span className="media-tile-name">
+                                        {item.name ?? item.file_name}
+                                    </span>
+                                </button>
+                                <button
+                                    type="button"
+                                    className="media-tile-edit"
+                                    title="Редактировать"
+                                    aria-label="Редактировать изображение"
+                                    onClick={() => setEditing(item)}
+                                >
+                                    <Pencil size={13} />
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </Modal>
 
             <ImageEditor

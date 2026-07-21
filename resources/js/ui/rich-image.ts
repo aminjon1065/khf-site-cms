@@ -45,25 +45,30 @@ export const RichImage = TiptapImage.extend({
         return {
             src: {
                 default: null,
-                parseHTML: (el) => imgOf(el as HTMLElement)?.getAttribute('src') ?? null,
+                parseHTML: (el) =>
+                    imgOf(el as HTMLElement)?.getAttribute('src') ?? null,
             },
             alt: {
                 default: null,
-                parseHTML: (el) => imgOf(el as HTMLElement)?.getAttribute('alt') ?? null,
+                parseHTML: (el) =>
+                    imgOf(el as HTMLElement)?.getAttribute('alt') ?? null,
             },
             title: {
                 default: null,
-                parseHTML: (el) => imgOf(el as HTMLElement)?.getAttribute('title') ?? null,
+                parseHTML: (el) =>
+                    imgOf(el as HTMLElement)?.getAttribute('title') ?? null,
             },
             align: {
                 default: null,
                 renderHTML: () => ({}),
-                parseHTML: (el) => readClass((el as HTMLElement).className, 'align'),
+                parseHTML: (el) =>
+                    readClass((el as HTMLElement).className, 'align'),
             },
             size: {
                 default: null,
                 renderHTML: () => ({}),
-                parseHTML: (el) => readClass((el as HTMLElement).className, 'size'),
+                parseHTML: (el) =>
+                    readClass((el as HTMLElement).className, 'size'),
             },
             caption: {
                 default: null,
@@ -84,17 +89,28 @@ export const RichImage = TiptapImage.extend({
 
     parseHTML() {
         return [
-            { tag: 'figure', getAttrs: (el) => (imgOf(el as HTMLElement) ? {} : false) },
+            {
+                tag: 'figure',
+                getAttrs: (el) => (imgOf(el as HTMLElement) ? {} : false),
+            },
             { tag: 'img[src]' },
         ];
     },
 
     renderHTML({ node }) {
         const { src, alt, title, align, size, caption, srcset } = node.attrs;
-        const wrap = ['re-figure', align && ALIGN_CLASS[align], size && SIZE_CLASS[size]]
+        const wrap = [
+            're-figure',
+            align && ALIGN_CLASS[align],
+            size && SIZE_CLASS[size],
+        ]
             .filter(Boolean)
             .join(' ');
-        const bare = ['re-img', align && ALIGN_CLASS[align], size && SIZE_CLASS[size]]
+        const bare = [
+            're-img',
+            align && ALIGN_CLASS[align],
+            size && SIZE_CLASS[size],
+        ]
             .filter(Boolean)
             .join(' ');
 

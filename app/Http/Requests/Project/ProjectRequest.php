@@ -71,7 +71,7 @@ class ProjectRequest extends FormRequest
             'cover_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'cover_remove' => ['boolean'],
 
-            'publish_mode' => ['nullable', 'in:now,schedule,review'],
+            'publish_mode' => ['nullable', 'in:now,review'],
             'action' => ['nullable', 'in:draft,submit'],
             'stay' => ['nullable', 'boolean'],
         ];

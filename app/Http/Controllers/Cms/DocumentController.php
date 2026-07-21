@@ -14,6 +14,7 @@ use App\Services\WorkflowService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -31,9 +32,9 @@ class DocumentController extends Controller
         $this->authorize('viewAny', Document::class);
 
         $view = $request->string('view', 'all')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
-        $query = Document::query()->with(['author', 'media']);
+        $query = Document::query()->accessibleTo($request->user())->with(['author', 'media']);
         $this->applyView($query, $view, $request->user());
         $this->applyFilters($query, $request);
         $this->applySort($query, $request);
@@ -96,14 +97,16 @@ class DocumentController extends Controller
     {
         $this->authorize('create', Document::class);
 
-        $document = new Document;
-        $this->fill($document, $request);
-        $document->author_id = $request->user()?->id;
-        $document->status = ContentStatus::Draft;
-        $document->save();
+        DB::transaction(function () use ($request): void {
+            $document = new Document;
+            $this->fill($document, $request);
+            $document->author_id = $request->user()?->id;
+            $document->status = ContentStatus::Draft;
+            $document->save();
 
-        $this->syncFiles($document, $request);
-        $this->runPublishAction($document, $request);
+            $this->syncFiles($document, $request);
+            $this->runPublishAction($document, $request);
+        });
 
         return redirect('/documents')->with('success', $this->savedMessage($request));
     }
@@ -112,11 +115,13 @@ class DocumentController extends Controller
     {
         $this->authorize('update', $document);
 
-        $this->fill($document, $request);
-        $document->save();
+        DB::transaction(function () use ($document, $request): void {
+            $this->fill($document, $request);
+            $document->save();
 
-        $this->syncFiles($document, $request);
-        $this->runPublishAction($document, $request);
+            $this->syncFiles($document, $request);
+            $this->runPublishAction($document, $request);
+        });
 
         return redirect('/documents')->with('success', $this->savedMessage($request));
     }
@@ -131,6 +136,7 @@ class DocumentController extends Controller
 
     public function duplicate(Document $document): RedirectResponse
     {
+        $this->authorize('view', $document);
         $this->authorize('create', Document::class);
 
         $copy = $document->replicate(['published_at']);
@@ -147,7 +153,7 @@ class DocumentController extends Controller
     public function publish(Request $request, Document $document): RedirectResponse
     {
         $this->authorize('publish', $document);
-        $this->workflow->transition($document, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($document, ContentStatus::Published, $request->user());
 
         return back()->with('success', 'Документ опубликован.');
     }
@@ -158,7 +164,7 @@ class DocumentController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($document, ContentStatus::Archived, $request->user(), $validated['comment'], force: true);
+        $this->workflow->transition($document, ContentStatus::Archived, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Документ снят с публикации.');
     }
@@ -231,7 +237,7 @@ class DocumentController extends Controller
         ];
 
         return array_map(function (array $v) use ($request): array {
-            $q = Document::query();
+            $q = Document::query()->accessibleTo($request->user());
             $this->applyView($q, $v['key'], $request->user());
             $v['count'] = $q->count();
 
@@ -350,16 +356,16 @@ class DocumentController extends Controller
 
         match ($request->input('publish_mode', 'review')) {
             'now' => $this->authorizeAndPublish($document, $user),
-            default => $this->workflow->transition($document, ContentStatus::Review, $user, force: true),
+            default => $this->workflow->transition($document, ContentStatus::Review, $user),
         };
     }
 
     private function authorizeAndPublish(Document $document, ?User $user): void
     {
         if ($user && $user->can('publish', $document)) {
-            $this->workflow->transition($document, ContentStatus::Published, $user, force: true);
+            $this->workflow->transition($document, ContentStatus::Published, $user);
         } else {
-            $this->workflow->transition($document, ContentStatus::Review, $user, force: true);
+            $this->workflow->transition($document, ContentStatus::Review, $user);
         }
     }
 

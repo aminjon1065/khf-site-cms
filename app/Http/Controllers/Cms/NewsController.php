@@ -16,6 +16,7 @@ use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -29,9 +30,9 @@ class NewsController extends Controller
         $this->authorize('viewAny', News::class);
 
         $view = $request->string('view', 'all')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
-        $query = News::query()->with(['category', 'author', 'media']);
+        $query = News::query()->accessibleTo($request->user())->with(['category', 'author', 'media']);
         $this->applyView($query, $view, $request->user());
         $this->applyFilters($query, $request);
         $this->applySort($query, $request);
@@ -89,15 +90,19 @@ class NewsController extends Controller
     {
         $this->authorize('create', News::class);
 
-        $news = new News;
-        $this->fill($news, $request);
-        $news->author_id = $request->user()?->id;
-        $news->status = ContentStatus::Draft;
-        $news->save();
+        $news = DB::transaction(function () use ($request): News {
+            $news = new News;
+            $this->fill($news, $request);
+            $news->author_id = $request->user()?->id;
+            $news->status = ContentStatus::Draft;
+            $news->save();
 
-        $this->syncRelations($news, $request);
-        $this->syncMedia($news, $request);
-        $this->runPublishAction($news, $request);
+            $this->syncRelations($news, $request);
+            $this->syncMedia($news, $request);
+            $this->runPublishAction($news, $request);
+
+            return $news;
+        });
 
         return $this->redirectAfterSave($news, $request);
     }
@@ -106,12 +111,14 @@ class NewsController extends Controller
     {
         $this->authorize('update', $news);
 
-        $this->fill($news, $request);
-        $news->save();
+        DB::transaction(function () use ($news, $request): void {
+            $this->fill($news, $request);
+            $news->save();
 
-        $this->syncRelations($news, $request);
-        $this->syncMedia($news, $request);
-        $this->runPublishAction($news, $request);
+            $this->syncRelations($news, $request);
+            $this->syncMedia($news, $request);
+            $this->runPublishAction($news, $request);
+        });
 
         return $this->redirectAfterSave($news, $request);
     }
@@ -126,6 +133,7 @@ class NewsController extends Controller
 
     public function duplicate(News $news): RedirectResponse
     {
+        $this->authorize('view', $news);
         $this->authorize('create', News::class);
 
         $copy = $news->replicate(['slug', 'published_at', 'scheduled_at', 'views_count']);
@@ -145,7 +153,7 @@ class NewsController extends Controller
     public function publish(Request $request, News $news): RedirectResponse
     {
         $this->authorize('publish', $news);
-        $this->workflow->transition($news, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($news, ContentStatus::Published, $request->user());
 
         return back()->with('success', 'Новость опубликована.');
     }
@@ -156,7 +164,7 @@ class NewsController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($news, ContentStatus::Archived, $request->user(), $validated['comment'], force: true);
+        $this->workflow->transition($news, ContentStatus::Archived, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Новость снята с публикации.');
     }
@@ -228,7 +236,7 @@ class NewsController extends Controller
         ];
 
         return array_map(function (array $v) use ($request): array {
-            $q = News::query();
+            $q = News::query()->accessibleTo($request->user());
             $this->applyView($q, $v['key'], $request->user());
             $v['count'] = $q->count();
 
@@ -374,18 +382,18 @@ class NewsController extends Controller
         match ($mode) {
             'now' => $this->authorizeAndPublish($news, $user),
             'schedule' => $news->scheduled_at
-                ? $this->workflow->transition($news, ContentStatus::Scheduled, $user, force: true)
-                : $this->workflow->transition($news, ContentStatus::Review, $user, force: true),
-            default => $this->workflow->transition($news, ContentStatus::Review, $user, force: true),
+                ? $this->workflow->transition($news, ContentStatus::Scheduled, $user)
+                : $this->workflow->transition($news, ContentStatus::Review, $user),
+            default => $this->workflow->transition($news, ContentStatus::Review, $user),
         };
     }
 
     private function authorizeAndPublish(News $news, ?User $user): void
     {
         if ($user && $user->can('publish', $news)) {
-            $this->workflow->transition($news, ContentStatus::Published, $user, force: true);
+            $this->workflow->transition($news, ContentStatus::Published, $user);
         } else {
-            $this->workflow->transition($news, ContentStatus::Review, $user, force: true);
+            $this->workflow->transition($news, ContentStatus::Review, $user);
         }
     }
 

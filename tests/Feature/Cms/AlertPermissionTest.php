@@ -73,3 +73,77 @@ it('confines a regional editor to alerts in their own region', function () {
 
     actingAs($regional)->get('/alerts')->assertOk();
 });
+
+it('rejects country-wide and foreign-region alerts from a regional editor', function () {
+    $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
+    $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
+    $regional = userWithRole('regional_editor', $khatlon->id);
+
+    actingAs($regional)->post('/alerts', [
+        'internal_title' => 'Общенациональное предупреждение',
+        'hazard_type' => 'mudflow',
+        'severity' => 'warning',
+        'territory_type' => 'country',
+        'regions' => [],
+        'title' => ['ru' => 'Заголовок'],
+        'action' => 'draft',
+    ])->assertSessionHasErrors('regions');
+
+    actingAs($regional)->post('/alerts', [
+        'internal_title' => 'Чужой регион',
+        'hazard_type' => 'mudflow',
+        'severity' => 'warning',
+        'territory_type' => 'regions',
+        'regions' => [$sughd->id],
+        'title' => ['ru' => 'Заголовок'],
+        'action' => 'draft',
+    ])->assertSessionHasErrors('regions');
+
+    expect(Alert::query()->count())->toBe(0);
+});
+
+it('prevents a regional editor from moving an alert to another region', function () {
+    $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
+    $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
+    $regional = userWithRole('regional_editor', $khatlon->id);
+    $alert = Alert::factory()->create(['author_id' => $regional->id]);
+    $alert->regions()->attach($khatlon);
+
+    actingAs($regional)->put("/alerts/{$alert->id}", [
+        'internal_title' => $alert->internal_title,
+        'hazard_type' => $alert->hazard_type->value,
+        'severity' => $alert->severity->value,
+        'territory_type' => 'regions',
+        'regions' => [$sughd->id],
+        'action' => 'draft',
+    ])->assertSessionHasErrors('regions');
+
+    expect($alert->regions()->pluck('regions.id')->all())->toBe([$khatlon->id]);
+});
+
+it('requires a future publication time for a scheduled alert', function () {
+    $region = Region::query()->where('code', 'khatlon')->firstOrFail();
+
+    actingAs(userWithRole('chief_editor'))->post('/alerts', [
+        'internal_title' => 'Плановая публикация',
+        'hazard_type' => 'mudflow',
+        'severity' => 'warning',
+        'territory_type' => 'regions',
+        'regions' => [$region->id],
+        'title' => ['ru' => 'Заголовок'],
+        'action' => 'submit',
+        'publish_mode' => 'schedule',
+    ])->assertSessionHasErrors('scheduled_at');
+
+    actingAs(userWithRole('chief_editor'))->post('/alerts', [
+        'internal_title' => 'Плановая публикация',
+        'hazard_type' => 'mudflow',
+        'severity' => 'warning',
+        'territory_type' => 'regions',
+        'regions' => [$region->id],
+        'title' => ['ru' => 'Заголовок'],
+        'action' => 'submit',
+        'publish_mode' => 'schedule',
+        'scheduled_at' => now()->subMinute()->toDateTimeString(),
+    ])->assertSessionHasErrors('scheduled_at');
+});

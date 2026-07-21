@@ -9,8 +9,8 @@ import {
     ZoomIn,
     ZoomOut,
 } from 'lucide-react';
-import { useEffect, useRef, useState  } from 'react';
-import type {ReactNode} from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
 import { postForm } from '@/lib/http';
 import { Button } from './Button';
 import type { MediaItem } from './MediaPicker';
@@ -43,7 +43,13 @@ function IeBtn({
     onClick: () => void;
 }) {
     return (
-        <button type="button" className="ie-btn" title={label} aria-label={label} onClick={onClick}>
+        <button
+            type="button"
+            className="ie-btn"
+            title={label}
+            aria-label={label}
+            onClick={onClick}
+        >
             {icon}
         </button>
     );
@@ -129,7 +135,10 @@ export function ImageEditor({ open, source, onClose, onSaved }: Props) {
                 throw new Error('Не удалось сформировать изображение.');
             }
 
-            const base = (source.name ?? source.file_name).replace(/\.[^.]+$/, '');
+            const base = (source.name ?? source.file_name).replace(
+                /\.[^.]+$/,
+                '',
+            );
             const file = new File([blob], `${base}-edited.jpg`, {
                 type: 'image/jpeg',
             });
@@ -227,7 +236,7 @@ export function ImageEditor({ open, source, onClose, onSaved }: Props) {
                         <button
                             key={a.label}
                             type="button"
-                            className={`ie-aspect${aspect === a.value ? ' is-active' : ''}`}
+                            className={`ie-aspect${aspect === a.value ? 'is-active' : ''}`}
                             onClick={() => applyAspect(a.value)}
                         >
                             {a.label}
@@ -237,7 +246,12 @@ export function ImageEditor({ open, source, onClose, onSaved }: Props) {
             </div>
 
             <div className="ie-stage">
-                <img ref={imgRef} src={source.url} className="ie-image" alt="" />
+                <img
+                    ref={imgRef}
+                    src={source.url}
+                    className="ie-image"
+                    alt=""
+                />
             </div>
         </Modal>
     );

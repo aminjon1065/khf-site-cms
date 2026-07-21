@@ -40,7 +40,7 @@ class UserRequest extends FormRequest
             'region_id' => ['nullable', 'integer', Rule::exists('regions', 'id')],
             'position' => ['nullable', 'string', 'max:255'],
             'department' => ['nullable', 'string', 'max:255'],
-            'interface_locale' => ['nullable', Rule::in(['tg', 'ru', 'en'])],
+            'interface_locale' => ['nullable', Rule::in(['tg', 'ru'])],
             'is_active' => ['boolean'],
         ];
     }

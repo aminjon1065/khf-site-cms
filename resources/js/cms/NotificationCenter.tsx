@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { BellOff } from 'lucide-react';
+import NotificationController from '@/actions/App/Http/Controllers/Cms/NotificationController';
 import { useShared } from '@/lib/auth';
 import { toneColor } from '@/lib/domain';
 import type { StatusTone } from '@/lib/domain';
@@ -20,7 +21,7 @@ export function NotificationCenter({
 
     const markAll = () => {
         router.post(
-            '/notifications/read-all',
+            NotificationController.markAllRead.url(),
             {},
             { preserveScroll: true, preserveState: true },
         );
@@ -28,7 +29,7 @@ export function NotificationCenter({
 
     const openItem = (id: string, url: string | null) => {
         router.post(
-            `/notifications/${id}/read`,
+            NotificationController.markRead.url(id),
             {},
             { preserveScroll: true, preserveState: true },
         );

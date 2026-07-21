@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasTags;
 use App\Concerns\HasWorkflow;
 use App\Concerns\TracksTranslationCompleteness;
@@ -42,7 +43,7 @@ use Spatie\Translatable\HasTranslations;
 class News extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<NewsFactory> */
-    use HasFactory, HasResponsiveThumbnails, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
+    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 

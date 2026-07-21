@@ -11,7 +11,8 @@ import { FilterBar, SavedViews, SearchInput } from '@/ui/Filters';
 import { ConfirmDialog, Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
-type Tone = 'accent' | 'neutral' | 'outline' | 'ok' | 'warn' | 'danger' | 'info';
+type Tone =
+    'accent' | 'neutral' | 'outline' | 'ok' | 'warn' | 'danger' | 'info';
 
 interface SubmissionRow {
     id: number;
@@ -66,7 +67,9 @@ export default function SubmissionsIndex({
     options,
 }: Props) {
     const can = useCan();
-    const [deleteTarget, setDeleteTarget] = useState<SubmissionRow | null>(null);
+    const [deleteTarget, setDeleteTarget] = useState<SubmissionRow | null>(
+        null,
+    );
     const [processing, setProcessing] = useState(false);
 
     const reload = (patch: Partial<Props['filters']>) => {

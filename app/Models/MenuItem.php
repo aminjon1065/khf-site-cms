@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Translatable\HasTranslations;
 
 /**
@@ -16,7 +18,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class MenuItem extends Model
 {
-    use HasTranslations;
+    use HasTranslations, LogsActivity;
 
     /**
      * @var list<string>
@@ -34,5 +36,13 @@ class MenuItem extends Model
     protected function casts(): array
     {
         return ['enabled' => 'boolean'];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['label', 'url', 'location', 'parent_id', 'sort', 'enabled'])
+            ->logOnlyDirty()
+            ->useLogName('menu_items');
     }
 }

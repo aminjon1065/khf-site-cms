@@ -239,7 +239,6 @@ class UserController extends Controller
             'locales' => [
                 ['value' => 'ru', 'label' => 'Русский'],
                 ['value' => 'tg', 'label' => 'Тоҷикӣ'],
-                ['value' => 'en', 'label' => 'English'],
             ],
         ];
     }

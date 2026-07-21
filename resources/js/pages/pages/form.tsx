@@ -94,7 +94,9 @@ export default function PageForm({ page, reference }: Props) {
 
     return (
         <>
-            <Head title={isEdit ? 'Редактирование страницы' : 'Новая страница'} />
+            <Head
+                title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
+            />
 
             <PageHeader
                 eyebrow={
@@ -108,7 +110,8 @@ export default function PageForm({ page, reference }: Props) {
                             textDecoration: 'none',
                         }}
                     >
-                        <ArrowLeft size={14} strokeWidth={1.75} /> Страницы сайта
+                        <ArrowLeft size={14} strokeWidth={1.75} /> Страницы
+                        сайта
                     </Link>
                 }
                 title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
@@ -128,7 +131,13 @@ export default function PageForm({ page, reference }: Props) {
                 }}
             >
                 {/* ------------------------------------------------ main */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
+                >
                     <Blueprint style={{ padding: 20 }}>
                         <div
                             style={{
@@ -154,7 +163,9 @@ export default function PageForm({ page, reference }: Props) {
                             label="Заголовок"
                             required={lang === 'ru'}
                             error={
-                                lang === 'ru' ? fieldError('title.ru') : undefined
+                                lang === 'ru'
+                                    ? fieldError('title.ru')
+                                    : undefined
                             }
                         >
                             <Input
@@ -162,7 +173,9 @@ export default function PageForm({ page, reference }: Props) {
                                 onChange={(e) =>
                                     setLocaleField('title', e.target.value)
                                 }
-                                hasError={lang === 'ru' && !!fieldError('title.ru')}
+                                hasError={
+                                    lang === 'ru' && !!fieldError('title.ru')
+                                }
                                 placeholder={
                                     lang === 'ru'
                                         ? 'Например: О Комитете'
@@ -189,7 +202,13 @@ export default function PageForm({ page, reference }: Props) {
                 </div>
 
                 {/* --------------------------------------------- sidebar */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
+                >
                     <Blueprint style={{ padding: 20 }}>
                         <h3
                             className="ui-card-title"
@@ -205,7 +224,9 @@ export default function PageForm({ page, reference }: Props) {
                         >
                             <Input
                                 value={data.slug}
-                                onChange={(e) => setData('slug', e.target.value)}
+                                onChange={(e) =>
+                                    setData('slug', e.target.value)
+                                }
                                 placeholder="about"
                                 className="ui-mono"
                                 maxLength={255}
@@ -268,7 +289,9 @@ export default function PageForm({ page, reference }: Props) {
                         trigger={({ toggle }) => (
                             <Button
                                 variant="primary"
-                                iconRight={<ChevronDown size={15} strokeWidth={2} />}
+                                iconRight={
+                                    <ChevronDown size={15} strokeWidth={2} />
+                                }
                                 onClick={toggle}
                             >
                                 Опубликовать

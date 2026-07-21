@@ -60,7 +60,11 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
     const [deleteTarget, setDeleteTarget] = useState<MediaItem | null>(null);
     const [processing, setProcessing] = useState(false);
     const [editTarget, setEditTarget] = useState<MediaItem | null>(null);
-    const [editForm, setEditForm] = useState({ name: '', alt: '', caption: '' });
+    const [editForm, setEditForm] = useState({
+        name: '',
+        alt: '',
+        caption: '',
+    });
     const [editSaving, setEditSaving] = useState(false);
 
     const openEdit = (item: MediaItem) => {
@@ -264,10 +268,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                                             color: 'var(--color-neutral-500)',
                                         }}
                                     >
-                                        <FileText
-                                            size={34}
-                                            strokeWidth={1.4}
-                                        />
+                                        <FileText size={34} strokeWidth={1.4} />
                                         <span
                                             className="ui-mono"
                                             style={{ fontSize: 12 }}
@@ -306,7 +307,9 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                                         gap: 6,
                                     }}
                                 >
-                                    <Tag tone={item.owned ? 'accent' : 'neutral'}>
+                                    <Tag
+                                        tone={item.owned ? 'accent' : 'neutral'}
+                                    >
                                         {item.usage}
                                     </Tag>
                                     <span
@@ -351,7 +354,9 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                                         <IconButton
                                             label="Удалить"
                                             variant="ghost"
-                                            onClick={() => setDeleteTarget(item)}
+                                            onClick={() =>
+                                                setDeleteTarget(item)
+                                            }
                                         >
                                             <Trash2
                                                 size={15}
@@ -471,7 +476,10 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                     <Textarea
                         value={editForm.caption}
                         onChange={(e) =>
-                            setEditForm({ ...editForm, caption: e.target.value })
+                            setEditForm({
+                                ...editForm,
+                                caption: e.target.value,
+                            })
                         }
                         maxLength={500}
                         style={{ minHeight: 60 }}

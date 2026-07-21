@@ -224,7 +224,9 @@ export default function AnnouncementsIndex({
                             ? [
                                   {
                                       label: 'Дублировать',
-                                      icon: <Copy size={15} strokeWidth={1.5} />,
+                                      icon: (
+                                          <Copy size={15} strokeWidth={1.5} />
+                                      ),
                                       onSelect: () =>
                                           router.post(
                                               `/announcements/${r.id}/duplicate`,

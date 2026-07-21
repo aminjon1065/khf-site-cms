@@ -2,19 +2,24 @@
 
 use App\Enums\ContentStatus;
 use App\Models\News;
+use App\Models\Region;
 use App\Models\User;
+use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
+use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
 
 beforeEach(function () {
-    seed(RolePermissionSeeder::class);
+    seed([RolePermissionSeeder::class, RegionSeeder::class]);
 });
 
 function newsUser(string $role): User
 {
-    $user = User::factory()->create();
+    $user = User::factory()->create([
+        'region_id' => $role === 'regional_editor' ? Region::query()->value('id') : null,
+    ]);
     $user->assignRole($role);
 
     return $user;
@@ -74,6 +79,30 @@ it('sends news to review when an editor submits for approval', function () {
     expect(News::query()->first()->status)->toBe(ContentStatus::Review);
 });
 
+it('requires a future publication time when scheduling news', function () {
+    $editor = newsUser('editor');
+    $payload = [
+        'title' => ['ru' => 'Запланированная новость', 'tg' => '', 'en' => ''],
+        'action' => 'submit',
+        'publish_mode' => 'schedule',
+    ];
+
+    actingAs($editor)->post('/news', $payload)
+        ->assertSessionHasErrors('scheduled_at');
+
+    actingAs($editor)->post('/news', [
+        ...$payload,
+        'scheduled_at' => now()->subMinute()->toDateTimeString(),
+    ])->assertSessionHasErrors('scheduled_at');
+
+    actingAs($editor)->post('/news', [
+        ...$payload,
+        'scheduled_at' => now()->addHour()->toDateTimeString(),
+    ])->assertRedirect('/news');
+
+    expect(News::query()->first()->status)->toBe(ContentStatus::Scheduled);
+});
+
 it('lets a chief editor publish immediately', function () {
     actingAs(newsUser('chief_editor'))->post('/news', [
         'title' => ['ru' => 'Срочная публикация', 'tg' => '', 'en' => ''],
@@ -96,6 +125,23 @@ it('downgrades a publish attempt to review when the user cannot publish', functi
     ])->assertRedirect('/news');
 
     expect(News::query()->first()->status)->toBe(ContentStatus::Review);
+});
+
+it('limits a regional editor to news they authored', function () {
+    $regional = newsUser('regional_editor');
+    $own = News::factory()->create(['author_id' => $regional->id]);
+    $foreign = News::factory()->create(['author_id' => newsUser('editor')->id]);
+
+    actingAs($regional)->get('/news')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('news', 1)
+            ->where('news.0.id', $own->id));
+
+    actingAs($regional)->put("/news/{$foreign->id}", [
+        'title' => ['ru' => 'Чужой материал'],
+        'action' => 'draft',
+    ])->assertForbidden();
 });
 
 it('publishes via the publish endpoint and the item becomes public', function () {

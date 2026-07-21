@@ -15,6 +15,7 @@ use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -38,9 +39,9 @@ class InstructionController extends Controller
         $this->authorize('viewAny', Instruction::class);
 
         $view = $request->string('view', 'all')->toString();
-        $perPage = (int) $request->integer('per_page', 25);
+        $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
-        $query = Instruction::query()->with(['author', 'media']);
+        $query = Instruction::query()->accessibleTo($request->user())->with(['author', 'media']);
         $this->applyView($query, $view, $request->user());
         $this->applyFilters($query, $request);
         $this->applySort($query, $request);
@@ -98,14 +99,18 @@ class InstructionController extends Controller
     {
         $this->authorize('create', Instruction::class);
 
-        $instruction = new Instruction;
-        $this->fill($instruction, $request);
-        $instruction->author_id = $request->user()?->id;
-        $instruction->status = ContentStatus::Draft;
-        $instruction->save();
+        $instruction = DB::transaction(function () use ($request): Instruction {
+            $instruction = new Instruction;
+            $this->fill($instruction, $request);
+            $instruction->author_id = $request->user()?->id;
+            $instruction->status = ContentStatus::Draft;
+            $instruction->save();
 
-        $this->syncMedia($instruction, $request);
-        $this->runPublishAction($instruction, $request);
+            $this->syncMedia($instruction, $request);
+            $this->runPublishAction($instruction, $request);
+
+            return $instruction;
+        });
 
         return $this->redirectAfterSave($instruction, $request);
     }
@@ -114,11 +119,13 @@ class InstructionController extends Controller
     {
         $this->authorize('update', $instruction);
 
-        $this->fill($instruction, $request);
-        $instruction->save();
+        DB::transaction(function () use ($instruction, $request): void {
+            $this->fill($instruction, $request);
+            $instruction->save();
 
-        $this->syncMedia($instruction, $request);
-        $this->runPublishAction($instruction, $request);
+            $this->syncMedia($instruction, $request);
+            $this->runPublishAction($instruction, $request);
+        });
 
         return $this->redirectAfterSave($instruction, $request);
     }
@@ -133,6 +140,7 @@ class InstructionController extends Controller
 
     public function duplicate(Instruction $instruction): RedirectResponse
     {
+        $this->authorize('view', $instruction);
         $this->authorize('create', Instruction::class);
 
         $copy = $instruction->replicate(['slug', 'published_at']);
@@ -151,7 +159,7 @@ class InstructionController extends Controller
     public function publish(Request $request, Instruction $instruction): RedirectResponse
     {
         $this->authorize('publish', $instruction);
-        $this->workflow->transition($instruction, ContentStatus::Published, $request->user(), force: true);
+        $this->workflow->transition($instruction, ContentStatus::Published, $request->user());
 
         return back()->with('success', 'Инструкция опубликована.');
     }
@@ -162,7 +170,7 @@ class InstructionController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($instruction, ContentStatus::Archived, $request->user(), $validated['comment'], force: true);
+        $this->workflow->transition($instruction, ContentStatus::Archived, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Инструкция снята с публикации.');
     }
@@ -234,7 +242,7 @@ class InstructionController extends Controller
         ];
 
         return array_map(function (array $v) use ($request): array {
-            $q = Instruction::query();
+            $q = Instruction::query()->accessibleTo($request->user());
             $this->applyView($q, $v['key'], $request->user());
             $v['count'] = $q->count();
 
@@ -394,16 +402,16 @@ class InstructionController extends Controller
 
         match ($request->input('publish_mode', 'review')) {
             'now' => $this->authorizeAndPublish($instruction, $user),
-            default => $this->workflow->transition($instruction, ContentStatus::Review, $user, force: true),
+            default => $this->workflow->transition($instruction, ContentStatus::Review, $user),
         };
     }
 
     private function authorizeAndPublish(Instruction $instruction, ?User $user): void
     {
         if ($user && $user->can('publish', $instruction)) {
-            $this->workflow->transition($instruction, ContentStatus::Published, $user, force: true);
+            $this->workflow->transition($instruction, ContentStatus::Published, $user);
         } else {
-            $this->workflow->transition($instruction, ContentStatus::Review, $user, force: true);
+            $this->workflow->transition($instruction, ContentStatus::Review, $user);
         }
     }
 

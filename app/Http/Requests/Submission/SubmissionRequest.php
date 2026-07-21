@@ -25,6 +25,7 @@ class SubmissionRequest extends FormRequest
             'email' => ['required', 'email', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
             'topic' => ['nullable', 'string', 'max:255'],
+            'region_id' => ['nullable', 'integer', 'exists:regions,id'],
             'message' => ['required', 'string', 'min:10', 'max:5000'],
             'consent' => ['accepted'],
         ];
@@ -41,6 +42,7 @@ class SubmissionRequest extends FormRequest
             'email.email' => 'Некорректный адрес электронной почты.',
             'message.required' => 'Введите текст обращения.',
             'message.min' => 'Текст обращения слишком короткий.',
+            'region_id.exists' => 'Выбранный регион не найден.',
             'consent.accepted' => 'Подтвердите согласие на обработку персональных данных.',
         ];
     }

@@ -58,7 +58,12 @@ class NewsRequest extends FormRequest
             'seo.title' => ['nullable', 'string', 'max:255'],
             'seo.description' => ['nullable', 'string', 'max:500'],
 
-            'scheduled_at' => ['nullable', 'date'],
+            'scheduled_at' => [
+                Rule::requiredIf(fn (): bool => $this->input('action') === 'submit' && $this->input('publish_mode') === 'schedule'),
+                'nullable',
+                'date',
+                'after:now',
+            ],
 
             'publish_mode' => ['nullable', 'in:now,schedule,review'],
             'action' => ['nullable', 'in:draft,submit'],
@@ -78,6 +83,8 @@ class NewsRequest extends FormRequest
             'category_id.exists' => 'Выбрана несуществующая категория.',
             'cover.image' => 'Обложка должна быть изображением.',
             'cover.max' => 'Размер обложки не должен превышать 5 МБ.',
+            'scheduled_at.required' => 'Укажите дату плановой публикации.',
+            'scheduled_at.after' => 'Дата плановой публикации должна быть в будущем.',
         ];
     }
 

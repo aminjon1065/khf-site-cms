@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
@@ -39,7 +40,7 @@ use Spatie\Translatable\HasTranslations;
 class Instruction extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<InstructionFactory> */
-    use HasFactory, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
+    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 

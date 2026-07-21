@@ -61,7 +61,9 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                 }}
             >
                 {/* Список ролей */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <div
+                    style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
+                >
                     {roles.map((r) => {
                         const selected = r.value === role?.value;
 
@@ -93,7 +95,12 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                                         justifyContent: 'space-between',
                                     }}
                                 >
-                                    <span style={{ fontWeight: 600, fontSize: 13.5 }}>
+                                    <span
+                                        style={{
+                                            fontWeight: 600,
+                                            fontSize: 13.5,
+                                        }}
+                                    >
                                         {r.label}
                                     </span>
                                     <span
@@ -125,8 +132,8 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                                             color: 'var(--color-accent-700)',
                                         }}
                                     >
-                                        <MapPin size={12} strokeWidth={1.75} /> В пределах
-                                        региона
+                                        <MapPin size={12} strokeWidth={1.75} />{' '}
+                                        В пределах региона
                                     </span>
                                 )}
                             </button>
@@ -192,7 +199,8 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                                     <tr
                                         key={m.value}
                                         style={{
-                                            borderTop: '1px solid var(--color-divider)',
+                                            borderTop:
+                                                '1px solid var(--color-divider)',
                                         }}
                                     >
                                         <td
@@ -205,8 +213,9 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                                         </td>
                                         {actions.map((a) => {
                                             const on =
-                                                role?.matrix[m.value]?.[a.value] ??
-                                                false;
+                                                role?.matrix[m.value]?.[
+                                                    a.value
+                                                ] ?? false;
 
                                             return (
                                                 <td

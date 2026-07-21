@@ -2,6 +2,7 @@
 
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\RequireTwoFactor;
 use App\Http\Middleware\ResolveApiLocale;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
@@ -31,6 +32,10 @@ return Application::configure(basePath: dirname(__DIR__))
         // Public read-only API: stateless, no session/CSRF, locale resolved per request.
         $middleware->api(prepend: [
             ResolveApiLocale::class,
+        ]);
+
+        $middleware->alias([
+            '2fa.required' => RequireTwoFactor::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -10,6 +10,8 @@ use App\Models\Alert;
 use App\Models\User;
 use App\Models\WorkflowTransition;
 use App\Notifications\WorkflowNotification;
+use App\Support\ContentTypes;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -32,8 +34,8 @@ class WorkflowService
         'translation_check' => ['approved', 'review', 'returned'],
         'approved' => ['published', 'scheduled', 'returned'],
         'scheduled' => ['published', 'cancelled', 'draft'],
-        'published' => ['updated', 'completed', 'cancelled'],
-        'updated' => ['completed', 'cancelled'],
+        'published' => ['updated', 'completed', 'cancelled', 'archived'],
+        'updated' => ['completed', 'cancelled', 'archived'],
         'returned' => ['draft', 'review'],
         'completed' => ['updated'],
         'cancelled' => ['draft'],
@@ -194,8 +196,16 @@ class WorkflowService
         if (in_array($to, [ContentStatus::Review, ContentStatus::TranslationCheck, ContentStatus::Approved], true)) {
             $approver = $this->relatedUser($subject->getAttribute('approver_id'));
 
-            if ($approver && $approver->isNot($actor)) {
-                $approver->notify(new WorkflowNotification(
+            $approvers = $approver
+                ? collect([$approver])
+                : $this->approversFor($subject);
+
+            foreach ($approvers as $recipient) {
+                if ($recipient->is($actor)) {
+                    continue;
+                }
+
+                $recipient->notify(new WorkflowNotification(
                     $subject,
                     'Материал ожидает согласования',
                     "«{$title}» ожидает вашего решения.",
@@ -203,6 +213,22 @@ class WorkflowService
                 ));
             }
         }
+    }
+
+    /**
+     * @return EloquentCollection<int, User>
+     */
+    private function approversFor(Model&Workflowable $subject): EloquentCollection
+    {
+        $type = ContentTypes::slugFor($subject);
+        if ($type === null) {
+            return new EloquentCollection;
+        }
+
+        return User::query()
+            ->where('is_active', true)
+            ->permission(ContentTypes::module($type).'.approve')
+            ->get();
     }
 
     private function relatedUser(mixed $id): ?User

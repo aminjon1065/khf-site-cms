@@ -104,7 +104,9 @@ export default function SubmissionShow({ submission, reference }: Props) {
                         <ArrowLeft size={14} strokeWidth={1.75} /> Обращения
                     </Link>
                 }
-                title={submission.tracking_number ?? `Обращение #${submission.id}`}
+                title={
+                    submission.tracking_number ?? `Обращение #${submission.id}`
+                }
                 subtitle={submission.name}
             />
 
@@ -119,7 +121,11 @@ export default function SubmissionShow({ submission, reference }: Props) {
             >
                 {/* main */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <h3
@@ -249,7 +255,11 @@ export default function SubmissionShow({ submission, reference }: Props) {
 
                 {/* sidebar */}
                 <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 16 }}
+                    style={{
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: 16,
+                    }}
                 >
                     <Blueprint style={{ padding: 20 }}>
                         <h3

@@ -20,7 +20,7 @@ class AlertPolicy extends ModulePolicy
             return true;
         }
 
-        return $model->territory_type === 'country'
-            || $model->regions()->whereKey($user->region_id)->exists();
+        return $model->territory_type === 'regions'
+            && $model->regions()->whereKey($user->region_id)->exists();
     }
 }

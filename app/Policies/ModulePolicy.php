@@ -26,7 +26,8 @@ abstract class ModulePolicy
 
     public function create(User $user): bool
     {
-        return $user->can($this->permission('create'));
+        return $user->can($this->permission('create'))
+            && (! $user->hasRole('regional_editor') || $user->region_id !== null);
     }
 
     public function update(User $user, Model $model): bool
@@ -60,8 +61,12 @@ abstract class ModulePolicy
      */
     protected function inScope(User $user, Model $model): bool
     {
-        if (! $user->hasRole('regional_editor') || $user->region_id === null) {
+        if (! $user->hasRole('regional_editor')) {
             return true;
+        }
+
+        if ($user->region_id === null) {
+            return false;
         }
 
         return $this->belongsToUserRegion($user, $model);
@@ -69,6 +74,8 @@ abstract class ModulePolicy
 
     protected function belongsToUserRegion(User $user, Model $model): bool
     {
-        return true;
+        $authorId = $model->getAttribute('author_id');
+
+        return $authorId !== null && (int) $authorId === $user->id;
     }
 }

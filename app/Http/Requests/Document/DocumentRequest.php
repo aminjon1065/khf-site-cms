@@ -39,7 +39,7 @@ class DocumentRequest extends FormRequest
             'file_ru_remove' => ['boolean'],
             'file_en_remove' => ['boolean'],
 
-            'publish_mode' => ['nullable', 'in:now,schedule,review'],
+            'publish_mode' => ['nullable', 'in:now,review'],
             'action' => ['nullable', 'in:draft,submit'],
         ];
     }

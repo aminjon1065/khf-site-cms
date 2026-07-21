@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 /**
  * @property int $id
@@ -12,6 +14,8 @@ use Illuminate\Database\Eloquent\Model;
  */
 class Setting extends Model
 {
+    use LogsActivity;
+
     /**
      * @var list<string>
      */
@@ -25,6 +29,14 @@ class Setting extends Model
         return [
             'value' => 'array',
         ];
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly(['group', 'key'])
+            ->logOnlyDirty()
+            ->useLogName('settings');
     }
 
     /**

@@ -3,9 +3,6 @@
 namespace App\Support;
 
 use App\Models\Alert;
-use App\Models\Document;
-use App\Models\Instruction;
-use App\Models\News;
 use App\Models\User;
 
 class NavBadges
@@ -22,22 +19,21 @@ class NavBadges
         }
 
         $badges = [
-            'alerts' => Alert::query()->active()->count(),
+            'alerts' => Alert::query()->accessibleTo($user)->active()->count(),
         ];
 
         $approval = 0;
 
-        if ($user->can('alerts.approve')) {
-            $approval += Alert::query()->whereIn('status', ['review', 'translation_check'])->count();
-        }
-        if ($user->can('news.approve')) {
-            $approval += News::query()->where('status', 'review')->count();
-        }
-        if ($user->can('instructions.approve')) {
-            $approval += Instruction::query()->where('status', 'review')->count();
-        }
-        if ($user->can('documents.approve')) {
-            $approval += Document::query()->where('status', 'review')->count();
+        foreach (ContentTypes::MAP as $type => $modelClass) {
+            if (! $user->can(ContentTypes::module($type).'.approve')) {
+                continue;
+            }
+
+            $approval += $modelClass::query()
+                ->whereIn('status', ['review', 'translation_check'])
+                ->get()
+                ->filter(fn ($model): bool => $user->can('approve', $model))
+                ->count();
         }
 
         $badges['approval'] = $approval;

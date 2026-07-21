@@ -1,11 +1,13 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/react-starter-kit",
+    "name": "khf-tj/site-cms",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
+    "description": "Content management system for the official KHF Tajikistan website.",
     "keywords": [
         "laravel",
-        "framework"
+        "cms",
+        "khf",
+        "tajikistan"
     ],
     "license": "MIT",
     "require": {

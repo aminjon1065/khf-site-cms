@@ -22,6 +22,8 @@ class AnnouncementController extends Controller
             $query->where('kind', $kind);
         }
 
-        return PublicAnnouncementResource::collection($query->get());
+        $perPage = min(max($request->integer('per_page', 20), 1), 50);
+
+        return PublicAnnouncementResource::collection($query->paginate($perPage)->withQueryString());
     }
 }

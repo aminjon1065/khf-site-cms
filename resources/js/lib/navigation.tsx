@@ -23,6 +23,7 @@ import {
     Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import { control } from '@/routes';
 
 export interface NavItem {
     key: string;
@@ -51,8 +52,9 @@ export const NAV: NavGroup[] = [
             {
                 key: 'control',
                 labelKey: 'nav.control_center',
-                href: '/control',
+                href: control.url(),
                 icon: Gauge,
+                permission: 'alerts.view',
             },
             {
                 key: 'approvals',
@@ -77,19 +79,13 @@ export const NAV: NavGroup[] = [
             {
                 key: 'notify',
                 labelKey: 'nav.notifications',
-                href: '/section/notify',
+                href: '/notifications',
                 icon: Bell,
-            },
-            {
-                key: 'map',
-                labelKey: 'Карта регионов',
-                href: '/control',
-                icon: Map,
             },
             {
                 key: 'contacts',
                 labelKey: 'Экстренные контакты',
-                href: '/section/contacts',
+                href: '/contacts',
                 icon: Phone,
             },
             {

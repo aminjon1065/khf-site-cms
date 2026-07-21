@@ -144,13 +144,10 @@ return [
 
     'features' => [
         Features::resetPasswords(),
-
-        // Двухфакторная аутентификация временно отключена для тестирования.
-        // Чтобы включить обратно — раскомментируйте блок ниже.
-        // Features::twoFactorAuthentication([
-        //     'confirm' => true,
-        //     'confirmPassword' => true,
-        // ]),
+        Features::twoFactorAuthentication([
+            'confirm' => true,
+            'confirmPassword' => true,
+        ]),
     ],
 
 ];

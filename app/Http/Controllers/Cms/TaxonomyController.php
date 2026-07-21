@@ -8,6 +8,7 @@ use App\Models\Category;
 use App\Models\Tag;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -51,15 +52,55 @@ class TaxonomyController extends Controller
 
     public function update(TaxonomyRequest $request): RedirectResponse
     {
-        abort_unless((bool) $request->user()?->can('taxonomy.edit'), 403);
+        $this->authorizeChanges($request);
 
-        $this->syncCategories($request);
-        $this->syncTags($request);
+        DB::transaction(function () use ($request): void {
+            $this->syncCategories($request);
+            $this->syncTags($request);
+        });
 
         return back()->with('success', 'Категории и теги сохранены.');
     }
 
     // ---------------------------------------------------------------- helpers
+
+    private function authorizeChanges(TaxonomyRequest $request): void
+    {
+        $categoryRows = $this->meaningfulRows($request->input('categories', []));
+        $tagRows = $this->meaningfulRows($request->input('tags', []));
+
+        $createsTerms = collect([...$categoryRows, ...$tagRows])->contains(
+            fn (array $row): bool => empty($row['id']),
+        );
+
+        $submittedCategoryIds = collect($categoryRows)->pluck('id')->filter()->map(fn (mixed $id): int => (int) $id);
+        $submittedTagIds = collect($tagRows)->pluck('id')->filter()->map(fn (mixed $id): int => (int) $id);
+
+        $deletesTerms = Category::query()
+            ->where('type', self::CATEGORY_TYPE)
+            ->whereNotIn('id', $submittedCategoryIds)
+            ->exists()
+            || Tag::query()->whereNotIn('id', $submittedTagIds)->exists();
+
+        abort_if($createsTerms && ! $request->user()?->can('taxonomy.create'), 403);
+        abort_if($deletesTerms && ! $request->user()?->can('taxonomy.delete'), 403);
+    }
+
+    /**
+     * @return array<int, array<string, mixed>>
+     */
+    private function meaningfulRows(mixed $input): array
+    {
+        if (! is_array($input)) {
+            return [];
+        }
+
+        return array_values(array_filter(
+            $input,
+            fn (mixed $row): bool => is_array($row)
+                && trim((string) (($row['name']['ru'] ?? null))) !== '',
+        ));
+    }
 
     private function syncCategories(TaxonomyRequest $request): void
     {

@@ -65,12 +65,15 @@ export default function UserForm({ user, reference }: Props) {
         }
     };
 
-    const roleDescription = reference.roles.find((r) => r.value === data.role)
-        ?.description;
+    const roleDescription = reference.roles.find(
+        (r) => r.value === data.role,
+    )?.description;
 
     return (
         <>
-            <Head title={isEdit ? 'Редактирование сотрудника' : 'Новый сотрудник'} />
+            <Head
+                title={isEdit ? 'Редактирование сотрудника' : 'Новый сотрудник'}
+            />
 
             <PageHeader
                 eyebrow={
@@ -135,13 +138,19 @@ export default function UserForm({ user, reference }: Props) {
                     <Field
                         label={isEdit ? 'Новый пароль' : 'Пароль'}
                         required={!isEdit}
-                        hint={isEdit ? 'Оставьте пустым, чтобы не менять.' : undefined}
+                        hint={
+                            isEdit
+                                ? 'Оставьте пустым, чтобы не менять.'
+                                : undefined
+                        }
                         error={fieldError('password')}
                     >
                         <Input
                             type="password"
                             value={data.password}
-                            onChange={(e) => setData('password', e.target.value)}
+                            onChange={(e) =>
+                                setData('password', e.target.value)
+                            }
                             hasError={!!fieldError('password')}
                             autoComplete="new-password"
                         />
@@ -186,7 +195,11 @@ export default function UserForm({ user, reference }: Props) {
                     )}
                     <Field label="Регион" hint="Для региональных ролей.">
                         <Select
-                            value={data.region_id === '' ? '' : String(data.region_id)}
+                            value={
+                                data.region_id === ''
+                                    ? ''
+                                    : String(data.region_id)
+                            }
                             options={[
                                 { value: '', label: '— Весь Таджикистан —' },
                                 ...reference.regions.map((r) => ({
@@ -221,7 +234,9 @@ export default function UserForm({ user, reference }: Props) {
                             label="Учётная запись активна"
                             checked={data.is_active}
                             disabled={isSelf}
-                            onChange={(e) => setData('is_active', e.target.checked)}
+                            onChange={(e) =>
+                                setData('is_active', e.target.checked)
+                            }
                         />
                         {isSelf && (
                             <p
@@ -231,15 +246,23 @@ export default function UserForm({ user, reference }: Props) {
                                     color: 'var(--color-neutral-500)',
                                 }}
                             >
-                                Нельзя изменить собственную роль или отключить свою
-                                учётную запись.
+                                Нельзя изменить собственную роль или отключить
+                                свою учётную запись.
                             </p>
                         )}
                     </div>
                 </Blueprint>
             </div>
 
-            <div className="cms-two-col" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginTop: 16 }}>
+            <div
+                className="cms-two-col"
+                style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: 16,
+                    marginTop: 16,
+                }}
+            >
                 <Blueprint style={{ padding: 20 }}>
                     <h3 className="ui-card-title" style={{ marginTop: 0 }}>
                         Должность
@@ -247,14 +270,18 @@ export default function UserForm({ user, reference }: Props) {
                     <Field label="Должность">
                         <Input
                             value={data.position}
-                            onChange={(e) => setData('position', e.target.value)}
+                            onChange={(e) =>
+                                setData('position', e.target.value)
+                            }
                             placeholder="Главный редактор"
                         />
                     </Field>
                     <Field label="Подразделение">
                         <Input
                             value={data.department}
-                            onChange={(e) => setData('department', e.target.value)}
+                            onChange={(e) =>
+                                setData('department', e.target.value)
+                            }
                             placeholder="Пресс-служба"
                         />
                     </Field>

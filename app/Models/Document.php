@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
@@ -33,7 +34,7 @@ use Spatie\Translatable\HasTranslations;
 class Document extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<DocumentFactory> */
-    use HasFactory, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes;
+    use HasFactory, HasRegionalContentScope, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes;
 
     use HasTranslations;
 

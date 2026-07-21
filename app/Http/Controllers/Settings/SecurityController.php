@@ -17,8 +17,18 @@ class SecurityController extends Controller
      */
     public function edit(TwoFactorAuthenticationRequest $request): Response
     {
+        $request->ensureStateIsValid();
+        $user = $request->user();
+        $hasTwoFactorSecret = $user->two_factor_secret !== null;
+
         $props = [
             'passwordRules' => Password::defaults()->toPasswordRulesString(),
+            'twoFactor' => [
+                'enabled' => $user->hasTwoFactorEnabled(),
+                'pending' => $hasTwoFactorSecret && ! $user->hasTwoFactorEnabled(),
+                'qr_code_svg' => $hasTwoFactorSecret ? $user->twoFactorQrCodeSvg() : null,
+                'recovery_codes' => $user->hasTwoFactorEnabled() ? $user->recoveryCodes() : [],
+            ],
         ];
 
         return Inertia::render('settings/security', $props);

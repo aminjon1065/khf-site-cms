@@ -45,6 +45,31 @@ it('requires a comment when returning to the author', function () {
     expect($alert->fresh()->status)->toBe(ContentStatus::Review);
 });
 
+it('rejects an invalid transition without bypassing the workflow graph', function () {
+    $actor = makeUser('chief_editor');
+    $alert = Alert::factory()->create(['status' => ContentStatus::Draft]);
+
+    expect(fn () => $this->workflow->transition($alert, ContentStatus::Returned, $actor, 'Вернуть.'))
+        ->toThrow(ValidationException::class);
+
+    expect($alert->fresh()->status)->toBe(ContentStatus::Draft);
+});
+
+it('notifies available module approvers when no approver is assigned', function () {
+    Notification::fake();
+    $author = makeUser('editor');
+    $chiefEditor = makeUser('chief_editor');
+    $alert = Alert::factory()->create([
+        'status' => ContentStatus::Draft,
+        'author_id' => $author->id,
+        'approver_id' => null,
+    ]);
+
+    $this->workflow->transition($alert, ContentStatus::Review, $author);
+
+    Notification::assertSentTo($chiefEditor, WorkflowNotification::class);
+});
+
 it('requires a comment when cancelling a published alert', function () {
     $actor = makeUser('alert_operator');
     $alert = Alert::factory()->published()->create();

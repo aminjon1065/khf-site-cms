@@ -114,9 +114,7 @@ export default function RegionForm({ region, reference }: Props) {
 
     return (
         <>
-            <Head
-                title={isEdit ? 'Редактирование региона' : 'Новый регион'}
-            />
+            <Head title={isEdit ? 'Редактирование региона' : 'Новый регион'} />
 
             <PageHeader
                 eyebrow={
@@ -244,7 +242,9 @@ export default function RegionForm({ region, reference }: Props) {
                     <h3 className="ui-card-title" style={{ marginTop: 0 }}>
                         Региональное управление
                     </h3>
-                    <Field label={`Название управления (${lang.toUpperCase()})`}>
+                    <Field
+                        label={`Название управления (${lang.toUpperCase()})`}
+                    >
                         <Input
                             value={data.head[lang]}
                             onChange={(e) => setLocale('head', e.target.value)}

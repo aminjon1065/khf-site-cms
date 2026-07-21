@@ -17,12 +17,19 @@ interface MenuRow {
 }
 
 interface Props {
-    menus: Record<Location, { id: number; label: LocaleMap; url: string | null; enabled: boolean }[]>;
+    menus: Record<
+        Location,
+        { id: number; label: LocaleMap; url: string | null; enabled: boolean }[]
+    >;
 }
 
 const LOCATIONS: { key: Location; label: string; hint: string }[] = [
     { key: 'main', label: 'Главное меню', hint: 'Верхняя навигация сайта' },
-    { key: 'footer', label: 'Меню подвала', hint: 'Раздел «Разделы» в подвале' },
+    {
+        key: 'footer',
+        label: 'Меню подвала',
+        hint: 'Раздел «Разделы» в подвале',
+    },
 ];
 
 function toRow(m: {
@@ -61,17 +68,27 @@ export default function MenuIndex({ menus }: Props) {
     const update = (loc: Location, i: number, patch: Partial<MenuRow>) =>
         setItems(
             loc,
-            data.items[loc].map((r, idx) => (idx === i ? { ...r, ...patch } : r)),
+            data.items[loc].map((r, idx) =>
+                idx === i ? { ...r, ...patch } : r,
+            ),
         );
 
     const add = (loc: Location) =>
         setItems(loc, [
             ...data.items[loc],
-            { id: null, label: { ru: '', tg: '', en: '' }, url: '', enabled: true },
+            {
+                id: null,
+                label: { ru: '', tg: '', en: '' },
+                url: '',
+                enabled: true,
+            },
         ]);
 
     const remove = (loc: Location, i: number) =>
-        setItems(loc, data.items[loc].filter((_, idx) => idx !== i));
+        setItems(
+            loc,
+            data.items[loc].filter((_, idx) => idx !== i),
+        );
 
     const move = (loc: Location, i: number, dir: -1 | 1) => {
         const j = i + dir;
@@ -162,7 +179,8 @@ export default function MenuIndex({ menus }: Props) {
                                     key={row.id ?? `new-${i}`}
                                     style={{
                                         display: 'grid',
-                                        gridTemplateColumns: '26px 1fr 1fr 90px 28px',
+                                        gridTemplateColumns:
+                                            '26px 1fr 1fr 90px 28px',
                                         gap: 6,
                                         alignItems: 'center',
                                         opacity: row.enabled ? 1 : 0.55,
@@ -180,9 +198,15 @@ export default function MenuIndex({ menus }: Props) {
                                             aria-label="Выше"
                                             disabled={i === 0 || !editable}
                                             onClick={() => move(key, i, -1)}
-                                            style={{ minHeight: 18, padding: 1 }}
+                                            style={{
+                                                minHeight: 18,
+                                                padding: 1,
+                                            }}
                                         >
-                                            <ArrowUp size={13} strokeWidth={1.75} />
+                                            <ArrowUp
+                                                size={13}
+                                                strokeWidth={1.75}
+                                            />
                                         </button>
                                         <button
                                             type="button"
@@ -190,11 +214,14 @@ export default function MenuIndex({ menus }: Props) {
                                             aria-label="Ниже"
                                             disabled={
                                                 i ===
-                                                    data.items[key].length - 1 ||
-                                                !editable
+                                                    data.items[key].length -
+                                                        1 || !editable
                                             }
                                             onClick={() => move(key, i, 1)}
-                                            style={{ minHeight: 18, padding: 1 }}
+                                            style={{
+                                                minHeight: 18,
+                                                padding: 1,
+                                            }}
                                         >
                                             <ArrowDown
                                                 size={13}

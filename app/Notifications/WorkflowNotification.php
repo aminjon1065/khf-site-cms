@@ -2,11 +2,13 @@
 
 namespace App\Notifications;
 
+use App\Support\ContentTypes;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Notifications\Notification;
 
-class WorkflowNotification extends Notification
+class WorkflowNotification extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -18,7 +20,9 @@ class WorkflowNotification extends Notification
         public string $title,
         public string $message,
         public string $tone = 'info',
-    ) {}
+    ) {
+        $this->afterCommit();
+    }
 
     /**
      * @return array<int, string>
@@ -33,12 +37,16 @@ class WorkflowNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        $type = ContentTypes::slugFor($this->subject);
+        $baseRoute = $type !== null ? ContentTypes::META[$type]['route'] ?? null : null;
+
         return [
             'title' => $this->title,
             'message' => $this->message,
             'tone' => $this->tone,
             'subject_type' => $this->subject->getMorphClass(),
             'subject_id' => $this->subject->getKey(),
+            'url' => $baseRoute !== null ? $baseRoute.'/'.$this->subject->getKey().'/edit' : null,
         ];
     }
 }

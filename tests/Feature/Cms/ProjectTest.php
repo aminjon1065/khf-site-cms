@@ -81,6 +81,17 @@ it('sends a project to review when an editor submits', function () {
     expect(Project::query()->first()->status)->toBe(ContentStatus::Review);
 });
 
+it('rejects the unsupported schedule publish mode', function () {
+    actingAs(projUser('editor'))->post('/projects', [
+        'title' => ['ru' => 'Проект с расписанием'],
+        'lifecycle_status' => 'preparation',
+        'action' => 'submit',
+        'publish_mode' => 'schedule',
+    ])->assertSessionHasErrors('publish_mode');
+
+    expect(Project::query()->count())->toBe(0);
+});
+
 it('publishes a project and it becomes public', function () {
     $project = Project::factory()->create([
         'slug' => 'proj-pub',

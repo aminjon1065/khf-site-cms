@@ -23,7 +23,7 @@ class SubmissionController extends Controller
         }
 
         /** @var array<string, mixed> $data */
-        $data = $request->safe()->only(['name', 'email', 'phone', 'topic', 'message']);
+        $data = $request->safe()->only(['name', 'email', 'phone', 'topic', 'message', 'region_id']);
 
         $submission = Submission::create([
             ...$data,

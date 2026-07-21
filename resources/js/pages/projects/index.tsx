@@ -195,13 +195,18 @@ export default function ProjectsIndex({
                             label: 'Предпросмотр',
                             icon: <Eye size={15} strokeWidth={1.5} />,
                             onSelect: () =>
-                                window.open('https://khf.tj/projects', '_blank'),
+                                window.open(
+                                    'https://khf.tj/projects',
+                                    '_blank',
+                                ),
                         },
                         ...(can('projects.create')
                             ? [
                                   {
                                       label: 'Дублировать',
-                                      icon: <Copy size={15} strokeWidth={1.5} />,
+                                      icon: (
+                                          <Copy size={15} strokeWidth={1.5} />
+                                      ),
                                       onSelect: () =>
                                           router.post(
                                               `/projects/${r.id}/duplicate`,
