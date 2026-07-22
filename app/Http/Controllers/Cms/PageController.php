@@ -9,6 +9,7 @@ use App\Http\Resources\PageResource;
 use App\Models\Page;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -248,6 +249,8 @@ class PageController extends Controller
             'id' => $page->id,
             'title' => $page->getTranslations('title'),
             'body' => $page->getTranslations('body'),
+            'seo_title' => $page->getTranslations('seo_title'),
+            'seo_description' => $page->getTranslations('seo_description'),
             'slug' => $page->slug,
             'status' => $page->status->value,
             'parent_id' => $page->parent_id,
@@ -259,7 +262,7 @@ class PageController extends Controller
 
     private function fill(Page $page, PageRequest $request): void
     {
-        foreach (['title', 'body'] as $field) {
+        foreach (['title', 'seo_title', 'seo_description'] as $field) {
             /** @var array<string, string|null> $values */
             $values = $request->input($field, []);
             $page->setTranslations($field, array_filter(
@@ -267,6 +270,8 @@ class PageController extends Controller
                 fn (?string $v): bool => $v !== null && trim($v) !== '',
             ));
         }
+
+        $page->setTranslations('body', RichText::sanitizeTranslations($request->input('body', [])));
 
         // Only overwrite the slug when one is supplied; a blank value lets the
         // model keep (or, on create, generate) a stable slug.

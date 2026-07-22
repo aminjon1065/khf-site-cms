@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Menu;
 
+use App\Rules\SafePublicUrl;
 use Illuminate\Foundation\Http\FormRequest;
 
 class MenuRequest extends FormRequest
@@ -22,11 +23,11 @@ class MenuRequest extends FormRequest
             'items.main' => ['array'],
             'items.footer' => ['array'],
             'items.*.*.id' => ['nullable', 'integer'],
-            'items.*.*.url' => ['nullable', 'string', 'max:255'],
+            'items.*.*.url' => ['nullable', 'string', 'max:255', new SafePublicUrl],
             'items.*.*.enabled' => ['boolean'],
             'items.*.*.label' => ['array'],
-            'items.*.*.label.ru' => ['nullable', 'string', 'max:255'],
-            'items.*.*.label.tg' => ['nullable', 'string', 'max:255'],
+            'items.*.*.label.ru' => ['required', 'string', 'max:255'],
+            'items.*.*.label.tg' => ['required', 'string', 'max:255'],
             'items.*.*.label.en' => ['nullable', 'string', 'max:255'],
         ];
     }

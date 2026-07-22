@@ -24,6 +24,8 @@ use Spatie\Translatable\HasTranslations;
  * @property int $id
  * @property array<string, string> $title
  * @property array<string, string> $body
+ * @property array<string, string> $seo_title
+ * @property array<string, string> $seo_description
  * @property string $slug
  * @property ContentStatus $status
  * @property Carbon|null $published_at
@@ -41,12 +43,12 @@ class Page extends Model implements Workflowable
     /**
      * @var list<string>
      */
-    public array $translatable = ['title', 'body'];
+    public array $translatable = ['title', 'body', 'seo_title', 'seo_description'];
 
     /**
      * @var list<string>
      */
-    protected $fillable = ['title', 'body', 'slug', 'status', 'published_at', 'parent_id', 'sort', 'author_id'];
+    protected $fillable = ['title', 'body', 'seo_title', 'seo_description', 'slug', 'status', 'published_at', 'parent_id', 'sort', 'author_id'];
 
     /**
      * @return array<string, string>

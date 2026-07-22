@@ -30,6 +30,8 @@ import { PageHeader } from '@/ui/PageHeader';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
+type SeoFields = { title: string; description: string };
+type SeoLocaleMap = Record<ContentLocale, SeoFields>;
 type PublishMode = 'now' | 'schedule' | 'review';
 
 interface Option {
@@ -50,7 +52,7 @@ interface NewsData {
     cover_url: string | null;
     is_pinned: boolean;
     show_on_home: boolean;
-    seo: { title: string; description: string };
+    seo: SeoLocaleMap;
     scheduled_at: string | null;
     published_at: string | null;
     views_count: number;
@@ -67,6 +69,7 @@ interface Props {
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
+const EMPTY_SEO: SeoFields = { title: '', description: '' };
 const CONTENT_FIELDS: ('title' | 'summary' | 'body')[] = [
     'title',
     'summary',
@@ -97,16 +100,17 @@ export default function NewsForm({ news, reference }: Props) {
         is_pinned: news?.is_pinned ?? false,
         show_on_home: news?.show_on_home ?? true,
         seo: {
-            title: news?.seo?.title ?? '',
-            description: news?.seo?.description ?? '',
-        },
+            ru: { ...EMPTY_SEO, ...news?.seo?.ru },
+            tg: { ...EMPTY_SEO, ...news?.seo?.tg },
+            en: { ...EMPTY_SEO, ...news?.seo?.en },
+        } as SeoLocaleMap,
         scheduled_at: news?.scheduled_at ?? '',
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
     const { data, setData, processing, errors } = form;
 
-    // Laravel returns dotted keys for nested fields (title.ru, seo.title).
+    // Laravel returns dotted keys for nested fields (title.ru, seo.ru.title).
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
 
@@ -130,11 +134,14 @@ export default function NewsForm({ news, reference }: Props) {
         (news?.cover_url && !data.cover_remove ? news.cover_url : null);
 
     const completeness = (locale: ContentLocale): number => {
-        const filled = CONTENT_FIELDS.filter(
-            (f) => (data[f][locale] ?? '').trim() !== '',
-        ).length;
+        const values = [
+            ...CONTENT_FIELDS.map((field) => data[field][locale]),
+            data.seo[locale].title,
+            data.seo[locale].description,
+        ];
+        const filled = values.filter((value) => value.trim() !== '').length;
 
-        return Math.round((filled / CONTENT_FIELDS.length) * 100);
+        return Math.round((filled / values.length) * 100);
     };
     const compAll = {
         tg: completeness('tg'),
@@ -147,6 +154,13 @@ export default function NewsForm({ news, reference }: Props) {
         value: string,
     ) => {
         setData(field, { ...data[field], [lang]: value });
+    };
+
+    const setSeoField = (field: keyof SeoFields, value: string) => {
+        setData('seo', {
+            ...data.seo,
+            [lang]: { ...data.seo[lang], [field]: value },
+        });
     };
 
     const toggleTag = (id: number) => {
@@ -302,12 +316,25 @@ export default function NewsForm({ news, reference }: Props) {
                     </Blueprint>
 
                     <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: 14,
+                                flexWrap: 'wrap',
+                                gap: 10,
+                            }}
                         >
-                            SEO и адрес
-                        </h3>
+                            <h3 className="ui-card-title" style={{ margin: 0 }}>
+                                SEO и адрес
+                            </h3>
+                            <LanguageTabs
+                                active={lang}
+                                onChange={setLang}
+                                completeness={compAll}
+                            />
+                        </div>
                         <Field
                             label="Адрес (slug)"
                             hint="Оставьте пустым — сгенерируется автоматически из заголовка."
@@ -324,30 +351,24 @@ export default function NewsForm({ news, reference }: Props) {
                         </Field>
                         <Field
                             label="SEO-заголовок"
-                            error={fieldError('seo.title')}
+                            error={fieldError(`seo.${lang}.title`)}
                         >
                             <Input
-                                value={data.seo.title}
+                                value={data.seo[lang].title}
                                 onChange={(e) =>
-                                    setData('seo', {
-                                        ...data.seo,
-                                        title: e.target.value,
-                                    })
+                                    setSeoField('title', e.target.value)
                                 }
                                 maxLength={255}
                             />
                         </Field>
                         <Field
                             label="SEO-описание"
-                            error={fieldError('seo.description')}
+                            error={fieldError(`seo.${lang}.description`)}
                         >
                             <Textarea
-                                value={data.seo.description}
+                                value={data.seo[lang].description}
                                 onChange={(e) =>
-                                    setData('seo', {
-                                        ...data.seo,
-                                        description: e.target.value,
-                                    })
+                                    setSeoField('description', e.target.value)
                                 }
                                 style={{ minHeight: 60 }}
                                 maxLength={500}

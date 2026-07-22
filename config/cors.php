@@ -21,9 +21,9 @@ return [
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['Accept', 'Content-Type', 'X-Requested-With', 'Accept-Language'],
+    'allowed_headers' => ['Accept', 'Content-Type', 'X-Requested-With', 'Accept-Language', 'X-Request-ID'],
 
-    'exposed_headers' => ['ETag'],
+    'exposed_headers' => ['ETag', 'X-Request-ID'],
 
     'max_age' => 3600,
 

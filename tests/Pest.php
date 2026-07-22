@@ -18,6 +18,12 @@ pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
     ->in('Feature');
 
+// Public API tests use the canonical locale unless a test explicitly selects
+// another one. This prevents the host process language from changing fixtures.
+beforeEach(function () {
+    $this->withHeader('Accept-Language', 'ru');
+})->in('Feature/Api');
+
 /*
 |--------------------------------------------------------------------------
 | Expectations

@@ -69,6 +69,16 @@ it('validates the required fields', function () {
         ->assertJsonValidationErrors(['name', 'email', 'message', 'consent']);
 });
 
+it('localizes public validation errors', function () {
+    $this->postJson('/api/v1/submissions?locale=en', [])
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.name.0', 'Enter your name.');
+
+    $this->postJson('/api/v1/submissions?locale=tg', [])
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.name.0', 'Ному насабро ворид кунед.');
+});
+
 it('rate-limits repeated submissions from the same client', function () {
     for ($i = 0; $i < 10; $i++) {
         $this->postJson('/api/v1/submissions', validPayload())->assertCreated();

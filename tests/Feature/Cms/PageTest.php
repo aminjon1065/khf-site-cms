@@ -65,8 +65,10 @@ it('respects an explicit slug and rejects a duplicate', function () {
 
 it('publishes immediately for an author with publish rights', function () {
     actingAs(pageUser('admin'))->post('/pages', [
-        'title' => ['ru' => 'Публичная страница'],
-        'body' => ['ru' => 'Содержание.'],
+        'title' => ['ru' => 'Публичная страница', 'tg' => 'Саҳифаи оммавӣ'],
+        'body' => ['ru' => '<p>Содержание.</p>', 'tg' => '<p>Мундариҷа.</p>'],
+        'seo_title' => ['ru' => 'Публичная страница', 'tg' => 'Саҳифаи оммавӣ'],
+        'seo_description' => ['ru' => 'Описание страницы.', 'tg' => 'Тавсифи саҳифа.'],
         'action' => 'submit',
         'publish_mode' => 'now',
     ])->assertRedirect('/pages');
@@ -75,6 +77,19 @@ it('publishes immediately for an author with publish rights', function () {
 
     expect($page->status)->toBe(ContentStatus::Published)
         ->and($page->published_at)->not->toBeNull();
+});
+
+it('sanitizes rich page content before storage', function () {
+    actingAs(pageUser('editor'))->post('/pages', [
+        'title' => ['ru' => 'Безопасная страница'],
+        'body' => ['ru' => '<p>Разрешённый текст</p><script>alert(1)</script>'],
+        'action' => 'draft',
+    ])->assertRedirect('/pages');
+
+    $body = Page::query()->latest('id')->firstOrFail()->getTranslation('body', 'ru', false);
+
+    expect($body)->toContain('<p>Разрешённый текст</p>')
+        ->and($body)->not->toContain('<script');
 });
 
 it('routes a submit to review when the author cannot publish', function () {

@@ -40,6 +40,7 @@ it('creates a draft announcement with its metadata', function () {
         'kind' => 'vacancy',
         'org' => 'ЦУКС',
         'deadline' => now()->addMonth()->toDateString(),
+        'application_url' => '/contacts',
         'action' => 'draft',
     ])->assertRedirect('/announcements');
 
@@ -47,7 +48,21 @@ it('creates a draft announcement with its metadata', function () {
 
     expect($announcement->status)->toBe(ContentStatus::Draft)
         ->and($announcement->kind)->toBe(AnnouncementKind::Vacancy)
-        ->and($announcement->org)->toBe('ЦУКС');
+        ->and($announcement->org)->toBe('ЦУКС')
+        ->and($announcement->slug)->toBe('vakansiya-operatora-112')
+        ->and($announcement->application_url)->toBe('/contacts');
+});
+
+it('rejects unsafe application links and duplicate slugs', function () {
+    Announcement::factory()->create(['slug' => 'reserved-address']);
+
+    actingAs(annUser('editor'))->post('/announcements', [
+        'title' => ['ru' => 'Новое объявление'],
+        'kind' => 'vacancy',
+        'slug' => 'reserved-address',
+        'application_url' => 'javascript:alert(1)',
+        'action' => 'draft',
+    ])->assertSessionHasErrors(['slug', 'application_url']);
 });
 
 it('requires a russian title and a kind', function () {
@@ -71,7 +86,7 @@ it('sends an announcement to review when an editor submits', function () {
 it('publishes an announcement and it becomes public', function () {
     $announcement = Announcement::factory()->create([
         'deadline' => now()->addMonth(),
-        'title' => ['ru' => 'Публичное объявление', 'tg' => '', 'en' => ''],
+        'title' => ['ru' => 'Публичное объявление', 'tg' => 'Эълони оммавӣ', 'en' => ''],
     ]);
 
     actingAs(annUser('chief_editor'))->post("/announcements/{$announcement->id}/publish")->assertRedirect();

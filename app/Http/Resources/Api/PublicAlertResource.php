@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Alert;
+use App\Support\PublicApiLabels;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -15,16 +16,6 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 class PublicAlertResource extends JsonResource
 {
-    /**
-     * @var array<string, string>
-     */
-    private const LEVEL_LABEL = [
-        'info' => 'Информационный уровень',
-        'warning' => 'Оранжевый уровень',
-        'danger' => 'Красный уровень',
-        'critical' => 'Красный уровень',
-    ];
-
     /**
      * The five fixed region codes — a country-wide alert affects all of them.
      *
@@ -53,19 +44,23 @@ class PublicAlertResource extends JsonResource
         $data = [
             'slug' => $this->slug,
             'level' => $level,
-            'level_label' => self::LEVEL_LABEL[$level] ?? $this->severity->label(),
+            'level_label' => PublicApiLabels::get('alert_level', $level, $locale),
             'severity' => $this->severity->value,
-            'status' => $active ? 'Действует' : 'Завершено',
+            'status' => PublicApiLabels::get('alert_status', $active ? 'active' : 'completed', $locale),
+            'status_code' => $active ? 'active' : 'completed',
             'is_active' => $active,
             'hazard' => $this->hazard_type->value,
-            'hazard_label' => $this->hazard_type->label(),
-            'title' => $this->tr('title', $locale) ?: $this->internal_title,
+            'hazard_label' => PublicApiLabels::get('hazard', $this->hazard_type->value, $locale),
+            'title' => $this->tr('title', $locale),
             'summary' => $this->tr('summary', $locale),
             'region' => $this->regionLabel($locale),
             'region_codes' => $this->regionCodes(),
             'datetime' => $this->published_at?->format('d.m.Y, H:i'),
             'starts_at' => $this->starts_at?->format('d.m.Y, H:i'),
             'ends_at' => $this->ends_at?->format('d.m.Y, H:i'),
+            'published_at' => $this->published_at?->toIso8601String(),
+            'starts_at_iso' => $this->starts_at?->toIso8601String(),
+            'ends_at_iso' => $this->ends_at?->toIso8601String(),
         ];
 
         if ($this->withDetail) {
@@ -75,7 +70,7 @@ class PublicAlertResource extends JsonResource
             $data['source'] = $this->source;
             $data['territory_type'] = $this->territory_type;
             $data['regions'] = $this->whenLoaded('regions', fn () => $this->regions
-                ->map(fn ($r): array => ['code' => $r->code, 'name' => $r->getTranslation('name', $locale)])
+                ->map(fn ($r): array => ['code' => $r->code, 'name' => $r->getTranslation('name', $locale, false)])
                 ->all(), []);
             $data['meta'] = $this->metaItems($locale, $active);
         }
@@ -111,14 +106,17 @@ class PublicAlertResource extends JsonResource
     private function regionLabel(string $locale): string
     {
         if ($this->territory_type === 'country') {
-            return 'Вся Республика Таджикистан';
+            return PublicApiLabels::get('territory', 'country', $locale);
         }
 
         if (! $this->relationLoaded('regions')) {
             return $this->territory_note ?? '';
         }
 
-        $names = $this->regions->map(fn ($r): string => $r->getTranslation('name', $locale))->all();
+        $names = $this->regions
+            ->map(fn ($r): string => $r->getTranslation('name', $locale, false))
+            ->filter(fn (string $name): bool => trim($name) !== '')
+            ->all();
 
         return $names !== [] ? implode(', ', $names) : ($this->territory_note ?? '');
     }
@@ -150,14 +148,14 @@ class PublicAlertResource extends JsonResource
         $items = [];
 
         if ($this->published_at) {
-            $items[] = ['label' => 'Опубликовано', 'value' => $this->published_at->format('d.m.Y, H:i')];
+            $items[] = ['label' => PublicApiLabels::get('alert_meta', 'published', $locale), 'value' => $this->published_at->format('d.m.Y, H:i')];
         }
         if ($this->ends_at) {
-            $items[] = ['label' => $active ? 'Действует до' : 'Действовало до', 'value' => $this->ends_at->format('d.m.Y, H:i')];
+            $items[] = ['label' => PublicApiLabels::get('alert_meta', $active ? 'active_until' : 'ended_at', $locale), 'value' => $this->ends_at->format('d.m.Y, H:i')];
         }
-        $items[] = ['label' => 'Регионы', 'value' => $this->regionLabel($locale)];
+        $items[] = ['label' => PublicApiLabels::get('alert_meta', 'regions', $locale), 'value' => $this->regionLabel($locale)];
         if ($this->source) {
-            $items[] = ['label' => 'Источник', 'value' => $this->source];
+            $items[] = ['label' => PublicApiLabels::get('alert_meta', 'source', $locale), 'value' => $this->source];
         }
 
         return $items;
@@ -165,8 +163,6 @@ class PublicAlertResource extends JsonResource
 
     private function tr(string $field, string $locale): string
     {
-        $value = $this->getTranslation($field, $locale, false);
-
-        return trim($value) !== '' ? $value : $this->getTranslation($field, 'ru', false);
+        return (string) $this->getTranslation($field, $locale, false);
     }
 }

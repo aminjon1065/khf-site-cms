@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ContentStatus;
+use App\Jobs\RevalidateFrontend;
 use App\Models\Activity;
 use App\Models\Alert;
 use App\Models\User;
@@ -8,6 +9,7 @@ use App\Notifications\WorkflowNotification;
 use App\Services\WorkflowService;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
 
 use function Pest\Laravel\seed;
@@ -109,6 +111,38 @@ it('lets an alert operator publish a critical alert and stamps published_at', fu
     expect($fresh->published_at)->not->toBeNull();
 });
 
+it('blocks publication while a required translation is incomplete', function () {
+    $operator = makeUser('alert_operator');
+    $alert = Alert::factory()->create([
+        'status' => ContentStatus::Approved,
+        'title' => ['ru' => 'Готово', 'tg' => '', 'en' => ''],
+    ]);
+
+    expect(fn () => $this->workflow->transition($alert, ContentStatus::Published, $operator))
+        ->toThrow(ValidationException::class);
+
+    expect($alert->fresh()->status)->toBe(ContentStatus::Approved);
+});
+
+it('allows an audited force publish as an emergency translation override', function () {
+    $operator = makeUser('alert_operator');
+    $alert = Alert::factory()->create([
+        'status' => ContentStatus::Approved,
+        'title' => ['ru' => 'Срочное сообщение', 'tg' => '', 'en' => ''],
+    ]);
+
+    $this->workflow->transition(
+        $alert,
+        ContentStatus::Published,
+        $operator,
+        'Emergency publication before translation.',
+        force: true,
+    );
+
+    expect($alert->fresh()->status)->toBe(ContentStatus::Published)
+        ->and($alert->transitions()->where('to_status', 'published')->exists())->toBeTrue();
+});
+
 it('logs a critical activity entry when an alert is published', function () {
     $operator = makeUser('alert_operator');
     $alert = Alert::factory()->create(['status' => ContentStatus::Approved]);
@@ -116,4 +150,18 @@ it('logs a critical activity entry when an alert is published', function () {
     $this->workflow->transition($alert, ContentStatus::Published, $operator);
 
     expect(Activity::query()->where('is_critical', true)->exists())->toBeTrue();
+});
+
+it('queues frontend revalidation after a public transition', function () {
+    Queue::fake();
+    config([
+        'services.frontend.revalidation_url' => 'https://front.example.test/api/revalidate',
+        'services.frontend.revalidation_secret' => 'test-secret',
+    ]);
+    $operator = makeUser('alert_operator');
+    $alert = Alert::factory()->create(['status' => ContentStatus::Approved]);
+
+    $this->workflow->transition($alert, ContentStatus::Published, $operator);
+
+    Queue::assertPushed(RevalidateFrontend::class, 1);
 });

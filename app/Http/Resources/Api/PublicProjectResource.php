@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Project;
+use App\Support\PublicApiLabels;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -34,7 +35,8 @@ class PublicProjectResource extends JsonResource
         $data = [
             'slug' => $this->slug,
             'title' => $this->tr('title', $locale),
-            'status' => $this->lifecycle_status->label(),
+            'status' => PublicApiLabels::get('project_status', $this->lifecycle_status->value, $locale),
+            'status_code' => $this->lifecycle_status->value,
             'status_tone' => $this->lifecycle_status->tone(),
             'years' => $this->years,
             'partner' => $this->partner,
@@ -57,7 +59,7 @@ class PublicProjectResource extends JsonResource
     }
 
     /**
-     * Goals resolved to the requested locale, falling back to `ru`.
+     * Goals resolved strictly to the requested locale.
      *
      * @return list<string>
      */
@@ -65,10 +67,6 @@ class PublicProjectResource extends JsonResource
     {
         $goals = is_array($this->goals) ? $this->goals : [];
         $items = $goals[$locale] ?? [];
-
-        if (! is_array($items) || $items === []) {
-            $items = $goals['ru'] ?? [];
-        }
 
         return array_values(array_filter(
             array_map(fn ($s): string => is_string($s) ? $s : '', is_array($items) ? $items : []),
@@ -78,13 +76,7 @@ class PublicProjectResource extends JsonResource
 
     private function tr(string $field, string $locale): string
     {
-        $value = $this->getTranslation($field, $locale, false);
-
-        if (is_string($value) && trim($value) !== '') {
-            return $value;
-        }
-
-        return (string) $this->getTranslation($field, 'ru', false);
+        return (string) $this->getTranslation($field, $locale, false);
     }
 
     private function coverUrl(): ?string

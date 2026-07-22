@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api;
 
 use App\Models\District;
 use App\Models\Region;
+use App\Support\PublicApiLabels;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,7 +27,8 @@ class PublicRegionResource extends JsonResource
         return [
             'code' => $this->code,
             'name' => $this->getTranslation('name', $locale, true),
-            'type' => $this->type->label(),
+            'type' => PublicApiLabels::get('region_type', $this->type->value, $locale),
+            'type_code' => $this->type->value,
             'head' => $this->getTranslation('head', $locale, true),
             'regional_center' => $this->regional_center,
             'address' => $this->getTranslation('address', $locale, true),

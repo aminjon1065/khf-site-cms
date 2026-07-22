@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
+use App\Concerns\ProtectsUnpublishedMedia;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
@@ -51,6 +52,7 @@ class Project extends Model implements HasMedia, Workflowable
     }
 
     use HasTranslations;
+    use ProtectsUnpublishedMedia;
 
     /**
      * @var list<string>
@@ -116,7 +118,7 @@ class Project extends Model implements HasMedia, Workflowable
 
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('cover')->singleFile();
+        $this->addMediaCollection('cover')->useDisk($this->contentMediaDisk())->singleFile();
     }
 
     /**

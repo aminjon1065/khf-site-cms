@@ -42,6 +42,14 @@ it('persists whitelisted settings and ignores sensitive groups', function () {
         ->toBeFalse();
 });
 
+it('rejects unsafe social URLs', function () {
+    actingAs(settingUser('admin'))->put('/settings', [
+        'settings' => [
+            'social' => ['telegram' => 'javascript:alert(1)'],
+        ],
+    ])->assertSessionHasErrors('settings.social.telegram');
+});
+
 it('forbids a non-admin from saving settings', function () {
     actingAs(settingUser('editor'))->put('/settings', [
         'settings' => ['org' => ['short_name_ru' => 'Взлом']],

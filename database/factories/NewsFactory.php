@@ -25,6 +25,11 @@ class NewsFactory extends Factory
             'title' => ['ru' => $title, 'tg' => $title, 'en' => ''],
             'summary' => ['ru' => fake()->sentence(), 'tg' => fake()->sentence(), 'en' => ''],
             'body' => ['ru' => fake()->paragraphs(3, true), 'tg' => fake()->paragraph(), 'en' => ''],
+            'seo' => [
+                'ru' => ['title' => $title, 'description' => fake()->sentence()],
+                'tg' => ['title' => $title, 'description' => fake()->sentence()],
+                'en' => ['title' => '', 'description' => ''],
+            ],
             'slug' => Str::slug($title).'-'.fake()->unique()->numberBetween(1, 99999),
             'status' => ContentStatus::Draft,
             'show_on_home' => true,

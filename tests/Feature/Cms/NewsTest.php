@@ -36,6 +36,11 @@ it('forbids a viewer from opening the create form', function () {
 it('creates a draft with an auto-generated slug', function () {
     actingAs(newsUser('editor'))->post('/news', [
         'title' => ['ru' => 'Учения в Хатлонской области', 'tg' => '', 'en' => ''],
+        'seo' => [
+            'ru' => ['title' => 'Учения КЧС', 'description' => 'Описание учений.'],
+            'tg' => ['title' => '', 'description' => ''],
+            'en' => ['title' => '', 'description' => ''],
+        ],
         'action' => 'draft',
     ])->assertRedirect('/news');
 
@@ -43,7 +48,8 @@ it('creates a draft with an auto-generated slug', function () {
 
     expect($news)->not->toBeNull()
         ->and($news->status)->toBe(ContentStatus::Draft)
-        ->and($news->slug)->not->toBeEmpty();
+        ->and($news->slug)->not->toBeEmpty()
+        ->and(data_get($news->seo, 'ru.title'))->toBe('Учения КЧС');
 });
 
 it('generates a unique slug when titles collide', function () {
@@ -105,7 +111,14 @@ it('requires a future publication time when scheduling news', function () {
 
 it('lets a chief editor publish immediately', function () {
     actingAs(newsUser('chief_editor'))->post('/news', [
-        'title' => ['ru' => 'Срочная публикация', 'tg' => '', 'en' => ''],
+        'title' => ['ru' => 'Срочная публикация', 'tg' => 'Нашри фаврӣ', 'en' => ''],
+        'summary' => ['ru' => 'Краткое описание.', 'tg' => 'Тавсифи кӯтоҳ.', 'en' => ''],
+        'body' => ['ru' => '<p>Текст публикации.</p>', 'tg' => '<p>Матни нашр.</p>', 'en' => ''],
+        'seo' => [
+            'ru' => ['title' => 'Срочная публикация', 'description' => 'Краткое описание.'],
+            'tg' => ['title' => 'Нашри фаврӣ', 'description' => 'Тавсифи кӯтоҳ.'],
+            'en' => ['title' => '', 'description' => ''],
+        ],
         'action' => 'submit',
         'publish_mode' => 'now',
     ])->assertRedirect('/news');
@@ -147,14 +160,14 @@ it('limits a regional editor to news they authored', function () {
 it('publishes via the publish endpoint and the item becomes public', function () {
     $news = News::factory()->create([
         'slug' => 'api-visible',
-        'title' => ['ru' => 'Виден в публичном API', 'tg' => '', 'en' => ''],
+        'title' => ['ru' => 'Виден в публичном API', 'tg' => 'Дар API намоён аст', 'en' => ''],
     ]);
 
     actingAs(newsUser('chief_editor'))->post("/news/{$news->id}/publish")->assertRedirect();
 
     expect($news->fresh()->status)->toBe(ContentStatus::Published);
 
-    $this->getJson('/api/v1/news/api-visible')
+    $this->getJson('/api/v1/news/api-visible?locale=ru')
         ->assertOk()
         ->assertJsonPath('data.title', 'Виден в публичном API');
 });

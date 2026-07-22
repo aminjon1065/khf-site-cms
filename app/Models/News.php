@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasTags;
 use App\Concerns\HasWorkflow;
+use App\Concerns\ProtectsUnpublishedMedia;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
@@ -48,6 +49,7 @@ class News extends Model implements HasMedia, Workflowable
     }
 
     use HasTranslations;
+    use ProtectsUnpublishedMedia;
 
     protected $table = 'news';
 
@@ -99,6 +101,33 @@ class News extends Model implements HasMedia, Workflowable
             ->useLogName('news');
     }
 
+    /**
+     * News SEO is locale-aware but stored as a structured JSON object rather
+     * than a Spatie translatable attribute, so include it explicitly in the
+     * workflow completeness score.
+     *
+     * @return array<string, int>
+     */
+    public function languageCompleteness(): array
+    {
+        $seo = is_array($this->seo) ? $this->seo : [];
+        $result = [];
+
+        foreach (self::CONTENT_LOCALES as $locale) {
+            $fields = [
+                $this->getTranslations('title')[$locale] ?? '',
+                $this->getTranslations('summary')[$locale] ?? '',
+                $this->getTranslations('body')[$locale] ?? '',
+                data_get($seo, "{$locale}.title", ''),
+                data_get($seo, "{$locale}.description", ''),
+            ];
+            $filled = count(array_filter($fields, fn (mixed $value): bool => trim((string) $value) !== ''));
+            $result[$locale] = (int) round($filled / count($fields) * 100);
+        }
+
+        return $result;
+    }
+
     protected static function booted(): void
     {
         // Guarantee a stable, unique slug. Generated once from the Russian
@@ -115,7 +144,7 @@ class News extends Model implements HasMedia, Workflowable
 
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('cover')->singleFile();
+        $this->addMediaCollection('cover')->useDisk($this->contentMediaDisk())->singleFile();
     }
 
     /**

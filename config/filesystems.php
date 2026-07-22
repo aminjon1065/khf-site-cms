@@ -47,6 +47,18 @@ return [
             'report' => false,
         ],
 
+        // Workflow media for draft/review/scheduled content. This directory is
+        // deliberately not linked from public/storage and is served only by a
+        // short-lived signed, permission-checked CMS preview route.
+        'content_private' => [
+            'driver' => 'local',
+            'root' => storage_path('app/content-private'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => true,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

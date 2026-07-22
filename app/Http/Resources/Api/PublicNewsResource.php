@@ -41,7 +41,7 @@ class PublicNewsResource extends JsonResource
             'title' => $this->tr('title', $locale),
             'excerpt' => $this->tr('summary', $locale),
             'category' => $this->category
-                ? $this->category->getTranslation('name', $locale, true)
+                ? $this->category->getTranslation('name', $locale, false)
                 : null,
             'date' => $this->localizedDate($this->published_at, $locale),
             'datetime' => $this->published_at?->toIso8601String(),
@@ -53,6 +53,7 @@ class PublicNewsResource extends JsonResource
         if ($this->withBody) {
             $data['body'] = $this->tr('body', $locale);
             $data['views'] = (int) $this->views_count;
+            $data['seo'] = $this->localizedSeo($locale);
         }
 
         return $data;
@@ -66,18 +67,21 @@ class PublicNewsResource extends JsonResource
         return $date?->locale($locale)->translatedFormat('j F Y');
     }
 
-    /**
-     * Translation in the requested locale, falling back to the canonical `ru`.
-     */
     private function tr(string $field, string $locale): string
     {
-        $value = $this->getTranslation($field, $locale, false);
+        return (string) $this->getTranslation($field, $locale, false);
+    }
 
-        if (trim($value) !== '') {
-            return $value;
-        }
+    /** @return array{title: string, description: string} */
+    private function localizedSeo(string $locale): array
+    {
+        $seo = is_array($this->seo) ? $this->seo : [];
+        $entry = is_array($seo[$locale] ?? null) ? $seo[$locale] : [];
 
-        return $this->getTranslation($field, 'ru', false);
+        return [
+            'title' => trim((string) ($entry['title'] ?? '')) ?: $this->tr('title', $locale),
+            'description' => trim((string) ($entry['description'] ?? '')) ?: $this->tr('summary', $locale),
+        ];
     }
 
     private function coverUrl(): ?string

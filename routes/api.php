@@ -58,6 +58,7 @@ Route::get('projects/{slug}', [ProjectController::class, 'show'])->name('api.pro
 
 // Announcements (vacancies & tenders).
 Route::get('announcements', [AnnouncementController::class, 'index'])->name('api.announcements.index');
+Route::get('announcements/{slug}', [AnnouncementController::class, 'show'])->name('api.announcements.show');
 
 // Citizen submissions (electronic reception) — write path, rate-limited.
 Route::post('submissions', [SubmissionController::class, 'store'])

@@ -10,6 +10,7 @@ import { Field, Input, Select, Textarea } from '@/ui/Field';
 import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
+import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type PublishMode = 'now' | 'review';
@@ -23,6 +24,8 @@ interface PageData {
     id: number;
     title: LocaleMap;
     body: LocaleMap;
+    seo_title: LocaleMap;
+    seo_description: LocaleMap;
     slug: string;
     status: ContentStatus;
     parent_id: number | null;
@@ -44,6 +47,8 @@ export default function PageForm({ page, reference }: Props) {
     const form = useForm({
         title: { ...EMPTY, ...page?.title } as LocaleMap,
         body: { ...EMPTY, ...page?.body } as LocaleMap,
+        seo_title: { ...EMPTY, ...page?.seo_title } as LocaleMap,
+        seo_description: { ...EMPTY, ...page?.seo_description } as LocaleMap,
         slug: page?.slug ?? '',
         parent_id: (page?.parent_id ?? '') as number | '',
         sort: page?.sort ?? 0,
@@ -57,17 +62,23 @@ export default function PageForm({ page, reference }: Props) {
 
     const compAll = {
         tg:
-            (data.title.tg.trim() !== '' ? 50 : 0) +
-            (data.body.tg.trim() !== '' ? 50 : 0),
+            (data.title.tg.trim() !== '' ? 25 : 0) +
+            (data.body.tg.trim() !== '' ? 25 : 0) +
+            (data.seo_title.tg.trim() !== '' ? 25 : 0) +
+            (data.seo_description.tg.trim() !== '' ? 25 : 0),
         ru:
-            (data.title.ru.trim() !== '' ? 50 : 0) +
-            (data.body.ru.trim() !== '' ? 50 : 0),
+            (data.title.ru.trim() !== '' ? 25 : 0) +
+            (data.body.ru.trim() !== '' ? 25 : 0) +
+            (data.seo_title.ru.trim() !== '' ? 25 : 0) +
+            (data.seo_description.ru.trim() !== '' ? 25 : 0),
         en:
-            (data.title.en.trim() !== '' ? 50 : 0) +
-            (data.body.en.trim() !== '' ? 50 : 0),
+            (data.title.en.trim() !== '' ? 25 : 0) +
+            (data.body.en.trim() !== '' ? 25 : 0) +
+            (data.seo_title.en.trim() !== '' ? 25 : 0) +
+            (data.seo_description.en.trim() !== '' ? 25 : 0),
     };
 
-    const setLocaleField = (field: 'title' | 'body', value: string) =>
+    const setLocaleField = (field: 'title' | 'body' | 'seo_title' | 'seo_description', value: string) =>
         setData(field, { ...data[field], [lang]: value });
 
     const parentOptions: Option[] = [
@@ -115,7 +126,7 @@ export default function PageForm({ page, reference }: Props) {
                     </Link>
                 }
                 title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
-                subtitle="Информационная страница портала. Текст сохраняется как обычный текст (абзацы разделяются пустой строкой)."
+                subtitle="Редакционная страница портала с локализованным rich text и SEO."
                 actions={
                     isEdit && page ? <StatusBadge status={page.status} /> : null
                 }
@@ -187,15 +198,29 @@ export default function PageForm({ page, reference }: Props) {
 
                         <Field
                             label="Текст страницы"
-                            hint="Абзацы разделяются пустой строкой."
+                            hint="Форматирование очищается на сервере перед публикацией."
                         >
-                            <Textarea
+                            <RichEditor
                                 value={data.body[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('body', e.target.value)
-                                }
-                                style={{ minHeight: 320 }}
-                                maxLength={50000}
+                                onChange={(value) => setLocaleField('body', value)}
+                                placeholder="Текст страницы"
+                            />
+                        </Field>
+
+                        <Field label="SEO title" error={fieldError(`seo_title.${lang}`)}>
+                            <Input
+                                value={data.seo_title[lang]}
+                                onChange={(e) => setLocaleField('seo_title', e.target.value)}
+                                maxLength={70}
+                            />
+                        </Field>
+
+                        <Field label="SEO description" error={fieldError(`seo_description.${lang}`)}>
+                            <Textarea
+                                value={data.seo_description[lang]}
+                                onChange={(e) => setLocaleField('seo_description', e.target.value)}
+                                maxLength={180}
+                                style={{ minHeight: 96 }}
                             />
                         </Field>
                     </Blueprint>

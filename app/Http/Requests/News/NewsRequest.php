@@ -55,8 +55,15 @@ class NewsRequest extends FormRequest
             'show_on_home' => ['boolean'],
 
             'seo' => ['array'],
-            'seo.title' => ['nullable', 'string', 'max:255'],
-            'seo.description' => ['nullable', 'string', 'max:500'],
+            'seo.ru' => ['array'],
+            'seo.tg' => ['array'],
+            'seo.en' => ['array'],
+            'seo.ru.title' => ['nullable', 'string', 'max:255'],
+            'seo.tg.title' => ['nullable', 'string', 'max:255'],
+            'seo.en.title' => ['nullable', 'string', 'max:255'],
+            'seo.ru.description' => ['nullable', 'string', 'max:500'],
+            'seo.tg.description' => ['nullable', 'string', 'max:500'],
+            'seo.en.description' => ['nullable', 'string', 'max:500'],
 
             'scheduled_at' => [
                 Rule::requiredIf(fn (): bool => $this->input('action') === 'submit' && $this->input('publish_mode') === 'schedule'),

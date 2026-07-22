@@ -12,7 +12,7 @@ it('returns only publicly visible instructions, pinned first', function () {
     ]);
     Instruction::factory()->create(['status' => ContentStatus::Draft]);
 
-    $response = $this->getJson('/api/v1/instructions');
+    $response = $this->getJson('/api/v1/instructions?locale=ru');
 
     $response->assertOk()->assertJsonCount(2, 'data');
     expect($response->json('data.0.title'))->toBe('Закреплённая');
@@ -22,10 +22,20 @@ it('filters to priority instructions', function () {
     Instruction::factory()->published()->create(['is_priority' => true]);
     Instruction::factory()->published()->create(['is_priority' => false]);
 
-    $this->getJson('/api/v1/instructions?priority=1')->assertOk()->assertJsonCount(1, 'data');
+    $this->getJson('/api/v1/instructions?locale=ru&priority=1')->assertOk()->assertJsonCount(1, 'data');
 });
 
-it('returns localized sections on detail with a per-section ru fallback', function () {
+it('can exclude priority instructions for a separately paginated catalogue', function () {
+    Instruction::factory()->published()->create(['is_priority' => true]);
+    Instruction::factory()->count(2)->published()->create(['is_priority' => false]);
+
+    $response = $this->getJson('/api/v1/instructions?locale=ru&exclude_priority=1')->assertOk();
+
+    $response->assertJsonCount(2, 'data');
+    expect(collect($response->json('data'))->pluck('priority')->unique()->all())->toBe([false]);
+});
+
+it('returns localized sections without mixing in another locale', function () {
     Instruction::factory()->published()->create([
         'slug' => 'zemletryasenie-test',
         'name' => ['ru' => 'Землетрясение', 'tg' => 'Заминҷунбӣ', 'en' => ''],
@@ -44,20 +54,19 @@ it('returns localized sections on detail with a per-section ru fallback', functi
     $tg = $this->getJson('/api/v1/instructions/zemletryasenie-test?locale=tg')->json('data');
     expect($tg['title'])->toBe('Заминҷунбӣ')
         ->and($tg['sections']['before'])->toBe(['Қадами ТҶ'])
-        // `during` has no tg → falls back to the ru steps.
-        ->and($tg['sections']['during'])->toBe(['Во время РУ']);
+        ->and($tg['sections']['during'])->toBe([]);
 });
 
 it('returns 404 for a draft instruction by slug', function () {
     Instruction::factory()->create(['slug' => 'hidden-guide', 'status' => ContentStatus::Draft]);
 
-    $this->getJson('/api/v1/instructions/hidden-guide')->assertNotFound();
+    $this->getJson('/api/v1/instructions/hidden-guide?locale=ru')->assertNotFound();
 });
 
 it('omits sections and internal fields from the list', function () {
     Instruction::factory()->published()->create();
 
-    $item = $this->getJson('/api/v1/instructions')->json('data.0');
+    $item = $this->getJson('/api/v1/instructions?locale=ru')->json('data.0');
 
     expect(array_keys($item))->toEqualCanonicalizing([
         'slug', 'title', 'summary', 'hazard', 'hazard_label', 'hazard_icon', 'priority', 'image', 'image_srcset',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicPageResource;
 use App\Models\Page;
+use App\Support\PublicLocale;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -23,6 +24,8 @@ class PageController extends Controller
             ->orderBy('sort')
             ->orderBy('id');
 
+        PublicLocale::available($pages, 'title');
+
         $perPage = min(max($request->integer('per_page', 50), 1), 50);
 
         return PublicPageResource::collection($pages->paginate($perPage)->withQueryString());
@@ -30,10 +33,13 @@ class PageController extends Controller
 
     public function show(string $slug): JsonResource
     {
-        $page = Page::query()
+        $query = Page::query()
             ->public()
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ->where('slug', $slug);
+
+        PublicLocale::available($query, 'title');
+
+        $page = $query->firstOrFail();
 
         return (new PublicPageResource($page))->withBody();
     }

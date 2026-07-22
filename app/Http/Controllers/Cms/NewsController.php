@@ -306,7 +306,7 @@ class NewsController extends Controller
             'cover_url' => $news->getFirstMediaUrl('cover') ?: null,
             'is_pinned' => (bool) $news->is_pinned,
             'show_on_home' => (bool) $news->show_on_home,
-            'seo' => $news->seo ?? ['title' => '', 'description' => ''],
+            'seo' => $this->localizedSeo($news->seo),
             'scheduled_at' => $news->scheduled_at?->format('Y-m-d\TH:i'),
             'published_at' => $news->published_at?->toIso8601String(),
             'views_count' => (int) $news->views_count,
@@ -322,10 +322,7 @@ class NewsController extends Controller
             'is_pinned' => $request->boolean('is_pinned'),
             'show_on_home' => $request->boolean('show_on_home'),
             'scheduled_at' => $request->input('scheduled_at'),
-            'seo' => [
-                'title' => (string) $request->input('seo.title', ''),
-                'description' => (string) $request->input('seo.description', ''),
-            ],
+            'seo' => $this->localizedSeo($request->input('seo', [])),
         ]);
 
         if ($request->filled('slug')) {
@@ -343,6 +340,35 @@ class NewsController extends Controller
         }
 
         $news->setTranslations('body', RichText::sanitizeTranslations($request->input('body', [])));
+    }
+
+    /**
+     * @return array<string, array{title: string, description: string}>
+     */
+    private function localizedSeo(mixed $value): array
+    {
+        $value = is_array($value) ? $value : [];
+
+        // Compatibility for rows created before SEO became locale-aware.
+        if (! isset($value['ru'], $value['tg'], $value['en'])) {
+            $value = [
+                'ru' => [
+                    'title' => (string) ($value['title'] ?? ''),
+                    'description' => (string) ($value['description'] ?? ''),
+                ],
+            ];
+        }
+
+        $result = [];
+        foreach (['ru', 'tg', 'en'] as $locale) {
+            $entry = is_array($value[$locale] ?? null) ? $value[$locale] : [];
+            $result[$locale] = [
+                'title' => trim((string) ($entry['title'] ?? '')),
+                'description' => trim((string) ($entry['description'] ?? '')),
+            ];
+        }
+
+        return $result;
     }
 
     private function syncRelations(News $news, NewsRequest $request): void

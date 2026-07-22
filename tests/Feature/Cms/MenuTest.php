@@ -62,6 +62,19 @@ it('drops rows without a Russian label', function () {
     expect(MenuItem::query()->where('url', '/orphan')->exists())->toBeFalse();
 });
 
+it('rejects unsafe public menu URLs', function () {
+    actingAs(menuUser('admin'))->put('/menu', [
+        'items' => [
+            'main' => [
+                ['id' => null, 'label' => ['ru' => 'Опасно', 'tg' => 'Хатарнок', 'en' => 'Unsafe'], 'url' => 'javascript:alert(1)', 'enabled' => true],
+            ],
+            'footer' => [],
+        ],
+    ])->assertSessionHasErrors('items.main.0.url');
+
+    expect(MenuItem::query()->where('url', 'javascript:alert(1)')->exists())->toBeFalse();
+});
+
 it('preserves nested items that are not represented by the root-only editor', function () {
     $parent = MenuItem::query()->create([
         'location' => 'main',

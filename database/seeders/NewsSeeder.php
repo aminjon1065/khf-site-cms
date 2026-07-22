@@ -81,6 +81,11 @@ class NewsSeeder extends Seeder
                     'title' => $title,
                     'summary' => $summary,
                     'body' => $body,
+                    'seo' => [
+                        'ru' => ['title' => $title['ru'], 'description' => $summary['ru']],
+                        'tg' => ['title' => $title['tg'], 'description' => $summary['tg']],
+                        'en' => ['title' => $title['en'], 'description' => $summary['en']],
+                    ],
                     'category_id' => $cats[$it['cat']] ?? null,
                     'status' => $it['status'],
                     'show_on_home' => true,

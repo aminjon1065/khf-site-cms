@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Concerns\HasWorkflow;
+use App\Concerns\ProtectsUnpublishedMedia;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
@@ -54,6 +55,8 @@ class Alert extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<AlertFactory> */
     use HasFactory, HasTranslations, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes;
+
+    use ProtectsUnpublishedMedia;
 
     /**
      * @var list<string>
@@ -207,8 +210,10 @@ class Alert extends Model implements HasMedia, Workflowable
 
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('image')->singleFile();
-        $this->addMediaCollection('documents');
+        $disk = $this->contentMediaDisk();
+
+        $this->addMediaCollection('image')->useDisk($disk)->singleFile();
+        $this->addMediaCollection('documents')->useDisk($disk);
     }
 
     /**

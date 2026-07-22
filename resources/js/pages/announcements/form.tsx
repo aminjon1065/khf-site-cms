@@ -23,9 +23,11 @@ interface AnnouncementData {
     id: number;
     title: LocaleMap;
     body: LocaleMap;
+    slug: string;
     kind: string;
     org: string | null;
     deadline: string | null;
+    application_url: string | null;
     status: ContentStatus;
     is_open: boolean;
 }
@@ -48,9 +50,11 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
     const form = useForm({
         title: { ...EMPTY, ...announcement?.title } as LocaleMap,
         body: { ...EMPTY, ...announcement?.body } as LocaleMap,
+        slug: announcement?.slug ?? '',
         kind: (announcement?.kind ?? 'vacancy') as string,
         org: announcement?.org ?? '',
         deadline: announcement?.deadline ?? '',
+        application_url: announcement?.application_url ?? '',
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
@@ -219,6 +223,20 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                         </h3>
 
                         <Field
+                            label="Адрес (slug)"
+                            hint="Оставьте пустым — сгенерируется из русского заголовка."
+                            error={fieldError('slug')}
+                        >
+                            <Input
+                                value={data.slug}
+                                onChange={(e) => setData('slug', e.target.value)}
+                                placeholder="operator-sluzhby-112"
+                                className="ui-mono"
+                                maxLength={255}
+                            />
+                        </Field>
+
+                        <Field
                             label="Тип объявления"
                             required
                             error={fieldError('kind')}
@@ -254,6 +272,19 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                                 onChange={(e) =>
                                     setData('deadline', e.target.value)
                                 }
+                            />
+                        </Field>
+
+                        <Field
+                            label="Ссылка для подачи заявки"
+                            hint="Внутренний путь /..., HTTPS, mailto: или tel:."
+                            error={fieldError('application_url')}
+                        >
+                            <Input
+                                value={data.application_url}
+                                onChange={(e) => setData('application_url', e.target.value)}
+                                placeholder="/contacts или https://example.tj/form"
+                                maxLength={2048}
                             />
                         </Field>
                     </Blueprint>

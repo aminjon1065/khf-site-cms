@@ -6,6 +6,7 @@ use App\Enums\ContentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicNewsResource;
 use App\Models\News;
+use App\Support\PublicLocale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -28,6 +29,8 @@ class NewsController extends Controller
             ->orderByDesc('is_pinned')
             ->orderByDesc('published_at');
 
+        PublicLocale::available($query, 'title');
+
         $this->applyFilters($query, $request);
 
         $news = $query->paginate($perPage)->withQueryString();
@@ -48,8 +51,11 @@ class NewsController extends Controller
         $news = News::query()
             ->public()
             ->with('category', 'media')
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ->where('slug', $slug);
+
+        PublicLocale::available($news, 'title');
+
+        $news = $news->firstOrFail();
 
         return (new PublicNewsResource($news))->withBody();
     }
@@ -64,11 +70,11 @@ class NewsController extends Controller
         }
 
         if ($search = $request->string('q')->toString()) {
-            $query->where(function (Builder $q) use ($search): void {
-                $q->where('title->ru', 'like', "%{$search}%")
-                    ->orWhere('title->tg', 'like', "%{$search}%")
-                    ->orWhere('title->en', 'like', "%{$search}%")
-                    ->orWhere('summary->ru', 'like', "%{$search}%");
+            $locale = app()->getLocale();
+            $query->where(function (Builder $q) use ($search, $locale): void {
+                $q->where("title->{$locale}", 'like', "%{$search}%")
+                    ->orWhere("summary->{$locale}", 'like', "%{$search}%")
+                    ->orWhere("body->{$locale}", 'like', "%{$search}%");
             });
         }
     }

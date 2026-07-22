@@ -35,6 +35,16 @@ it('resolves directory fields to the requested locale', function () {
         ->and($rrp['head'])->toBe('Управление по районам республиканского подчинения');
 });
 
+it('localizes the region type and exposes its stable code', function () {
+    $tg = collect($this->getJson('/api/v1/regions/directory?locale=tg')->assertOk()->json('data'))->firstWhere('code', 'sughd');
+    $en = collect($this->getJson('/api/v1/regions/directory?locale=en')->assertOk()->json('data'))->firstWhere('code', 'sughd');
+
+    expect($tg['type'])->toBe('Вилоят')
+        ->and($tg['type_code'])->toBe('oblast')
+        ->and($en['type'])->toBe('Region')
+        ->and($en['type_code'])->toBe('oblast');
+});
+
 it('exposes curated districts as localized names', function () {
     $data = $this->getJson('/api/v1/regions/directory?locale=ru')->json('data');
     $dushanbe = collect($data)->firstWhere('code', 'dushanbe');

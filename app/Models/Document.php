@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
+use App\Concerns\ProtectsUnpublishedMedia;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\DocType;
@@ -37,6 +38,7 @@ class Document extends Model implements HasMedia, Workflowable
     use HasFactory, HasRegionalContentScope, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes;
 
     use HasTranslations;
+    use ProtectsUnpublishedMedia;
 
     /**
      * @var list<string>
@@ -106,9 +108,11 @@ class Document extends Model implements HasMedia, Workflowable
      */
     public function registerMediaCollections(): void
     {
-        $this->addMediaCollection('file_tg')->singleFile();
-        $this->addMediaCollection('file_ru')->singleFile();
-        $this->addMediaCollection('file_en')->singleFile();
+        $disk = $this->contentMediaDisk();
+
+        $this->addMediaCollection('file_tg')->useDisk($disk)->singleFile();
+        $this->addMediaCollection('file_ru')->useDisk($disk)->singleFile();
+        $this->addMediaCollection('file_en')->useDisk($disk)->singleFile();
     }
 
     /**

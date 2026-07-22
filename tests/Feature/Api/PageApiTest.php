@@ -26,7 +26,7 @@ it('returns a published page with its body by slug', function () {
 
     expect($data['title'])->toBe('О Комитете')
         ->and($data['body'])->toContain('Первый абзац')
-        ->and($data)->toHaveKey('updated');
+        ->and($data)->toHaveKeys(['updated', 'updated_at', 'seo']);
 });
 
 it('returns 404 for a draft page', function () {

@@ -10,17 +10,21 @@ use App\Models\Instruction;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use stdClass;
 
 class SearchController extends Controller
 {
     /**
-     * Search across all publicly visible editorial content.
+     * Search public content in SQL and paginate the combined result set in the
+     * database. Only fields of the requested locale participate in matching;
+     * Russian is used solely as an explicitly detectable display fallback.
      *
      * @throws ValidationException
      */
@@ -37,174 +41,199 @@ class SearchController extends Controller
         $page = max((int) ($validated['page'] ?? 1), 1);
         $perPage = min(max((int) ($validated['per_page'] ?? 20), 1), 50);
 
-        $results = collect()
-            ->concat($this->news($term, $locale))
-            ->concat($this->alerts($term, $locale))
-            ->concat($this->instructions($term, $locale))
-            ->concat($this->documents($term, $locale))
-            ->concat($this->projects($term, $locale))
-            ->concat($this->announcements($term, $locale))
-            ->concat($this->pages($term, $locale))
-            ->sortByDesc('published_at')
-            ->values();
+        $queries = [
+            $this->news($term, $locale),
+            $this->alerts($term, $locale),
+            $this->instructions($term, $locale),
+            $this->documents($term, $locale),
+            $this->projects($term, $locale),
+            $this->announcements($term, $locale),
+            $this->pages($term, $locale),
+        ];
 
-        $total = $results->count();
-        $items = $results->forPage($page, $perPage)->values()->all();
+        $union = array_shift($queries);
+        foreach ($queries as $query) {
+            $union->unionAll($query);
+        }
+
+        $results = DB::query()
+            ->fromSub($union, 'search_results')
+            ->orderByDesc('relevance')
+            ->orderByRaw('published_at IS NULL')
+            ->orderByDesc('published_at')
+            ->paginate($perPage, ['*'], 'page', $page);
+
+        $items = collect($results->items())->map(fn (stdClass $row): array => [
+            'type' => (string) $row->type,
+            'title' => (string) $row->title,
+            'excerpt' => Str::limit(trim(strip_tags((string) $row->excerpt)), 220),
+            'path' => $this->path((string) $row->type, $row->resource_key),
+            'published_at' => $row->published_at !== null ? (string) $row->published_at : null,
+        ])->all();
 
         return response()->json([
             'data' => $items,
             'meta' => [
-                'current_page' => $page,
-                'last_page' => max((int) ceil($total / $perPage), 1),
-                'per_page' => $perPage,
-                'total' => $total,
+                'current_page' => $results->currentPage(),
+                'last_page' => $results->lastPage(),
+                'per_page' => $results->perPage(),
+                'total' => $results->total(),
+            ],
+            'links' => [
+                'prev' => $results->previousPageUrl(),
+                'next' => $results->nextPageUrl(),
             ],
         ]);
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function news(string $term, string $locale): Collection
+    private function news(string $term, string $locale): QueryBuilder
     {
-        return News::query()->public()->latest('published_at')->limit(500)->get()
-            ->filter(fn (News $news): bool => $this->matches($news, $term, ['title', 'summary', 'body']))
-            ->map(fn (News $news): array => $this->result(
-                'news',
-                $this->translation($news, 'title', $locale),
-                $this->translation($news, 'summary', $locale),
-                "/news/{$news->slug}",
-                $news->published_at?->toIso8601String(),
-            ));
+        $query = News::query()->public();
+        $this->whereMatches($query, $term, $locale, ['title', 'summary', 'body']);
+
+        return $this->shape($query, 'news', 'title', 'summary', 'slug', $term, $locale);
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function alerts(string $term, string $locale): Collection
+    private function alerts(string $term, string $locale): QueryBuilder
     {
-        return Alert::query()->public()->latest('published_at')->limit(500)->get()
-            ->filter(fn (Alert $alert): bool => $this->matches($alert, $term, ['internal_title', 'title', 'summary', 'body']))
-            ->map(fn (Alert $alert): array => $this->result(
-                'alert',
-                $this->translation($alert, 'title', $locale) ?: $alert->internal_title,
-                $this->translation($alert, 'summary', $locale),
-                "/alerts/{$alert->slug}",
-                $alert->published_at?->toIso8601String(),
-            ));
+        $query = Alert::query()->public();
+        $this->whereMatches($query, $term, $locale, ['title', 'summary', 'body']);
+
+        return $this->shape($query, 'alert', 'title', 'summary', 'slug', $term, $locale);
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function instructions(string $term, string $locale): Collection
+    private function instructions(string $term, string $locale): QueryBuilder
     {
-        return Instruction::query()->public()->latest('published_at')->limit(500)->get()
-            ->filter(fn (Instruction $instruction): bool => $this->matches($instruction, $term, ['name', 'summary', 'body']))
-            ->map(fn (Instruction $instruction): array => $this->result(
-                'instruction',
-                $this->translation($instruction, 'name', $locale),
-                $this->translation($instruction, 'summary', $locale),
-                "/guides/{$instruction->slug}",
-                $instruction->published_at?->toIso8601String(),
-            ));
+        $query = Instruction::query()->public();
+        $this->whereMatches($query, $term, $locale, ['name', 'summary', 'body']);
+
+        return $this->shape($query, 'instruction', 'name', 'summary', 'slug', $term, $locale);
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function documents(string $term, string $locale): Collection
+    private function documents(string $term, string $locale): QueryBuilder
     {
-        return Document::query()->public()->latest('published_at')->limit(500)->get()
-            ->filter(fn (Document $document): bool => $this->matches($document, $term, ['name', 'number']))
-            ->map(fn (Document $document): array => $this->result(
-                'document',
-                $this->translation($document, 'name', $locale),
-                $document->number ?? '',
-                '/documents',
-                $document->published_at?->toIso8601String(),
-            ));
+        $query = Document::query()->public();
+        $this->whereMatches($query, $term, $locale, ['name'], ['number']);
+
+        return $this->shape($query, 'document', 'name', null, null, $term, $locale, 'number');
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function projects(string $term, string $locale): Collection
+    private function projects(string $term, string $locale): QueryBuilder
     {
-        return Project::query()->public()->latest('published_at')->limit(500)->get()
-            ->filter(fn (Project $project): bool => $this->matches($project, $term, ['title', 'summary', 'body']))
-            ->map(fn (Project $project): array => $this->result(
-                'project',
-                $this->translation($project, 'title', $locale),
-                $this->translation($project, 'summary', $locale),
-                "/projects/{$project->slug}",
-                $project->published_at?->toIso8601String(),
-            ));
+        $query = Project::query()->public();
+        $this->whereMatches($query, $term, $locale, ['title', 'summary', 'body']);
+
+        return $this->shape($query, 'project', 'title', 'summary', 'slug', $term, $locale);
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function announcements(string $term, string $locale): Collection
+    private function announcements(string $term, string $locale): QueryBuilder
     {
-        return Announcement::query()->public()->latest('published_at')->limit(500)->get()
-            ->filter(fn (Announcement $announcement): bool => $this->matches($announcement, $term, ['title', 'body', 'org']))
-            ->map(fn (Announcement $announcement): array => $this->result(
-                'announcement',
-                $this->translation($announcement, 'title', $locale),
-                $this->translation($announcement, 'body', $locale),
-                '/announcements',
-                $announcement->published_at?->toIso8601String(),
-            ));
+        $query = Announcement::query()->public();
+        $this->whereMatches($query, $term, $locale, ['title', 'body'], ['org']);
+
+        return $this->shape($query, 'announcement', 'title', 'body', 'slug', $term, $locale);
     }
 
-    /** @return Collection<int, array<string, mixed>> */
-    private function pages(string $term, string $locale): Collection
+    private function pages(string $term, string $locale): QueryBuilder
     {
-        return Page::query()->public()->latest('published_at')->limit(500)->get()
-            ->filter(fn (Page $page): bool => $this->matches($page, $term, ['title', 'body']))
-            ->map(fn (Page $page): array => $this->result(
-                'page',
-                $this->translation($page, 'title', $locale),
-                $this->translation($page, 'body', $locale),
-                "/{$page->slug}",
-                $page->published_at?->toIso8601String(),
-            ));
+        $query = Page::query()->public();
+        $this->whereMatches($query, $term, $locale, ['title', 'body']);
+
+        return $this->shape($query, 'page', 'title', 'body', 'slug', $term, $locale);
     }
 
     /**
-     * @param  list<string>  $fields
+     * @param  list<string>  $translatedFields
+     * @param  list<string>  $plainFields
      */
-    private function matches(Model $model, string $term, array $fields): bool
-    {
-        $needle = Str::lower($term);
-
-        foreach ($fields as $field) {
-            $value = $model->getRawOriginal($field);
-            if (is_string($value) && str_starts_with($value, '{')) {
-                $decoded = json_decode($value, true);
-                $value = is_array($decoded) ? $decoded : $value;
-            }
-
-            $haystack = is_array($value)
-                ? implode(' ', array_filter($value, 'is_string'))
-                : (is_string($value) ? $value : '');
-
-            if (Str::contains(Str::lower(strip_tags($haystack)), $needle)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /** @return array<string, mixed> */
-    private function result(string $type, string $title, string $excerpt, string $path, ?string $publishedAt): array
-    {
-        return [
-            'type' => $type,
-            'title' => $title,
-            'excerpt' => Str::limit(trim(strip_tags($excerpt)), 220),
-            'path' => $path,
-            'published_at' => $publishedAt,
-        ];
-    }
-
-    private function translation(
-        Alert|Announcement|Document|Instruction|News|Page|Project $model,
-        string $field,
+    private function whereMatches(
+        Builder $query,
+        string $term,
         string $locale,
-    ): string {
-        $value = $model->getTranslation($field, $locale, false);
+        array $translatedFields,
+        array $plainFields = [],
+    ): void {
+        $variants = array_values(array_unique([
+            $term,
+            Str::lower($term),
+            Str::upper($term),
+            Str::ucfirst(Str::lower($term)),
+        ]));
 
-        return $value !== '' ? $value : $model->getTranslation($field, 'ru', false);
+        $query->where(function (Builder $where) use ($variants, $locale, $translatedFields, $plainFields): void {
+            foreach ($variants as $variant) {
+                $pattern = "%{$variant}%";
+                foreach ($translatedFields as $field) {
+                    $where->orWhere("{$field}->{$locale}", 'like', $pattern);
+                }
+                foreach ($plainFields as $field) {
+                    $where->orWhere($field, 'like', $pattern);
+                }
+            }
+        });
+    }
+
+    private function shape(
+        Builder $query,
+        string $type,
+        string $titleField,
+        ?string $excerptField,
+        ?string $keyField,
+        string $term,
+        string $locale,
+        ?string $plainExcerptField = null,
+    ): QueryBuilder {
+        $title = $this->localizedExpression($query, $titleField, $locale);
+        $excerpt = $excerptField !== null
+            ? $this->localizedExpression($query, $excerptField, $locale)
+            : ($plainExcerptField !== null ? $this->plainExpression($query, $plainExcerptField) : "''");
+        $key = $keyField !== null ? $query->getQuery()->getGrammar()->wrap($keyField) : 'NULL';
+        $publishedAt = $query->getQuery()->getGrammar()->wrap('published_at');
+
+        return $query
+            ->selectRaw('? as type', [$type])
+            ->selectRaw("{$title} as title")
+            ->selectRaw("{$excerpt} as excerpt")
+            ->selectRaw("{$key} as resource_key")
+            ->selectRaw("{$publishedAt} as published_at")
+            ->selectRaw("CASE WHEN {$title} LIKE ? THEN 2 ELSE 1 END as relevance", ["%{$term}%"])
+            ->toBase();
+    }
+
+    private function localizedExpression(Builder $query, string $field, string $locale): string
+    {
+        $grammar = $query->getQuery()->getGrammar();
+        $requested = $grammar->wrap("{$field}->{$locale}");
+        $russian = $grammar->wrap("{$field}->ru");
+
+        return "COALESCE(NULLIF({$requested}, ''), NULLIF({$russian}, ''), '')";
+    }
+
+    private function plainExpression(Builder $query, string $field): string
+    {
+        return 'COALESCE('.$query->getQuery()->getGrammar()->wrap($field).", '')";
+    }
+
+    private function path(string $type, mixed $key): string
+    {
+        $slug = is_string($key) ? $key : '';
+
+        return match ($type) {
+            'news' => "/news/{$slug}",
+            'alert' => "/alerts/{$slug}",
+            'instruction' => "/guides/{$slug}",
+            'project' => "/projects/{$slug}",
+            'page' => match ($slug) {
+                'about' => '/about',
+                'leadership' => '/leadership',
+                'structure' => '/structure',
+                'symbols' => '/symbols',
+                'sos' => '/sos',
+                default => "/pages/{$slug}",
+            },
+            'document' => '/documents',
+            'announcement' => "/announcements/{$slug}",
+            default => '/',
+        };
     }
 }

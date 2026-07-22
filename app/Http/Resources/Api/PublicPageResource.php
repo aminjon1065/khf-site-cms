@@ -39,7 +39,12 @@ class PublicPageResource extends JsonResource
 
         if ($this->withBody) {
             $data['body'] = $this->tr('body', $locale);
+            $data['seo'] = [
+                'title' => $this->tr('seo_title', $locale),
+                'description' => $this->tr('seo_description', $locale),
+            ];
             $data['updated'] = $this->localizedDate($this->published_at ?? $this->updated_at, $locale);
+            $data['updated_at'] = ($this->published_at ?? $this->updated_at)?->toIso8601String();
         }
 
         return $data;
@@ -52,12 +57,6 @@ class PublicPageResource extends JsonResource
 
     private function tr(string $field, string $locale): string
     {
-        $value = $this->getTranslation($field, $locale, false);
-
-        if (trim($value) !== '') {
-            return $value;
-        }
-
-        return $this->getTranslation($field, 'ru', false);
+        return (string) $this->getTranslation($field, $locale, false);
     }
 }

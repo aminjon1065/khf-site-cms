@@ -34,6 +34,15 @@ class PageRequest extends FormRequest
             'body.tg' => ['nullable', 'string', 'max:50000'],
             'body.en' => ['nullable', 'string', 'max:50000'],
 
+            'seo_title' => ['array'],
+            'seo_title.ru' => ['nullable', 'string', 'max:70'],
+            'seo_title.tg' => ['nullable', 'string', 'max:70'],
+            'seo_title.en' => ['nullable', 'string', 'max:70'],
+            'seo_description' => ['array'],
+            'seo_description.ru' => ['nullable', 'string', 'max:180'],
+            'seo_description.tg' => ['nullable', 'string', 'max:180'],
+            'seo_description.en' => ['nullable', 'string', 'max:180'],
+
             'slug' => [
                 'nullable', 'string', 'max:255', 'alpha_dash',
                 Rule::unique('pages', 'slug')->ignore($page?->id),

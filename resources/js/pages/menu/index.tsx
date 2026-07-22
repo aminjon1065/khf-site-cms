@@ -128,7 +128,7 @@ export default function MenuIndex({ menus }: Props) {
                 className="cms-two-col"
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
+                    gridTemplateColumns: '1fr',
                     gap: 16,
                     alignItems: 'start',
                 }}
@@ -180,7 +180,7 @@ export default function MenuIndex({ menus }: Props) {
                                     style={{
                                         display: 'grid',
                                         gridTemplateColumns:
-                                            '26px 1fr 1fr 90px 28px',
+                                            '26px minmax(0, 2fr) minmax(150px, 1fr) 90px 28px',
                                         gap: 6,
                                         alignItems: 'center',
                                         opacity: row.enabled ? 1 : 0.55,
@@ -229,20 +229,60 @@ export default function MenuIndex({ menus }: Props) {
                                             />
                                         </button>
                                     </div>
-                                    <Input
-                                        value={row.label.ru}
-                                        onChange={(e) =>
-                                            update(key, i, {
-                                                label: {
-                                                    ...row.label,
-                                                    ru: e.target.value,
-                                                },
-                                            })
-                                        }
-                                        placeholder="Заголовок"
-                                        disabled={!editable}
-                                        style={{ fontSize: 13 }}
-                                    />
+                                    <div
+                                        style={{
+                                            display: 'grid',
+                                            gridTemplateColumns:
+                                                'repeat(3, minmax(0, 1fr))',
+                                            gap: 6,
+                                        }}
+                                    >
+                                        <Input
+                                            value={row.label.tg}
+                                            onChange={(e) =>
+                                                update(key, i, {
+                                                    label: {
+                                                        ...row.label,
+                                                        tg: e.target.value,
+                                                    },
+                                                })
+                                            }
+                                            placeholder="ТҶ"
+                                            aria-label="Заголовок на таджикском"
+                                            disabled={!editable}
+                                            style={{ fontSize: 13 }}
+                                        />
+                                        <Input
+                                            value={row.label.ru}
+                                            onChange={(e) =>
+                                                update(key, i, {
+                                                    label: {
+                                                        ...row.label,
+                                                        ru: e.target.value,
+                                                    },
+                                                })
+                                            }
+                                            placeholder="РУ"
+                                            aria-label="Заголовок на русском"
+                                            disabled={!editable}
+                                            style={{ fontSize: 13 }}
+                                        />
+                                        <Input
+                                            value={row.label.en}
+                                            onChange={(e) =>
+                                                update(key, i, {
+                                                    label: {
+                                                        ...row.label,
+                                                        en: e.target.value,
+                                                    },
+                                                })
+                                            }
+                                            placeholder="EN"
+                                            aria-label="Заголовок на английском"
+                                            disabled={!editable}
+                                            style={{ fontSize: 13 }}
+                                        />
+                                    </div>
                                     <Input
                                         value={row.url}
                                         onChange={(e) =>

@@ -127,7 +127,7 @@ class AnnouncementController extends Controller
         $this->authorize('view', $announcement);
         $this->authorize('create', Announcement::class);
 
-        $copy = $announcement->replicate(['published_at']);
+        $copy = $announcement->replicate(['published_at', 'slug']);
         $title = $announcement->getTranslations('title');
         $title['ru'] = ($title['ru'] ?? '').' (копия)';
         $copy->setTranslations('title', $title);
@@ -254,9 +254,11 @@ class AnnouncementController extends Controller
             'id' => $announcement->id,
             'title' => $announcement->getTranslations('title'),
             'body' => $announcement->getTranslations('body'),
+            'slug' => $announcement->slug,
             'kind' => $announcement->kind->value,
             'org' => $announcement->org,
             'deadline' => $announcement->deadline?->toDateString(),
+            'application_url' => $announcement->application_url,
             'status' => $announcement->status->value,
             'is_open' => $announcement->isOpen(),
             'published_at' => $announcement->published_at?->toIso8601String(),
@@ -270,7 +272,12 @@ class AnnouncementController extends Controller
             'kind' => $request->input('kind'),
             'org' => $request->input('org'),
             'deadline' => $request->input('deadline'),
+            'application_url' => $request->input('application_url'),
         ]);
+
+        if ($request->filled('slug')) {
+            $announcement->slug = $request->string('slug')->toString();
+        }
 
         foreach (['title', 'body'] as $field) {
             /** @var array<string, string|null> $values */

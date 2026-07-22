@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicInstructionResource;
 use App\Models\Instruction;
+use App\Support\PublicLocale;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -19,9 +20,12 @@ class InstructionController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Instruction::query()->public()->ordered()->with('media');
+        PublicLocale::available($query, 'name');
 
         if ($request->boolean('priority')) {
             $query->where('is_priority', true);
+        } elseif ($request->boolean('exclude_priority')) {
+            $query->where('is_priority', false);
         }
 
         if ($hazard = $request->string('hazard')->toString()) {
@@ -35,11 +39,14 @@ class InstructionController extends Controller
 
     public function show(string $slug): JsonResource
     {
-        $instruction = Instruction::query()
+        $query = Instruction::query()
             ->public()
             ->with('media')
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ->where('slug', $slug);
+
+        PublicLocale::available($query, 'name');
+
+        $instruction = $query->firstOrFail();
 
         return (new PublicInstructionResource($instruction))->withSections();
     }

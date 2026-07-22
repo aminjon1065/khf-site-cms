@@ -16,6 +16,7 @@ use App\Http\Controllers\Cms\MenuController;
 use App\Http\Controllers\Cms\NewsController;
 use App\Http\Controllers\Cms\NotificationController;
 use App\Http\Controllers\Cms\PageController;
+use App\Http\Controllers\Cms\PrivateMediaController;
 use App\Http\Controllers\Cms\ProjectController;
 use App\Http\Controllers\Cms\RegionController;
 use App\Http\Controllers\Cms\RoleController;
@@ -29,6 +30,13 @@ Route::get('/', fn () => redirect('/dashboard'))->name('home');
 
 // Interface language toggle (available to guests on the login screen).
 Route::post('locale', LocaleController::class)->name('locale');
+
+// Private draft/review media previews: a valid signature alone is not enough;
+// the controller also requires an authenticated user with media.view.
+Route::get('media/private/{media}/{conversion?}', PrivateMediaController::class)
+    ->middleware('signed')
+    ->where('conversion', '[A-Za-z0-9_-]+')
+    ->name('media.private');
 
 Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');

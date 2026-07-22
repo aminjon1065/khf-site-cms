@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Category;
+use App\Support\PublicLocale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -21,13 +22,17 @@ class CategoryController extends Controller
         $perPage = min(max($request->integer('per_page', 50), 1), 50);
         $categories = Category::query()
             ->when(is_string($type) && $type !== '', fn ($q) => $q->where('type', $type))
-            ->orderBy('sort')
+            ->orderBy('sort');
+
+        PublicLocale::available($categories, 'name', $locale);
+
+        $categories = $categories
             ->paginate($perPage)
             ->withQueryString();
 
         $data = array_values(array_map(fn (Category $c): array => [
             'slug' => $c->slug,
-            'name' => (string) $c->getTranslation('name', $locale, true),
+            'name' => (string) $c->getTranslation('name', $locale, false),
             'type' => $c->type,
         ], $categories->items()));
 

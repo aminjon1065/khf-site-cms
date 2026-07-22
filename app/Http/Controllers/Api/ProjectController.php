@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicProjectResource;
 use App\Models\Project;
+use App\Support\PublicLocale;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -18,6 +19,7 @@ class ProjectController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Project::query()->public()->ordered()->with('media');
+        PublicLocale::available($query, 'title');
 
         if ($lifecycle = $request->string('lifecycle')->toString()) {
             $query->where('lifecycle_status', $lifecycle);
@@ -30,11 +32,14 @@ class ProjectController extends Controller
 
     public function show(string $slug): JsonResource
     {
-        $project = Project::query()
+        $query = Project::query()
             ->public()
             ->with('media')
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ->where('slug', $slug);
+
+        PublicLocale::available($query, 'title');
+
+        $project = $query->firstOrFail();
 
         return (new PublicProjectResource($project))->withDetail();
     }

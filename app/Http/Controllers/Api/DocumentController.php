@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicDocumentResource;
 use App\Models\Document;
+use App\Support\PublicLocale;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -18,6 +19,7 @@ class DocumentController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Document::query()->public()->ordered()->with('media');
+        PublicLocale::available($query, 'name');
 
         if ($type = $request->string('type')->toString()) {
             $query->where('doc_type', $type);
@@ -28,9 +30,9 @@ class DocumentController extends Controller
         }
 
         if ($search = $request->string('q')->toString()) {
-            $query->where(function (Builder $q) use ($search): void {
-                $q->where('name->ru', 'like', "%{$search}%")
-                    ->orWhere('name->tg', 'like', "%{$search}%")
+            $locale = app()->getLocale();
+            $query->where(function (Builder $q) use ($search, $locale): void {
+                $q->where("name->{$locale}", 'like', "%{$search}%")
                     ->orWhere('number', 'like', "%{$search}%");
             });
         }

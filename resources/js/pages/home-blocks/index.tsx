@@ -159,21 +159,14 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                     <Tag tone="neutral">скрыт</Tag>
                                 )}
                             </div>
-                            <div style={{ display: 'flex', gap: 8 }}>
-                                <Input
-                                    value={block.title.ru}
-                                    onChange={(e) =>
-                                        update(i, {
-                                            title: {
-                                                ...block.title,
-                                                ru: e.target.value,
-                                            },
-                                        })
-                                    }
-                                    placeholder="Заголовок (рус.)"
-                                    disabled={!editable}
-                                    style={{ fontSize: 13 }}
-                                />
+                            <div
+                                style={{
+                                    display: 'grid',
+                                    gridTemplateColumns:
+                                        'repeat(3, minmax(0, 1fr))',
+                                    gap: 8,
+                                }}
+                            >
                                 <Input
                                     value={block.title.tg}
                                     onChange={(e) =>
@@ -185,8 +178,39 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                         })
                                     }
                                     placeholder="ТҶ"
+                                    aria-label="Заголовок блока на таджикском"
                                     disabled={!editable}
-                                    style={{ fontSize: 13, maxWidth: 160 }}
+                                    style={{ fontSize: 13 }}
+                                />
+                                <Input
+                                    value={block.title.ru}
+                                    onChange={(e) =>
+                                        update(i, {
+                                            title: {
+                                                ...block.title,
+                                                ru: e.target.value,
+                                            },
+                                        })
+                                    }
+                                    placeholder="РУ"
+                                    aria-label="Заголовок блока на русском"
+                                    disabled={!editable}
+                                    style={{ fontSize: 13 }}
+                                />
+                                <Input
+                                    value={block.title.en}
+                                    onChange={(e) =>
+                                        update(i, {
+                                            title: {
+                                                ...block.title,
+                                                en: e.target.value,
+                                            },
+                                        })
+                                    }
+                                    placeholder="EN"
+                                    aria-label="Заголовок блока на английском"
+                                    disabled={!editable}
+                                    style={{ fontSize: 13 }}
                                 />
                             </div>
                         </div>

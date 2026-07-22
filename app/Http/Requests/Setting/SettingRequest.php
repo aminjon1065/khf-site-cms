@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Setting;
 
+use App\Rules\SafePublicUrl;
 use Illuminate\Foundation\Http\FormRequest;
 
 class SettingRequest extends FormRequest
@@ -21,6 +22,7 @@ class SettingRequest extends FormRequest
             'settings' => ['array'],
             'settings.*' => ['array'],
             'settings.*.*' => ['nullable', 'string', 'max:5000'],
+            'settings.social.*' => ['nullable', 'string', 'max:255', new SafePublicUrl],
         ];
     }
 }

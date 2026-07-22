@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Announcement;
+use App\Support\PublicApiLabels;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,31 +25,35 @@ class PublicAnnouncementResource extends JsonResource
         $open = $this->isOpen();
 
         return [
+            'slug' => $this->slug,
             'kind' => $this->kind->value,
-            'kind_label' => $this->kind->label(),
+            'kind_label' => PublicApiLabels::get('announcement_kind', $this->kind->value, $locale),
             'title' => $this->tr('title', $locale),
             'org' => $this->org,
             'desc' => $this->tr('body', $locale),
-            'deadline' => $this->deadlineLabel($open),
+            'deadline' => $this->deadlineLabel($open, $locale),
+            'deadline_at' => $this->deadline?->toDateString(),
+            'deadline_state' => $this->deadline === null ? 'unlimited' : ($open ? 'open' : 'closed'),
             'open' => $open,
+            'application_url' => $this->application_url,
         ];
     }
 
-    private function deadlineLabel(bool $open): string
+    private function deadlineLabel(bool $open, string $locale): string
     {
         if ($this->deadline === null) {
-            return 'бессрочно';
+            return PublicApiLabels::get('deadline', 'unlimited', $locale);
         }
 
         $formatted = $this->deadline->format('d.m.Y');
 
-        return ($open ? 'до ' : 'завершён ').$formatted;
+        $prefix = PublicApiLabels::get('deadline', $open ? 'until' : 'closed', $locale);
+
+        return $prefix.' '.$formatted;
     }
 
     private function tr(string $field, string $locale): string
     {
-        $value = $this->getTranslation($field, $locale, false);
-
-        return trim($value) !== '' ? $value : $this->getTranslation($field, 'ru', false);
+        return (string) $this->getTranslation($field, $locale, false);
     }
 }

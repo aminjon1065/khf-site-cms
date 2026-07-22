@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicAlertResource;
 use App\Models\Alert;
 use App\Services\AlertMapService;
+use App\Support\PublicLocale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -23,10 +24,13 @@ class AlertController extends Controller
      */
     public function index(): AnonymousResourceCollection
     {
-        $alerts = Alert::query()
+        $query = Alert::query()
             ->active()
-            ->with('regions')
-            ->get()
+            ->with('regions');
+
+        PublicLocale::available($query, 'title');
+
+        $alerts = $query->get()
             ->sortByDesc(fn (Alert $alert): int => $alert->severity->weight())
             ->values();
 
@@ -44,11 +48,14 @@ class AlertController extends Controller
 
     public function show(string $slug): JsonResource
     {
-        $alert = Alert::query()
+        $query = Alert::query()
             ->public()
             ->with(['regions', 'districts'])
-            ->where('slug', $slug)
-            ->firstOrFail();
+            ->where('slug', $slug);
+
+        PublicLocale::available($query, 'title');
+
+        $alert = $query->firstOrFail();
 
         return (new PublicAlertResource($alert))->withDetail();
     }

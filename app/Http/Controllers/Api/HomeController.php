@@ -17,6 +17,8 @@ use App\Models\Instruction;
 use App\Models\News;
 use App\Models\Project;
 use App\Services\AlertMapService;
+use App\Services\PublicSettingsService;
+use App\Support\PublicLocale;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -26,7 +28,10 @@ use Illuminate\Http\JsonResponse;
  */
 class HomeController extends Controller
 {
-    public function __construct(private readonly AlertMapService $map) {}
+    public function __construct(
+        private readonly AlertMapService $map,
+        private readonly PublicSettingsService $settings,
+    ) {}
 
     public function index(): JsonResponse
     {
@@ -41,32 +46,46 @@ class HomeController extends Controller
         };
 
         $snapshot = $this->map->snapshot($locale);
+        $settings = $this->settings->resolve($locale)['data'];
 
-        $activeAlerts = Alert::query()->active()->with('regions')->get()
+        $activeAlertsQuery = Alert::query()->active()->with('regions');
+        PublicLocale::available($activeAlertsQuery, 'title', $locale);
+        $activeAlerts = $activeAlertsQuery->get()
             ->sortByDesc(fn (Alert $alert): int => $alert->severity->weight())
             ->take($limitOf('active_alerts', 3))
             ->values();
 
-        $news = News::query()->public()->with(['category', 'media'])
-            ->orderByDesc('is_pinned')->orderByDesc('published_at')
+        $newsQuery = News::query()->public()->with(['category', 'media'])
+            ->where('show_on_home', true)
+            ->orderByDesc('is_pinned')->orderByDesc('published_at');
+        PublicLocale::available($newsQuery, 'title', $locale);
+        $news = $newsQuery
             ->limit($limitOf('latest_news', 5))->get();
 
-        $instructions = Instruction::query()->public()->ordered()->with('media')
+        $instructionsQuery = Instruction::query()->public()->ordered()->with('media');
+        PublicLocale::available($instructionsQuery, 'name', $locale);
+        $instructions = $instructionsQuery
             ->limit($limitOf('instructions', 4))->get();
 
-        $documents = Document::query()->public()->ordered()->with('media')
+        $documentsQuery = Document::query()->public()->ordered()->with('media');
+        PublicLocale::available($documentsQuery, 'name', $locale);
+        $documents = $documentsQuery
             ->limit($limitOf('documents', 3))->get();
 
-        $announcements = Announcement::query()->public()->ordered()
+        $announcementsQuery = Announcement::query()->public()->ordered();
+        PublicLocale::available($announcementsQuery, 'title', $locale);
+        $announcements = $announcementsQuery
             ->limit($limitOf('announcements', 3))->get();
 
-        $projects = Project::query()->public()->ordered()->with('media')
+        $projectsQuery = Project::query()->public()->ordered()->with('media');
+        PublicLocale::available($projectsQuery, 'title', $locale);
+        $projects = $projectsQuery
             ->limit($limitOf('projects', 2))->get();
 
         return response()->json(['data' => [
             'blocks' => $blocks->map(fn (HomeBlock $block): array => [
                 'type' => $block->type,
-                'title' => $block->getTranslation('title', $locale, true),
+                'title' => $block->getTranslation('title', $locale, false),
                 'config' => $block->config ?? [],
             ])->values()->all(),
             'alerts' => [
@@ -80,6 +99,13 @@ class HomeController extends Controller
             'documents' => PublicDocumentResource::collection($documents)->resolve(),
             'announcements' => PublicAnnouncementResource::collection($announcements)->resolve(),
             'projects' => PublicProjectResource::collection($projects)->resolve(),
+            'emergency_contacts' => [
+                'emergency_number' => data_get($settings, 'org.emergency_number', '112'),
+                'trust_phone' => data_get($settings, 'org.trust_phone'),
+                'duty_phone' => data_get($settings, 'contacts.duty_phone'),
+                'email' => data_get($settings, 'org.email'),
+                'services' => data_get($settings, 'emergency_services', []),
+            ],
         ]]);
     }
 }

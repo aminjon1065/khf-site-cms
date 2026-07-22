@@ -75,6 +75,7 @@ class AnnouncementSeeder extends Seeder
                 'kind' => $it['kind'],
                 'org' => $it['org'],
                 'deadline' => Carbon::parse($it['deadline']),
+                'slug' => Announcement::uniqueSlug($it['ru'], $announcement->getKey()),
                 'status' => ContentStatus::Published,
                 'published_at' => Carbon::parse('2026-07-10'),
                 'author_id' => $authorId,

@@ -15,17 +15,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Translatable\HasTranslations;
 
 /**
  * @property int $id
+ * @property string $slug
  * @property array<string, string> $title
  * @property array<string, string> $body
  * @property AnnouncementKind $kind
  * @property string|null $org
  * @property Carbon|null $deadline
+ * @property string|null $application_url
  * @property ContentStatus $status
  * @property Carbon|null $published_at
  * @property int|null $author_id
@@ -45,7 +48,7 @@ class Announcement extends Model implements Workflowable
     /**
      * @var list<string>
      */
-    protected $fillable = ['title', 'body', 'kind', 'org', 'deadline', 'status', 'published_at', 'author_id'];
+    protected $fillable = ['title', 'body', 'slug', 'kind', 'org', 'deadline', 'application_url', 'status', 'published_at', 'author_id'];
 
     /**
      * @return array<string, string>
@@ -58,6 +61,35 @@ class Announcement extends Model implements Workflowable
             'deadline' => 'date',
             'published_at' => 'datetime',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::saving(function (Announcement $announcement): void {
+            if (blank($announcement->slug)) {
+                $source = $announcement->getTranslation('title', 'ru', false)
+                    ?: $announcement->getTranslation('title', 'tg', false)
+                    ?: $announcement->getTranslation('title', 'en', false);
+                $announcement->slug = self::uniqueSlug($source, $announcement->getKey());
+            }
+        });
+    }
+
+    public static function uniqueSlug(string $source, ?int $ignoreId = null): string
+    {
+        $base = Str::slug($source, '-', 'ru') ?: 'announcement-'.Str::lower(Str::random(6));
+        $slug = $base;
+        $suffix = 2;
+
+        while (self::withTrashed()
+            ->where('slug', $slug)
+            ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
+            ->exists()) {
+            $slug = $base.'-'.$suffix;
+            $suffix++;
+        }
+
+        return $slug;
     }
 
     public function getActivitylogOptions(): LogOptions

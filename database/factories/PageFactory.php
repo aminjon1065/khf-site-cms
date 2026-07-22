@@ -23,6 +23,8 @@ class PageFactory extends Factory
         return [
             'title' => ['ru' => $title, 'tg' => $title, 'en' => ''],
             'body' => ['ru' => fake()->paragraph(), 'tg' => fake()->paragraph(), 'en' => ''],
+            'seo_title' => ['ru' => $title, 'tg' => $title, 'en' => ''],
+            'seo_description' => ['ru' => fake()->sentence(), 'tg' => fake()->sentence(), 'en' => ''],
             'status' => ContentStatus::Draft,
             'parent_id' => null,
             'sort' => 0,

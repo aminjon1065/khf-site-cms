@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Document;
+use App\Support\PublicApiLabels;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -31,17 +32,18 @@ class PublicDocumentResource extends JsonResource
     public function toArray(Request $request): array
     {
         $locale = app()->getLocale();
-        $files = $this->collectFiles();
+        $files = $this->collectFiles($locale);
         $primary = $this->primaryFile($files, $locale);
 
         return [
             'id' => $this->id,
-            'type' => $this->doc_type->label(),
+            'type' => PublicApiLabels::get('document_type', $this->doc_type->value, $locale),
             'type_value' => $this->doc_type->value,
             'title' => $this->localizedName($locale),
             'number' => $this->number,
             'section' => $this->section,
             'date' => $this->doc_date?->format('d.m.Y'),
+            'date_iso' => $this->doc_date?->toDateString(),
             'lang' => implode(' / ', array_map(fn (array $f): string => $f['label'], $files)),
             'size' => $primary['size'] ?? null,
             'href' => $primary['url'] ?? null,
@@ -50,9 +52,9 @@ class PublicDocumentResource extends JsonResource
     }
 
     /**
-     * @return list<array{lang: string, label: string, url: string, ext: string, size: string}>
+     * @return list<array{lang: string, label: string, url: string, ext: string, size: string, size_bytes: int}>
      */
-    private function collectFiles(): array
+    private function collectFiles(string $requestedLocale): array
     {
         $files = [];
 
@@ -70,7 +72,8 @@ class PublicDocumentResource extends JsonResource
                 'label' => self::LABELS[$locale],
                 'url' => $media->getFullUrl(),
                 'ext' => $ext,
-                'size' => $ext.' · '.$this->humanSize((int) $media->size),
+                'size' => $ext.' · '.$this->humanSize((int) $media->size, $requestedLocale),
+                'size_bytes' => (int) $media->size,
             ];
         }
 
@@ -78,11 +81,11 @@ class PublicDocumentResource extends JsonResource
     }
 
     /**
-     * The download shown in the compact "Файл" column: the requested locale's
-     * file, else the ru version, else the first available.
+     * The primary download is strictly the requested locale's file. Other
+     * available translations remain explicitly listed in `files`.
      *
-     * @param  list<array{lang: string, label: string, url: string, ext: string, size: string}>  $files
-     * @return array{lang: string, label: string, url: string, ext: string, size: string}|null
+     * @param  list<array{lang: string, label: string, url: string, ext: string, size: string, size_bytes: int}>  $files
+     * @return array{lang: string, label: string, url: string, ext: string, size: string, size_bytes: int}|null
      */
     private function primaryFile(array $files, string $locale): ?array
     {
@@ -96,26 +99,28 @@ class PublicDocumentResource extends JsonResource
             $byLang[$file['lang']] = $file;
         }
 
-        return $byLang[$locale] ?? $byLang['ru'] ?? $files[0];
+        return $byLang[$locale] ?? null;
     }
 
     private function localizedName(string $locale): string
     {
-        $value = $this->getTranslation('name', $locale, false);
-
-        return trim($value) !== '' ? $value : $this->getTranslation('name', 'ru', false);
+        return (string) $this->getTranslation('name', $locale, false);
     }
 
-    private function humanSize(int $bytes): string
+    private function humanSize(int $bytes, string $locale): string
     {
+        $units = $locale === 'en'
+            ? ['mb' => 'MB', 'kb' => 'KB', 'b' => 'B']
+            : ['mb' => 'МБ', 'kb' => 'КБ', 'b' => 'Б'];
+
         if ($bytes >= 1048576) {
-            return str_replace('.', ',', (string) round($bytes / 1048576, 1)).' МБ';
+            return str_replace('.', $locale === 'en' ? '.' : ',', (string) round($bytes / 1048576, 1)).' '.$units['mb'];
         }
 
         if ($bytes >= 1024) {
-            return str_replace('.', ',', (string) round($bytes / 1024, 1)).' КБ';
+            return str_replace('.', $locale === 'en' ? '.' : ',', (string) round($bytes / 1024, 1)).' '.$units['kb'];
         }
 
-        return $bytes.' Б';
+        return $bytes.' '.$units['b'];
     }
 }

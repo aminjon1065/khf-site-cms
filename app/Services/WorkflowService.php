@@ -5,8 +5,10 @@ namespace App\Services;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\Severity;
+use App\Jobs\RevalidateFrontend;
 use App\Models\Activity;
 use App\Models\Alert;
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\WorkflowTransition;
 use App\Notifications\WorkflowNotification;
@@ -73,13 +75,23 @@ class WorkflowService
             ]);
         }
 
-        if ($to === ContentStatus::Published && $subject instanceof Alert && $actor !== null) {
-            $this->guardCriticalPublish($subject, $actor);
+        if ($to === ContentStatus::Published) {
+            if (! $force) {
+                $this->guardRequiredTranslations($subject);
+            }
+
+            if ($subject instanceof Alert && $actor !== null) {
+                $this->guardCriticalPublish($subject, $actor);
+            }
         }
 
-        return DB::transaction(function () use ($subject, $from, $to, $actor, $comment): WorkflowTransition {
+        $transition = DB::transaction(function () use ($subject, $from, $to, $actor, $comment): WorkflowTransition {
             $this->applyStatus($subject, $to);
             $subject->save();
+
+            if (method_exists($subject, 'syncContentMediaVisibility')) {
+                $subject->syncContentMediaVisibility();
+            }
 
             $transition = $subject->transitions()->create([
                 'from_status' => $from->value,
@@ -93,6 +105,18 @@ class WorkflowService
 
             return $transition;
         });
+
+        if (in_array($to, [
+            ContentStatus::Published,
+            ContentStatus::Updated,
+            ContentStatus::Completed,
+            ContentStatus::Cancelled,
+            ContentStatus::Archived,
+        ], true) && config('services.frontend.revalidation_url') && config('services.frontend.revalidation_secret')) {
+            RevalidateFrontend::dispatch();
+        }
+
+        return $transition;
     }
 
     public function canTransition(ContentStatus $from, ContentStatus $to): bool
@@ -109,6 +133,40 @@ class WorkflowService
             fn (string $value): ContentStatus => ContentStatus::from($value),
             self::ALLOWED[$from->value],
         );
+    }
+
+    /**
+     * Required public locales must be complete before ordinary publication.
+     * A force transition is the explicit, audited emergency override.
+     *
+     * @throws ValidationException
+     */
+    private function guardRequiredTranslations(Model&Workflowable $subject): void
+    {
+        if (! method_exists($subject, 'languageCompleteness')) {
+            return;
+        }
+
+        $configured = Setting::query()
+            ->where('group', 'languages')
+            ->where('key', 'require_translation')
+            ->first()?->value;
+        $required = is_array($configured)
+            ? array_values(array_filter($configured, 'is_string'))
+            : ['tg', 'ru'];
+
+        /** @var array<string, int> $completeness */
+        $completeness = $subject->languageCompleteness();
+        $incomplete = array_values(array_filter(
+            $required,
+            fn (string $locale): bool => ($completeness[$locale] ?? 0) < 100,
+        ));
+
+        if ($incomplete !== []) {
+            throw ValidationException::withMessages([
+                'translations' => 'Для публикации завершите обязательные переводы: '.implode(', ', $incomplete).'.',
+            ]);
+        }
     }
 
     /**

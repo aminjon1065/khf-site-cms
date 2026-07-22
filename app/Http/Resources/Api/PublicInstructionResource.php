@@ -3,13 +3,14 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Instruction;
+use App\Support\PublicApiLabels;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * Public DTO for a safety instruction (the /guides catalogue + detail on the
- * Next.js site). Locale-aware with a `ru` fallback; internal editorial fields
- * are never exposed. The full structured `sections` are attached on detail.
+ * Next.js site). Only the requested locale is emitted; internal editorial
+ * fields are never exposed. Structured `sections` are attached on detail.
  *
  * @mixin Instruction
  */
@@ -41,7 +42,9 @@ class PublicInstructionResource extends JsonResource
             'title' => $this->tr('name', $locale),
             'summary' => $this->tr('summary', $locale),
             'hazard' => $this->hazard_type?->value,
-            'hazard_label' => $this->hazard_type?->label(),
+            'hazard_label' => $this->hazard_type
+                ? PublicApiLabels::get('hazard', $this->hazard_type->value, $locale)
+                : null,
             'hazard_icon' => $this->hazard_type?->icon(),
             'priority' => (bool) $this->is_priority,
             'image' => $this->imageUrl(),
@@ -57,8 +60,7 @@ class PublicInstructionResource extends JsonResource
     }
 
     /**
-     * The four sections resolved to the requested locale (falling back to `ru`
-     * per section), as clean string lists.
+     * The four sections resolved strictly to the requested locale.
      *
      * @return array<string, list<string>>
      */
@@ -69,10 +71,6 @@ class PublicInstructionResource extends JsonResource
 
         foreach (self::SECTIONS as $key) {
             $steps = $sections[$key][$locale] ?? [];
-
-            if (! is_array($steps) || $steps === []) {
-                $steps = $sections[$key]['ru'] ?? [];
-            }
 
             $result[$key] = array_values(array_filter(
                 array_map(fn ($s): string => is_string($s) ? $s : '', is_array($steps) ? $steps : []),
@@ -85,13 +83,7 @@ class PublicInstructionResource extends JsonResource
 
     private function tr(string $field, string $locale): string
     {
-        $value = $this->getTranslation($field, $locale, false);
-
-        if (is_string($value) && trim($value) !== '') {
-            return $value;
-        }
-
-        return (string) $this->getTranslation($field, 'ru', false);
+        return (string) $this->getTranslation($field, $locale, false);
     }
 
     private function imageUrl(): ?string

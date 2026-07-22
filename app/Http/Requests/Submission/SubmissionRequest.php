@@ -36,14 +36,34 @@ class SubmissionRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
-            'name.required' => 'Укажите ваше имя.',
-            'email.required' => 'Укажите электронную почту.',
-            'email.email' => 'Некорректный адрес электронной почты.',
-            'message.required' => 'Введите текст обращения.',
-            'message.min' => 'Текст обращения слишком короткий.',
-            'region_id.exists' => 'Выбранный регион не найден.',
-            'consent.accepted' => 'Подтвердите согласие на обработку персональных данных.',
-        ];
+        return match (app()->getLocale()) {
+            'tg' => [
+                'name.required' => 'Ному насабро ворид кунед.',
+                'email.required' => 'Почтаи электрониро ворид кунед.',
+                'email.email' => 'Суроғаи почтаи электронӣ нодуруст аст.',
+                'message.required' => 'Матни муроҷиатро ворид кунед.',
+                'message.min' => 'Матни муроҷиат хеле кӯтоҳ аст.',
+                'region_id.exists' => 'Минтақаи интихобшуда ёфт нашуд.',
+                'consent.accepted' => 'Розигиро ба коркарди маълумоти шахсӣ тасдиқ кунед.',
+            ],
+            'en' => [
+                'name.required' => 'Enter your name.',
+                'email.required' => 'Enter your email address.',
+                'email.email' => 'Enter a valid email address.',
+                'message.required' => 'Enter your message.',
+                'message.min' => 'The message is too short.',
+                'region_id.exists' => 'The selected region was not found.',
+                'consent.accepted' => 'Confirm your consent to personal data processing.',
+            ],
+            default => [
+                'name.required' => 'Укажите ваше имя.',
+                'email.required' => 'Укажите электронную почту.',
+                'email.email' => 'Некорректный адрес электронной почты.',
+                'message.required' => 'Введите текст обращения.',
+                'message.min' => 'Текст обращения слишком короткий.',
+                'region_id.exists' => 'Выбранный регион не найден.',
+                'consent.accepted' => 'Подтвердите согласие на обработку персональных данных.',
+            ],
+        };
     }
 }
