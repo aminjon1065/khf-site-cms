@@ -78,8 +78,10 @@ export default function PageForm({ page, reference }: Props) {
             (data.seo_description.en.trim() !== '' ? 25 : 0),
     };
 
-    const setLocaleField = (field: 'title' | 'body' | 'seo_title' | 'seo_description', value: string) =>
-        setData(field, { ...data[field], [lang]: value });
+    const setLocaleField = (
+        field: 'title' | 'body' | 'seo_title' | 'seo_description',
+        value: string,
+    ) => setData(field, { ...data[field], [lang]: value });
 
     const parentOptions: Option[] = [
         { value: '', label: '— Верхний уровень —' },
@@ -202,23 +204,38 @@ export default function PageForm({ page, reference }: Props) {
                         >
                             <RichEditor
                                 value={data.body[lang]}
-                                onChange={(value) => setLocaleField('body', value)}
+                                onChange={(value) =>
+                                    setLocaleField('body', value)
+                                }
                                 placeholder="Текст страницы"
                             />
                         </Field>
 
-                        <Field label="SEO title" error={fieldError(`seo_title.${lang}`)}>
+                        <Field
+                            label="SEO title"
+                            error={fieldError(`seo_title.${lang}`)}
+                        >
                             <Input
                                 value={data.seo_title[lang]}
-                                onChange={(e) => setLocaleField('seo_title', e.target.value)}
+                                onChange={(e) =>
+                                    setLocaleField('seo_title', e.target.value)
+                                }
                                 maxLength={70}
                             />
                         </Field>
 
-                        <Field label="SEO description" error={fieldError(`seo_description.${lang}`)}>
+                        <Field
+                            label="SEO description"
+                            error={fieldError(`seo_description.${lang}`)}
+                        >
                             <Textarea
                                 value={data.seo_description[lang]}
-                                onChange={(e) => setLocaleField('seo_description', e.target.value)}
+                                onChange={(e) =>
+                                    setLocaleField(
+                                        'seo_description',
+                                        e.target.value,
+                                    )
+                                }
                                 maxLength={180}
                                 style={{ minHeight: 96 }}
                             />

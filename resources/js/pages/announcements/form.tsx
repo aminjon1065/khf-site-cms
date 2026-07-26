@@ -229,7 +229,9 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                         >
                             <Input
                                 value={data.slug}
-                                onChange={(e) => setData('slug', e.target.value)}
+                                onChange={(e) =>
+                                    setData('slug', e.target.value)
+                                }
                                 placeholder="operator-sluzhby-112"
                                 className="ui-mono"
                                 maxLength={255}
@@ -282,7 +284,9 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                         >
                             <Input
                                 value={data.application_url}
-                                onChange={(e) => setData('application_url', e.target.value)}
+                                onChange={(e) =>
+                                    setData('application_url', e.target.value)
+                                }
                                 placeholder="/contacts или https://example.tj/form"
                                 maxLength={2048}
                             />
