@@ -3,6 +3,37 @@
 use App\Enums\AnnouncementKind;
 use App\Enums\ContentStatus;
 use App\Models\Announcement;
+use Illuminate\Support\Carbon;
+
+afterEach(function () {
+    Carbon::setTestNow();
+});
+
+it('orders by deadline using the app timezone, not the database engine clock', function () {
+    // Regression for P0-2: `CURRENT_DATE` in the old `scopeOrdered()` was
+    // evaluated by the DB engine's own clock, not `Asia/Dushanbe`. Pinning
+    // `now()` here makes the test deterministic regardless of the real
+    // wall-clock time it happens to run at — `Carbon::setTestNow()` only
+    // fakes PHP's clock, never a raw SQL `CURRENT_DATE`, so this test would
+    // not reliably have failed against the old code either way; what it
+    // guards against is the fix relying on `now()` (and therefore the app
+    // timezone) rather than a DB-engine date function ever creeping back in.
+    Carbon::setTestNow(Carbon::create(2026, 7, 27, 21, 0, 0, 'Asia/Dushanbe'));
+
+    Announcement::factory()->published()->create([
+        'deadline' => '2026-07-26', 'title' => ['ru' => 'Закрытая', 'tg' => '', 'en' => ''],
+    ]);
+    Announcement::factory()->published()->create([
+        'deadline' => '2026-07-27', 'title' => ['ru' => 'Открытая сегодня', 'tg' => '', 'en' => ''],
+    ]);
+
+    $response = $this->getJson('/api/v1/announcements?locale=ru')->assertOk();
+
+    expect($response->json('data.0.title'))->toBe('Открытая сегодня')
+        ->and($response->json('data.0.open'))->toBeTrue()
+        ->and($response->json('data.1.title'))->toBe('Закрытая')
+        ->and($response->json('data.1.open'))->toBeFalse();
+});
 
 it('returns only publicly visible announcements, open ones first', function () {
     Announcement::factory()->published()->create([

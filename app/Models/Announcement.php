@@ -138,7 +138,12 @@ class Announcement extends Model implements Workflowable
      */
     public function scopeOrdered(Builder $query): void
     {
-        $query->orderByRaw('(deadline IS NULL OR deadline >= CURRENT_DATE) DESC')
+        // `CURRENT_DATE` is evaluated by the database engine in its own
+        // session/server timezone (UTC on SQLite, the MySQL server's
+        // configured timezone), which drifts from the app's `Asia/Dushanbe`
+        // business timezone for several hours a day. Binding a PHP-computed
+        // date keeps the comparison on one clock everywhere (P0-2).
+        $query->orderByRaw('(deadline IS NULL OR deadline >= ?) DESC', [now()->startOfDay()->toDateString()])
             ->orderByRaw('deadline IS NULL')
             ->orderBy('deadline')
             ->orderByDesc('id');
