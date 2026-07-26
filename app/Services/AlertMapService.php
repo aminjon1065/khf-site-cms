@@ -28,9 +28,9 @@ class AlertMapService
      */
     public function snapshot(string $locale = 'ru', ?User $user = null): array
     {
-        /** @var Collection<int, Alert> $alerts */
         $alertsQuery = Alert::query()->accessibleTo($user)->active()->with('regions');
         PublicLocale::available($alertsQuery, 'title', $locale);
+        /** @var Collection<int, Alert> $alerts */
         $alerts = $alertsQuery->get();
         $regions = Region::query()
             ->when(

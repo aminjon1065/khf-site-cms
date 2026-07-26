@@ -92,7 +92,10 @@ it('publishes a document, stamps published_at, and it becomes public', function 
     expect($document->status)->toBe(ContentStatus::Published)
         ->and($document->published_at)->not->toBeNull();
 
-    $this->getJson('/api/v1/documents')
+    // Явный `?locale=`: у Symfony-тест-клиента дефолтный `Accept-Language`
+    // всегда `en-us` (см. Request::create()), а без ru/tg-заголовка
+    // ResolveApiLocale отдаст `en`, где у документа пустой перевод.
+    $this->getJson('/api/v1/documents?locale=ru')
         ->assertOk()
         ->assertJsonPath('data.0.title', 'Публикуемый');
 });

@@ -95,14 +95,17 @@ it('rejects the unsupported schedule publish mode', function () {
 it('publishes a project and it becomes public', function () {
     $project = Project::factory()->create([
         'slug' => 'proj-pub',
-        'title' => ['ru' => 'Публичный проект', 'tg' => '', 'en' => ''],
+        'title' => ['ru' => 'Публичный проект', 'tg' => 'Лоиҳаи оммавӣ', 'en' => ''],
     ]);
 
     actingAs(projUser('chief_editor'))->post("/projects/{$project->id}/publish")->assertRedirect();
 
     expect($project->fresh()->status)->toBe(ContentStatus::Published);
 
-    $this->getJson('/api/v1/projects/proj-pub')
+    // Явный `?locale=`: у Symfony-тест-клиента дефолтный `Accept-Language`
+    // всегда `en-us` (см. Request::create()), а без ru/tg-заголовка
+    // ResolveApiLocale отдаст `en`, где у проекта пустой перевод.
+    $this->getJson('/api/v1/projects/proj-pub?locale=ru')
         ->assertOk()
         ->assertJsonPath('data.title', 'Публичный проект');
 });

@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 /*
@@ -23,6 +24,23 @@ pest()->extend(TestCase::class)
 beforeEach(function () {
     $this->withHeader('Accept-Language', 'ru');
 })->in('Feature/Api');
+
+// P0-1: no Feature test may reach the real network. `Http::fake()` with no
+// argument turns every outgoing request into a fake 200 by default; on top
+// of that, `preventStrayRequests()` makes any request a test does NOT
+// explicitly fake (via its own `Http::fake([...])`) throw instead of
+// silently escaping to a real host — this is what let `RevalidateFrontend`
+// hit a real localhost port during `php artisan test` when the developer's
+// `.env` happened to have a revalidation URL configured.
+// Scoped to `Feature` (via `pest()->...->in()`, not the bare `beforeEach()`
+// function, which silently never runs unless the file already falls under
+// an existing `->in()`/`->extend()` scope): `tests/Unit` intentionally uses
+// plain PHPUnit test cases with no Laravel app booted, so the `Http` facade
+// root does not exist there.
+pest()->beforeEach(function () {
+    Http::preventStrayRequests();
+    Http::fake();
+})->in('Feature');
 
 /*
 |--------------------------------------------------------------------------

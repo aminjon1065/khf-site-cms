@@ -28,6 +28,11 @@
         <env name="DB_URL" value=""/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <!-- P0-1: тесты не должны зависеть от FRONTEND_REVALIDATION_* в
+             локальном .env разработчика — иначе RevalidateFrontend бьёт по
+             реальной сети под QUEUE_CONNECTION=sync. -->
+        <env name="FRONTEND_REVALIDATION_URL" value=""/>
+        <env name="FRONTEND_REVALIDATION_SECRET" value=""/>
         <env name="SESSION_DRIVER" value="array"/>
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>

@@ -93,7 +93,10 @@ it('publishes an announcement and it becomes public', function () {
 
     expect($announcement->fresh()->status)->toBe(ContentStatus::Published);
 
-    $this->getJson('/api/v1/announcements')
+    // Явный `?locale=`: у Symfony-тест-клиента дефолтный `Accept-Language`
+    // всегда `en-us` (см. Request::create()), а без ru/tg-заголовка
+    // ResolveApiLocale отдаст `en`, где у объявления пустой перевод.
+    $this->getJson('/api/v1/announcements?locale=ru')
         ->assertOk()
         ->assertJsonPath('data.0.title', 'Публичное объявление');
 });

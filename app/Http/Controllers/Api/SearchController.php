@@ -11,6 +11,7 @@ use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -143,6 +144,9 @@ class SearchController extends Controller
     }
 
     /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
      * @param  list<string>  $translatedFields
      * @param  list<string>  $plainFields
      */
@@ -173,6 +177,11 @@ class SearchController extends Controller
         });
     }
 
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     */
     private function shape(
         Builder $query,
         string $type,
@@ -200,6 +209,11 @@ class SearchController extends Controller
             ->toBase();
     }
 
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     */
     private function localizedExpression(Builder $query, string $field, string $locale): string
     {
         $grammar = $query->getQuery()->getGrammar();
@@ -209,6 +223,11 @@ class SearchController extends Controller
         return "COALESCE(NULLIF({$requested}, ''), NULLIF({$russian}, ''), '')";
     }
 
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     */
     private function plainExpression(Builder $query, string $field): string
     {
         return 'COALESCE('.$query->getQuery()->getGrammar()->wrap($field).", '')";

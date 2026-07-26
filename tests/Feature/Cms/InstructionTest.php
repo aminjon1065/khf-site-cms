@@ -71,14 +71,17 @@ it('sends an instruction to review when an editor submits', function () {
 it('publishes via the endpoint and the instruction becomes public', function () {
     $instruction = Instruction::factory()->create([
         'slug' => 'guide-visible',
-        'name' => ['ru' => 'Видна в API', 'tg' => '', 'en' => ''],
+        'name' => ['ru' => 'Видна в API', 'tg' => 'Дар API намоён', 'en' => ''],
     ]);
 
     actingAs(instrUser('chief_editor'))->post("/instructions/{$instruction->id}/publish")->assertRedirect();
 
     expect($instruction->fresh()->status)->toBe(ContentStatus::Published);
 
-    $this->getJson('/api/v1/instructions/guide-visible')
+    // Явный `?locale=`: у Symfony-тест-клиента дефолтный `Accept-Language`
+    // всегда `en-us` (см. Request::create()), а без ru/tg-заголовка
+    // ResolveApiLocale отдаст `en`, где у инструкции пустой перевод.
+    $this->getJson('/api/v1/instructions/guide-visible?locale=ru')
         ->assertOk()
         ->assertJsonPath('data.title', 'Видна в API');
 });
