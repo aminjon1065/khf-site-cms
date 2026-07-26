@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\TracksTranslationCompleteness;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -16,7 +17,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class District extends Model
 {
-    use HasTranslations, LogsActivity;
+    use HasTranslations, LogsActivity, TracksTranslationCompleteness;
 
     /**
      * @var list<string>

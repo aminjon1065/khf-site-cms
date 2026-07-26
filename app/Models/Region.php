@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\TracksTranslationCompleteness;
 use App\Enums\RegionType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -27,7 +28,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class Region extends Model
 {
-    use HasTranslations, LogsActivity;
+    use HasTranslations, LogsActivity, TracksTranslationCompleteness;
 
     /**
      * @var list<string>

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\TracksTranslationCompleteness;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -17,7 +18,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class HomeBlock extends Model
 {
-    use HasTranslations, LogsActivity;
+    use HasTranslations, LogsActivity, TracksTranslationCompleteness;
 
     /**
      * @var list<string>
