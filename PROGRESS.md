@@ -91,3 +91,15 @@
 - **Коммит:** `khf-site-front@49d0284`
 
 ---
+
+## A-4 · CI для фронта (khf-site-front) — ГОТОВО
+
+- **Сделано:**
+  - `.github/workflows/ci.yml`: Node 22 (`cache: npm`), `npm ci` → `tsc --noEmit` → `eslint` → `npm test` → `npm run build` → `npx playwright install --with-deps chromium` → `npm run test:e2e` → загрузка `playwright-report/` артефактом при падении.
+  - Actions запинены по SHA: `actions/checkout`/`actions/setup-node` — те же SHA, что уже в `khf-site-cms/.github/workflows/tests.yml` (переиспользовал, не гадал); `actions/upload-artifact@v4` — SHA не помнил наизусть, **проверил через GitHub API** (`git/refs/tags/v4` и `commits/v4`, оба ответа сошлись) вместо того, чтобы угадывать — на первый заход ошибся на 1 символ (`...fa9` вместо `...fa02`), что дало бы невалидную (39-символьную) SHA-1 и сломало бы workflow тихо до первого реального запуска.
+  - `playwright.config.ts`: `webServer.command` теперь `process.env.CI ? "npm run start" : "npm run dev"` — в CI и так есть отдельный шаг `npm run build` перед e2e, незачем ещё раз гонять Turbopack dev-компиляцию.
+- **Проверено:** локально не поднять реальный GitHub Actions раннер, поэтому дважды прогнал сам workflow «руками»: (1) `js-yaml` парсит `ci.yml` без ошибок, 10 шагов на месте; (2) `npm run build` → `CI=true npx playwright test` — тот же CI-путь (`reuseExistingServer:false`, команда `npm run start`) — **7/7 e2e passed** за 2.8с (быстрее дев-режима, ожидаемо: нет компиляции на лету). Дев-сервер сессии перезапущен после проверки.
+- **Решения:** нет отдельных — прямое исполнение пункта плана A-4. Критерий приёмки («workflow зелёный на push/PR») формально не проверить без реального пуша в GitHub (план это и не требует — push запрещён границами сессии); эквивалент проверил локальным прогоном идентичных команд.
+- **Коммит:** `khf-site-front@f72b4cf`
+
+---
