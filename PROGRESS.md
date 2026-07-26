@@ -72,3 +72,22 @@
 - **Коммит:** `khf-site-front@d1acfc5`
 
 ---
+
+## A-3 · Тест-раннер и первые тесты фронта (khf-site-front) — ГОТОВО
+
+- **Сделано:**
+  - Установлены dev-зависимости (по офиц. `node_modules/next/dist/docs/.../testing/vitest.md`): `vitest @vitejs/plugin-react jsdom @testing-library/react @testing-library/dom vite-tsconfig-paths` + `@playwright/test`. `npx playwright install chromium --with-deps`.
+  - `vitest.config.mts`: `environment: 'jsdom'`, `tsconfigPaths()`-плагин для алиаса `@/*`.
+  - `tests/unit/`: `i18n-config.test.ts` (`toApiLocale`, `htmlLang`, `isLocale`/`toLocale` на мусоре, `localeFromPathname`, `withLocale`/`stripLocale`), `seo.test.ts` (`buildAlternates` — ключи ru/tg/en+x-default и корректный canonical; `buildMetadata` — OG/Twitter, `publishedTime` только для `type=article`), `api.test.ts` (мок `global.fetch`: `fetchNews` конвертит `tj→tg` в query, выбрасывает пустые/undefined параметры, деградирует к пустому результату на 500/сетевой ошибке; `fetchNewsItem` — `null` на 404, **пробрасывает** ошибку на 500 и на сетевой сбой), `dictionaries.test.ts` (структурная эквивалентность ключей `ru`/`tj`/`en` — импортирует модули словарей напрямую в обход `dictionaries.ts`, который помечен `server-only` и падает при обычном импорте в Node/Vitest).
+  - `playwright.config.ts` + `tests/e2e/smoke.spec.ts`: `/ru`/`/tj`/`/en` → 200 + `<html lang>` (`ru`/`tg`/`en`); `/news` без локали → редирект на `/ru/news` (форсировал `locale: 'fr-FR'` в контексте браузера, иначе тест зависел бы от Accept-Language хоста); переключатель языка сохраняет путь; поиск ведёт на `/{locale}/search?q=`; несуществующий **маршрут** (не slug) отдаёт 404. `webServer` в конфиге сам поднимает `npm run dev` (`reuseExistingServer` вне CI).
+  - `package.json`: `"test": "vitest run"`, `"test:e2e": "playwright test"`.
+  - `.gitignore`: `/test-results/`, `/playwright-report/`, `/blob-report/`, `/playwright/.cache/`.
+- **Проверено:** `npm test` → **35/35 passed**. `npm run test:e2e` → **7/7 passed** (сначала прогнал на живом dev-сервере из Stage 0). `npx tsc --noEmit` и `npx eslint` — чисто (тестовые файлы тоже под линтом/тайпчеком, отдельно не исключал). `npm run build` — 108 страниц, без ошибок.
+- **Решения:**
+  - **Slug-level 404 не тестировал.** Эмпирически проверил через curl: `/ru/news/<random>`, `/ru/alerts/<random>`, `/ru/projects/<random>`, `/ru/guides/<random>`, `/ru/pages/<random>` — все отдают **200**, не 404 (это и есть P1-5 из реестра, чинится в B-5). Маршрутный (не slug) 404 — `/ru/<неизвестный-путь>` — уже сейчас корректно отдаёт 404, его и покрыл. Когда доберусь до B-5 — добавлю рядом e2e для slug-варианта.
+  - **`fullyParallel: false` / `workers: 1` в Playwright — не опция производительности, это фикс реальной гонки.** С параллельными воркерами `next dev` (Turbopack) иногда 500-ил на `/ru/news` с `SyntaxError: Unexpected end of JSON input` (обрыв на чтении ещё компилируемого чанка при одновременных запросах к разным «холодным» маршрутам) — переключение на `workers=1` убрало ошибку полностью, воспроизвёл дважды. Стек — целиком внутри Next/Turbopack (`JSON.parse` без прикладных фреймов), в коде проекта `JSON.parse` не встречается вовсе. Для CI (A-4, скорее всего `next build && next start`) гонки не будет в принципе (нет инкрементальной компиляции), но конфиг общий для обоих режимов — оставил `workers: 1` и там, сьют маленький (7 тестов), сериализация стоит ~2 секунды.
+  - **Радио-кнопки переключателя языка визуально скрыты** (кастомная стилизация `.seg-opt`) — `getByRole('radio').click()` зависает («element is not visible»). Кликаю по видимому `<label>`-тексту (`ТҶ`), как это делает реальный пользователь.
+  - **`npm audit`: 12 high, 0 critical** — не связано с новыми зависимостями теста (vitest/playwright/testing-library в отчёте не фигурируют). Основные: транзитивный `minimatch`/`brace-expansion` через `eslint-config-next`, и сам **`next` закреплён на `16.2.10`, а `16.2.12` закрывает несколько high-советов, включая «Middleware/Proxy bypass... using Turbopack and single locale»** — потенциально релевантно именно нашему `proxy.ts`. Апгрейд не делал: это патч-версия фреймворка, а не тестовая инфраструктура, вне периметра A-3, и по инструкции сессии `npm audit` — явно в этапе F («не выполнять, только подготовить чек-лист»). Зафиксировал здесь, чтобы не потерялось; кандидат на приоритетный пункт F-2/D-6.
+- **Коммит:** `khf-site-front@49d0284`
+
+---
