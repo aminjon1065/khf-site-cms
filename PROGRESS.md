@@ -179,3 +179,27 @@
 - **Коммит:** `khf-site-front@b0dac43`
 
 ---
+
+## B-3 · Страница объявления `/announcements/[slug]` — ГОТОВО
+
+- **Сделано:**
+  - `fetchAnnouncement(slug, locale)` в `lib/api.ts` (`GET /announcements/{slug}`, уже существовал на CMS) — по образцу `fetchProject`/`fetchAlert`: `null` на 404, пробрасывает ошибку на 5xx/сеть.
+  - `routes.announcement(slug)` в `lib/routes.ts`.
+  - Новый `app/[locale]/announcements/[slug]/page.tsx` (по образцу `projects/[slug]`): заголовок, организация, тип объявления (`kind_label` — уже локализован сервером), срок и его состояние (цвет по `open`), тело (`desc`), кнопка «Подать заявку» на `application_url`, блок «Другие объявления». `generateStaticParams` отсекает записи без `slug` (тот же паттерн, что в `alerts/[slug]`, — P2-4 по объявлениям тоже актуален: слаг мог не проставиться при старом сиде). `generateMetadata` через `buildMetadata`, `notFound()` на 404.
+  - **Безопасность `application_url`:** новый `lib/url-safety.ts` → `isSafeExternalUrl()` — только `http`/`https` (не `javascript:`, `data:`, `mailto:`, `tel:`, не битая строка); ссылка — `target="_blank" rel="noopener noreferrer"`, иконка `ExternalLink` как визуальная пометка «внешняя ссылка». Если `application_url` не задан (или не прошёл проверку) — сайдбар показывает блок «Контакты» вместо кнопки, а не пустое место.
+  - `AnnouncementsFilter.tsx`: карточки в списке раньше вели на `routes.contacts` (заглушка, т.к. детальной страницы не существовало) — теперь на `routes.announcement(a.slug)`, с фолбэком на список, если `slug` пуст.
+  - `pages.announcementDetail` + `pages.meta.announcementFallback` — новые ключи словаря (`lib/copy/pages.ts` + переводы в `tj.ts`/`en.ts`).
+  - `app/sitemap.ts`: объявления добавлены в динамические маршруты (были единственным типом с публичной detail-страницей, отсутствующим в карте сайта).
+  - Тесты: `tests/unit/url-safety.test.ts` (http/https принимает; `javascript:`/`data:`/`mailto:`/`tel:`/битые строки — отклоняет), `tests/e2e/announcement-detail.spec.ts` (карточка из списка ведёт на деталь; при отсутствующем `application_url` показывается фолбэк «Контакты» — деталь реального демо-датасета, все текущие объявления без `application_url`).
+- **Проверено:**
+  - `npx tsc --noEmit`, `npx eslint` — чисто.
+  - `npx vitest run` — 39/39.
+  - `npx playwright test` — 13 passed + 1 skipped (тот же skip из B-1).
+  - `npm run build` — `/[locale]/announcements/[slug]` собрался как `●` (SSG).
+  - curl по всем 3 локалям на реальный slug — 200, корректные `title`/`og:*`/`canonical`/hreflang-альтернаты (ru/tg/en/x-default) в HTML.
+- **Решения / находки:**
+  - **Обнаружил (не создал) более широкий вариант P1-5, чем описано в плане.** Формулировка плана — «404 показывает русский текст на /tj и /en» (проблема ЛОКАЛИЗАЦИИ 404-страницы). На практике сейчас страница `not-found.tsx` уже клиентская и корректно локализуется через `usePathname()` — текст на месте. Но **сам HTTP-статус для несуществующего slug — 200, не 404**, и это не только в dev-режиме (как я сперва предположил) — воспроизвёл и в `next build && next start`. Проверил на ВСЕХ существующих detail-маршрutах (`news/[slug]`, `alerts/[slug]`, `projects/[slug]`, `guides/[slug]`, `pages/[slug]`) — везде тот же 200 вместо 404, значит это системная особенность `notFound()` под статическим `generateStaticParams`-маршрутом с `dynamicParams` по умолчанию (шаблон соответствует HTML, но статус коммитится раньше, чем резолвится `notFound()`), не что-то специфичное для новой страницы объявлений. Новая страница объявлений реализована **по тому же паттерну**, что и все соседи (иначе была бы единственной непоследовательной) — системный фикс статус-кода per plan явно назначен на B-5 (`global-not-found.tsx`), туда и оставил; выполнять точечный костыль здесь means 6 разных полу-решений вместо одного правильного в B-5.
+  - Демо-датасет объявлений: ни у одного `application_url` не задан, поэтому «есть кнопка Подать заявку» руками/e2e на реальных данных не проверить — закрыл веткой `isSafeExternalUrl` юнит-тестом (сама логика проверена исчерпывающе) и e2e для наблюдаемой (fallback) ветки.
+- **Коммит:** `khf-site-front@0805ca1`
+
+---
