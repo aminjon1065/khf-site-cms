@@ -2,11 +2,46 @@
 
 use App\Models\Setting;
 use Database\Seeders\SettingSeeder;
+use Illuminate\Support\Facades\DB;
 
 use function Pest\Laravel\seed;
 
 beforeEach(function () {
     seed(SettingSeeder::class);
+});
+
+// D-2: Cache::remember complements the ETag layer (which still recomputes
+// the body to hash it) by skipping the DB/service work entirely on a hit.
+
+it('changes the /settings response on the next request after a setting is saved', function () {
+    $this->getJson('/api/v1/settings')
+        ->assertOk()
+        ->assertJsonPath('data.org.trust_phone', '+992 (37) 221-59-00');
+
+    // Matches how the admin SettingController actually writes settings
+    // (updateOrCreate — a mass query-builder update() wouldn't fire the
+    // saved event FlushesPublicCache listens for).
+    Setting::updateOrCreate(
+        ['group' => 'org', 'key' => 'trust_phone'],
+        ['value' => '+992 (37) 000-00-00'],
+    );
+
+    $this->getJson('/api/v1/settings')
+        ->assertOk()
+        ->assertJsonPath('data.org.trust_phone', '+992 (37) 000-00-00');
+});
+
+it('serves the second identical request from cache without hitting the database', function () {
+    $this->getJson('/api/v1/settings')->assertOk();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries) {
+        $queries++;
+    });
+
+    $this->getJson('/api/v1/settings')->assertOk();
+
+    expect($queries)->toBe(0);
 });
 
 it('exposes only whitelisted public settings groups', function () {

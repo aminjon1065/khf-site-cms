@@ -2,6 +2,7 @@
 
 use App\Models\MenuItem;
 use Database\Seeders\MenuSeeder;
+use Illuminate\Support\Facades\DB;
 
 use function Pest\Laravel\seed;
 
@@ -39,4 +40,20 @@ it('resolves labels to the requested locale', function () {
 
     expect(collect($tg)->pluck('label'))->toContain('Хабарҳо')
         ->and(collect($en)->pluck('label'))->toContain('News');
+});
+
+// D-2: the test above already proves invalidation-on-save (it saves a label
+// change and immediately sees it) — this adds the other half: a repeat
+// request must skip the database entirely.
+it('serves the second identical request from cache without hitting the database', function () {
+    $this->getJson('/api/v1/menu')->assertOk();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries) {
+        $queries++;
+    });
+
+    $this->getJson('/api/v1/menu')->assertOk();
+
+    expect($queries)->toBe(0);
 });

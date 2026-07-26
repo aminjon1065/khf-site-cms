@@ -5,11 +5,28 @@ use App\Models\News;
 use Database\Seeders\HomeBlockSeeder;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\SettingSeeder;
+use Illuminate\Support\Facades\DB;
 
 use function Pest\Laravel\seed;
 
 beforeEach(function () {
     seed([RegionSeeder::class, HomeBlockSeeder::class, SettingSeeder::class]);
+});
+
+// D-2: the two tests above that save() a HomeBlock and immediately re-fetch
+// (block limit, disabled block) already prove invalidation-on-save works —
+// this adds the other half: a repeat request must skip the DB entirely.
+it('serves the second identical request from cache without hitting the database', function () {
+    $this->getJson('/api/v1/home?locale=ru')->assertOk();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries) {
+        $queries++;
+    });
+
+    $this->getJson('/api/v1/home?locale=ru')->assertOk();
+
+    expect($queries)->toBe(0);
 });
 
 it('returns enabled blocks in editor order', function () {

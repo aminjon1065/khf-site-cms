@@ -20,6 +20,7 @@ use App\Services\AlertMapService;
 use App\Services\PublicSettingsService;
 use App\Support\PublicLocale;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Home-page composition endpoint. Returns the enabled home blocks (in editor
@@ -28,6 +29,14 @@ use Illuminate\Http\JsonResponse;
  */
 class HomeController extends Controller
 {
+    /**
+     * D-2: flushed from HomeBlock's FlushesPublicCache on every save/delete.
+     * The news/alerts/instructions/etc. this composes aren't individually
+     * watched — their staleness is bounded by this TTL instead, the same
+     * window the ETag layer's stale-while-revalidate=60 already tolerates.
+     */
+    private const CACHE_TTL_SECONDS = 60;
+
     public function __construct(
         private readonly AlertMapService $map,
         private readonly PublicSettingsService $settings,
@@ -36,6 +45,19 @@ class HomeController extends Controller
     public function index(): JsonResponse
     {
         $locale = app()->getLocale();
+
+        return response()->json(['data' => Cache::remember(
+            "public-api:home:{$locale}",
+            self::CACHE_TTL_SECONDS,
+            fn (): array => $this->compose($locale),
+        )]);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function compose(string $locale): array
+    {
         $blocks = HomeBlock::query()->where('enabled', true)->orderBy('sort')->get();
 
         $limitOf = function (string $type, int $default) use ($blocks): int {
@@ -82,7 +104,7 @@ class HomeController extends Controller
         $projects = $projectsQuery
             ->limit($limitOf('projects', 2))->get();
 
-        return response()->json(['data' => [
+        return [
             'blocks' => $blocks->map(fn (HomeBlock $block): array => [
                 'type' => $block->type,
                 'title' => $block->getTranslation('title', $locale, false),
@@ -106,6 +128,6 @@ class HomeController extends Controller
                 'email' => data_get($settings, 'org.email'),
                 'services' => data_get($settings, 'emergency_services', []),
             ],
-        ]]);
+        ];
     }
 }

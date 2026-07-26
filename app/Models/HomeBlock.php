@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\FlushesPublicCache;
 use App\Concerns\TracksTranslationCompleteness;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -18,7 +19,18 @@ use Spatie\Translatable\HasTranslations;
  */
 class HomeBlock extends Model
 {
-    use HasTranslations, LogsActivity, TracksTranslationCompleteness;
+    use FlushesPublicCache, HasTranslations, LogsActivity, TracksTranslationCompleteness;
+
+    /**
+     * D-2: HomeController@index caches its whole (locale-resolved)
+     * response. Its news/alerts/etc. sub-content isn't invalidated by this
+     * (only the block composition/config is) — bounded by the same 60s TTL
+     * the existing ETag layer already tolerates via stale-while-revalidate.
+     */
+    protected static function publicCacheKey(string $locale): string
+    {
+        return "public-api:home:{$locale}";
+    }
 
     /**
      * @var list<string>

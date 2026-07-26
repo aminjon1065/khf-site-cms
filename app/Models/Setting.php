@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\FlushesPublicCache;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -14,7 +15,17 @@ use Spatie\Activitylog\Support\LogOptions;
  */
 class Setting extends Model
 {
-    use LogsActivity;
+    use FlushesPublicCache, LogsActivity;
+
+    /**
+     * D-2: SettingController@index caches its whole (locale-resolved)
+     * response — any setting row could feed it, so any save/delete flushes
+     * every locale.
+     */
+    protected static function publicCacheKey(string $locale): string
+    {
+        return "public-api:settings:{$locale}";
+    }
 
     /**
      * @var list<string>

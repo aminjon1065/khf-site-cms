@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\FlushesPublicCache;
 use App\Concerns\TracksTranslationCompleteness;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -19,7 +20,16 @@ use Spatie\Translatable\HasTranslations;
  */
 class MenuItem extends Model
 {
-    use HasTranslations, LogsActivity, TracksTranslationCompleteness;
+    use FlushesPublicCache, HasTranslations, LogsActivity, TracksTranslationCompleteness;
+
+    /**
+     * D-2: MenuController@index caches its whole (locale-resolved) tree —
+     * any item could feed it, so any save/delete flushes every locale.
+     */
+    protected static function publicCacheKey(string $locale): string
+    {
+        return "public-api:menu:{$locale}";
+    }
 
     /**
      * @var list<string>

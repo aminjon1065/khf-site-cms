@@ -1,11 +1,42 @@
 <?php
 
+use App\Models\Region;
 use Database\Seeders\RegionSeeder;
+use Illuminate\Support\Facades\DB;
 
 use function Pest\Laravel\seed;
 
 beforeEach(function () {
     seed(RegionSeeder::class);
+});
+
+// D-2.
+it('changes the directory response on the next request after a region is saved', function () {
+    $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
+
+    $this->getJson('/api/v1/regions/directory?locale=ru')
+        ->assertOk()
+        ->assertJsonFragment(['email' => 'sughd@khf.tj']);
+
+    $sughd->email = 'new-sughd@khf.tj';
+    $sughd->save();
+
+    $this->getJson('/api/v1/regions/directory?locale=ru')
+        ->assertOk()
+        ->assertJsonFragment(['email' => 'new-sughd@khf.tj']);
+});
+
+it('serves the second identical request from cache without hitting the database', function () {
+    $this->getJson('/api/v1/regions/directory?locale=ru')->assertOk();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries) {
+        $queries++;
+    });
+
+    $this->getJson('/api/v1/regions/directory?locale=ru')->assertOk();
+
+    expect($queries)->toBe(0);
 });
 
 it('returns the regional-management directory', function () {

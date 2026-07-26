@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Public navigation menus (main + footer) for the Next.js site, resolved to the
@@ -13,12 +14,21 @@ use Illuminate\Http\JsonResponse;
  */
 class MenuController extends Controller
 {
+    /** D-2: flushed from MenuItem's FlushesPublicCache on every save/delete. */
+    private const CACHE_TTL_SECONDS = 60;
+
     public function index(): JsonResponse
     {
-        return response()->json(['data' => [
-            'main' => $this->tree('main'),
-            'footer' => $this->tree('footer'),
-        ]]);
+        $locale = app()->getLocale();
+
+        return response()->json(['data' => Cache::remember(
+            "public-api:menu:{$locale}",
+            self::CACHE_TTL_SECONDS,
+            fn (): array => [
+                'main' => $this->tree('main'),
+                'footer' => $this->tree('footer'),
+            ],
+        )]);
     }
 
     /**
