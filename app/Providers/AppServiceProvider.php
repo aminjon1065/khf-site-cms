@@ -7,10 +7,13 @@ use App\Models\User;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
 
@@ -32,6 +35,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureAuthorization();
         $this->configureAuthEvents();
+        $this->configureRateLimiting();
     }
 
     /**
@@ -79,5 +83,19 @@ class AppServiceProvider extends ServiceProvider
                 ->uncompromised()
             : null,
         );
+    }
+
+    /**
+     * General ceiling for the public read-only API (routes/api.php). `search`
+     * and `submissions` keep their own stricter per-route `throttle:N,1` on
+     * top of this — whichever limit a request hits first wins, so this is a
+     * baseline for everything else (home/settings/menu/news/pages/...), not
+     * a replacement for those.
+     */
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for('api-public', function (Request $request): Limit {
+            return Limit::perMinute(120)->by($request->ip());
+        });
     }
 }
