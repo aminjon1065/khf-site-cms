@@ -71,6 +71,7 @@ class PermissionMatrix
                 Module::Media->value => [$v => true, $c => true, $e => true, $d => true],
                 Module::Home->value => [$v => true, $e => true, $p => true, $a => true],
                 Module::Regions->value => $viewOnly,
+                Module::Leadership->value => $viewOnly,
                 Module::Submissions->value => [$v => true, $e => true, $d => true],
                 Module::Users->value => $viewOnly,
                 Module::Settings->value => $none,

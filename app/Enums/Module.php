@@ -18,6 +18,7 @@ enum Module: string
     case Taxonomy = 'taxonomy';
     case Home = 'home';
     case Regions = 'regions';
+    case Leadership = 'leadership';
     case Submissions = 'submissions';
     case Users = 'users';
     case Settings = 'settings';
@@ -36,6 +37,7 @@ enum Module: string
             self::Taxonomy => 'Категории и теги',
             self::Home => 'Главная страница',
             self::Regions => 'Регионы и районы',
+            self::Leadership => 'Руководство',
             self::Submissions => 'Обращения граждан',
             self::Users => 'Пользователи и роли',
             self::Settings => 'Настройки системы',

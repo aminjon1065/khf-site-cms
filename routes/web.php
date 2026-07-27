@@ -10,6 +10,7 @@ use App\Http\Controllers\Cms\DocumentController;
 use App\Http\Controllers\Cms\EmergencyContactController;
 use App\Http\Controllers\Cms\HomeBlockController;
 use App\Http\Controllers\Cms\InstructionController;
+use App\Http\Controllers\Cms\LeaderController;
 use App\Http\Controllers\Cms\LocaleController;
 use App\Http\Controllers\Cms\MediaController;
 use App\Http\Controllers\Cms\MenuController;
@@ -116,6 +117,14 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('regions/{region}/edit', [RegionController::class, 'edit'])->name('regions.edit');
     Route::put('regions/{region}', [RegionController::class, 'update'])->name('regions.update');
     Route::delete('regions/{region}', [RegionController::class, 'destroy'])->name('regions.destroy');
+
+    // Leadership roster (chairman & deputy chairmen).
+    Route::get('leadership', [LeaderController::class, 'index'])->name('leadership.index');
+    Route::get('leadership/create', [LeaderController::class, 'create'])->name('leadership.create');
+    Route::post('leadership', [LeaderController::class, 'store'])->name('leadership.store');
+    Route::get('leadership/{leader}/edit', [LeaderController::class, 'edit'])->name('leadership.edit');
+    Route::put('leadership/{leader}', [LeaderController::class, 'update'])->name('leadership.update');
+    Route::delete('leadership/{leader}', [LeaderController::class, 'destroy'])->name('leadership.destroy');
 
     // Media library (browse all media, upload reusable assets, remove them).
     Route::get('media', [MediaController::class, 'index'])->name('media');

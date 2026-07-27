@@ -3,6 +3,7 @@
 use App\Enums\ContentStatus;
 use App\Models\Announcement;
 use App\Models\Document;
+use App\Models\Leader;
 use App\Models\MenuItem;
 use App\Models\Setting;
 
@@ -56,6 +57,14 @@ it('reports reference models without a workflow status and flags an incomplete m
         ->assertSuccessful()
         ->expectsOutputToContain('1 из 1')
         ->expectsOutputToContain('Обязательное к запуску не переведено полностью');
+});
+
+it('reports a leader missing a locale via the shared TracksTranslationCompleteness trait', function () {
+    Leader::factory()->create(['role' => ['ru' => 'Заместитель', 'tg' => '', 'en' => '']]);
+
+    $this->artisan('content:translation-report')
+        ->assertSuccessful()
+        ->expectsOutputToContain('1 из 1');
 });
 
 it('groups Setting rows by locale-suffixed base name and flags org as launch-critical', function () {

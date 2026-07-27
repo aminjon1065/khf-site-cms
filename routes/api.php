@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\InstructionController;
+use App\Http\Controllers\Api\LeaderController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\PageController;
@@ -75,4 +76,7 @@ Route::middleware('throttle:api-public')->group(function (): void {
     Route::get('alerts/{slug}', [AlertController::class, 'show'])->name('api.alerts.show');
     Route::get('regions', [RegionController::class, 'index'])->name('api.regions.index');
     Route::get('regions/directory', [RegionController::class, 'directory'])->name('api.regions.directory');
+
+    // Leadership roster (chairman & deputy chairmen).
+    Route::get('leadership', [LeaderController::class, 'index'])->name('api.leadership.index');
 });

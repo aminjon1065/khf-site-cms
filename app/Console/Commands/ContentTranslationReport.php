@@ -10,6 +10,7 @@ use App\Models\District;
 use App\Models\Document;
 use App\Models\HomeBlock;
 use App\Models\Instruction;
+use App\Models\Leader;
 use App\Models\MenuItem;
 use App\Models\News;
 use App\Models\Page;
@@ -66,6 +67,7 @@ class ContentTranslationReport extends Command
         'Категории (categories)' => Category::class,
         'Районы (districts)' => District::class,
         'Блоки главной (home_blocks)' => HomeBlock::class,
+        'Руководство (leaders)' => Leader::class,
         'Пункты меню (menu_items)' => MenuItem::class,
         'Регионы (regions)' => Region::class,
         'Теги (tags)' => Tag::class,

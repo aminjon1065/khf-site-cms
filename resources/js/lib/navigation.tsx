@@ -20,6 +20,7 @@ import {
     ShieldCheck,
     Tags,
     TriangleAlert,
+    UserCog,
     Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -31,6 +32,7 @@ import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentContr
 import EmergencyContactController from '@/actions/App/Http/Controllers/Cms/EmergencyContactController';
 import HomeBlockController from '@/actions/App/Http/Controllers/Cms/HomeBlockController';
 import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
+import LeaderController from '@/actions/App/Http/Controllers/Cms/LeaderController';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import MenuController from '@/actions/App/Http/Controllers/Cms/MenuController';
 import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
@@ -168,6 +170,13 @@ export const NAV: NavGroup[] = [
                 href: RegionController.index.url(),
                 icon: Building2,
                 permission: 'regions.view',
+            },
+            {
+                key: 'leadership',
+                labelKey: 'Руководство',
+                href: LeaderController.index.url(),
+                icon: UserCog,
+                permission: 'leadership.view',
             },
         ],
     },
