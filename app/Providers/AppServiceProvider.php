@@ -91,11 +91,21 @@ class AppServiceProvider extends ServiceProvider
      * top of this — whichever limit a request hits first wins, so this is a
      * baseline for everything else (home/settings/menu/news/pages/...), not
      * a replacement for those.
+     *
+     * 600, not the plan's example value of 120: a full `next build` (D-3
+     * journal — discovered by actually running one, not assumed) issues a
+     * burst of requests from the single build-host IP while statically
+     * generating every content-detail page — with the current demo dataset
+     * that's already enough to trip 120/min before the build finishes,
+     * which would silently bake pages with the fallback/empty content from
+     * B-6's graceful degradation instead of real data. 600 comfortably
+     * covers that burst (and headroom for the dataset growing) while still
+     * being a meaningful ceiling against real abuse.
      */
     protected function configureRateLimiting(): void
     {
         RateLimiter::for('api-public', function (Request $request): Limit {
-            return Limit::perMinute(120)->by($request->ip());
+            return Limit::perMinute(600)->by($request->ip());
         });
     }
 }

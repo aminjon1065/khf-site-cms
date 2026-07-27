@@ -13,11 +13,11 @@ beforeEach(function (): void {
 it('returns X-RateLimit headers on a normal request', function () {
     $this->getJson('/api/v1/settings')
         ->assertOk()
-        ->assertHeader('X-RateLimit-Limit', '120');
+        ->assertHeader('X-RateLimit-Limit', '600');
 });
 
 it('returns 429 with Retry-After once the general public API limit is exceeded', function () {
-    for ($i = 0; $i < 120; $i++) {
+    for ($i = 0; $i < 600; $i++) {
         $this->getJson('/api/v1/settings')->assertOk();
     }
 
@@ -27,7 +27,7 @@ it('returns 429 with Retry-After once the general public API limit is exceeded',
 });
 
 it('does not throttle health checks so infra probes are never rejected', function () {
-    for ($i = 0; $i < 125; $i++) {
+    for ($i = 0; $i < 605; $i++) {
         $this->getJson('/api/v1/health')->assertOk();
     }
 });
