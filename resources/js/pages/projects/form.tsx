@@ -1,60 +1,30 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    ChevronDown,
-    Images,
-    Plus,
-    Save,
-    Send,
-    Upload,
-    X,
-} from 'lucide-react';
+import { ArrowLeft, ChevronDown, Save, Send } from 'lucide-react';
 import { useRef, useState } from 'react';
 import ProjectController from '@/actions/App/Http/Controllers/Cms/ProjectController';
 import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
-import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import type { ContentLocale } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
-import { Blueprint } from '@/ui/Blueprint';
-import { Button, IconButton, LinkButton } from '@/ui/Button';
-import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
-import { MediaPicker } from '@/ui/MediaPicker';
+import { Button, LinkButton } from '@/ui/Button';
 import type { MediaItem } from '@/ui/MediaPicker';
-import { LanguageTabs } from '@/ui/Nav';
 import { Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
-import { RichEditor } from '@/ui/RichEditor';
-
-type LocaleMap = { ru: string; tg: string; en: string };
-type GoalMap = { ru: string[]; tg: string[]; en: string[] };
-type TimelineItem = { date: string; text: string; tone: string };
-type Direction = { address: string; phone: string; email: string };
-type PublishMode = 'now' | 'review';
-
-interface Option {
-    value: string;
-    label: string;
-}
-
-interface ProjectData {
-    id: number;
-    title: LocaleMap;
-    summary: LocaleMap;
-    body: LocaleMap;
-    slug: string | null;
-    status: ContentStatus;
-    lifecycle_status: string;
-    code: string | null;
-    years: string | null;
-    customer: string | null;
-    partner: string | null;
-    budget: string | null;
-    goals: GoalMap;
-    timeline: TimelineItem[];
-    direction: Direction;
-    cover_url: string | null;
-    sort: number;
-}
+import { CoverCard } from './form/CoverCard';
+import { DescriptionCard } from './form/DescriptionCard';
+import { DirectionCard } from './form/DirectionCard';
+import { GoalsCard } from './form/GoalsCard';
+import { ParametersCard } from './form/ParametersCard';
+import { TimelineCard } from './form/TimelineCard';
+import type {
+    Direction,
+    GoalMap,
+    LocaleMap,
+    Option,
+    ProjectData,
+    PublishMode,
+    TimelineItem,
+} from './form/types';
 
 interface Props {
     project: ProjectData | null;
@@ -69,12 +39,6 @@ const CONTENT_FIELDS: ('title' | 'summary' | 'body')[] = [
     'title',
     'summary',
     'body',
-];
-const TONE_OPTIONS: Option[] = [
-    { value: 'success', label: 'Выполнено' },
-    { value: 'info', label: 'В плане' },
-    { value: 'warning', label: 'Внимание' },
-    { value: 'neutral', label: 'Обычный' },
 ];
 
 function emptyGoals(): GoalMap {
@@ -126,6 +90,15 @@ export default function ProjectForm({ project, reference }: Props) {
         setData('cover_remove', false);
         setCoverPreview(item.url);
         setCoverPicker(false);
+    };
+
+    const onCoverFileChange = (file: File | null) => {
+        if (file) {
+            setData('cover', file);
+            setData('cover_media_id', null);
+            setData('cover_remove', false);
+            setCoverPreview(URL.createObjectURL(file));
+        }
     };
 
     // Превью: свежий выбор (файл/медиатека) приоритетнее существующей обложки.
@@ -259,268 +232,27 @@ export default function ProjectForm({ project, reference }: Props) {
                         gap: 16,
                     }}
                 >
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 14,
-                                flexWrap: 'wrap',
-                                gap: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Описание
-                            </h3>
-                            <LanguageTabs
-                                active={lang}
-                                onChange={setLang}
-                                completeness={compAll}
-                            />
-                        </div>
-
-                        <Field
-                            label="Название проекта"
-                            required={lang === 'ru'}
-                            error={
-                                lang === 'ru'
-                                    ? fieldError('title.ru')
-                                    : undefined
-                            }
-                        >
-                            <Input
-                                value={data.title[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('title', e.target.value)
-                                }
-                                hasError={
-                                    lang === 'ru' && !!fieldError('title.ru')
-                                }
-                                placeholder={
-                                    lang === 'ru'
-                                        ? 'Например: Модернизация системы оповещения'
-                                        : 'Перевод названия'
-                                }
-                                maxLength={255}
-                            />
-                        </Field>
-
-                        <Field
-                            label="Краткое описание"
-                            hint="Показывается в карточке проекта и как вступление."
-                        >
-                            <Textarea
-                                value={data.summary[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('summary', e.target.value)
-                                }
-                                style={{ minHeight: 72 }}
-                                maxLength={1000}
-                            />
-                        </Field>
-
-                        <Field label="Подробное описание">
-                            <RichEditor
-                                key={lang}
-                                value={data.body[lang]}
-                                onChange={(html) =>
-                                    setLocaleField('body', html)
-                                }
-                                placeholder="Подробно опишите проект…"
-                            />
-                        </Field>
-                    </Blueprint>
-
-                    {/* ---------------------------------------- goals */}
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Цели и задачи ({lang.toUpperCase()})
-                            </h3>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                icon={<Plus size={14} strokeWidth={2} />}
-                                onClick={addGoal}
-                            >
-                                Цель
-                            </Button>
-                        </div>
-
-                        {data.goals[lang].length === 0 ? (
-                            <p
-                                style={{
-                                    margin: 0,
-                                    fontSize: 12.5,
-                                    color: 'var(--color-neutral-400)',
-                                }}
-                            >
-                                Цели не добавлены.
-                            </p>
-                        ) : (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 6,
-                                }}
-                            >
-                                {data.goals[lang].map((goal, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            display: 'flex',
-                                            gap: 6,
-                                            alignItems: 'flex-start',
-                                        }}
-                                    >
-                                        <span
-                                            className="ui-mono"
-                                            style={{
-                                                width: 22,
-                                                paddingTop: 8,
-                                                fontSize: 12.5,
-                                                color: 'var(--color-neutral-500)',
-                                            }}
-                                        >
-                                            {String(i + 1).padStart(2, '0')}
-                                        </span>
-                                        <Textarea
-                                            value={goal}
-                                            onChange={(e) =>
-                                                updateGoal(i, e.target.value)
-                                            }
-                                            style={{ minHeight: 40, flex: 1 }}
-                                            maxLength={1000}
-                                        />
-                                        <IconButton
-                                            label="Удалить цель"
-                                            variant="ghost"
-                                            onClick={() => removeGoal(i)}
-                                        >
-                                            <X size={15} strokeWidth={1.5} />
-                                        </IconButton>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Blueprint>
-
-                    {/* ---------------------------------------- timeline */}
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 4,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Ход реализации
-                            </h3>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                icon={<Plus size={14} strokeWidth={2} />}
-                                onClick={addTimeline}
-                            >
-                                Этап
-                            </Button>
-                        </div>
-                        <p
-                            style={{
-                                margin: '0 0 12px',
-                                fontSize: 12.5,
-                                color: 'var(--color-neutral-600)',
-                            }}
-                        >
-                            Общая хронология проекта (единая для всех языков).
-                        </p>
-
-                        {data.timeline.length === 0 ? (
-                            <p
-                                style={{
-                                    margin: 0,
-                                    fontSize: 12.5,
-                                    color: 'var(--color-neutral-400)',
-                                }}
-                            >
-                                Этапы не добавлены.
-                            </p>
-                        ) : (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 10,
-                                }}
-                            >
-                                {data.timeline.map((item, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateColumns:
-                                                '150px 1fr 130px 34px',
-                                            gap: 6,
-                                            alignItems: 'start',
-                                        }}
-                                    >
-                                        <Input
-                                            value={item.date}
-                                            onChange={(e) =>
-                                                updateTimeline(
-                                                    i,
-                                                    'date',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            placeholder="Июнь 2026"
-                                        />
-                                        <Textarea
-                                            value={item.text}
-                                            onChange={(e) =>
-                                                updateTimeline(
-                                                    i,
-                                                    'text',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            placeholder="Что сделано / запланировано"
-                                            style={{ minHeight: 38 }}
-                                        />
-                                        <Select
-                                            value={item.tone}
-                                            options={TONE_OPTIONS}
-                                            onChange={(e) =>
-                                                updateTimeline(
-                                                    i,
-                                                    'tone',
-                                                    e.target.value,
-                                                )
-                                            }
-                                        />
-                                        <IconButton
-                                            label="Удалить этап"
-                                            variant="ghost"
-                                            onClick={() => removeTimeline(i)}
-                                        >
-                                            <X size={15} strokeWidth={1.5} />
-                                        </IconButton>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Blueprint>
+                    <DescriptionCard
+                        data={data}
+                        lang={lang}
+                        setLang={setLang}
+                        compAll={compAll}
+                        fieldError={fieldError}
+                        setLocaleField={setLocaleField}
+                    />
+                    <GoalsCard
+                        lang={lang}
+                        goals={data.goals[lang]}
+                        addGoal={addGoal}
+                        updateGoal={updateGoal}
+                        removeGoal={removeGoal}
+                    />
+                    <TimelineCard
+                        timeline={data.timeline}
+                        addTimeline={addTimeline}
+                        updateTimeline={updateTimeline}
+                        removeTimeline={removeTimeline}
+                    />
                 </div>
 
                 {/* --------------------------------------------- sidebar */}
@@ -531,197 +263,30 @@ export default function ProjectForm({ project, reference }: Props) {
                         gap: 16,
                     }}
                 >
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Параметры
-                        </h3>
-
-                        <Field
-                            label="Статус проекта"
-                            required
-                            error={fieldError('lifecycle_status')}
-                        >
-                            <Select
-                                value={data.lifecycle_status}
-                                options={reference.lifecycles}
-                                onChange={(e) =>
-                                    setData('lifecycle_status', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Код проекта">
-                            <Input
-                                value={data.code}
-                                onChange={(e) =>
-                                    setData('code', e.target.value)
-                                }
-                                placeholder="Проект 01"
-                            />
-                        </Field>
-                        <Field label="Сроки">
-                            <Input
-                                value={data.years}
-                                onChange={(e) =>
-                                    setData('years', e.target.value)
-                                }
-                                placeholder="2026–2030"
-                            />
-                        </Field>
-                        <Field label="Заказчик">
-                            <Input
-                                value={data.customer}
-                                onChange={(e) =>
-                                    setData('customer', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Партнёры">
-                            <Input
-                                value={data.partner}
-                                onChange={(e) =>
-                                    setData('partner', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Бюджет">
-                            <Input
-                                value={data.budget}
-                                onChange={(e) =>
-                                    setData('budget', e.target.value)
-                                }
-                                placeholder="18,4 млн долл. США"
-                            />
-                        </Field>
-                        <Field
-                            label="Адрес (slug)"
-                            hint="Пусто — из названия."
-                            error={fieldError('slug')}
-                        >
-                            <Input
-                                value={data.slug}
-                                onChange={(e) =>
-                                    setData('slug', e.target.value)
-                                }
-                                hasError={!!fieldError('slug')}
-                                placeholder="early-warning-system"
-                            />
-                        </Field>
-                    </Blueprint>
-
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Дирекция проекта
-                        </h3>
-                        <Field label="Адрес">
-                            <Input
-                                value={data.direction.address}
-                                onChange={(e) =>
-                                    setDirection('address', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Телефон">
-                            <Input
-                                value={data.direction.phone}
-                                onChange={(e) =>
-                                    setDirection('phone', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="E-mail">
-                            <Input
-                                value={data.direction.email}
-                                onChange={(e) =>
-                                    setDirection('email', e.target.value)
-                                }
-                            />
-                        </Field>
-                    </Blueprint>
-
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Обложка
-                        </h3>
-                        {coverSrc && (
-                            <img
-                                src={coverSrc}
-                                alt=""
-                                style={{
-                                    width: '100%',
-                                    borderRadius: 6,
-                                    marginBottom: 10,
-                                    border: '1px solid var(--color-divider)',
-                                }}
-                            />
-                        )}
-
-                        <input
-                            ref={coverFileRef}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            hidden
-                            onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
-
-                                if (file) {
-                                    setData('cover', file);
-                                    setData('cover_media_id', null);
-                                    setData('cover_remove', false);
-                                    setCoverPreview(URL.createObjectURL(file));
-                                }
-
-                                e.target.value = '';
-                            }}
-                        />
-                        <div
-                            style={{
-                                display: 'flex',
-                                gap: 8,
-                                flexWrap: 'wrap',
-                            }}
-                        >
-                            <Button
-                                variant="secondary"
-                                icon={<Upload size={15} strokeWidth={1.75} />}
-                                onClick={() => coverFileRef.current?.click()}
-                            >
-                                Загрузить
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                icon={<Images size={15} strokeWidth={1.75} />}
-                                onClick={() => setCoverPicker(true)}
-                            >
-                                Из медиатеки
-                            </Button>
-                        </div>
-
-                        {project?.cover_url && (
-                            <Checkbox
-                                className="mt-2"
-                                label="Удалить текущую обложку"
-                                checked={data.cover_remove}
-                                onChange={(e) =>
-                                    setData('cover_remove', e.target.checked)
-                                }
-                            />
-                        )}
-
-                        <MediaPicker
-                            open={coverPicker}
-                            onClose={() => setCoverPicker(false)}
-                            onSelect={pickCoverFromLibrary}
-                        />
-                    </Blueprint>
+                    <ParametersCard
+                        data={data}
+                        setData={setData}
+                        fieldError={fieldError}
+                        lifecycles={reference.lifecycles}
+                    />
+                    <DirectionCard
+                        direction={data.direction}
+                        setDirection={setDirection}
+                    />
+                    <CoverCard
+                        coverSrc={coverSrc}
+                        coverFileRef={coverFileRef}
+                        onFileChange={onCoverFileChange}
+                        onUploadClick={() => coverFileRef.current?.click()}
+                        coverPicker={coverPicker}
+                        setCoverPicker={setCoverPicker}
+                        pickCoverFromLibrary={pickCoverFromLibrary}
+                        hasExistingCover={!!project?.cover_url}
+                        coverRemove={data.cover_remove}
+                        setCoverRemove={(remove) =>
+                            setData('cover_remove', remove)
+                        }
+                    />
                 </div>
             </div>
 
