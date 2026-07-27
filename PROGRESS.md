@@ -621,3 +621,36 @@
 - **Коммиты:** `khf-site-cms@fc043b7` (бэкенд + admin-фронтенд + тесты), `khf-site-front@e559f81` (публичная страница + fetchLeadership + e2e-тест)
 
 ---
+
+## C-1b · Перенести `structure` в CMS — ГОТОВО
+
+Реализация решения из `DECISIONS.md` (C-1), сразу вслед за C-1a. Та же логика: `structure` — в CMS, отдельная сущность `StructureUnit`, не `Page`. Оценка — 4–6 ч; уложился с запасом, т.к. большая часть паттернов (модель без workflow, CRUD, D-2-кэш) уже были свежи после C-1a.
+
+- **Сделано (CMS, бэкенд):**
+  - Новая модель `StructureUnit` (`num`/`name`/`desc` — `name`/`desc` переводимые, `num` — отдельное от `sort` поле, как явно и просит `DECISIONS.md`: номер подразделения — не обязательно то же самое, что порядок отображения). Без workflow и без фото — по образцу `Region`, ещё проще, чем `Leader` (там хотя бы медиа было).
+  - `Module::Structure`, `chief_editor` — view-only в `PermissionMatrix` (тот же паттерн, что `Regions`/`Leadership`), `StructureUnitPolicy` через общий `ModulePolicy`.
+  - `Cms\StructureUnitController` — обычный CRUD, `Api\StructureUnitController@index` — `GET /api/v1/structure`, тот же D-2 кэш-паттерн (`Cache::remember` + постраничность в памяти), что у `regions/directory`/`categories`/`leadership`.
+  - **Две цифровые плашки страницы (год образования, число подразделений) — НЕ поля `StructureUnit`.** Это агрегаты уровня страницы, не свойство одной записи (ровно то, от чего `DECISIONS.md` явно предостерегает: «отдельные поля на самой сущности StructureUnit не подходят»). Пошёл по рекомендации `DECISIONS.md` — новая группа `Settings` (`structure.founded_year`, `structure.units_count`), добавлена в существующий редактор настроек (`SettingController::SECTIONS`) и в `PublicSettingsService`.
+  - **Это единственная часть задачи, которая коснулась уже существующего, законтрактованного D-3 эндпоинта (`/api/v1/settings`), а не только новых.** `openapi.yaml`: `SettingsResponse.data` получил `structure {founded_year, units_count}` (оба — обязательные строки, как `org.name`/`emergency_number` — тот же стиль, не выдумывал новый). Проверил `OpenApiContractTest` после правки — 15/15, изменение спеки не разошлось с реальным ответом.
+  - Новые `/api/v1/leadership` (C-1a) и `/api/v1/structure` эндпоинты сознательно НЕ добавлены в `openapi.yaml` как отдельные операции — решение принято один раз и применено единообразно к обеим задачам: D-3 сам оставил ~15 старых эндпоинтов не смигрированными на генерируемые типы, это тот же самый, уже принятый в этой сессии масштаб частичности, не новый прецедент.
+  - `SettingSeeder` — добавлена группа `structure` (`1994`/`68` — те же значения, что были в `content.ts`). `StructureUnitFactory`, `StructureUnitSeeder` — 6 подразделений, дословно из `content.ts`, все 3 локали.
+  - `ContentTranslationReport` (C-3): `StructureUnit` добавлен в `REFERENCE_MODELS`.
+- **Сделано (CMS, admin-фронтенд):** `resources/js/pages/structure/{index,form}.tsx` — по образцу `leadership/*`, но проще (нет фото, нет `is_chairman`-аналога). Пункт «Структура» в навигации, иконка `Network` (нашёл свободную от конфликтов с уже занятыми `Building2`/`UserCog`/etc.).
+- **Сделано (фронт, `khf-site-front`):**
+  - `lib/api.ts`: `ApiStructureUnit` + `fetchStructureUnits()` — тот же паттерн, что `fetchLeadership`/`fetchRegionsDirectory`.
+  - `npm run types:api:generate` перегенерировал `lib/api-types.generated.ts` из обновлённого `openapi.yaml` CMS — новое поле `ApiSettings.structure` появилось типобезопасно, без ручной правки сгенерированного файла.
+  - `app/[locale]/structure/content.ts` — обрезан до статической рамки (хлебные крошки, заголовок, вводный абзац, баннер центрального аппарата, ПОДПИСИ цифровых плашек — не значения, направления деятельности). `units`/`stats` (значения) убраны из интерфейса.
+  - `app/[locale]/structure/page.tsx`: `Promise.all([fetchStructureUnits(locale), fetchSettings(locale)])`, `stats` собирается на странице из значений `fetchSettings()` + статичных подписей из `content.ts`. `ApiStructureUnit` `{num, name, desc}` совпал с формой, которую уже ожидал существующий JSX для `units.map()` — рендер подразделений не пришлось переписывать, только источник данных.
+  - `tests/e2e/structure.spec.ts` — новый: обе цифры, все 6 подразделений, статическая ссылка на «руководство» пережила миграцию.
+- **Проверено:**
+  - CMS: `vendor/bin/pint --dirty`, `composer types:check` (0 новых ошибок; всё те же 5 отслеженных из P3-9), `php artisan test --compact` — **414/414** (было 399 после C-1a). `OpenApiContractTest` отдельно — 15/15 после правки спеки. `npm run types:check`, `npx eslint`, `npx prettier --write`, `npm run build` — чисто.
+  - Фронт: `npx tsc --noEmit`, `npx eslint .` — чисто. `npx vitest run` — 44/44 (без изменений, тот же принцип, что в C-1a — не дублировал юнит-тестом уже покрытый `buildUrl`/паттерн деградации). `npm run build` — чисто, `/structure` в статике для всех 3 локалей. E2E (`leadership.spec.ts` + `structure.spec.ts` вместе) — 2/2.
+  - Ручная проверка через Browser-инструмент (`http://localhost:3000/ru/structure` против пересеянного dev CMS) — текст страницы совпал посимвольно с прежним статическим содержимым (обе цифры, все 6 карточек подразделений, баннер, футер); консоль — без ошибок.
+- **Решения:**
+  - `StructureUnit`, не `Page` — см. `DECISIONS.md`.
+  - Цифры — в `Settings`, не в `StructureUnit` и не в новой отдельной сущности — прямая рекомендация `DECISIONS.md`, независимая проверка не нашла оснований с ней спорить (агрегаты страницы — ни одна из существующих записей не «владеет» этими числами).
+  - Новые публичные эндпоинты не задокументированы в OpenAPI (см. «Сделано» выше) — единообразно с C-1a, не отдельное решение под эту задачу.
+  - `num` — отдельное поле, не производное от `sort` — прямая буква `DECISIONS.md`.
+- **Коммиты:** `khf-site-cms@c9b6046` (бэкенд + admin-фронтенд + тесты + правка openapi.yaml/Settings), `khf-site-front@fdfd058` (публичная страница + fetchStructureUnits + regen типов + e2e-тест)
+
+---
