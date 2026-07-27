@@ -1,8 +1,14 @@
 <?php
 
+use App\Enums\ContentStatus;
 use App\Models\Activity;
 use App\Models\Alert;
+use App\Models\Announcement;
+use App\Models\Document;
+use App\Models\Instruction;
 use App\Models\News;
+use App\Models\Page;
+use App\Models\Project;
 use App\Models\Region;
 use App\Models\User;
 use Database\Seeders\RegionSeeder;
@@ -80,4 +86,40 @@ it('limits dashboard data to the assigned region and own editorial content', fun
             ->where('metrics.1.value', 1)
             ->has('activeAlerts', 1)
             ->has('regionStatuses', 1));
+});
+
+// D-6 (CMS_AUDIT.md P2): metrics/tasks/calendar used to only ever look at
+// Alert and News, silently excluding Instruction/Document/Project/
+// Announcement/Page from every widget except the type-agnostic activity
+// feed — see DashboardController for the per-widget expansion.
+it('counts drafts and review across every workflow type, not just alerts and news', function () {
+    Instruction::factory()->create(['status' => ContentStatus::Draft]);
+    Document::factory()->create(['status' => ContentStatus::Draft]);
+    Page::factory()->create(['status' => ContentStatus::Draft]);
+    Project::factory()->create(['status' => ContentStatus::Review]);
+    Announcement::factory()->create(['status' => ContentStatus::TranslationCheck]);
+
+    actingAs(dashboardUser('admin'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.1.value', 3)
+            ->where('metrics.2.value', 2));
+});
+
+it('includes non-alert workflow types pending approval in the attention queue', function () {
+    Project::factory()->create(['status' => ContentStatus::Review]);
+
+    actingAs(dashboardUser('chief_editor'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('tasks', 1)
+            ->where('tasks.0.href', '/approvals'));
+});
+
+it('shows recently published non-alert, non-news content on the calendar', function () {
+    Project::factory()->create(['status' => ContentStatus::Published, 'published_at' => now()]);
+
+    actingAs(dashboardUser('admin'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->has('calendar', 1));
 });
