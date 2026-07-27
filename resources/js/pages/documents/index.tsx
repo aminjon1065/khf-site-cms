@@ -8,6 +8,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { StatusBadge, Tag } from '@/ui/Badge';
@@ -119,7 +120,7 @@ export default function DocumentsIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/documents',
+            DocumentController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -143,7 +144,7 @@ export default function DocumentsIndex({
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
-                        href={`/documents/${r.id}/edit`}
+                        href={DocumentController.edit.url(r.id)}
                         style={{
                             fontWeight: 600,
                             color: 'var(--color-text)',
@@ -241,7 +242,7 @@ export default function DocumentsIndex({
                                 />
                             ),
                             onSelect: () =>
-                                router.visit(`/documents/${r.id}/edit`),
+                                router.visit(DocumentController.edit.url(r.id)),
                         },
                         {
                             label: 'Открыть на сайте',
@@ -261,7 +262,9 @@ export default function DocumentsIndex({
                                       ),
                                       onSelect: () =>
                                           router.post(
-                                              `/documents/${r.id}/duplicate`,
+                                              DocumentController.duplicate.url(
+                                                  r.id,
+                                              ),
                                           ),
                                   },
                               ]
@@ -305,7 +308,7 @@ export default function DocumentsIndex({
                 actions={
                     can('documents.create') && (
                         <LinkButton
-                            href="/documents/create"
+                            href={DocumentController.create.url()}
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
                         >
@@ -373,7 +376,7 @@ export default function DocumentsIndex({
                 emptyAction={
                     can('documents.create') ? (
                         <LinkButton
-                            href="/documents/create"
+                            href={DocumentController.create.url()}
                             variant="secondary"
                         >
                             Добавить документ
@@ -427,13 +430,16 @@ export default function DocumentsIndex({
                     }
 
                     setProcessing(true);
-                    router.delete(`/documents/${deleteTarget.id}`, {
-                        preserveScroll: true,
-                        onFinish: () => {
-                            setProcessing(false);
-                            setDeleteTarget(null);
+                    router.delete(
+                        DocumentController.destroy.url(deleteTarget.id),
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setProcessing(false);
+                                setDeleteTarget(null);
+                            },
                         },
-                    });
+                    );
                 }}
             />
 
@@ -456,7 +462,7 @@ export default function DocumentsIndex({
 
                     setProcessing(true);
                     router.post(
-                        `/documents/${unpublishTarget.id}/unpublish`,
+                        DocumentController.unpublish.url(unpublishTarget.id),
                         { comment },
                         {
                             preserveScroll: true,

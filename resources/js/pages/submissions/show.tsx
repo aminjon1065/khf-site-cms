@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, MessageSquarePlus, Save } from 'lucide-react';
+import SubmissionController from '@/actions/App/Http/Controllers/Cms/SubmissionController';
 import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
@@ -67,10 +68,12 @@ export default function SubmissionShow({ submission, reference }: Props) {
     const comment = useForm({ body: '' });
 
     const saveStatus = () =>
-        status.put(`/submissions/${submission.id}`, { preserveScroll: true });
+        status.put(SubmissionController.update.url(submission.id), {
+            preserveScroll: true,
+        });
 
     const addComment = () =>
-        comment.post(`/submissions/${submission.id}/comments`, {
+        comment.post(SubmissionController.comment.url(submission.id), {
             preserveScroll: true,
             onSuccess: () => comment.reset('body'),
         });
@@ -92,7 +95,7 @@ export default function SubmissionShow({ submission, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/submissions"
+                        href={SubmissionController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',

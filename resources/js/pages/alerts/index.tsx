@@ -8,6 +8,8 @@ import {
     SquareArrowOutUpRight,
 } from 'lucide-react';
 import { useState } from 'react';
+import ActivityController from '@/actions/App/Http/Controllers/Cms/ActivityController';
+import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus, Severity } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
@@ -105,7 +107,7 @@ export default function AlertsIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/alerts',
+            AlertController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -128,7 +130,7 @@ export default function AlertsIndex({
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
-                        href={`/alerts/${r.id}/edit`}
+                        href={AlertController.edit.url(r.id)}
                         style={{
                             fontWeight: 600,
                             color: 'var(--color-text)',
@@ -228,7 +230,7 @@ export default function AlertsIndex({
                                 />
                             ),
                             onSelect: () =>
-                                router.visit(`/alerts/${r.id}/edit`),
+                                router.visit(AlertController.edit.url(r.id)),
                         },
                         {
                             label: t('action.preview'),
@@ -245,7 +247,9 @@ export default function AlertsIndex({
                                       ),
                                       onSelect: () =>
                                           router.post(
-                                              `/alerts/${r.id}/duplicate`,
+                                              AlertController.duplicate.url(
+                                                  r.id,
+                                              ),
                                           ),
                                   },
                               ]
@@ -253,7 +257,8 @@ export default function AlertsIndex({
                         {
                             label: t('action.history'),
                             icon: <History size={15} strokeWidth={1.5} />,
-                            onSelect: () => router.visit('/activity'),
+                            onSelect: () =>
+                                router.visit(ActivityController.index.url()),
                         },
                         ...(can('alerts.publish') &&
                         (r.status === 'published' || r.status === 'updated')
@@ -280,12 +285,15 @@ export default function AlertsIndex({
                 subtitle="Официальные предупреждения населению · публикуются на сайте, в приложении SOS и по каналам оповещения"
                 actions={
                     <>
-                        <LinkButton href="/activity" variant="secondary">
+                        <LinkButton
+                            href={ActivityController.index.url()}
+                            variant="secondary"
+                        >
                             История изменений
                         </LinkButton>
                         {can('alerts.create') && (
                             <LinkButton
-                                href="/alerts/create"
+                                href={AlertController.create.url()}
                                 variant="primary"
                                 icon={<Plus size={16} strokeWidth={2} />}
                             >
@@ -361,7 +369,10 @@ export default function AlertsIndex({
                 emptyHint="Измените фильтры или создайте новое предупреждение."
                 emptyAction={
                     can('alerts.create') ? (
-                        <LinkButton href="/alerts/create" variant="secondary">
+                        <LinkButton
+                            href={AlertController.create.url()}
+                            variant="secondary"
+                        >
                             Создать предупреждение
                         </LinkButton>
                     ) : undefined
@@ -415,7 +426,7 @@ export default function AlertsIndex({
 
                     setProcessing(true);
                     router.post(
-                        `/alerts/${unpublishTarget.id}/unpublish`,
+                        AlertController.unpublish.url(unpublishTarget.id),
                         { comment },
                         {
                             preserveScroll: true,

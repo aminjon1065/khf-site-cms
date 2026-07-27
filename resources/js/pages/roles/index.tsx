@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Check, MapPin, Minus } from 'lucide-react';
 import { useState } from 'react';
+import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { PageHeader } from '@/ui/PageHeader';
@@ -35,7 +36,7 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/users"
+                        href={UserController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',

@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowLeft, ArrowUp, Plus, Save, X } from 'lucide-react';
 import { useState } from 'react';
+import RegionController from '@/actions/App/Http/Controllers/Cms/RegionController';
 import type { ContentLocale } from '@/lib/domain';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
@@ -106,9 +107,11 @@ export default function RegionForm({ region, reference }: Props) {
 
     const submit = () => {
         if (isEdit && region) {
-            form.put(`/regions/${region.id}`, { preserveScroll: true });
+            form.put(RegionController.update.url(region.id), {
+                preserveScroll: true,
+            });
         } else {
-            form.post('/regions', { preserveScroll: true });
+            form.post(RegionController.store.url(), { preserveScroll: true });
         }
     };
 
@@ -119,7 +122,7 @@ export default function RegionForm({ region, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/regions"
+                        href={RegionController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',

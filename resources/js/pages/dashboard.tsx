@@ -1,5 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 import { ArrowRight, CheckCircle2, TriangleAlert } from 'lucide-react';
+import ActivityController from '@/actions/App/Http/Controllers/Cms/ActivityController';
+import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
+import ApprovalController from '@/actions/App/Http/Controllers/Cms/ApprovalController';
 import { useAuth } from '@/lib/auth';
 import { toneColor } from '@/lib/domain';
 import type { Severity } from '@/lib/domain';
@@ -165,7 +168,7 @@ export default function Dashboard({
                         {today.split(',').pop()?.trim()}
                     </span>
                     <LinkButton
-                        href="/alerts"
+                        href={AlertController.index.url()}
                         variant="secondary"
                         size="sm"
                         style={{ marginLeft: 'auto' }}
@@ -199,7 +202,7 @@ export default function Dashboard({
                                 {a.regions.map((r) => r.name).join(', ')}
                             </div>
                             <Link
-                                href={`/alerts/${a.id}/edit`}
+                                href={AlertController.edit.url(a.id)}
                                 style={{
                                     fontFamily: 'var(--font-heading)',
                                     fontWeight: 600,
@@ -322,7 +325,7 @@ export default function Dashboard({
                     <section>
                         <SectionTitle
                             title={`Требует внимания · ${tasks.length}`}
-                            link="/approvals"
+                            link={ApprovalController.index.url()}
                             linkLabel="Центр согласования"
                         />
                         <Blueprint>
@@ -414,7 +417,7 @@ export default function Dashboard({
                     <section>
                         <SectionTitle
                             title="Последняя активность"
-                            link="/activity"
+                            link={ActivityController.index.url()}
                             linkLabel="Журнал действий"
                         />
                         <Blueprint style={{ padding: '4px 14px' }}>

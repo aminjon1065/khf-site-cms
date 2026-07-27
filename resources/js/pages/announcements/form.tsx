@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, ChevronDown, Save, Send } from 'lucide-react';
 import { useState } from 'react';
+import AnnouncementController from '@/actions/App/Http/Controllers/Cms/AnnouncementController';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
@@ -87,7 +88,9 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
         }));
 
         form.post(
-            isEdit ? `/announcements/${announcement!.id}` : '/announcements',
+            isEdit
+                ? AnnouncementController.update.url(announcement!.id)
+                : AnnouncementController.store.url(),
             { forceFormData: true, preserveScroll: true },
         );
     };
@@ -103,7 +106,7 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/announcements"
+                        href={AnnouncementController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -297,7 +300,10 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
 
             {/* --------------------------------------------- sticky actions */}
             <div className="news-form-actions">
-                <LinkButton href="/announcements" variant="ghost">
+                <LinkButton
+                    href={AnnouncementController.index.url()}
+                    variant="ghost"
+                >
                     Отмена
                 </LinkButton>
                 <div style={{ flex: 1 }} />

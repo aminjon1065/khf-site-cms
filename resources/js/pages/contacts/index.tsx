@@ -1,6 +1,8 @@
 import { Head } from '@inertiajs/react';
 import { Building2, Mail, MapPin, Phone, Siren } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
+import RegionController from '@/actions/App/Http/Controllers/Cms/RegionController';
+import SettingController from '@/actions/App/Http/Controllers/Cms/SettingController';
 import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { LinkButton } from '@/ui/Button';
@@ -48,12 +50,18 @@ export default function EmergencyContacts({
                 actions={
                     <div className="flex gap-2">
                         {can('settings.edit') && (
-                            <LinkButton href="/settings" size="sm">
+                            <LinkButton
+                                href={SettingController.index.url()}
+                                size="sm"
+                            >
                                 Настройки
                             </LinkButton>
                         )}
                         {can('regions.edit') && (
-                            <LinkButton href="/regions" size="sm">
+                            <LinkButton
+                                href={RegionController.index.url()}
+                                size="sm"
+                            >
                                 Регионы
                             </LinkButton>
                         )}

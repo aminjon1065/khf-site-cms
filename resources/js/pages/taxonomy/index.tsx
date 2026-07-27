@@ -1,6 +1,7 @@
 import { Head, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Plus, Save, X } from 'lucide-react';
 import { useState } from 'react';
+import TaxonomyController from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale } from '@/lib/domain';
 import { Tag as TagPill } from '@/ui/Badge';
@@ -118,7 +119,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
         setTags(data.tags.filter((_, idx) => idx !== i));
 
     const save = () =>
-        form.put('/taxonomy', {
+        form.put(TaxonomyController.update.url(), {
             preserveScroll: true,
             onError: (errs) => {
                 // The required field is the Russian name — surface its tab.

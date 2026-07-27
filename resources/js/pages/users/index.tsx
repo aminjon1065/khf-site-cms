@@ -8,6 +8,8 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import RoleController from '@/actions/App/Http/Controllers/Cms/RoleController';
+import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
 import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
 import { IconButton, LinkButton } from '@/ui/Button';
@@ -74,7 +76,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/users',
+            UserController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -114,7 +116,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                     <div style={{ minWidth: 0 }}>
                         {can('users.edit') ? (
                             <Link
-                                href={`/users/${r.id}/edit`}
+                                href={UserController.edit.url(r.id)}
                                 style={{
                                     fontWeight: 600,
                                     color: 'var(--color-text)',
@@ -230,7 +232,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                                           ),
                                           onSelect: () =>
                                               router.visit(
-                                                  `/users/${r.id}/edit`,
+                                                  UserController.edit.url(r.id),
                                               ),
                                       },
                                   ]
@@ -266,7 +268,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                 actions={
                     <div style={{ display: 'flex', gap: 8 }}>
                         <LinkButton
-                            href="/roles"
+                            href={RoleController.index.url()}
                             variant="secondary"
                             icon={<KeyRound size={15} strokeWidth={1.75} />}
                         >
@@ -274,7 +276,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                         </LinkButton>
                         {can('users.create') && (
                             <LinkButton
-                                href="/users/create"
+                                href={UserController.create.url()}
                                 variant="primary"
                                 icon={<Plus size={16} strokeWidth={2} />}
                             >
@@ -369,7 +371,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                     }
 
                     setProcessing(true);
-                    router.delete(`/users/${deleteTarget.id}`, {
+                    router.delete(UserController.destroy.url(deleteTarget.id), {
                         preserveScroll: true,
                         onFinish: () => {
                             setProcessing(false);

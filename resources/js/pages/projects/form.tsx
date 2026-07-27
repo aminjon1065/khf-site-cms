@@ -10,6 +10,7 @@ import {
     X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import ProjectController from '@/actions/App/Http/Controllers/Cms/ProjectController';
 import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
@@ -198,11 +199,16 @@ export default function ProjectForm({ project, reference }: Props) {
             ...(isEdit ? { _method: 'put' } : {}),
         }));
 
-        form.post(isEdit ? `/projects/${project!.id}` : '/projects', {
-            forceFormData: true,
-            preserveScroll: true,
-            preserveState: stay,
-        });
+        form.post(
+            isEdit
+                ? ProjectController.update.url(project!.id)
+                : ProjectController.store.url(),
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                preserveState: stay,
+            },
+        );
     };
 
     // Ctrl/Cmd+S — сохранить черновик и остаться в редакторе (stay = true).
@@ -215,7 +221,7 @@ export default function ProjectForm({ project, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/projects"
+                        href={ProjectController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -721,7 +727,10 @@ export default function ProjectForm({ project, reference }: Props) {
 
             {/* --------------------------------------------- sticky actions */}
             <div className="news-form-actions">
-                <LinkButton href="/projects" variant="ghost">
+                <LinkButton
+                    href={ProjectController.index.url()}
+                    variant="ghost"
+                >
                     Отмена
                 </LinkButton>
                 <div style={{ flex: 1 }} />

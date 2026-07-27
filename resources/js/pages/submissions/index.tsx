@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { Eye, MoreVertical, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import SubmissionController from '@/actions/App/Http/Controllers/Cms/SubmissionController';
 import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
 import { IconButton } from '@/ui/Button';
@@ -74,7 +75,7 @@ export default function SubmissionsIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/submissions',
+            SubmissionController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -87,7 +88,7 @@ export default function SubmissionsIndex({
             width: 150,
             render: (r) => (
                 <Link
-                    href={`/submissions/${r.id}`}
+                    href={SubmissionController.show.url(r.id)}
                     className="ui-mono"
                     style={{
                         fontSize: 12.5,
@@ -175,7 +176,9 @@ export default function SubmissionsIndex({
                             label: 'Открыть',
                             icon: <Eye size={15} strokeWidth={1.5} />,
                             onSelect: () =>
-                                router.visit(`/submissions/${r.id}`),
+                                router.visit(
+                                    SubmissionController.show.url(r.id),
+                                ),
                         },
                         ...(can('submissions.delete')
                             ? [
@@ -287,13 +290,16 @@ export default function SubmissionsIndex({
                     }
 
                     setProcessing(true);
-                    router.delete(`/submissions/${deleteTarget.id}`, {
-                        preserveScroll: true,
-                        onFinish: () => {
-                            setProcessing(false);
-                            setDeleteTarget(null);
+                    router.delete(
+                        SubmissionController.destroy.url(deleteTarget.id),
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setProcessing(false);
+                                setDeleteTarget(null);
+                            },
                         },
-                    });
+                    );
                 }}
             />
         </>

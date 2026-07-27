@@ -9,6 +9,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
@@ -92,7 +93,7 @@ export default function InstructionsIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/instructions',
+            InstructionController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -109,7 +110,7 @@ export default function InstructionsIndex({
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
-                        href={`/instructions/${r.id}/edit`}
+                        href={InstructionController.edit.url(r.id)}
                         style={{
                             fontWeight: 600,
                             color: 'var(--color-text)',
@@ -209,7 +210,9 @@ export default function InstructionsIndex({
                                 />
                             ),
                             onSelect: () =>
-                                router.visit(`/instructions/${r.id}/edit`),
+                                router.visit(
+                                    InstructionController.edit.url(r.id),
+                                ),
                         },
                         {
                             label: 'Предпросмотр',
@@ -226,7 +229,9 @@ export default function InstructionsIndex({
                                       ),
                                       onSelect: () =>
                                           router.post(
-                                              `/instructions/${r.id}/duplicate`,
+                                              InstructionController.duplicate.url(
+                                                  r.id,
+                                              ),
                                           ),
                                   },
                               ]
@@ -270,7 +275,7 @@ export default function InstructionsIndex({
                 actions={
                     can('instructions.create') && (
                         <LinkButton
-                            href="/instructions/create"
+                            href={InstructionController.create.url()}
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
                         >
@@ -328,7 +333,7 @@ export default function InstructionsIndex({
                 emptyAction={
                     can('instructions.create') ? (
                         <LinkButton
-                            href="/instructions/create"
+                            href={InstructionController.create.url()}
                             variant="secondary"
                         >
                             Создать инструкцию
@@ -382,13 +387,16 @@ export default function InstructionsIndex({
                     }
 
                     setProcessing(true);
-                    router.delete(`/instructions/${deleteTarget.id}`, {
-                        preserveScroll: true,
-                        onFinish: () => {
-                            setProcessing(false);
-                            setDeleteTarget(null);
+                    router.delete(
+                        InstructionController.destroy.url(deleteTarget.id),
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setProcessing(false);
+                                setDeleteTarget(null);
+                            },
                         },
-                    });
+                    );
                 }}
             />
 
@@ -411,7 +419,7 @@ export default function InstructionsIndex({
 
                     setProcessing(true);
                     router.post(
-                        `/instructions/${unpublishTarget.id}/unpublish`,
+                        InstructionController.unpublish.url(unpublishTarget.id),
                         { comment },
                         {
                             preserveScroll: true,

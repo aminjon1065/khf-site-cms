@@ -38,6 +38,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useReducer, useState } from 'react';
 import type { ReactNode } from 'react';
+import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { postForm } from '@/lib/http';
 import { MediaPicker } from './MediaPicker';
 import type { MediaItem } from './MediaPicker';
@@ -130,7 +131,7 @@ async function uploadImagesAt(
             form.append('file', file);
             form.append('title', file.name);
             const res = await postForm<{ data: MediaItem }>(
-                '/media/library',
+                MediaController.upload.url(),
                 form,
             );
             view.dispatch(

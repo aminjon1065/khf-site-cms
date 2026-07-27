@@ -2,6 +2,7 @@ import { router } from '@inertiajs/react';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { I18nProvider, useT } from '@/lib/i18n';
+import { locale as localeRoute } from '@/routes';
 import { Blueprint } from '@/ui/Blueprint';
 
 function Shell({ children }: { children: ReactNode }) {
@@ -9,7 +10,11 @@ function Shell({ children }: { children: ReactNode }) {
 
     const switchLocale = (next: 'ru' | 'tg') => {
         if (next !== locale) {
-            router.post('/locale', { locale: next }, { preserveScroll: true });
+            router.post(
+                localeRoute.url(),
+                { locale: next },
+                { preserveScroll: true },
+            );
         }
     };
 

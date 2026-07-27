@@ -7,6 +7,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import PageController from '@/actions/App/Http/Controllers/Cms/PageController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge } from '@/ui/Badge';
@@ -72,7 +73,7 @@ export default function PagesIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/pages',
+            PageController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -90,7 +91,7 @@ export default function PagesIndex({
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
-                        href={`/pages/${r.id}/edit`}
+                        href={PageController.edit.url(r.id)}
                         style={{
                             fontWeight: 600,
                             color: 'var(--color-text)',
@@ -150,7 +151,8 @@ export default function PagesIndex({
                                     strokeWidth={1.5}
                                 />
                             ),
-                            onSelect: () => router.visit(`/pages/${r.id}/edit`),
+                            onSelect: () =>
+                                router.visit(PageController.edit.url(r.id)),
                         },
                         ...(can('pages.create')
                             ? [
@@ -161,7 +163,9 @@ export default function PagesIndex({
                                       ),
                                       onSelect: () =>
                                           router.post(
-                                              `/pages/${r.id}/duplicate`,
+                                              PageController.duplicate.url(
+                                                  r.id,
+                                              ),
                                           ),
                                   },
                               ]
@@ -205,7 +209,7 @@ export default function PagesIndex({
                 actions={
                     can('pages.create') && (
                         <LinkButton
-                            href="/pages/create"
+                            href={PageController.create.url()}
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
                         >
@@ -255,7 +259,10 @@ export default function PagesIndex({
                 emptyHint="Измените фильтры или создайте новую страницу."
                 emptyAction={
                     can('pages.create') ? (
-                        <LinkButton href="/pages/create" variant="secondary">
+                        <LinkButton
+                            href={PageController.create.url()}
+                            variant="secondary"
+                        >
                             Создать страницу
                         </LinkButton>
                     ) : undefined
@@ -307,7 +314,7 @@ export default function PagesIndex({
                     }
 
                     setProcessing(true);
-                    router.delete(`/pages/${deleteTarget.id}`, {
+                    router.delete(PageController.destroy.url(deleteTarget.id), {
                         preserveScroll: true,
                         onFinish: () => {
                             setProcessing(false);
@@ -336,7 +343,7 @@ export default function PagesIndex({
 
                     setProcessing(true);
                     router.post(
-                        `/pages/${unpublishTarget.id}/unpublish`,
+                        PageController.unpublish.url(unpublishTarget.id),
                         { comment },
                         {
                             preserveScroll: true,

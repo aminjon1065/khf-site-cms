@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, GripVertical, Save } from 'lucide-react';
+import HomeBlockController from '@/actions/App/Http/Controllers/Cms/HomeBlockController';
 import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
@@ -62,7 +63,8 @@ export default function HomeBlocksIndex({ blocks }: Props) {
         setData('blocks', next);
     };
 
-    const save = () => form.put('/home-blocks', { preserveScroll: true });
+    const save = () =>
+        form.put(HomeBlockController.update.url(), { preserveScroll: true });
 
     return (
         <>

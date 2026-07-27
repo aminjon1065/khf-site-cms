@@ -2,6 +2,8 @@ import { Form, Head, Link } from '@inertiajs/react';
 import { Eye, EyeOff } from 'lucide-react';
 import { useState } from 'react';
 import { useT } from '@/lib/i18n';
+import { store } from '@/routes/login';
+import { request } from '@/routes/password';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
 import { Checkbox, Field, Input } from '@/ui/Field';
@@ -39,8 +41,7 @@ export default function Login({
             </p>
 
             <Form
-                action="/login"
-                method="post"
+                {...store.form()}
                 resetOnSuccess={['password']}
                 disableWhileProcessing
             >
@@ -129,7 +130,7 @@ export default function Login({
                             />
                             {canResetPassword && (
                                 <Link
-                                    href="/forgot-password"
+                                    href={request.url()}
                                     style={{ fontSize: 13 }}
                                 >
                                     Восстановить доступ

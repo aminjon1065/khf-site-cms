@@ -1,5 +1,6 @@
 import { Head, router } from '@inertiajs/react';
 import { Download, TriangleAlert } from 'lucide-react';
+import ActivityController from '@/actions/App/Http/Controllers/Cms/ActivityController';
 import { useT } from '@/lib/i18n';
 import { Button } from '@/ui/Button';
 import { DataTable, Pagination } from '@/ui/DataTable';
@@ -54,7 +55,7 @@ export default function Activity({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/activity',
+            ActivityController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -67,7 +68,7 @@ export default function Activity({
             period: filters.period,
             critical: filters.critical ? '1' : '',
         });
-        window.location.href = `/activity/export?${params.toString()}`;
+        window.location.href = `${ActivityController.export.url()}?${params.toString()}`;
     };
 
     const columns: Column<Row>[] = [

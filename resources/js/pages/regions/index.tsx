@@ -1,6 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
 import { useState } from 'react';
+import RegionController from '@/actions/App/Http/Controllers/Cms/RegionController';
 import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
 import { IconButton, LinkButton } from '@/ui/Button';
@@ -51,7 +52,7 @@ export default function RegionsIndex({ regions }: Props) {
                 <div style={{ minWidth: 0 }}>
                     {editable ? (
                         <Link
-                            href={`/regions/${r.id}/edit`}
+                            href={RegionController.edit.url(r.id)}
                             style={{
                                 fontWeight: 600,
                                 color: 'var(--color-text)',
@@ -139,7 +140,9 @@ export default function RegionsIndex({ regions }: Props) {
                                 label: 'Редактировать',
                                 icon: <Pencil size={15} strokeWidth={1.5} />,
                                 onSelect: () =>
-                                    router.visit(`/regions/${r.id}/edit`),
+                                    router.visit(
+                                        RegionController.edit.url(r.id),
+                                    ),
                             },
                             ...(can('regions.delete')
                                 ? [
@@ -172,7 +175,7 @@ export default function RegionsIndex({ regions }: Props) {
                 actions={
                     can('regions.create') && (
                         <LinkButton
-                            href="/regions/create"
+                            href={RegionController.create.url()}
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
                         >
@@ -190,7 +193,10 @@ export default function RegionsIndex({ regions }: Props) {
                 emptyHint="Добавьте первый регион республики."
                 emptyAction={
                     can('regions.create') ? (
-                        <LinkButton href="/regions/create" variant="secondary">
+                        <LinkButton
+                            href={RegionController.create.url()}
+                            variant="secondary"
+                        >
                             Добавить регион
                         </LinkButton>
                     ) : undefined
@@ -214,13 +220,16 @@ export default function RegionsIndex({ regions }: Props) {
                     }
 
                     setProcessing(true);
-                    router.delete(`/regions/${deleteTarget.id}`, {
-                        preserveScroll: true,
-                        onFinish: () => {
-                            setProcessing(false);
-                            setDeleteTarget(null);
+                    router.delete(
+                        RegionController.destroy.url(deleteTarget.id),
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setProcessing(false);
+                                setDeleteTarget(null);
+                            },
                         },
-                    });
+                    );
                 }}
             />
         </>

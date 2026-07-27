@@ -1,5 +1,6 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
+import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
 import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, LinkButton } from '@/ui/Button';
@@ -59,9 +60,11 @@ export default function UserForm({ user, reference }: Props) {
         }));
 
         if (isEdit && user) {
-            form.put(`/users/${user.id}`, { preserveScroll: true });
+            form.put(UserController.update.url(user.id), {
+                preserveScroll: true,
+            });
         } else {
-            form.post('/users', { preserveScroll: true });
+            form.post(UserController.store.url(), { preserveScroll: true });
         }
     };
 
@@ -78,7 +81,7 @@ export default function UserForm({ user, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/users"
+                        href={UserController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -289,7 +292,7 @@ export default function UserForm({ user, reference }: Props) {
             </div>
 
             <div className="news-form-actions">
-                <LinkButton href="/users" variant="ghost">
+                <LinkButton href={UserController.index.url()} variant="ghost">
                     Отмена
                 </LinkButton>
                 <div style={{ flex: 1 }} />

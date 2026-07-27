@@ -1,6 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { Check, Copy, FileText, Pencil, Trash2, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
+import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
@@ -82,7 +83,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
         }
 
         setEditSaving(true);
-        router.put(`/media/${editTarget.id}`, editForm, {
+        router.put(MediaController.update.url(editTarget.id), editForm, {
             preserveScroll: true,
             onSuccess: () => setEditTarget(null),
             onFinish: () => setEditSaving(false),
@@ -91,7 +92,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/media',
+            MediaController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -111,7 +112,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
         setUploadError(null);
         setUploading(true);
 
-        router.post('/media', fd, {
+        router.post(MediaController.store.url(), fd, {
             forceFormData: true,
             preserveScroll: true,
             onError: (errs) =>
@@ -413,13 +414,16 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                     }
 
                     setProcessing(true);
-                    router.delete(`/media/${deleteTarget.id}`, {
-                        preserveScroll: true,
-                        onFinish: () => {
-                            setProcessing(false);
-                            setDeleteTarget(null);
+                    router.delete(
+                        MediaController.destroy.url(deleteTarget.id),
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setProcessing(false);
+                                setDeleteTarget(null);
+                            },
                         },
-                    });
+                    );
                 }}
             />
 

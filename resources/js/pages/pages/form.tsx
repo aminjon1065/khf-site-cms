@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, ChevronDown, Save, Send } from 'lucide-react';
 import { useState } from 'react';
+import PageController from '@/actions/App/Http/Controllers/Cms/PageController';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
@@ -100,9 +101,14 @@ export default function PageForm({ page, reference }: Props) {
             ...(isEdit ? { _method: 'put' } : {}),
         }));
 
-        form.post(isEdit ? `/pages/${page!.id}` : '/pages', {
-            preserveScroll: true,
-        });
+        form.post(
+            isEdit
+                ? PageController.update.url(page!.id)
+                : PageController.store.url(),
+            {
+                preserveScroll: true,
+            },
+        );
     };
 
     return (
@@ -114,7 +120,7 @@ export default function PageForm({ page, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/pages"
+                        href={PageController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -313,7 +319,7 @@ export default function PageForm({ page, reference }: Props) {
 
             {/* --------------------------------------------- sticky actions */}
             <div className="news-form-actions">
-                <LinkButton href="/pages" variant="ghost">
+                <LinkButton href={PageController.index.url()} variant="ghost">
                     Отмена
                 </LinkButton>
                 <div style={{ flex: 1 }} />

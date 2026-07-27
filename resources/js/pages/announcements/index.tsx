@@ -8,6 +8,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import AnnouncementController from '@/actions/App/Http/Controllers/Cms/AnnouncementController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
@@ -90,7 +91,7 @@ export default function AnnouncementsIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/announcements',
+            AnnouncementController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -118,7 +119,7 @@ export default function AnnouncementsIndex({
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
-                        href={`/announcements/${r.id}/edit`}
+                        href={AnnouncementController.edit.url(r.id)}
                         style={{
                             fontWeight: 600,
                             color: 'var(--color-text)',
@@ -209,7 +210,9 @@ export default function AnnouncementsIndex({
                                 />
                             ),
                             onSelect: () =>
-                                router.visit(`/announcements/${r.id}/edit`),
+                                router.visit(
+                                    AnnouncementController.edit.url(r.id),
+                                ),
                         },
                         {
                             label: 'Предпросмотр',
@@ -229,7 +232,9 @@ export default function AnnouncementsIndex({
                                       ),
                                       onSelect: () =>
                                           router.post(
-                                              `/announcements/${r.id}/duplicate`,
+                                              AnnouncementController.duplicate.url(
+                                                  r.id,
+                                              ),
                                           ),
                                   },
                               ]
@@ -273,7 +278,7 @@ export default function AnnouncementsIndex({
                 actions={
                     can('announcements.create') && (
                         <LinkButton
-                            href="/announcements/create"
+                            href={AnnouncementController.create.url()}
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
                         >
@@ -331,7 +336,7 @@ export default function AnnouncementsIndex({
                 emptyAction={
                     can('announcements.create') ? (
                         <LinkButton
-                            href="/announcements/create"
+                            href={AnnouncementController.create.url()}
                             variant="secondary"
                         >
                             Создать объявление
@@ -385,13 +390,16 @@ export default function AnnouncementsIndex({
                     }
 
                     setProcessing(true);
-                    router.delete(`/announcements/${deleteTarget.id}`, {
-                        preserveScroll: true,
-                        onFinish: () => {
-                            setProcessing(false);
-                            setDeleteTarget(null);
+                    router.delete(
+                        AnnouncementController.destroy.url(deleteTarget.id),
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setProcessing(false);
+                                setDeleteTarget(null);
+                            },
                         },
-                    });
+                    );
                 }}
             />
 
@@ -414,7 +422,9 @@ export default function AnnouncementsIndex({
 
                     setProcessing(true);
                     router.post(
-                        `/announcements/${unpublishTarget.id}/unpublish`,
+                        AnnouncementController.unpublish.url(
+                            unpublishTarget.id,
+                        ),
                         { comment },
                         {
                             preserveScroll: true,

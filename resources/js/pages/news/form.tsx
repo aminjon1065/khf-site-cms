@@ -8,6 +8,7 @@ import {
     Upload,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
 import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
@@ -185,11 +186,16 @@ export default function NewsForm({ news, reference }: Props) {
             ...(isEdit ? { _method: 'put' } : {}),
         }));
 
-        form.post(isEdit ? `/news/${news!.id}` : '/news', {
-            forceFormData: true,
-            preserveScroll: true,
-            preserveState: stay,
-        });
+        form.post(
+            isEdit
+                ? NewsController.update.url(news!.id)
+                : NewsController.store.url(),
+            {
+                forceFormData: true,
+                preserveScroll: true,
+                preserveState: stay,
+            },
+        );
     };
 
     // Ctrl/Cmd+S — сохранить черновик и остаться в редакторе (stay = true).
@@ -202,7 +208,7 @@ export default function NewsForm({ news, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/news"
+                        href={NewsController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -580,7 +586,7 @@ export default function NewsForm({ news, reference }: Props) {
 
             {/* --------------------------------------------- sticky actions */}
             <div className="news-form-actions">
-                <LinkButton href="/news" variant="ghost">
+                <LinkButton href={NewsController.index.url()} variant="ghost">
                     Отмена
                 </LinkButton>
                 <div style={{ flex: 1 }} />

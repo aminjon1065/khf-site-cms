@@ -8,6 +8,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import ProjectController from '@/actions/App/Http/Controllers/Cms/ProjectController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
@@ -87,7 +88,7 @@ export default function ProjectsIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/projects',
+            ProjectController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -104,7 +105,7 @@ export default function ProjectsIndex({
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
-                        href={`/projects/${r.id}/edit`}
+                        href={ProjectController.edit.url(r.id)}
                         style={{
                             fontWeight: 600,
                             color: 'var(--color-text)',
@@ -189,7 +190,7 @@ export default function ProjectsIndex({
                                 />
                             ),
                             onSelect: () =>
-                                router.visit(`/projects/${r.id}/edit`),
+                                router.visit(ProjectController.edit.url(r.id)),
                         },
                         {
                             label: 'Предпросмотр',
@@ -209,7 +210,9 @@ export default function ProjectsIndex({
                                       ),
                                       onSelect: () =>
                                           router.post(
-                                              `/projects/${r.id}/duplicate`,
+                                              ProjectController.duplicate.url(
+                                                  r.id,
+                                              ),
                                           ),
                                   },
                               ]
@@ -253,7 +256,7 @@ export default function ProjectsIndex({
                 actions={
                     can('projects.create') && (
                         <LinkButton
-                            href="/projects/create"
+                            href={ProjectController.create.url()}
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
                         >
@@ -310,7 +313,10 @@ export default function ProjectsIndex({
                 emptyHint="Измените фильтры или создайте новый проект."
                 emptyAction={
                     can('projects.create') ? (
-                        <LinkButton href="/projects/create" variant="secondary">
+                        <LinkButton
+                            href={ProjectController.create.url()}
+                            variant="secondary"
+                        >
                             Создать проект
                         </LinkButton>
                     ) : undefined
@@ -362,13 +368,16 @@ export default function ProjectsIndex({
                     }
 
                     setProcessing(true);
-                    router.delete(`/projects/${deleteTarget.id}`, {
-                        preserveScroll: true,
-                        onFinish: () => {
-                            setProcessing(false);
-                            setDeleteTarget(null);
+                    router.delete(
+                        ProjectController.destroy.url(deleteTarget.id),
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setProcessing(false);
+                                setDeleteTarget(null);
+                            },
                         },
-                    });
+                    );
                 }}
             />
 
@@ -391,7 +400,7 @@ export default function ProjectsIndex({
 
                     setProcessing(true);
                     router.post(
-                        `/projects/${unpublishTarget.id}/unpublish`,
+                        ProjectController.unpublish.url(unpublishTarget.id),
                         { comment },
                         {
                             preserveScroll: true,

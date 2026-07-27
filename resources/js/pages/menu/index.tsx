@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, Plus, Save, X } from 'lucide-react';
+import MenuController from '@/actions/App/Http/Controllers/Cms/MenuController';
 import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
@@ -102,7 +103,8 @@ export default function MenuIndex({ menus }: Props) {
         setItems(loc, next);
     };
 
-    const save = () => form.put('/menu', { preserveScroll: true });
+    const save = () =>
+        form.put(MenuController.update.url(), { preserveScroll: true });
 
     return (
         <>

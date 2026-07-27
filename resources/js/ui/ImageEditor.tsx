@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { postForm } from '@/lib/http';
 import { Button } from './Button';
 import type { MediaItem } from './MediaPicker';
@@ -146,7 +147,7 @@ export function ImageEditor({ open, source, onClose, onSaved }: Props) {
             form.append('file', file);
             form.append('title', `${source.name ?? source.file_name} (ред.)`);
             const res = await postForm<{ data: MediaItem }>(
-                '/media/library',
+                MediaController.upload.url(),
                 form,
             );
             onSaved(res.data);

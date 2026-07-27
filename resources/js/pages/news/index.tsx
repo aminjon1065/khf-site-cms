@@ -9,6 +9,7 @@ import {
     Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
+import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
@@ -94,7 +95,7 @@ export default function NewsIndex({
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
-            '/news',
+            NewsController.index.url(),
             { ...filters, ...patch },
             { preserveState: true, preserveScroll: true, replace: true },
         );
@@ -111,7 +112,7 @@ export default function NewsIndex({
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
-                        href={`/news/${r.id}/edit`}
+                        href={NewsController.edit.url(r.id)}
                         style={{
                             fontWeight: 600,
                             color: 'var(--color-text)',
@@ -222,7 +223,8 @@ export default function NewsIndex({
                                     strokeWidth={1.5}
                                 />
                             ),
-                            onSelect: () => router.visit(`/news/${r.id}/edit`),
+                            onSelect: () =>
+                                router.visit(NewsController.edit.url(r.id)),
                         },
                         {
                             label: 'Предпросмотр',
@@ -239,7 +241,9 @@ export default function NewsIndex({
                                       ),
                                       onSelect: () =>
                                           router.post(
-                                              `/news/${r.id}/duplicate`,
+                                              NewsController.duplicate.url(
+                                                  r.id,
+                                              ),
                                           ),
                                   },
                               ]
@@ -283,7 +287,7 @@ export default function NewsIndex({
                 actions={
                     can('news.create') && (
                         <LinkButton
-                            href="/news/create"
+                            href={NewsController.create.url()}
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
                         >
@@ -343,7 +347,10 @@ export default function NewsIndex({
                 emptyHint="Измените фильтры или создайте новую новость."
                 emptyAction={
                     can('news.create') ? (
-                        <LinkButton href="/news/create" variant="secondary">
+                        <LinkButton
+                            href={NewsController.create.url()}
+                            variant="secondary"
+                        >
                             Создать новость
                         </LinkButton>
                     ) : undefined
@@ -395,7 +402,7 @@ export default function NewsIndex({
                     }
 
                     setProcessing(true);
-                    router.delete(`/news/${deleteTarget.id}`, {
+                    router.delete(NewsController.destroy.url(deleteTarget.id), {
                         preserveScroll: true,
                         onFinish: () => {
                             setProcessing(false);
@@ -424,7 +431,7 @@ export default function NewsIndex({
 
                     setProcessing(true);
                     router.post(
-                        `/news/${unpublishTarget.id}/unpublish`,
+                        NewsController.unpublish.url(unpublishTarget.id),
                         { comment },
                         {
                             preserveScroll: true,

@@ -1,8 +1,10 @@
 import { Link, router, usePage } from '@inertiajs/react';
 import { Bell, ExternalLink, Menu, Plus, Search } from 'lucide-react';
+import { edit as editProfile } from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import { useAuth, useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { CREATE_ITEMS, NAV } from '@/lib/navigation';
+import { locale as localeRoute } from '@/routes';
 import { Button, IconButton } from '@/ui/Button';
 import { Avatar } from '@/ui/Feedback';
 import { Dropdown } from '@/ui/Overlay';
@@ -33,7 +35,11 @@ export function TopBar({
 
     const switchLocale = (next: 'ru' | 'tg') => {
         if (next !== locale) {
-            router.post('/locale', { locale: next }, { preserveScroll: true });
+            router.post(
+                localeRoute.url(),
+                { locale: next },
+                { preserveScroll: true },
+            );
         }
     };
 
@@ -163,7 +169,7 @@ export function TopBar({
                 <ExternalLink size={17} strokeWidth={1.5} />
             </a>
 
-            <Link href="/profile" title={user?.name ?? ''}>
+            <Link href={editProfile.url()} title={user?.name ?? ''}>
                 <Avatar
                     initials={user?.initials ?? '—'}
                     size={34}

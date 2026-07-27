@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { ArrowLeft, CheckCircle2, Copy, TriangleAlert, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
 import type { ContentLocale } from '@/lib/domain';
 import type { Severity } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
@@ -152,7 +153,7 @@ export default function AlertWizard({ alert, reference }: Props) {
 
             dirty.current = false;
             router.put(
-                `/alerts/${alert.id}`,
+                AlertController.update.url(alert.id),
                 { ...data, action: 'draft' },
                 {
                     preserveScroll: true,
@@ -185,9 +186,9 @@ export default function AlertWizard({ alert, reference }: Props) {
         };
 
         if (alert) {
-            router.put(`/alerts/${alert.id}`, payload, opts);
+            router.put(AlertController.update.url(alert.id), payload, opts);
         } else {
-            router.post('/alerts', payload, opts);
+            router.post(AlertController.store.url(), payload, opts);
         }
     };
 
@@ -260,7 +261,7 @@ export default function AlertWizard({ alert, reference }: Props) {
                 <IconButton
                     label={t('action.back')}
                     variant="secondary"
-                    onClick={() => router.visit('/alerts')}
+                    onClick={() => router.visit(AlertController.index.url())}
                 >
                     <ArrowLeft size={17} strokeWidth={1.5} />
                 </IconButton>

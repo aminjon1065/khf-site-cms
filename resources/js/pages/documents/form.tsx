@@ -1,6 +1,7 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, ChevronDown, FileText, Save, Send } from 'lucide-react';
 import { useState } from 'react';
+import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentController';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
@@ -92,10 +93,15 @@ export default function DocumentForm({ document, reference }: Props) {
             ...(isEdit ? { _method: 'put' } : {}),
         }));
 
-        form.post(isEdit ? `/documents/${document!.id}` : '/documents', {
-            forceFormData: true,
-            preserveScroll: true,
-        });
+        form.post(
+            isEdit
+                ? DocumentController.update.url(document!.id)
+                : DocumentController.store.url(),
+            {
+                forceFormData: true,
+                preserveScroll: true,
+            },
+        );
     };
 
     return (
@@ -107,7 +113,7 @@ export default function DocumentForm({ document, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/documents"
+                        href={DocumentController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -373,7 +379,10 @@ export default function DocumentForm({ document, reference }: Props) {
 
             {/* --------------------------------------------- sticky actions */}
             <div className="news-form-actions">
-                <LinkButton href="/documents" variant="ghost">
+                <LinkButton
+                    href={DocumentController.index.url()}
+                    variant="ghost"
+                >
                     Отмена
                 </LinkButton>
                 <div style={{ flex: 1 }} />

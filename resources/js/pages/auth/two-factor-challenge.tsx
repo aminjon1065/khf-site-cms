@@ -1,6 +1,7 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import { useT } from '@/lib/i18n';
+import { store } from '@/routes/two-factor/login';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
 import { Field, Input, InputError } from '@/ui/Field';
@@ -52,13 +53,13 @@ export default function TwoFactorChallenge() {
 
         if (recovery) {
             router.post(
-                '/two-factor-challenge',
+                store.url(),
                 { recovery_code: form.data.recovery_code },
                 { onError: (errs) => form.setError(errs as never) },
             );
         } else {
             router.post(
-                '/two-factor-challenge',
+                store.url(),
                 { code: digits.join('') },
                 { onError: (errs) => form.setError(errs as never) },
             );

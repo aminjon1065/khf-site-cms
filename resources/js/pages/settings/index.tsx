@@ -1,5 +1,6 @@
 import { Head, useForm } from '@inertiajs/react';
 import { Save } from 'lucide-react';
+import SettingController from '@/actions/App/Http/Controllers/Cms/SettingController';
 import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
@@ -44,7 +45,8 @@ export default function SettingsIndex({ sections }: Props) {
             [group]: { ...data.settings[group], [key]: value },
         });
 
-    const save = () => form.put('/settings', { preserveScroll: true });
+    const save = () =>
+        form.put(SettingController.update.url(), { preserveScroll: true });
 
     return (
         <>

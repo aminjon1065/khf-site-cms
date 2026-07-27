@@ -10,6 +10,7 @@ import {
     X,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
 import { useSaveShortcut } from '@/hooks/use-save-shortcut';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
@@ -170,7 +171,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
         }));
 
         form.post(
-            isEdit ? `/instructions/${instruction!.id}` : '/instructions',
+            isEdit
+                ? InstructionController.update.url(instruction!.id)
+                : InstructionController.store.url(),
             {
                 forceFormData: true,
                 preserveScroll: true,
@@ -193,7 +196,7 @@ export default function InstructionForm({ instruction, reference }: Props) {
             <PageHeader
                 eyebrow={
                     <Link
-                        href="/instructions"
+                        href={InstructionController.index.url()}
                         style={{
                             display: 'inline-flex',
                             alignItems: 'center',
@@ -613,7 +616,10 @@ export default function InstructionForm({ instruction, reference }: Props) {
 
             {/* --------------------------------------------- sticky actions */}
             <div className="news-form-actions">
-                <LinkButton href="/instructions" variant="ghost">
+                <LinkButton
+                    href={InstructionController.index.url()}
+                    variant="ghost"
+                >
                     Отмена
                 </LinkButton>
                 <div style={{ flex: 1 }} />

@@ -1,5 +1,6 @@
 import { ImageOff, Pencil, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { getJson, postForm } from '@/lib/http';
 import { Button } from './Button';
 import { Input } from './Field';
@@ -51,8 +52,8 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
 
         try {
             const url = query
-                ? `/media/library?search=${encodeURIComponent(query)}`
-                : '/media/library';
+                ? MediaController.library.url({ query: { search: query } })
+                : MediaController.library.url();
             const res = await getJson<LibraryResponse>(url);
             setItems(res.data);
         } catch (e) {
@@ -82,7 +83,7 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
             form.append('file', file);
             form.append('title', file.name);
             const res = await postForm<{ data: MediaItem }>(
-                '/media/library',
+                MediaController.upload.url(),
                 form,
             );
             setItems((prev) => [res.data, ...prev]);

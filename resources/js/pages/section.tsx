@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { LayoutGrid } from 'lucide-react';
+import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
 import { Blueprint } from '@/ui/Blueprint';
 import { LinkButton } from '@/ui/Button';
 import { PageHeader } from '@/ui/PageHeader';
@@ -60,7 +61,10 @@ export default function Section({
                         из дизайн-системы — см. разделы «Предупреждения» и
                         «Дашборд».
                     </p>
-                    <LinkButton href="/alerts" variant="secondary">
+                    <LinkButton
+                        href={AlertController.index.url()}
+                        variant="secondary"
+                    >
                         Открыть образец таблицы
                     </LinkButton>
                 </div>
