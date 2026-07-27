@@ -55,6 +55,10 @@ class SettingController extends Controller
             ['key' => 'meta_description_ru', 'label' => 'Meta description · РУ', 'type' => 'textarea'],
             ['key' => 'meta_description_en', 'label' => 'Meta description · EN', 'type' => 'textarea'],
         ]],
+        ['group' => 'structure', 'label' => 'Структура — сводные цифры', 'fields' => [
+            ['key' => 'founded_year', 'label' => 'Год образования', 'type' => 'text'],
+            ['key' => 'units_count', 'label' => 'Подразделений по стране', 'type' => 'text'],
+        ]],
         ['group' => 'footer', 'label' => 'Подвал', 'fields' => [
             ['key' => 'copyright_tg', 'label' => 'Копирайт · ТҶ', 'type' => 'textarea'],
             ['key' => 'copyright_ru', 'label' => 'Копирайт · РУ', 'type' => 'textarea'],

@@ -17,6 +17,7 @@ use App\Models\Page;
 use App\Models\Project;
 use App\Models\Region;
 use App\Models\Setting;
+use App\Models\StructureUnit;
 use App\Models\Tag;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder;
@@ -70,6 +71,7 @@ class ContentTranslationReport extends Command
         'Руководство (leaders)' => Leader::class,
         'Пункты меню (menu_items)' => MenuItem::class,
         'Регионы (regions)' => Region::class,
+        'Подразделения структуры (structure_units)' => StructureUnit::class,
         'Теги (tags)' => Tag::class,
     ];
 

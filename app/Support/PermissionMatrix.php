@@ -72,6 +72,7 @@ class PermissionMatrix
                 Module::Home->value => [$v => true, $e => true, $p => true, $a => true],
                 Module::Regions->value => $viewOnly,
                 Module::Leadership->value => $viewOnly,
+                Module::Structure->value => $viewOnly,
                 Module::Submissions->value => [$v => true, $e => true, $d => true],
                 Module::Users->value => $viewOnly,
                 Module::Settings->value => $none,

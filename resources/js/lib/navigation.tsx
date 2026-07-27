@@ -14,6 +14,7 @@ import {
     LayoutDashboard,
     Map,
     Megaphone,
+    Network,
     Newspaper,
     Phone,
     Settings,
@@ -42,6 +43,7 @@ import ProjectController from '@/actions/App/Http/Controllers/Cms/ProjectControl
 import RegionController from '@/actions/App/Http/Controllers/Cms/RegionController';
 import RoleController from '@/actions/App/Http/Controllers/Cms/RoleController';
 import SettingController from '@/actions/App/Http/Controllers/Cms/SettingController';
+import StructureUnitController from '@/actions/App/Http/Controllers/Cms/StructureUnitController';
 import SubmissionController from '@/actions/App/Http/Controllers/Cms/SubmissionController';
 import TaxonomyController from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
 import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
@@ -177,6 +179,13 @@ export const NAV: NavGroup[] = [
                 href: LeaderController.index.url(),
                 icon: UserCog,
                 permission: 'leadership.view',
+            },
+            {
+                key: 'structure',
+                labelKey: 'Структура',
+                href: StructureUnitController.index.url(),
+                icon: Network,
+                permission: 'structure.view',
             },
         ],
     },

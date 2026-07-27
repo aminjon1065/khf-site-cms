@@ -19,6 +19,7 @@ enum Module: string
     case Home = 'home';
     case Regions = 'regions';
     case Leadership = 'leadership';
+    case Structure = 'structure';
     case Submissions = 'submissions';
     case Users = 'users';
     case Settings = 'settings';
@@ -38,6 +39,7 @@ enum Module: string
             self::Home => 'Главная страница',
             self::Regions => 'Регионы и районы',
             self::Leadership => 'Руководство',
+            self::Structure => 'Структура',
             self::Submissions => 'Обращения граждан',
             self::Users => 'Пользователи и роли',
             self::Settings => 'Настройки системы',

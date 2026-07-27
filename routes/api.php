@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\StructureUnitController;
 use App\Http\Controllers\Api\SubmissionController;
 use Illuminate\Support\Facades\Route;
 
@@ -79,4 +80,7 @@ Route::middleware('throttle:api-public')->group(function (): void {
 
     // Leadership roster (chairman & deputy chairmen).
     Route::get('leadership', [LeaderController::class, 'index'])->name('api.leadership.index');
+
+    // Structure units (specialised departments).
+    Route::get('structure', [StructureUnitController::class, 'index'])->name('api.structure.index');
 });

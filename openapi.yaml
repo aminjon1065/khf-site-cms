@@ -1187,6 +1187,16 @@ components:
               type: object
               additionalProperties:
                 type: string
+            structure:
+              # C-1b: page-level stat plates on the public "Structure" page
+              # (not a property of any one structure-unit record).
+              type: object
+              properties:
+                founded_year:
+                  type: string
+                units_count:
+                  type: string
+              required: [founded_year, units_count]
             emergency_services:
               type: array
               items:
@@ -1209,7 +1219,7 @@ components:
                 meta_description:
                   type: string
               required: [meta_title, meta_description]
-          required: [org, contacts, social, emergency_services, copyright, seo]
+          required: [org, contacts, social, structure, emergency_services, copyright, seo]
         meta:
           type: object
           properties:

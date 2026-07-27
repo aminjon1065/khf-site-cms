@@ -64,6 +64,10 @@ class PublicSettingsService
                 ],
                 'social' => is_array($groups['social'] ?? null) ? $groups['social'] : [],
                 'emergency_services' => $emergencyServices,
+                'structure' => [
+                    'founded_year' => $get('structure', 'founded_year'),
+                    'units_count' => $get('structure', 'units_count'),
+                ],
                 'copyright' => $localized('footer', 'copyright'),
                 'seo' => [
                     'meta_title' => $localized('seo', 'meta_title'),

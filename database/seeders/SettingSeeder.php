@@ -70,6 +70,12 @@ class SettingSeeder extends Seeder
                 'press_phone' => '+992 (37) 221-59-10',
                 'duty_phone' => '+992 (37) 221-59-00',
             ],
+            // C-1b: the two stat plates on the public "Structure" page —
+            // page-level aggregates, not a property of any one StructureUnit.
+            'structure' => [
+                'founded_year' => '1994',
+                'units_count' => '68',
+            ],
             'languages' => [
                 'enabled' => ['tg', 'ru', 'en'],
                 'default' => 'tg',

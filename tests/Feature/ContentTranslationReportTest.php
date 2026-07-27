@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\Leader;
 use App\Models\MenuItem;
 use App\Models\Setting;
+use App\Models\StructureUnit;
 
 // C-3: aggregate translation-gap report. Every content factory already
 // defaults to `en => ''` (a deliberate existing fixture, not something these
@@ -61,6 +62,14 @@ it('reports reference models without a workflow status and flags an incomplete m
 
 it('reports a leader missing a locale via the shared TracksTranslationCompleteness trait', function () {
     Leader::factory()->create(['role' => ['ru' => 'Заместитель', 'tg' => '', 'en' => '']]);
+
+    $this->artisan('content:translation-report')
+        ->assertSuccessful()
+        ->expectsOutputToContain('1 из 1');
+});
+
+it('reports a structure unit missing a locale via the shared TracksTranslationCompleteness trait', function () {
+    StructureUnit::factory()->create(['name' => ['ru' => 'Служба', 'tg' => '', 'en' => '']]);
 
     $this->artisan('content:translation-report')
         ->assertSuccessful()

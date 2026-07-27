@@ -72,6 +72,12 @@ it('returns the emergency services list and organisation identity', function () 
         ->and($data['org']['emergency_number'])->toBe('112');
 });
 
+it('returns the structure page stat plates (C-1b)', function () {
+    $data = $this->getJson('/api/v1/settings')->json('data');
+
+    expect($data['structure'])->toBe(['founded_year' => '1994', 'units_count' => '68']);
+});
+
 it('returns organisation, footer and SEO copy in the requested locale', function () {
     $tg = $this->getJson('/api/v1/settings?locale=tg')->assertOk();
     $en = $this->getJson('/api/v1/settings?locale=en')->assertOk();

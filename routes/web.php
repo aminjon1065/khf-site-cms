@@ -22,6 +22,7 @@ use App\Http\Controllers\Cms\ProjectController;
 use App\Http\Controllers\Cms\RegionController;
 use App\Http\Controllers\Cms\RoleController;
 use App\Http\Controllers\Cms\SettingController;
+use App\Http\Controllers\Cms\StructureUnitController;
 use App\Http\Controllers\Cms\SubmissionController;
 use App\Http\Controllers\Cms\TaxonomyController;
 use App\Http\Controllers\Cms\UserController;
@@ -125,6 +126,14 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('leadership/{leader}/edit', [LeaderController::class, 'edit'])->name('leadership.edit');
     Route::put('leadership/{leader}', [LeaderController::class, 'update'])->name('leadership.update');
     Route::delete('leadership/{leader}', [LeaderController::class, 'destroy'])->name('leadership.destroy');
+
+    // Structure units (specialised departments).
+    Route::get('structure', [StructureUnitController::class, 'index'])->name('structure.index');
+    Route::get('structure/create', [StructureUnitController::class, 'create'])->name('structure.create');
+    Route::post('structure', [StructureUnitController::class, 'store'])->name('structure.store');
+    Route::get('structure/{structureUnit}/edit', [StructureUnitController::class, 'edit'])->name('structure.edit');
+    Route::put('structure/{structureUnit}', [StructureUnitController::class, 'update'])->name('structure.update');
+    Route::delete('structure/{structureUnit}', [StructureUnitController::class, 'destroy'])->name('structure.destroy');
 
     // Media library (browse all media, upload reusable assets, remove them).
     Route::get('media', [MediaController::class, 'index'])->name('media');
