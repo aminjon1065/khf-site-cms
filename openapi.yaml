@@ -1,0 +1,1484 @@
+openapi: 3.1.0
+info:
+  title: khf.tj Public API
+  version: 1.0.0
+  description: >
+    Read-only public API for the khf.tj CMS, consumed by the Next.js public site
+    (khf-site-front). Serves localized content for news, pages, instructions,
+    documents, projects, announcements, alerts, regions, site settings, and
+    navigation menus, plus a public submission endpoint and health/readiness probes.
+servers:
+  - url: /api/v1
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Get service health status
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+        '503':
+          description: Service is unhealthy (e.g. database unreachable) — same body shape as 200
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /ready:
+    get:
+      operationId: getReady
+      summary: Get service readiness status
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: Service is ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+        '503':
+          description: Service is not ready (database/storage/scheduler check failing) — same body shape as 200
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReadyResponse'
+  /home:
+    get:
+      operationId: getHome
+      summary: Get homepage aggregate content
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: Homepage aggregate content
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/HomeResponse'
+                required: [data]
+  /settings:
+    get:
+      operationId: getSettings
+      summary: Get site settings
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: Site settings
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SettingsResponse'
+  /menu:
+    get:
+      operationId: getMenu
+      summary: Get site navigation menus
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: Site navigation menus
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuResponse'
+  /search:
+    get:
+      operationId: getSearch
+      summary: Search across public content
+      description: Additionally throttled to 60 requests per minute.
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/SearchQueryParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated search results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SearchEnvelope'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  /news:
+    get:
+      operationId: getNews
+      summary: List news articles
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated list of news articles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NewsEnvelope'
+  /news/{slug}:
+    get:
+      operationId: getNewsBySlug
+      summary: Get a single news article
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: News article detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/NewsDetail'
+                required: [data]
+        '404':
+          description: News article not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+  /pages:
+    get:
+      operationId: getPages
+      summary: List pages
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated list of pages
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageEnvelope'
+  /pages/{slug}:
+    get:
+      operationId: getPageBySlug
+      summary: Get a single page
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Page detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PageDetail'
+                required: [data]
+        '404':
+          description: Page not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+  /categories:
+    get:
+      operationId: getCategories
+      summary: List content categories
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/CategoryTypeParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated list of categories
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryEnvelope'
+  /instructions:
+    get:
+      operationId: getInstructions
+      summary: List safety instructions
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated list of safety instructions
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstructionEnvelope'
+  /instructions/{slug}:
+    get:
+      operationId: getInstructionBySlug
+      summary: Get a single safety instruction
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Instruction detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/InstructionDetail'
+                required: [data]
+        '404':
+          description: Instruction not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+  /documents:
+    get:
+      operationId: getDocuments
+      summary: List documents
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated list of documents
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DocumentEnvelope'
+  /projects:
+    get:
+      operationId: getProjects
+      summary: List projects
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated list of projects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectEnvelope'
+  /projects/{slug}:
+    get:
+      operationId: getProjectBySlug
+      summary: Get a single project
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Project detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/ProjectDetail'
+                required: [data]
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+  /announcements:
+    get:
+      operationId: getAnnouncements
+      summary: List announcements
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated list of announcements
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AnnouncementEnvelope'
+  /announcements/{slug}:
+    get:
+      operationId: getAnnouncementBySlug
+      summary: Get a single announcement
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Announcement detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AnnouncementItem'
+                required: [data]
+        '404':
+          description: Announcement not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+  /submissions:
+    post:
+      operationId: postSubmission
+      summary: Submit a public contact/report form
+      description: Additionally throttled to 10 requests per minute.
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionRequestBody'
+      responses:
+        '201':
+          description: Submission accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResponse'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationErrorResponse'
+  /alerts:
+    get:
+      operationId: getAlerts
+      summary: List active and recent alerts
+      description: Not paginated.
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertSummary'
+                required: [data]
+  /alerts/active:
+    get:
+      operationId: getAlertsActive
+      summary: Get the current active-alerts snapshot by region
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: Active alerts snapshot
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AlertActiveSnapshot'
+                required: [data]
+  /alerts/{slug}:
+    get:
+      operationId: getAlertBySlug
+      summary: Get a single alert
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/AlertDetail'
+                required: [data]
+        '404':
+          description: Alert not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotFoundResponse'
+  /regions:
+    get:
+      operationId: getRegions
+      summary: List region alert statuses
+      description: Not paginated. Items reuse the same shape as alerts/active regions.
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+      responses:
+        '200':
+          description: List of region alert statuses
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/AlertRegionStatus'
+                required: [data]
+  /regions/directory:
+    get:
+      operationId: getRegionsDirectory
+      summary: List regional office directory entries
+      parameters:
+        - $ref: '#/components/parameters/LocaleParam'
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: Paginated regional office directory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegionDirectoryEnvelope'
+components:
+  parameters:
+    LocaleParam:
+      name: locale
+      in: query
+      required: false
+      schema:
+        type: string
+        enum: [tg, ru, en]
+        default: ru
+      description: >
+        Resolves content locale. Falls back to Accept-Language header negotiation
+        (ru, tg, en preference order), then to ru. Any value outside {tg,ru,en} is
+        silently ignored (not a 422/400) and resolution falls through to the header/default.
+    PageParam:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: 1-indexed page number.
+    PerPageParam:
+      name: per_page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 20
+      description: Items per page. Server-side capped regardless of the value requested.
+    SearchQueryParam:
+      name: q
+      in: query
+      required: true
+      schema:
+        type: string
+        minLength: 2
+        maxLength: 100
+      description: Search text, minimum 2 characters.
+    CategoryTypeParam:
+      name: type
+      in: query
+      required: false
+      schema:
+        type: string
+        default: news
+      description: >
+        Filters categories by type. An explicit empty string means "no filter"
+        (returns categories of every type) rather than falling back to the default.
+  schemas:
+    # ---------------------------------------------------------------------
+    # Shared pagination primitives
+    # ---------------------------------------------------------------------
+    PaginationLinksStandard:
+      type: object
+      properties:
+        first:
+          type: [string, "null"]
+        last:
+          type: [string, "null"]
+        prev:
+          type: [string, "null"]
+        next:
+          type: [string, "null"]
+      required: [first, last, prev, next]
+    PaginationMetaLinkItem:
+      type: object
+      properties:
+        url:
+          type: [string, "null"]
+        label:
+          type: string
+        page:
+          type: [integer, "null"]
+        active:
+          type: boolean
+      required: [url, label, page, active]
+    PaginationMetaStandard:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        from:
+          type: [integer, "null"]
+        last_page:
+          type: integer
+        links:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaginationMetaLinkItem'
+        path:
+          type: string
+        per_page:
+          type: integer
+        to:
+          type: [integer, "null"]
+        total:
+          type: integer
+      required: [current_page, from, last_page, links, path, per_page, to, total]
+    PaginationLinksMinimal:
+      type: object
+      properties:
+        prev:
+          type: [string, "null"]
+        next:
+          type: [string, "null"]
+      required: [prev, next]
+    PaginationMetaMinimal:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+      required: [current_page, last_page, per_page, total]
+    # ---------------------------------------------------------------------
+    # Shared small value objects
+    # ---------------------------------------------------------------------
+    SeoFields:
+      type: object
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+      required: [title, description]
+    # ---------------------------------------------------------------------
+    # Alerts / Regions
+    # ---------------------------------------------------------------------
+    AlertRegionStatus:
+      type: object
+      properties:
+        key:
+          type: string
+        name:
+          type: string
+        level:
+          type: string
+          enum: [none, info, warning, danger, critical]
+        count:
+          type: integer
+        statusText:
+          type: string
+      required: [key, name, level, count, statusText]
+    AlertRegionRef:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+      required: [code, name]
+    AlertMetaEntry:
+      type: object
+      properties:
+        label:
+          type: string
+        value:
+          type: string
+      required: [label, value]
+    AlertSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        level:
+          type: string
+          enum: [info, warning, danger, critical]
+        level_label:
+          type: string
+        severity:
+          type: string
+          enum: [info, attention, warning, danger, critical]
+        status:
+          type: string
+        status_code:
+          type: string
+          enum: [active, completed]
+        is_active:
+          type: boolean
+        hazard:
+          type: string
+          enum: [mudflow, earthquake, flood, avalanche, fire, wind, heat, frost, landslide, storm]
+        hazard_label:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        region:
+          type: string
+        region_codes:
+          type: array
+          items:
+            type: string
+        datetime:
+          type: [string, "null"]
+        starts_at:
+          type: [string, "null"]
+        ends_at:
+          type: [string, "null"]
+        published_at:
+          type: [string, "null"]
+        starts_at_iso:
+          type: [string, "null"]
+        ends_at_iso:
+          type: [string, "null"]
+      required: [slug, level, level_label, severity, status, status_code, is_active, hazard, hazard_label, title, summary, region, region_codes, datetime, starts_at, ends_at, published_at, starts_at_iso, ends_at_iso]
+    AlertDetail:
+      allOf:
+        - $ref: '#/components/schemas/AlertSummary'
+        - type: object
+          properties:
+            body:
+              type: string
+            instructions:
+              type: array
+              items:
+                type: string
+            contacts:
+              type: string
+            source:
+              type: [string, "null"]
+            territory_type:
+              type: string
+              enum: [country, regions]
+            regions:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlertRegionRef'
+            meta:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlertMetaEntry'
+          required: [body, instructions, contacts, source, territory_type, regions, meta]
+    AlertActiveSnapshot:
+      type: object
+      properties:
+        state:
+          type: string
+          enum: [calm, warning, critical]
+        count:
+          type: integer
+        regions:
+          type: array
+          items:
+            $ref: '#/components/schemas/AlertRegionStatus'
+      required: [state, count, regions]
+    # ---------------------------------------------------------------------
+    # Announcements
+    # ---------------------------------------------------------------------
+    AnnouncementItem:
+      type: object
+      properties:
+        slug:
+          type: string
+        kind:
+          type: string
+          enum: [vacancy, tender]
+        kind_label:
+          type: string
+        title:
+          type: string
+        org:
+          type: [string, "null"]
+        desc:
+          type: string
+        deadline:
+          type: string
+        deadline_at:
+          type: [string, "null"]
+        deadline_state:
+          type: string
+          enum: [unlimited, open, closed]
+        open:
+          type: boolean
+        application_url:
+          type: [string, "null"]
+      required: [slug, kind, kind_label, title, org, desc, deadline, deadline_at, deadline_state, open, application_url]
+    # ---------------------------------------------------------------------
+    # Documents
+    # ---------------------------------------------------------------------
+    DocumentFile:
+      type: object
+      properties:
+        lang:
+          type: string
+          enum: [tg, ru, en]
+        label:
+          type: string
+          enum: ["ТҶ", "РУ", "EN"]
+        url:
+          type: string
+        ext:
+          type: string
+        size:
+          type: string
+        size_bytes:
+          type: integer
+      required: [lang, label, url, ext, size, size_bytes]
+    DocumentItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        type_value:
+          type: string
+          enum: [law, resolution, order, report, plan, norm, instruction, open_data, form]
+        title:
+          type: string
+        number:
+          type: [string, "null"]
+        section:
+          type: [string, "null"]
+        date:
+          type: [string, "null"]
+        date_iso:
+          type: [string, "null"]
+        lang:
+          type: string
+        size:
+          type: [string, "null"]
+        href:
+          type: [string, "null"]
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentFile'
+      required: [id, type, type_value, title, number, section, date, date_iso, lang, size, href, files]
+    # ---------------------------------------------------------------------
+    # Instructions
+    # ---------------------------------------------------------------------
+    InstructionSections:
+      type: object
+      properties:
+        before:
+          type: array
+          items:
+            type: string
+        during:
+          type: array
+          items:
+            type: string
+        after:
+          type: array
+          items:
+            type: string
+        prohibited:
+          type: array
+          items:
+            type: string
+      required: [before, during, after, prohibited]
+    InstructionSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        summary:
+          type: string
+        hazard:
+          type: [string, "null"]
+          enum: [mudflow, earthquake, flood, avalanche, fire, wind, heat, frost, landslide, storm, null]
+        hazard_label:
+          type: [string, "null"]
+        hazard_icon:
+          type: [string, "null"]
+          enum: [waves, activity, mountain-snow, flame, wind, thermometer-sun, snowflake, mountain, null]
+        priority:
+          type: boolean
+        image:
+          type: [string, "null"]
+        image_srcset:
+          type: [string, "null"]
+      required: [slug, title, summary, hazard, hazard_label, hazard_icon, priority, image, image_srcset]
+    InstructionDetail:
+      allOf:
+        - $ref: '#/components/schemas/InstructionSummary'
+        - type: object
+          properties:
+            sections:
+              $ref: '#/components/schemas/InstructionSections'
+            body:
+              type: string
+          required: [sections, body]
+    # ---------------------------------------------------------------------
+    # News
+    # ---------------------------------------------------------------------
+    NewsSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+        category:
+          type: [string, "null"]
+        date:
+          type: [string, "null"]
+        datetime:
+          type: [string, "null"]
+        image:
+          type: [string, "null"]
+        image_srcset:
+          type: [string, "null"]
+        featured:
+          type: boolean
+      required: [slug, title, excerpt, category, date, datetime, image, image_srcset, featured]
+    NewsDetail:
+      allOf:
+        - $ref: '#/components/schemas/NewsSummary'
+        - type: object
+          properties:
+            body:
+              type: string
+            views:
+              type: integer
+            seo:
+              $ref: '#/components/schemas/SeoFields'
+          required: [body, views, seo]
+    # ---------------------------------------------------------------------
+    # Pages
+    # ---------------------------------------------------------------------
+    PageSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+      required: [slug, title]
+    PageDetail:
+      allOf:
+        - $ref: '#/components/schemas/PageSummary'
+        - type: object
+          properties:
+            body:
+              type: string
+            seo:
+              $ref: '#/components/schemas/SeoFields'
+            updated:
+              type: [string, "null"]
+            updated_at:
+              type: [string, "null"]
+          required: [body, seo, updated, updated_at]
+    # ---------------------------------------------------------------------
+    # Projects
+    # ---------------------------------------------------------------------
+    ProjectSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        status_code:
+          type: string
+          enum: [preparation, implementing, completed]
+        status_tone:
+          type: string
+          enum: [info, success, neutral]
+        years:
+          type: [string, "null"]
+        partner:
+          type: [string, "null"]
+        budget:
+          type: [string, "null"]
+        desc:
+          type: string
+        image:
+          type: [string, "null"]
+        image_srcset:
+          type: [string, "null"]
+      required: [slug, title, status, status_code, status_tone, years, partner, budget, desc, image, image_srcset]
+    ProjectDetail:
+      allOf:
+        - $ref: '#/components/schemas/ProjectSummary'
+        - type: object
+          properties:
+            code:
+              type: [string, "null"]
+            customer:
+              type: [string, "null"]
+            body:
+              type: string
+            goals:
+              type: array
+              items:
+                type: string
+            timeline:
+              type: array
+              items:
+                type: object
+              description: >
+                Raw JSON passthrough, not strictly validated. Items typically look
+                like {date, text, tone} where tone is one of success, info, warning,
+                danger, neutral when present.
+            direction:
+              type: object
+              properties:
+                address:
+                  type: [string, "null"]
+                phone:
+                  type: [string, "null"]
+                email:
+                  type: [string, "null"]
+              required: [address, phone, email]
+          required: [code, customer, body, goals, timeline, direction]
+    # ---------------------------------------------------------------------
+    # Categories / Regions directory / Search
+    # ---------------------------------------------------------------------
+    CategoryItem:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+      required: [slug, name, type]
+    RegionDirectoryItem:
+      type: object
+      properties:
+        code:
+          type: string
+        name:
+          type: string
+        type:
+          type: string
+        type_code:
+          type: string
+          enum: [city, oblast, gbao, rrp]
+        head:
+          type: string
+        regional_center:
+          type: [string, "null"]
+        address:
+          type: string
+        phone:
+          type: [string, "null"]
+        phone_href:
+          type: [string, "null"]
+        duty_phone:
+          type: [string, "null"]
+        email:
+          type: [string, "null"]
+        districts_count:
+          type: integer
+        districts:
+          type: array
+          items:
+            type: string
+      required: [code, name, type, type_code, head, regional_center, address, phone, phone_href, duty_phone, email, districts_count, districts]
+    SearchResultItem:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [news, alert, instruction, document, project, announcement, page]
+        title:
+          type: string
+        excerpt:
+          type: string
+        path:
+          type: string
+        published_at:
+          type: [string, "null"]
+      required: [type, title, excerpt, path, published_at]
+    # ---------------------------------------------------------------------
+    # Home / Settings / Menu
+    # ---------------------------------------------------------------------
+    HomeResponse:
+      type: object
+      properties:
+        blocks:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              title:
+                type: string
+              config:
+                # PHP's `?? []` default for an empty JSON column serializes
+                # as a JSON array (`[]`), not an object (`{}`) — PHP arrays
+                # have no empty-object representation. Accept either.
+                type: [object, array]
+                additionalProperties: true
+            required: [type, title, config]
+        alerts:
+          type: object
+          properties:
+            state:
+              type: string
+            count:
+              type: integer
+            regions:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlertRegionStatus'
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/AlertSummary'
+          required: [state, count, regions, items]
+        news:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewsSummary'
+        instructions:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstructionSummary'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentItem'
+        announcements:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnnouncementItem'
+        projects:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectSummary'
+        emergency_contacts:
+          type: object
+          properties:
+            emergency_number:
+              type: string
+            trust_phone:
+              type: [string, "null"]
+            duty_phone:
+              type: [string, "null"]
+            email:
+              type: [string, "null"]
+            services:
+              type: array
+              items:
+                type: object
+                properties:
+                  num:
+                    type: string
+                  label:
+                    type: string
+                required: [num, label]
+          required: [emergency_number, trust_phone, duty_phone, email, services]
+      required: [blocks, alerts, news, instructions, documents, announcements, projects, emergency_contacts]
+    SettingsResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            org:
+              type: object
+              properties:
+                name:
+                  type: string
+                short_name:
+                  type: string
+                about:
+                  type: string
+                address:
+                  type: string
+                email:
+                  type: [string, "null"]
+                emergency_number:
+                  type: string
+                trust_phone:
+                  type: [string, "null"]
+              required: [name, short_name, about, address, email, emergency_number, trust_phone]
+            contacts:
+              type: object
+              properties:
+                press_email:
+                  type: [string, "null"]
+                press_phone:
+                  type: [string, "null"]
+                duty_phone:
+                  type: [string, "null"]
+              required: [press_email, press_phone, duty_phone]
+            social:
+              type: object
+              additionalProperties:
+                type: string
+            emergency_services:
+              type: array
+              items:
+                type: object
+                properties:
+                  num:
+                    type: string
+                  label:
+                    type: string
+                required: [num, label]
+            copyright:
+              type: string
+            seo:
+              # NOT SeoFields (title/description) — PublicSettingsService
+              # keys this sub-object meta_title/meta_description.
+              type: object
+              properties:
+                meta_title:
+                  type: string
+                meta_description:
+                  type: string
+              required: [meta_title, meta_description]
+          required: [org, contacts, social, emergency_services, copyright, seo]
+        meta:
+          type: object
+          properties:
+            requested_locale:
+              type: string
+            resolved_locale:
+              type: string
+            fallback_used:
+              type: boolean
+            available_locales:
+              type: array
+              items:
+                type: string
+          required: [requested_locale, resolved_locale, fallback_used, available_locales]
+      required: [data, meta]
+    MenuTreeItem:
+      type: object
+      properties:
+        label:
+          type: string
+        url:
+          type: [string, "null"]
+        children:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              url:
+                type: [string, "null"]
+            required: [label, url]
+      required: [label, url, children]
+    MenuResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            main:
+              type: array
+              items:
+                $ref: '#/components/schemas/MenuTreeItem'
+            footer:
+              type: array
+              items:
+                $ref: '#/components/schemas/MenuTreeItem'
+          required: [main, footer]
+      required: [data]
+    # ---------------------------------------------------------------------
+    # Submissions
+    # ---------------------------------------------------------------------
+    SubmissionRequestBody:
+      type: object
+      properties:
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          type: [string, "null"]
+        topic:
+          type: [string, "null"]
+        region_id:
+          type: [integer, "null"]
+        message:
+          type: string
+          minLength: 10
+        consent:
+          type: [boolean, string]
+        website:
+          type: string
+          description: Leave empty; anti-spam honeypot field.
+      required: [name, email, message, consent]
+    SubmissionResponse:
+      type: object
+      properties:
+        tracking_number:
+          type: string
+      required: [tracking_number]
+    # ---------------------------------------------------------------------
+    # Health / Readiness
+    # ---------------------------------------------------------------------
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ok, unavailable]
+        service:
+          type: string
+        version:
+          type: string
+        checks:
+          type: object
+          properties:
+            database:
+              type: boolean
+          required: [database]
+        timestamp:
+          type: string
+      required: [status, service, version, checks, timestamp]
+    ReadyResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ready, not_ready]
+        checks:
+          type: object
+          properties:
+            database:
+              type: boolean
+            storage:
+              type: boolean
+            scheduler:
+              type: boolean
+            queue_connection:
+              type: string
+          required: [database, storage, scheduler, queue_connection]
+        scheduler_last_run:
+          type: [string, "null"]
+        timestamp:
+          type: string
+      required: [status, checks, scheduler_last_run, timestamp]
+    # ---------------------------------------------------------------------
+    # Error envelopes
+    # ---------------------------------------------------------------------
+    ValidationErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+      required: [message, errors]
+    NotFoundResponse:
+      type: object
+      properties:
+        message:
+          type: string
+      required: [message]
+    # ---------------------------------------------------------------------
+    # Pagination envelopes (Shape A - standard Laravel paginator)
+    # ---------------------------------------------------------------------
+    InstructionEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/InstructionSummary'
+        links:
+          $ref: '#/components/schemas/PaginationLinksStandard'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaStandard'
+      required: [data, links, meta]
+    PageEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/PageSummary'
+        links:
+          $ref: '#/components/schemas/PaginationLinksStandard'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaStandard'
+      required: [data, links, meta]
+    DocumentEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentItem'
+        links:
+          $ref: '#/components/schemas/PaginationLinksStandard'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaStandard'
+      required: [data, links, meta]
+    ProjectEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectSummary'
+        links:
+          $ref: '#/components/schemas/PaginationLinksStandard'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaStandard'
+      required: [data, links, meta]
+    AnnouncementEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnnouncementItem'
+        links:
+          $ref: '#/components/schemas/PaginationLinksStandard'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaStandard'
+      required: [data, links, meta]
+    # ---------------------------------------------------------------------
+    # Pagination envelope (Shape B - News, no links key)
+    # ---------------------------------------------------------------------
+    NewsEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/NewsSummary'
+        meta:
+          type: object
+          properties:
+            total:
+              type: integer
+            per_page:
+              type: integer
+            current_page:
+              type: integer
+            last_page:
+              type: integer
+          required: [total, per_page, current_page, last_page]
+      required: [data, meta]
+    # ---------------------------------------------------------------------
+    # Pagination envelopes (Shape C - hand-rolled minimal)
+    # ---------------------------------------------------------------------
+    SearchEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/SearchResultItem'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaMinimal'
+        links:
+          $ref: '#/components/schemas/PaginationLinksMinimal'
+      required: [data, meta, links]
+    CategoryEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryItem'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaMinimal'
+        links:
+          $ref: '#/components/schemas/PaginationLinksMinimal'
+      required: [data, meta, links]
+    RegionDirectoryEnvelope:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/RegionDirectoryItem'
+        meta:
+          $ref: '#/components/schemas/PaginationMetaMinimal'
+        links:
+          $ref: '#/components/schemas/PaginationLinksMinimal'
+      required: [data, meta, links]
