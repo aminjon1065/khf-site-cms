@@ -116,6 +116,7 @@
 | P3-6 | CMS: нет DB-constraint на `parent_id` для `Page`/`MenuItem` (защита только в приложении). |
 | P3-7 | Обе базы: нет E2E/браузерных тестов форм, медиапикера, меню, workflow. |
 | P3-8 | Инфраструктура (из `CMS_AUDIT.md`, не закрыто): backup/restore, постоянные queue worker и scheduler, мониторинг `/health` `/ready`, dependency audit в доверенном CI, ручная приёмка ролей, security review. |
+| P3-9 | CMS: `SearchController::shape()` — 5 ошибок PHPStan `literal-string` (динамическая сборка `selectRaw()` через `Grammar::wrap()` для мультиязычных JSON-колонок). Исследовано подробно (см. `PROGRESS.md`, запись «P3-new») — реального риска SQL-injection нет (`$term` всегда идёт биндингом), но границу типов `literal-string` в `Query\Builder`/`Expression` самого Laravel 13 нельзя удовлетворить без ЛИБО точечного `@phpstan-ignore` (решение вне текущих автономных полномочий), ЛИБО непропорционально дорогой замены `Grammar::wrap()` собственной реализацией (риск разойтись с MySQL/SQLite-паритетом из P3-3/D-4). Требуется решение человека. |
 
 ---
 
