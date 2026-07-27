@@ -3,6 +3,7 @@
 use App\Models\MenuItem;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Database\QueryException;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -99,6 +100,33 @@ it('preserves nested items that are not represented by the root-only editor', fu
     expect($parent->fresh())->not->toBeNull()
         ->and($child->fresh())->not->toBeNull()
         ->and($child->fresh()->parent_id)->toBe($parent->id);
+});
+
+it('refuses at the DB level to delete a menu item that still has children', function () {
+    // D-6: no code path deletes a parent with children today —
+    // MenuController::update() already excludes such items from its own
+    // deletion set (see the sibling "preserves nested items" test above).
+    // This exercises the new `restrictOnDelete()` FK directly, as a
+    // backstop for any future delete path (single-item destroy route,
+    // tinker, a seeder) that doesn't reimplement that same exclusion.
+    $parent = MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Раздел'],
+        'url' => '/section',
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+    MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Дочерний пункт'],
+        'url' => '/section/child',
+        'parent_id' => $parent->id,
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+
+    expect(fn () => $parent->delete())->toThrow(QueryException::class);
+    expect(MenuItem::query()->find($parent->id))->not->toBeNull();
 });
 
 it('forbids a non-admin from saving the menu', function () {

@@ -153,6 +153,19 @@ it('rejects a parent that would create a page tree cycle', function () {
     expect($parent->fresh()->parent_id)->toBeNull();
 });
 
+it('nulls out a child\'s parent_id when its parent page is force-deleted', function () {
+    // D-6: parent_id had no DB-level FK at all before this — a soft
+    // delete() never reaches it (it's an UPDATE, not a DELETE), so this
+    // specifically exercises the new `nullOnDelete()` constraint itself
+    // via forceDelete(), not application code.
+    $parent = Page::factory()->create();
+    $child = Page::factory()->create(['parent_id' => $parent->id]);
+
+    $parent->forceDelete();
+
+    expect($child->fresh()->parent_id)->toBeNull();
+});
+
 it('re-seeds pages idempotently even after one was soft-deleted', function () {
     seed(PageSeeder::class);
     Page::query()->where('slug', 'about')->firstOrFail()->delete();
