@@ -118,15 +118,23 @@
 
 ### Технический P2
 
-- Перевести оставшиеся hardcoded frontend URL на Wayfinder. Новые и security-critical страницы уже используют типизированные маршруты.
-- Добавить cache/invalidation для settings, home и публичных справочников.
-- Перевести поиск с ограниченного application-level поиска на полнотекстовый индекс при росте объёма данных.
-- Расширить dashboard на все workflow-типы.
-- Разбить крупные `alerts/wizard.tsx`, `RichEditor.tsx`, `projects/form.tsx`; динамически загружать RichEditor и уменьшить чанки.
-- Установить optional `fontaine` или отключить `optimizedFallbacks`, если предупреждение сборки нежелательно.
-- Добавить browser/component/E2E-тесты форм, RichEditor, media picker, меню, responsive sidebar и workflow.
-- Добавить OpenAPI, API contract tests и явные правила rate limiting.
-- Определить DB constraints для `parent_id` Page/Menu с учётом стратегии удаления.
+> Обновлено по итогам плана `PROJECT_PLAN.md`, этапы D/E (см. `PROGRESS.md` за подробностями и коммитами — этот список не переписывает сам аудит, только статус пунктов).
+
+- [x] Перевести оставшиеся hardcoded frontend URL на Wayfinder — сделано (D-6): 161 хардкод-URL в 39 файлах, включая `auth/login.tsx`/`two-factor-challenge.tsx`, которые этот же аудит ошибочно считал уже мигрированными.
+- [x] Добавить cache/invalidation для settings, home и публичных справочников — сделано (D-2).
+- [ ] Перевести поиск с ограниченного application-level поиска на полнотекстовый индекс при росте объёма данных — намеренно не тронуто, условие («при росте объёма») пока не наступило.
+- [x] Расширить dashboard на все workflow-типы — сделано (D-6): metrics/tasks/calendar теперь по всем 7 типам вместо только Alert/News.
+- [x] Разбить крупные `alerts/wizard.tsx`, `RichEditor.tsx`, `projects/form.tsx`; динамически загружать RichEditor и уменьшить чанки — сделано (D-6, E-2): RichEditor — реальный отдельный чанк по требованию (подтверждено сетевым запросом в браузере), wizard/projects-form разбиты на файлы.
+- [ ] Установить optional `fontaine` или отключить `optimizedFallbacks`, если предупреждение сборки нежелательно — не тронуто, условный косметический пункт.
+- [~] Добавить browser/component/E2E-тесты форм, RichEditor, media picker, меню, responsive sidebar и workflow — частично: добавлены E2E на risk-map, JSON-LD и axe-доступность (E-1/E-2/E-3), но не исчерпывающий набор по каждой форме/media picker/меню из этого пункта — остаётся открытым.
+- [x] Добавить OpenAPI, API contract tests и явные правила rate limiting — сделано (D-1, D-3): `openapi.yaml`, spectator contract-тесты, `throttle:api-public`.
+- [x] Определить DB constraints для `parent_id` Page/Menu с учётом стратегии удаления — сделано (D-6): FK с `nullOnDelete()`/`restrictOnDelete()` соответственно.
+
+### Дополнительно закрыто сверх этого аудита (см. `PROGRESS.md`)
+
+Не было в исходном списке технического P2, но сделано в рамках `PROJECT_PLAN.md`: паритет с MySQL подтверждён прогоном всего сьюта на реальном движке (D-4); очередь и планировщик реально проверены как работающие процессы, а не только логикой в тестах (D-5); `revalidateTag` на фронте исправлен с `stale-while-revalidate` на немедленную инвалидацию — из плана баг, который иначе не был бы замечен (E-4); JSON-LD (`GovernmentOrganization`/`NewsArticle`/`BreadcrumbList`) и Lighthouse/axe-инфраструктура с реально записанными результатами (E-1, E-3).
+
+**Найденный, но сознательно не закрытый сегодня технический долг** (заведён как фоновые задачи с полным контекстом, не просто забыт): `color-contrast` WCAG AA нарушения у общего хелпера `muted()` (49 узлов на одной только главной странице фронта); Lighthouse performance-бюджет (86–89 из требуемых 90 на 4 ключевых страницах, вероятно частично — погрешность локального прогона без CDN/HTTP2).
 
 ## Критерии production release
 
@@ -137,10 +145,10 @@
 - [x] Scheduler и alert activity проверены в `Asia/Dushanbe`.
 - [x] CMS-заглушки удалены из маршрутов или заменены рабочими страницами.
 - [x] 2FA, profile и security settings реализованы и покрыты feature-тестами.
-- [ ] Queue worker, scheduler, mail, storage и monitoring проверены на staging.
+- [ ] Queue worker, scheduler, mail, storage и monitoring проверены на staging (локально — на реальных процессах, не только логикой тестов — уже подтверждено, см. `PROGRESS.md` D-5; staging остаётся отдельным, невыполненным шагом).
 - [ ] Backup/restore подтверждён контрольным восстановлением.
 - [ ] Реальные внешние каналы оповещения согласованы и протестированы либо официально исключены из первой версии.
-- [ ] Выполнены dependency audits в release CI.
+- [ ] Выполнены dependency audits в release CI (локально сегодня перепроверено на обоих репозиториях — `composer audit`: чисто на обоих; `npm audit`: чисто на CMS-проде, 7 high в CMS-dev-инструментах и 14 high во фронте — все транзитивные через `eslint`/`minimatch`, давно отслеженный, не новый долг; формальный прогон именно в release CI всё ещё не выполнялся).
 - [ ] Выполнена ручная приёмка всех ролей на desktop/mobile и повторный security review.
 
 ---
