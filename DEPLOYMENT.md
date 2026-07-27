@@ -73,6 +73,15 @@ MEDIA_DISK=public
 # CORS: перечислите ТОЧНЫЕ origin публичного сайта (через запятую)
 CORS_ALLOWED_ORIGINS=https://khf.tj,https://www.khf.tj
 
+# Ревалидация публичного сайта при публикации/изменении контента.
+# FRONTEND_REVALIDATION_SECRET должен побайтово совпадать с
+# REVALIDATION_SECRET в .env.local публичного сайта (сгенерируйте один
+# раз: openssl rand -hex 32, скопируйте в оба .env). Пусто ⇒ вебхук
+# молча выключен — сайт всё ещё обновится, но только по истечении ISR
+# (см. §3.1), не сразу после публикации.
+FRONTEND_REVALIDATION_URL=https://khf.tj/api/revalidate
+FRONTEND_REVALIDATION_SECRET=«тот же секрет, что и REVALIDATION_SECRET фронта»
+
 # Почта (уведомления о согласовании, сброс пароля)
 MAIL_MAILER=smtp
 MAIL_HOST=«smtp-хост»
@@ -223,6 +232,16 @@ API_URL=https://cms.khf.tj/api/v1
 # Та же база для клиентских вызовов (форма обращений, поиск).
 # Должна быть доступна из браузера и разрешена в CORS_ALLOWED_ORIGINS на стороне CMS.
 NEXT_PUBLIC_API_URL=https://cms.khf.tj/api/v1
+
+# Абсолютный origin самого сайта — используется в canonical/hreflang,
+# sitemap.xml, robots.txt и JSON-LD.
+NEXT_PUBLIC_SITE_URL=https://khf.tj
+
+# Принимает вебхук ревалидации от CMS (POST /api/revalidate). Должен
+# побайтово совпадать с FRONTEND_REVALIDATION_SECRET в .env CMS (см.
+# §2.2) — сгенерируйте один раз: openssl rand -hex 32. Пусто ⇒ вебхук
+# выключен (503), сайт обновляется только по истечении ISR (60 сек).
+REVALIDATION_SECRET=«тот же секрет, что и FRONTEND_REVALIDATION_SECRET CMS»
 ```
 
 ### 3.2. Изображения из CMS
@@ -311,6 +330,7 @@ systemctl restart khf-front     # или: pm2 reload khf-front
 - [ ] Загрузка файла в медиабиблиотеку и `php artisan storage:link` работают (файл доступен по URL).
 - [ ] Cron `schedule:run` активен (`php artisan schedule:list`).
 - [ ] Queue worker активен и перезапущен после deploy (`php artisan queue:restart`).
+- [ ] Ревалидация сайта: опубликуйте тестовую новость в CMS, страница `/ru/news` на публичном сайте должна показать её при следующем заходе за секунды, не за 60 сек (проверяет, что `FRONTEND_REVALIDATION_SECRET`/`REVALIDATION_SECRET` реально совпадают, а не просто оба заполнены).
 
 ---
 
