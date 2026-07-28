@@ -22,6 +22,7 @@ import {
     ShieldCheck,
     Tags,
     TriangleAlert,
+    Trash2,
     UserCog,
     Users,
 } from 'lucide-react';
@@ -31,6 +32,7 @@ import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController'
 import AnnouncementController from '@/actions/App/Http/Controllers/Cms/AnnouncementController';
 import ApprovalController from '@/actions/App/Http/Controllers/Cms/ApprovalController';
 import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentController';
+import EditorialTrashController from '@/actions/App/Http/Controllers/Cms/EditorialTrashController';
 import EmergencyContactController from '@/actions/App/Http/Controllers/Cms/EmergencyContactController';
 import HomeBlockController from '@/actions/App/Http/Controllers/Cms/HomeBlockController';
 import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
@@ -166,6 +168,13 @@ export const NAV: NavGroup[] = [
                 href: ProjectController.index.url(),
                 icon: FolderKanban,
                 permission: 'projects.view',
+            },
+            {
+                key: 'editorial-trash',
+                labelKey: 'Корзина материалов',
+                href: EditorialTrashController.index.url(),
+                icon: Trash2,
+                permission: 'news.view',
             },
             {
                 key: 'regions',

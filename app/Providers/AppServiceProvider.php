@@ -26,6 +26,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\Events\CacheFailedOver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobFailed;
 use Illuminate\Queue\Events\QueueBusy;
@@ -65,6 +66,35 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
         $this->configurePublicReadModelCache();
         $this->configureEditorialRevisions();
+        $this->configureDevCommands();
+    }
+
+    /**
+     * Локальный `php artisan dev` по умолчанию поднимает `queue:listen` БЕЗ
+     * `--queue`, то есть слушает только очередь `default`. С введением
+     * очередей (`critical`, `notifications`, `revalidation`, `media`) это
+     * приводило к тихим отказам: heartbeat очереди уходит в `critical`, и
+     * `/api/v1/ready` навсегда оставался `not_ready`, а джобы ревалидации
+     * копились в `revalidation` — контент публиковался, но публичный сайт
+     * не обновлялся. Переопределяем процесс так, чтобы он слушал ВСЕ
+     * настроенные очереди в порядке приоритета.
+     */
+    protected function configureDevCommands(): void
+    {
+        /** @var array<string, string> $names */
+        $names = config('queue.names');
+        $queues = implode(',', array_values($names));
+
+        DevCommands::artisan(
+            "queue:listen --queue={$queues} --tries=1 --timeout=0",
+            'queue',
+        );
+
+        // Локально планировщик не запускается ничем: cron есть только на
+        // сервере. Без него heartbeat расписания устаревает через 15 минут и
+        // `/api/v1/ready` снова уходит в `not_ready`, а отложенные публикации
+        // и автозавершение предупреждений просто не срабатывают.
+        DevCommands::artisan('schedule:work', 'schedule');
     }
 
     /**

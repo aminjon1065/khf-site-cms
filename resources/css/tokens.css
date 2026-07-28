@@ -8,13 +8,13 @@
     --color-surface: #e9e9ea;
     --color-text: #1d1f20;
 
-    --color-accent: #5980a6;
+    --color-accent: #416180;
     --color-accent-100: #eef6ff;
     --color-accent-200: #d6ebff;
     --color-accent-300: #b5d9fd;
     --color-accent-400: #94bce3;
     --color-accent-500: #749dc4;
-    --color-accent-600: #597ea3;
+    --color-accent-600: #4d7296;
     --color-accent-700: #416180;
     --color-accent-800: #2c455d;
     --color-accent-900: #1d2d3d; /* sidebar, dark fields */
@@ -23,8 +23,8 @@
     --color-neutral-200: #e7e7ea;
     --color-neutral-300: #d4d4d7;
     --color-neutral-400: #b7b7ba;
-    --color-neutral-500: #98989b;
-    --color-neutral-600: #7a7a7d;
+    --color-neutral-500: #68686c;
+    --color-neutral-600: #5d5d60;
     --color-neutral-700: #5d5d60;
     --color-neutral-800: #424244;
     --color-neutral-900: #2b2b2d;
@@ -33,9 +33,9 @@
     --color-divider-strong: color-mix(in srgb, #1d1f20 28%, transparent);
 
     /* Semantic status roles */
-    --ok: #2e7d46;
+    --ok: #276a3c;
     --ok-soft: #e4f0e7;
-    --warn: #96660a;
+    --warn: #805607;
     --warn-soft: #f6eedb;
     --danger: #b3362a;
     --danger-soft: #f8e7e5;

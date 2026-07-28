@@ -28,6 +28,7 @@
         <env name="DB_URL" value=""/>
         <env name="FRONTEND_REVALIDATION_SECRET" value="" force="true"/>
         <env name="FRONTEND_REVALIDATION_URL" value="" force="true"/>
+        <env name="INERTIA_SSR_ENABLED" value="false" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
         <!-- P0-1: тесты не должны зависеть от FRONTEND_REVALIDATION_* в

@@ -878,10 +878,27 @@ Production-like performance тесты не запускать против prod
 - [x] Autosave/recovery/concurrency. **Доказательство:** общий `useEditorialAutosave` для шести сущностей сохраняет только изменившийся JSON после 1,5-секундной паузы, держит offline/localStorage recovery copy и показывает «Сохранено в HH:MM». Immutable `editorial_revisions` дают историю/restore; restore не меняет workflow status и бинарные media. `updated_at` version token блокирует stale normal save, а server autosave cursor выявляет две вкладки и показывает выбор server/local. 13 новых Pest-тестов / 52 assertions проверяют durable autosave без мутации published model, conflict/force resolution, policy, revision list и restore; полный `composer ci:check` зелёный: 394 теста / 1563 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan; Vite production build зелёный.
 - [x] Единый preview/checklist. **Доказательство:** шесть редакционных форм используют общий preview с live unsaved data, локалями `tg/ru/en`, desktop/mobile и share/OG режимами; fallback явно помечен. Private signed URL требует авторизацию и policy, имеет TTL 15 минут, `no-store` и `noindex`. Серверный `PublicationChecklist` блокирует публикацию при неполном обязательном переводе, пустом alt обложки, unsafe href или незавершённой media conversion и показывает неблокирующий SEO warning. 11 новых Pest-сценариев и workflow/form regression suite зелёные; полный `composer ci:check` — 405 тестов / 1637 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan; Vite production build зелёный.
 - [x] Media UX. **Доказательство:** изображения получили доступный focal-point picker (точка сохраняется в media DTO, копируется в News/Project/Instruction и управляет публичным `object-position`), обязательную пару alt либо explicit decorative, поиск по title/alt/caption и экран «Где используется». Usage service находит структурные media-копии и прямые rich-text URL; используемый файл нельзя удалить. Свободный asset перемещается в фильтруемую корзину и восстанавливается без удаления оригинала и derivatives. 6 новых Pest-сценариев плюс media/news/project/instruction regression suite зелёные; полный `composer ci:check` — 411 тестов / 1706 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan; Vite production build зелёный.
-- [ ] Revision history/trash.
+- [x] Revision history/trash. **Доказательство:** immutable revision history
+  охватывает все шесть редакционных форм и восстанавливает только editorial
+  fields, сохраняя workflow status и создавая `before_restore` snapshot.
+  Добавлена единая пагинируемая корзина News/Page/Project/Instruction/
+  Announcement/Document через SQL `UNION ALL`: список ограничен view-policy и
+  региональным scope, restore требует delete-policy, выполняется транзакционно
+  и сохраняет прежний workflow status. 18 целевых Pest-тестов / 99 assertions;
+  полный `composer ci:check` — 496 тестов / 3605 assertions; Playwright 10/10,
+  включая axe экрана корзины; production Vite build — 2368 modules / 8.21 s.
 - [ ] Translation queue.
-- [ ] Accessibility browser tests.
-- [ ] Usability test с реальными сотрудниками. **Инженерный контур готов:** в CMS добавлен защищённый анонимный протокол 8 заданий, стандартный SUS, точный p75 и автоматический gate по всем целям UX-10; 8 Pest-тестов / 59 assertions, полный `composer ci:check` — 428 тестов / 2135 assertions, Vite production build зелёный. Изолированная браузерная проверка доказала login → save → обновление отчёта, отсутствие console errors, семантические tables/fieldsets и 49/49 touch targets ≥ 44 px на desktop и viewport 390×844. **Полевой результат: 0/5 реальных сотрудников; чекбокс нельзя закрыть до проведения сессий.**
+- [x] Accessibility browser tests. **Доказательство:** `@axe-core/playwright`
+  проверяет `/dashboard`, `/news`, `/media` и `/news/create` по WCAG 2.0/2.1
+  A/AA без serious/critical нарушений; общие Modal/Drawer и command palette
+  удерживают Tab/Shift+Tab, закрываются по Escape и возвращают видимый focus
+  исходному trigger. Playwright также доказал screen-reader names у форм и
+  icon actions, текстовые статусы, `aria-live` autosave, кнопочные альтернативы
+  загрузки/медиатеки, reflow без горизонтального overflow при 320 CSS px и пять
+  touch targets topbar ≥44×44 при 390×844. Полный `npm run test:e2e`: 9/9;
+  `composer ci:check`: 490 тестов / 3555 assertions; production Vite build:
+  2366 modules / 8.27 s.
+- [ ] Usability test с реальными сотрудниками. **Инженерный контур готов:** в CMS добавлен защищённый анонимный протокол 8 заданий, стандартный SUS, точный p75 и автоматический gate по всем целям UX-10; 8 Pest-тестов / 59 assertions. Последующий mobile QA устранил overflow topbar/dashboard и добавил Playwright regression на 390×844; полный `composer ci:check` — 490 тестов / 3555 assertions, Vite production build зелёный. Изолированная браузерная проверка доказала login → save → обновление отчёта, отсутствие console errors, семантические tables/fieldsets и touch targets ≥ 44 px на desktop и viewport 390×844. **Полевой результат: 0/5 реальных сотрудников; чекбокс нельзя закрыть до проведения сессий.**
 
 > ⚠️ **Этот пункт — внешняя приёмка, а не инженерная задача, и он НЕ блокирует остальную работу.** Сессии проводит человек с живыми будущими редакторами; ни агент, ни браузерная автоматизация не могут их заменить, а синтетическая сессия является фальсификацией данных и запрещена. Набор фасилитатора готов: [`USABILITY_FIELD_KIT.md`](./USABILITY_FIELD_KIT.md) — протокол, задания, бланк, анкета SUS и порядок ввода. Пока полевых данных нет, O-020 остаётся со статусом «инженерный контур готов, приёмка ожидается», а работа продолжается по остальным незакрытым пунктам этапов 1–5. Возврат к O-020 — только после появления реальных сессий: если гейт не пройден, из отчёта заводятся задачи `UX-fix-*`, они чинятся, и тест повторяется с другими участниками.
 

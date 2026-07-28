@@ -1,8 +1,8 @@
 import { router } from '@inertiajs/react';
 import { Command } from 'cmdk';
 import { CornerDownLeft, Plus, Search } from 'lucide-react';
-import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useDialogFocus } from '@/hooks/use-dialog-focus';
 import { useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { CREATE_ITEMS, NAV } from '@/lib/navigation';
@@ -17,21 +17,7 @@ export function CommandPalette({
 }) {
     const { t } = useT();
     const can = useCan();
-
-    useEffect(() => {
-        if (!open) {
-            return;
-        }
-
-        const esc = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-        window.addEventListener('keydown', esc);
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            window.removeEventListener('keydown', esc);
-            document.body.style.overflow = '';
-        };
-    }, [open, onClose]);
+    const dialogRef = useDialogFocus<HTMLDivElement>(open, onClose);
 
     if (!open) {
         return null;
@@ -53,7 +39,12 @@ export function CommandPalette({
 
     return createPortal(
         <div
+            ref={dialogRef}
             onMouseDown={onClose}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Командная палитра"
+            tabIndex={-1}
             style={{
                 position: 'fixed',
                 inset: 0,
@@ -91,7 +82,6 @@ export function CommandPalette({
                             style={{ color: 'var(--color-neutral-500)' }}
                         />
                         <Command.Input
-                            autoFocus
                             placeholder="Команда или поиск: предупреждения, новости, документы, пользователи…"
                             className="cms-cmd-input"
                             style={{

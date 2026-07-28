@@ -9,6 +9,7 @@ use App\Http\Controllers\Cms\DashboardController;
 use App\Http\Controllers\Cms\DocumentController;
 use App\Http\Controllers\Cms\EditorialAutosaveController;
 use App\Http\Controllers\Cms\EditorialPreviewController;
+use App\Http\Controllers\Cms\EditorialTrashController;
 use App\Http\Controllers\Cms\EmergencyContactController;
 use App\Http\Controllers\Cms\HomeBlockController;
 use App\Http\Controllers\Cms\InstructionController;
@@ -53,6 +54,10 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('editorial/{contentType}/{contentId}/preview', EditorialPreviewController::class)
         ->middleware('signed')
         ->name('editorial.preview');
+    Route::get('editorial/trash', [EditorialTrashController::class, 'index'])
+        ->name('editorial.trash');
+    Route::post('editorial/trash/{contentType}/{contentId}/restore', [EditorialTrashController::class, 'restore'])
+        ->name('editorial.trash.restore');
 
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('control', [ControlController::class, 'index'])->name('control');

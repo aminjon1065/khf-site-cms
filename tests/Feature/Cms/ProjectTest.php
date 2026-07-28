@@ -151,7 +151,9 @@ it('sets the project cover from a media-library asset', function () {
     Storage::fake('public');
     $editor = projUser('editor');
 
-    actingAs($editor)->post('/media', ['file' => UploadedFile::fake()->image('lib.jpg')]);
+    actingAs($editor)
+        ->post('/media', ['file' => UploadedFile::fake()->image('lib.jpg')])
+        ->assertRedirect();
     $sourceId = Media::query()->latest('id')->firstOrFail()->id;
 
     actingAs($editor)->post('/projects', [

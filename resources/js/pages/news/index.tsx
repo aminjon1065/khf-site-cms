@@ -310,6 +310,7 @@ export default function NewsIndex({
                     onChange={(e) => reload({ search: e.target.value })}
                 />
                 <Select
+                    aria-label="Фильтр новостей по статусу"
                     placeholder="Статус: все"
                     value={filters.status}
                     options={options.statuses}
@@ -317,6 +318,7 @@ export default function NewsIndex({
                     style={{ width: 'auto' }}
                 />
                 <Select
+                    aria-label="Фильтр новостей по категории"
                     placeholder="Категория: все"
                     value={filters.category}
                     options={options.categories.map((c) => ({

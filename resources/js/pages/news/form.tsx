@@ -309,6 +309,7 @@ export default function NewsForm({ news, reference }: Props) {
 
                         <Field
                             label="Заголовок"
+                            htmlFor={`news-title-${lang}`}
                             required={lang === 'ru'}
                             error={
                                 lang === 'ru'
@@ -317,6 +318,7 @@ export default function NewsForm({ news, reference }: Props) {
                             }
                         >
                             <Input
+                                id={`news-title-${lang}`}
                                 value={data.title[lang]}
                                 onChange={(e) =>
                                     setLocaleField('title', e.target.value)
@@ -335,9 +337,11 @@ export default function NewsForm({ news, reference }: Props) {
 
                         <Field
                             label="Краткое описание"
+                            htmlFor={`news-summary-${lang}`}
                             hint="Показывается в списке новостей и в предпросмотре ссылки."
                         >
                             <Textarea
+                                id={`news-summary-${lang}`}
                                 value={data.summary[lang]}
                                 onChange={(e) =>
                                     setLocaleField('summary', e.target.value)
@@ -376,10 +380,12 @@ export default function NewsForm({ news, reference }: Props) {
                         </div>
                         <Field
                             label="Адрес (slug)"
+                            htmlFor="news-slug"
                             hint="Оставьте пустым — сгенерируется автоматически из заголовка."
                             error={fieldError('slug')}
                         >
                             <Input
+                                id="news-slug"
                                 value={data.slug}
                                 onChange={(e) =>
                                     setData('slug', e.target.value)
@@ -390,9 +396,11 @@ export default function NewsForm({ news, reference }: Props) {
                         </Field>
                         <Field
                             label="SEO-заголовок"
+                            htmlFor={`news-seo-title-${lang}`}
                             error={fieldError(`seo.${lang}.title`)}
                         >
                             <Input
+                                id={`news-seo-title-${lang}`}
                                 value={data.seo[lang].title}
                                 onChange={(e) =>
                                     setSeoField('title', e.target.value)
@@ -402,9 +410,11 @@ export default function NewsForm({ news, reference }: Props) {
                         </Field>
                         <Field
                             label="SEO-описание"
+                            htmlFor={`news-seo-description-${lang}`}
                             error={fieldError(`seo.${lang}.description`)}
                         >
                             <Textarea
+                                id={`news-seo-description-${lang}`}
                                 value={data.seo[lang].description}
                                 onChange={(e) =>
                                     setSeoField('description', e.target.value)
@@ -434,9 +444,11 @@ export default function NewsForm({ news, reference }: Props) {
 
                         <Field
                             label="Категория"
+                            htmlFor="news-category"
                             error={fieldError('category_id')}
                         >
                             <Select
+                                id="news-category"
                                 value={
                                     data.category_id === ''
                                         ? ''
@@ -481,8 +493,12 @@ export default function NewsForm({ news, reference }: Props) {
                             </Field>
                         )}
 
-                        <Field label="Дата запланированной публикации">
+                        <Field
+                            label="Дата запланированной публикации"
+                            htmlFor="news-scheduled-at"
+                        >
                             <DatePicker
+                                id="news-scheduled-at"
                                 withTime
                                 value={data.scheduled_at}
                                 onChange={(e) =>
