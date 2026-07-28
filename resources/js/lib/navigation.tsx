@@ -4,6 +4,7 @@ import {
     BookOpen,
     Building2,
     ClipboardCheck,
+    ClipboardList,
     FileStack,
     FileText,
     FolderKanban,
@@ -23,7 +24,7 @@ import {
     Users,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { control } from '@/routes';
+import { control, usability } from '@/routes';
 
 export interface NavItem {
     key: string;
@@ -206,6 +207,13 @@ export const NAV: NavGroup[] = [
                 labelKey: 'nav.activity',
                 href: '/activity',
                 icon: Activity,
+                permission: 'users.view',
+            },
+            {
+                key: 'usability',
+                labelKey: 'Проверка удобства',
+                href: usability.url(),
+                icon: ClipboardList,
                 permission: 'users.view',
             },
             {

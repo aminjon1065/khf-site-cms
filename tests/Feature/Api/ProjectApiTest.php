@@ -78,6 +78,6 @@ it('omits detail fields from the list', function () {
     $item = $this->getJson('/api/v1/projects?locale=ru')->json('data.0');
 
     expect(array_keys($item))->toEqualCanonicalizing([
-        'slug', 'title', 'status', 'status_code', 'status_tone', 'years', 'partner', 'budget', 'desc', 'image', 'image_srcset',
+        'slug', 'title', 'status', 'status_code', 'status_tone', 'years', 'partner', 'budget', 'desc', 'image', 'image_srcset', 'image_data',
     ]);
 });

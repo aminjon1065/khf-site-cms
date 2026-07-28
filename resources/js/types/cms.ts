@@ -48,7 +48,8 @@ export interface SharedProps {
     locale: Locale;
     flash: FlashBag;
     nav_badges: NavBadges;
-    notifications: { unread: number; items: AppNotification[] };
+    notification_unread: number;
+    notifications?: { unread: number; items: AppNotification[] };
     [key: string]: unknown;
 }
 

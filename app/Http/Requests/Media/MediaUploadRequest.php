@@ -31,6 +31,7 @@ class MediaUploadRequest extends FormRequest
             'file' => $fileRules,
             'title' => ['nullable', 'string', 'max:255'],
             'alt' => ['nullable', 'string', 'max:255'],
+            'is_decorative' => ['nullable', 'boolean'],
         ];
     }
 

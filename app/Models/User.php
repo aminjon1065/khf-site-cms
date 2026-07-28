@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Carbon;
@@ -93,6 +94,14 @@ class User extends Authenticatable
     public function region(): BelongsTo
     {
         return $this->belongsTo(Region::class);
+    }
+
+    /**
+     * @return HasMany<UsabilitySession, $this>
+     */
+    public function facilitatedUsabilitySessions(): HasMany
+    {
+        return $this->hasMany(UsabilitySession::class, 'facilitator_id');
     }
 
     public function hasTwoFactorEnabled(): bool

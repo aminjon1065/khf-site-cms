@@ -35,7 +35,9 @@ it('renders a live control center instead of a section stub', function () {
             ->component('control/index')
             ->where('metrics.active', 1)
             ->has('alerts', 1)
-            ->has('regions'));
+            ->has('regions')
+            ->has('web_vitals.metrics', 3)
+            ->where('web_vitals.total_samples', 0));
 });
 
 it('forbids the control center without alerts permission', function () {
@@ -85,4 +87,15 @@ it('renders central services and regional emergency contacts', function () {
             ->where('central.emergency_number', '112')
             ->has('services', 4)
             ->has('regions'));
+});
+
+it('keeps the RUM dashboard table semantically labelled', function () {
+    $source = file_get_contents(resource_path('js/pages/control/index.tsx'));
+
+    expect($source)->toContain(
+        'section aria-labelledby="rum-heading"',
+        '<caption className="sr-only">',
+        'scope="col"',
+        'scope="row"',
+    );
 });

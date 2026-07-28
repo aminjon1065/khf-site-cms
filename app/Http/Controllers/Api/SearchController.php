@@ -11,6 +11,7 @@ use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -58,15 +59,18 @@ class SearchController extends Controller
 
         $results = DB::query()
             ->fromSub($union, 'search_results')
-            ->orderByDesc('relevance')
+            ->orderByRaw(
+                "COALESCE(NULLIF(requested_title, ''), NULLIF(russian_title, ''), '') LIKE ? DESC",
+                ["%{$term}%"],
+            )
             ->orderByRaw('published_at IS NULL')
             ->orderByDesc('published_at')
             ->paginate($perPage, ['*'], 'page', $page);
 
         $items = collect($results->items())->map(fn (stdClass $row): array => [
             'type' => (string) $row->type,
-            'title' => (string) $row->title,
-            'excerpt' => Str::limit(trim(strip_tags((string) $row->excerpt)), 220),
+            'title' => (string) ($row->requested_title ?: $row->russian_title),
+            'excerpt' => Str::limit(trim(strip_tags((string) ($row->requested_excerpt ?: $row->russian_excerpt))), 220),
             'path' => $this->path((string) $row->type, $row->resource_key),
             'published_at' => $row->published_at !== null ? (string) $row->published_at : null,
         ])->all();
@@ -91,7 +95,7 @@ class SearchController extends Controller
         $query = News::query()->public();
         $this->whereMatches($query, $term, $locale, ['title', 'summary', 'body']);
 
-        return $this->shape($query, 'news', 'title', 'summary', 'slug', $term, $locale);
+        return $this->shape($query, 'news', 'title', 'summary', 'slug', $locale);
     }
 
     private function alerts(string $term, string $locale): QueryBuilder
@@ -99,7 +103,7 @@ class SearchController extends Controller
         $query = Alert::query()->public();
         $this->whereMatches($query, $term, $locale, ['title', 'summary', 'body']);
 
-        return $this->shape($query, 'alert', 'title', 'summary', 'slug', $term, $locale);
+        return $this->shape($query, 'alert', 'title', 'summary', 'slug', $locale);
     }
 
     private function instructions(string $term, string $locale): QueryBuilder
@@ -107,7 +111,7 @@ class SearchController extends Controller
         $query = Instruction::query()->public();
         $this->whereMatches($query, $term, $locale, ['name', 'summary', 'body']);
 
-        return $this->shape($query, 'instruction', 'name', 'summary', 'slug', $term, $locale);
+        return $this->shape($query, 'instruction', 'name', 'summary', 'slug', $locale);
     }
 
     private function documents(string $term, string $locale): QueryBuilder
@@ -115,7 +119,7 @@ class SearchController extends Controller
         $query = Document::query()->public();
         $this->whereMatches($query, $term, $locale, ['name'], ['number']);
 
-        return $this->shape($query, 'document', 'name', null, null, $term, $locale, 'number');
+        return $this->shape($query, 'document', 'name', null, null, $locale, 'number');
     }
 
     private function projects(string $term, string $locale): QueryBuilder
@@ -123,7 +127,7 @@ class SearchController extends Controller
         $query = Project::query()->public();
         $this->whereMatches($query, $term, $locale, ['title', 'summary', 'body']);
 
-        return $this->shape($query, 'project', 'title', 'summary', 'slug', $term, $locale);
+        return $this->shape($query, 'project', 'title', 'summary', 'slug', $locale);
     }
 
     private function announcements(string $term, string $locale): QueryBuilder
@@ -131,7 +135,7 @@ class SearchController extends Controller
         $query = Announcement::query()->public();
         $this->whereMatches($query, $term, $locale, ['title', 'body'], ['org']);
 
-        return $this->shape($query, 'announcement', 'title', 'body', 'slug', $term, $locale);
+        return $this->shape($query, 'announcement', 'title', 'body', 'slug', $locale);
     }
 
     private function pages(string $term, string $locale): QueryBuilder
@@ -139,10 +143,13 @@ class SearchController extends Controller
         $query = Page::query()->public();
         $this->whereMatches($query, $term, $locale, ['title', 'body']);
 
-        return $this->shape($query, 'page', 'title', 'body', 'slug', $term, $locale);
+        return $this->shape($query, 'page', 'title', 'body', 'slug', $locale);
     }
 
     /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
      * @param  list<string>  $translatedFields
      * @param  list<string>  $plainFields
      */
@@ -173,45 +180,48 @@ class SearchController extends Controller
         });
     }
 
+    /**
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $query
+     */
     private function shape(
         Builder $query,
         string $type,
         string $titleField,
         ?string $excerptField,
         ?string $keyField,
-        string $term,
         string $locale,
         ?string $plainExcerptField = null,
     ): QueryBuilder {
-        $title = $this->localizedExpression($query, $titleField, $locale);
-        $excerpt = $excerptField !== null
-            ? $this->localizedExpression($query, $excerptField, $locale)
-            : ($plainExcerptField !== null ? $this->plainExpression($query, $plainExcerptField) : "''");
-        $key = $keyField !== null ? $query->getQuery()->getGrammar()->wrap($keyField) : 'NULL';
-        $publishedAt = $query->getQuery()->getGrammar()->wrap('published_at');
+        $query->selectRaw('? as type', [$type])
+            ->addSelect(
+                "{$titleField}->{$locale} as requested_title",
+                "{$titleField}->ru as russian_title",
+            );
 
-        return $query
-            ->selectRaw('? as type', [$type])
-            ->selectRaw("{$title} as title")
-            ->selectRaw("{$excerpt} as excerpt")
-            ->selectRaw("{$key} as resource_key")
-            ->selectRaw("{$publishedAt} as published_at")
-            ->selectRaw("CASE WHEN {$title} LIKE ? THEN 2 ELSE 1 END as relevance", ["%{$term}%"])
-            ->toBase();
-    }
+        if ($excerptField !== null) {
+            $query->addSelect(
+                "{$excerptField}->{$locale} as requested_excerpt",
+                "{$excerptField}->ru as russian_excerpt",
+            );
+        } elseif ($plainExcerptField !== null) {
+            $query->addSelect(
+                "{$plainExcerptField} as requested_excerpt",
+                "{$plainExcerptField} as russian_excerpt",
+            );
+        } else {
+            $query->selectRaw("'' as requested_excerpt")
+                ->selectRaw("'' as russian_excerpt");
+        }
 
-    private function localizedExpression(Builder $query, string $field, string $locale): string
-    {
-        $grammar = $query->getQuery()->getGrammar();
-        $requested = $grammar->wrap("{$field}->{$locale}");
-        $russian = $grammar->wrap("{$field}->ru");
+        if ($keyField !== null) {
+            $query->addSelect("{$keyField} as resource_key");
+        } else {
+            $query->selectRaw('NULL as resource_key');
+        }
 
-        return "COALESCE(NULLIF({$requested}, ''), NULLIF({$russian}, ''), '')";
-    }
-
-    private function plainExpression(Builder $query, string $field): string
-    {
-        return 'COALESCE('.$query->getQuery()->getGrammar()->wrap($field).", '')";
+        return $query->addSelect('published_at')->toBase();
     }
 
     private function path(string $type, mixed $key): string

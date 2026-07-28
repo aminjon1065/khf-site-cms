@@ -8,11 +8,11 @@ use App\Enums\Severity;
 use App\Jobs\RevalidateFrontend;
 use App\Models\Activity;
 use App\Models\Alert;
-use App\Models\Setting;
 use App\Models\User;
 use App\Models\WorkflowTransition;
 use App\Notifications\WorkflowNotification;
 use App\Support\ContentTypes;
+use App\Support\FrontendRevalidation;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
@@ -25,6 +25,8 @@ use Illuminate\Validation\ValidationException;
  */
 class WorkflowService
 {
+    public function __construct(private readonly PublicationChecklist $publicationChecklist) {}
+
     /**
      * Allowed transitions by source status.
      *
@@ -77,7 +79,7 @@ class WorkflowService
 
         if ($to === ContentStatus::Published) {
             if (! $force) {
-                $this->guardRequiredTranslations($subject);
+                $this->publicationChecklist->ensurePublishable($subject);
             }
 
             if ($subject instanceof Alert && $actor !== null) {
@@ -113,7 +115,17 @@ class WorkflowService
             ContentStatus::Cancelled,
             ContentStatus::Archived,
         ], true) && config('services.frontend.revalidation_url') && config('services.frontend.revalidation_secret')) {
-            RevalidateFrontend::dispatch();
+            $payload = FrontendRevalidation::forContent($subject, $to->value);
+
+            if ($payload !== null) {
+                RevalidateFrontend::dispatch(
+                    type: $payload['type'],
+                    id: $payload['id'],
+                    slug: $payload['slug'],
+                    locales: $payload['locales'],
+                    event: $payload['event'],
+                )->afterCommit();
+            }
         }
 
         return $transition;
@@ -133,40 +145,6 @@ class WorkflowService
             fn (string $value): ContentStatus => ContentStatus::from($value),
             self::ALLOWED[$from->value],
         );
-    }
-
-    /**
-     * Required public locales must be complete before ordinary publication.
-     * A force transition is the explicit, audited emergency override.
-     *
-     * @throws ValidationException
-     */
-    private function guardRequiredTranslations(Model&Workflowable $subject): void
-    {
-        if (! method_exists($subject, 'languageCompleteness')) {
-            return;
-        }
-
-        $configured = Setting::query()
-            ->where('group', 'languages')
-            ->where('key', 'require_translation')
-            ->first()?->value;
-        $required = is_array($configured)
-            ? array_values(array_filter($configured, 'is_string'))
-            : ['tg', 'ru'];
-
-        /** @var array<string, int> $completeness */
-        $completeness = $subject->languageCompleteness();
-        $incomplete = array_values(array_filter(
-            $required,
-            fn (string $locale): bool => ($completeness[$locale] ?? 0) < 100,
-        ));
-
-        if ($incomplete !== []) {
-            throw ValidationException::withMessages([
-                'translations' => 'Для публикации завершите обязательные переводы: '.implode(', ', $incomplete).'.',
-            ]);
-        }
     }
 
     /**

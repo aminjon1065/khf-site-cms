@@ -24,6 +24,7 @@ class InstructionFactory extends Factory
         return [
             'name' => ['ru' => $name, 'tg' => $name, 'en' => ''],
             'summary' => ['ru' => fake()->sentence(), 'tg' => fake()->sentence(), 'en' => ''],
+            'body' => ['ru' => fake()->paragraph(), 'tg' => fake()->paragraph(), 'en' => ''],
             'hazard_type' => fake()->randomElement(HazardType::cases()),
             'sections' => [
                 'before' => ['ru' => [fake()->sentence()]],

@@ -138,7 +138,7 @@ class Announcement extends Model implements Workflowable
      */
     public function scopeOrdered(Builder $query): void
     {
-        $query->orderByRaw('(deadline IS NULL OR deadline >= CURRENT_DATE) DESC')
+        $query->orderByRaw('(deadline IS NULL OR deadline >= ?) DESC', [now()->startOfDay()])
             ->orderByRaw('deadline IS NULL')
             ->orderBy('deadline')
             ->orderByDesc('id');

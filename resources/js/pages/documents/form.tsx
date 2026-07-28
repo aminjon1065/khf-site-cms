@@ -1,15 +1,12 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, FileText, Save, Send } from 'lucide-react';
+import { useForm } from '@inertiajs/react';
+import { FileText } from 'lucide-react';
 import { useState } from 'react';
+import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { StatusBadge } from '@/ui/Badge';
+import { index, store, update } from '@/routes/documents';
 import { Blueprint } from '@/ui/Blueprint';
-import { Button, LinkButton } from '@/ui/Button';
 import { Checkbox, DatePicker, Field, Input, Select } from '@/ui/Field';
-import { LanguageTabs } from '@/ui/Nav';
-import { Dropdown } from '@/ui/Overlay';
-import { PageHeader } from '@/ui/PageHeader';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type PublishMode = 'now' | 'review';
@@ -35,6 +32,8 @@ interface DocumentData {
     status: ContentStatus;
     files: Record<FileLocale, FileInfo | null>;
     published_at: string | null;
+    updated_at: string;
+    preview_url: string;
 }
 
 interface Props {
@@ -73,7 +72,7 @@ export default function DocumentForm({ document, reference }: Props) {
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
-    const { data, setData, processing, errors } = form;
+    const { data, setData, processing, errors, isDirty } = form;
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
@@ -89,45 +88,75 @@ export default function DocumentForm({ document, reference }: Props) {
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
-            ...(isEdit ? { _method: 'put' } : {}),
+            ...(isEdit
+                ? {
+                      _method: 'put',
+                      _editorial_version: document!.updated_at,
+                  }
+                : {}),
         }));
 
-        form.post(isEdit ? `/documents/${document!.id}` : '/documents', {
+        form.post(isEdit ? update.url(document!.id) : store.url(), {
             forceFormData: true,
             preserveScroll: true,
         });
     };
 
     return (
-        <>
-            <Head
-                title={isEdit ? 'Редактирование документа' : 'Новый документ'}
-            />
-
-            <PageHeader
-                eyebrow={
-                    <Link
-                        href="/documents"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            color: 'var(--color-neutral-600)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ArrowLeft size={14} strokeWidth={1.75} /> Документы
-                    </Link>
-                }
-                title={isEdit ? 'Редактирование документа' : 'Новый документ'}
-                subtitle="Укажите название и реквизиты, прикрепите файлы на нужных языках."
-                actions={
-                    isEdit && document ? (
-                        <StatusBadge status={document.status} />
-                    ) : null
-                }
-            />
-
+        <EditorialFormShell
+            title={isEdit ? 'Редактирование документа' : 'Новый документ'}
+            subtitle="Укажите название и реквизиты, прикрепите файлы на нужных языках."
+            backLabel="Документы"
+            backHref={index.url()}
+            status={document?.status}
+            language={{
+                active: lang,
+                onChange: setLang,
+                completeness: compAll,
+            }}
+            errors={errors}
+            isDirty={isDirty}
+            processing={processing}
+            canPublish={can('documents.publish')}
+            onSaveDraft={() => submit('draft')}
+            onSubmitReview={() => submit('submit', 'review')}
+            onPublishNow={() => submit('submit', 'now')}
+            autosave={{
+                contentType: 'documents',
+                contentId: document?.id ?? null,
+                baseVersion: document?.updated_at ?? null,
+                data,
+                onRecover: (recovered) =>
+                    form.setData({ ...data, ...recovered }),
+            }}
+            preview={{
+                locales: {
+                    tg: { title: data.name.tg },
+                    ru: { title: data.name.ru },
+                    en: { title: data.name.en },
+                },
+                signedUrl: document?.preview_url,
+                checklist: [
+                    {
+                        label: 'Русское название заполнено',
+                        ok: compAll.ru === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Таджикское название заполнено',
+                        ok: compAll.tg === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Реквизиты документа указаны',
+                        ok:
+                            data.doc_type !== '' &&
+                            data.doc_date !== '' &&
+                            data.number !== '',
+                    },
+                ],
+            }}
+        >
             <div
                 className="cms-two-col"
                 style={{
@@ -159,11 +188,6 @@ export default function DocumentForm({ document, reference }: Props) {
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
                                 Название
                             </h3>
-                            <LanguageTabs
-                                active={lang}
-                                onChange={setLang}
-                                completeness={compAll}
-                            />
                         </div>
 
                         <Field
@@ -370,58 +394,6 @@ export default function DocumentForm({ document, reference }: Props) {
                     </Blueprint>
                 </div>
             </div>
-
-            {/* --------------------------------------------- sticky actions */}
-            <div className="news-form-actions">
-                <LinkButton href="/documents" variant="ghost">
-                    Отмена
-                </LinkButton>
-                <div style={{ flex: 1 }} />
-                <Button
-                    variant="secondary"
-                    icon={<Save size={15} strokeWidth={1.75} />}
-                    loading={processing}
-                    onClick={() => submit('draft')}
-                >
-                    Сохранить черновик
-                </Button>
-                {can('documents.publish') ? (
-                    <Dropdown
-                        align="right"
-                        trigger={({ toggle }) => (
-                            <Button
-                                variant="primary"
-                                iconRight={
-                                    <ChevronDown size={15} strokeWidth={2} />
-                                }
-                                onClick={toggle}
-                            >
-                                Опубликовать
-                            </Button>
-                        )}
-                        items={[
-                            {
-                                label: 'Опубликовать сейчас',
-                                onSelect: () => submit('submit', 'now'),
-                            },
-                            { separator: true },
-                            {
-                                label: 'Отправить на согласование',
-                                onSelect: () => submit('submit', 'review'),
-                            },
-                        ]}
-                    />
-                ) : (
-                    <Button
-                        variant="primary"
-                        icon={<Send size={15} strokeWidth={1.75} />}
-                        loading={processing}
-                        onClick={() => submit('submit', 'review')}
-                    >
-                        На согласование
-                    </Button>
-                )}
-            </div>
-        </>
+        </EditorialFormShell>
     );
 }

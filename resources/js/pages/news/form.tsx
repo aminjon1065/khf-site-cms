@@ -1,19 +1,12 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    ChevronDown,
-    Images,
-    Save,
-    Send,
-    Upload,
-} from 'lucide-react';
+import { useForm } from '@inertiajs/react';
+import { Images, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
-import { useSaveShortcut } from '@/hooks/use-save-shortcut';
+import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { StatusBadge } from '@/ui/Badge';
+import { index, store, update } from '@/routes/news';
 import { Blueprint } from '@/ui/Blueprint';
-import { Button, LinkButton } from '@/ui/Button';
+import { Button } from '@/ui/Button';
 import {
     Checkbox,
     DatePicker,
@@ -24,9 +17,6 @@ import {
 } from '@/ui/Field';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
-import { LanguageTabs } from '@/ui/Nav';
-import { Dropdown } from '@/ui/Overlay';
-import { PageHeader } from '@/ui/PageHeader';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
@@ -57,6 +47,8 @@ interface NewsData {
     published_at: string | null;
     views_count: number;
     languages: Record<string, number>;
+    updated_at: string;
+    preview_url: string;
 }
 
 interface Props {
@@ -108,7 +100,7 @@ export default function NewsForm({ news, reference }: Props) {
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
-    const { data, setData, processing, errors } = form;
+    const { data, setData, processing, errors, isDirty } = form;
 
     // Laravel returns dotted keys for nested fields (title.ru, seo.ru.title).
     const fieldError = (key: string): string | undefined =>
@@ -120,8 +112,8 @@ export default function NewsForm({ news, reference }: Props) {
         setData('cover_remove', false);
         setCoverPreview(item.url);
 
-        if (!data.cover_alt && item.name) {
-            setData('cover_alt', item.name);
+        if (!data.cover_alt && (item.alt || item.name)) {
+            setData('cover_alt', item.alt ?? item.name ?? '');
         }
 
         setCoverPicker(false);
@@ -182,49 +174,106 @@ export default function NewsForm({ news, reference }: Props) {
             action,
             publish_mode: mode ?? d.publish_mode,
             stay,
-            ...(isEdit ? { _method: 'put' } : {}),
+            ...(isEdit
+                ? {
+                      _method: 'put',
+                      _editorial_version: news!.updated_at,
+                  }
+                : {}),
         }));
 
-        form.post(isEdit ? `/news/${news!.id}` : '/news', {
+        form.post(isEdit ? update.url(news!.id) : store.url(), {
             forceFormData: true,
             preserveScroll: true,
             preserveState: stay,
         });
     };
 
-    // Ctrl/Cmd+S — сохранить черновик и остаться в редакторе (stay = true).
-    useSaveShortcut(() => submit('draft', undefined, true), !processing);
-
     return (
-        <>
-            <Head title={isEdit ? 'Редактирование новости' : 'Новая новость'} />
-
-            <PageHeader
-                eyebrow={
-                    <Link
-                        href="/news"
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            color: 'var(--color-neutral-600)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ArrowLeft size={14} strokeWidth={1.75} /> Новости
-                    </Link>
-                }
-                title={isEdit ? 'Редактирование новости' : 'Новая новость'}
-                subtitle={
-                    isEdit
-                        ? 'Изменения сохраняются как новая ревизия материала.'
-                        : 'Заполните заголовок и текст, затем сохраните черновик или отправьте на согласование.'
-                }
-                actions={
-                    isEdit && news ? <StatusBadge status={news.status} /> : null
-                }
-            />
-
+        <EditorialFormShell
+            title={isEdit ? 'Редактирование новости' : 'Новая новость'}
+            subtitle={
+                isEdit
+                    ? 'Изменения сохраняются как новая ревизия материала.'
+                    : 'Заполните заголовок и текст, затем сохраните черновик или отправьте на согласование.'
+            }
+            backLabel="Новости"
+            backHref={index.url()}
+            status={news?.status}
+            language={{
+                active: lang,
+                onChange: setLang,
+                completeness: compAll,
+            }}
+            errors={errors}
+            isDirty={isDirty}
+            processing={processing}
+            canPublish={can('news.publish')}
+            onSaveDraft={() => submit('draft')}
+            onSaveShortcut={() => submit('draft', undefined, true)}
+            onSubmitReview={() => submit('submit', 'review')}
+            onPublishNow={() => submit('submit', 'now')}
+            onSchedule={() => submit('submit', 'schedule')}
+            autosave={{
+                contentType: 'news',
+                contentId: news?.id ?? null,
+                baseVersion: news?.updated_at ?? null,
+                data,
+                onRecover: (recovered) =>
+                    form.setData({ ...data, ...recovered }),
+            }}
+            preview={{
+                locales: {
+                    tg: {
+                        title: data.title.tg,
+                        summary: data.summary.tg,
+                        body: data.body.tg,
+                        seoTitle: data.seo.tg.title,
+                        seoDescription: data.seo.tg.description,
+                    },
+                    ru: {
+                        title: data.title.ru,
+                        summary: data.summary.ru,
+                        body: data.body.ru,
+                        seoTitle: data.seo.ru.title,
+                        seoDescription: data.seo.ru.description,
+                    },
+                    en: {
+                        title: data.title.en,
+                        summary: data.summary.en,
+                        body: data.body.en,
+                        seoTitle: data.seo.en.title,
+                        seoDescription: data.seo.en.description,
+                    },
+                },
+                imageUrl: coverSrc,
+                imageAlt: data.cover_alt,
+                signedUrl: news?.preview_url,
+                checklist: [
+                    {
+                        label: 'Русская версия заполнена',
+                        ok: compAll.ru === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Таджикская версия заполнена',
+                        ok: compAll.tg === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Alt-текст обложки',
+                        ok: !coverSrc || data.cover_alt.trim() !== '',
+                        blocking: true,
+                    },
+                    {
+                        label: 'SEO preview заполнен',
+                        ok:
+                            data.seo.ru.title.trim() !== '' &&
+                            data.seo.ru.description.trim() !== '',
+                    },
+                ],
+            }}
+        >
             <div
                 className="cms-two-col"
                 style={{
@@ -256,11 +305,6 @@ export default function NewsForm({ news, reference }: Props) {
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
                                 Содержание
                             </h3>
-                            <LanguageTabs
-                                active={lang}
-                                onChange={setLang}
-                                completeness={compAll}
-                            />
                         </div>
 
                         <Field
@@ -329,11 +373,6 @@ export default function NewsForm({ news, reference }: Props) {
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
                                 SEO и адрес
                             </h3>
-                            <LanguageTabs
-                                active={lang}
-                                onChange={setLang}
-                                completeness={compAll}
-                            />
                         </div>
                         <Field
                             label="Адрес (slug)"
@@ -577,62 +616,6 @@ export default function NewsForm({ news, reference }: Props) {
                     </Blueprint>
                 </div>
             </div>
-
-            {/* --------------------------------------------- sticky actions */}
-            <div className="news-form-actions">
-                <LinkButton href="/news" variant="ghost">
-                    Отмена
-                </LinkButton>
-                <div style={{ flex: 1 }} />
-                <Button
-                    variant="secondary"
-                    icon={<Save size={15} strokeWidth={1.75} />}
-                    loading={processing}
-                    onClick={() => submit('draft')}
-                >
-                    Сохранить черновик
-                </Button>
-                {can('news.publish') ? (
-                    <Dropdown
-                        align="right"
-                        trigger={({ toggle }) => (
-                            <Button
-                                variant="primary"
-                                iconRight={
-                                    <ChevronDown size={15} strokeWidth={2} />
-                                }
-                                onClick={toggle}
-                            >
-                                Опубликовать
-                            </Button>
-                        )}
-                        items={[
-                            {
-                                label: 'Опубликовать сейчас',
-                                onSelect: () => submit('submit', 'now'),
-                            },
-                            {
-                                label: 'Запланировать публикацию',
-                                onSelect: () => submit('submit', 'schedule'),
-                            },
-                            { separator: true },
-                            {
-                                label: 'Отправить на согласование',
-                                onSelect: () => submit('submit', 'review'),
-                            },
-                        ]}
-                    />
-                ) : (
-                    <Button
-                        variant="primary"
-                        icon={<Send size={15} strokeWidth={1.75} />}
-                        loading={processing}
-                        onClick={() => submit('submit', 'review')}
-                    >
-                        На согласование
-                    </Button>
-                )}
-            </div>
-        </>
+        </EditorialFormShell>
     );
 }

@@ -9,6 +9,7 @@ use App\Http\Resources\PageResource;
 use App\Models\Page;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\EditorialContent;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -19,7 +20,10 @@ use Inertia\Response;
 
 class PageController extends Controller
 {
-    public function __construct(private readonly WorkflowService $workflow) {}
+    public function __construct(
+        private readonly WorkflowService $workflow,
+        private readonly EditorialContent $editorialContent,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -257,6 +261,8 @@ class PageController extends Controller
             'sort' => $page->sort,
             'published_at' => $page->published_at?->toIso8601String(),
             'languages' => $page->languageCompleteness(),
+            'updated_at' => $page->updated_at?->toIso8601String(),
+            'preview_url' => $this->editorialContent->previewUrl($page),
         ];
     }
 

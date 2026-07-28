@@ -3,16 +3,44 @@
 namespace App\Providers;
 
 use App\Enums\RoleName;
+use App\Listeners\CaptureImageDerivativeMetadata;
+use App\Listeners\CaptureOriginalImageMetadata;
+use App\Models\Alert;
+use App\Models\Announcement;
+use App\Models\Category;
+use App\Models\District;
+use App\Models\Document;
+use App\Models\HomeBlock;
+use App\Models\Instruction;
+use App\Models\MenuItem;
+use App\Models\News;
+use App\Models\Page;
+use App\Models\Project;
+use App\Models\Region;
+use App\Models\Setting;
 use App\Models\User;
+use App\Observers\CaptureEditorialRevision;
+use App\Observers\InvalidatePublicReadModels;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Cache\Events\CacheFailedOver;
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\QueueBusy;
+use Illuminate\Queue\Events\QueueFailedOver;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use Spatie\MediaLibrary\Conversions\Events\ConversionHasBeenCompletedEvent;
+use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +60,11 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureAuthorization();
         $this->configureAuthEvents();
+        $this->configureMediaEvents();
+        $this->configureInfrastructureEvents();
+        $this->configureRateLimiting();
+        $this->configurePublicReadModelCache();
+        $this->configureEditorialRevisions();
     }
 
     /**
@@ -55,6 +88,91 @@ class AppServiceProvider extends ServiceProvider
                 session(['locale' => $event->user->interface_locale]);
             }
         });
+    }
+
+    protected function configureMediaEvents(): void
+    {
+        Event::listen(MediaHasBeenAddedEvent::class, CaptureOriginalImageMetadata::class);
+        Event::listen(ConversionHasBeenCompletedEvent::class, CaptureImageDerivativeMetadata::class);
+    }
+
+    protected function configureInfrastructureEvents(): void
+    {
+        Event::listen(CacheFailedOver::class, fn (CacheFailedOver $event) => Log::warning(
+            'Cache store failed over.',
+            [
+                'store' => $event->storeName,
+                'error' => $event->exception->getMessage(),
+            ],
+        ));
+        Event::listen(QueueFailedOver::class, fn (QueueFailedOver $event) => Log::critical(
+            'Queue connection failed over.',
+            [
+                'connection' => $event->connectionName,
+                'job' => is_object($event->command) ? $event->command::class : (string) $event->command,
+                'error' => $event->exception->getMessage(),
+            ],
+        ));
+        Event::listen(QueueBusy::class, fn (QueueBusy $event) => Log::critical(
+            'Queue backlog threshold exceeded.',
+            [
+                'connection' => $event->connectionName,
+                'queue' => $event->queue,
+                'size' => $event->size,
+            ],
+        ));
+        Event::listen(JobFailed::class, fn (JobFailed $event) => Log::critical(
+            'Queued job failed permanently.',
+            [
+                'connection' => $event->connectionName,
+                'queue' => $event->job->getQueue(),
+                'job' => $event->job->resolveName(),
+                'error' => $event->exception->getMessage(),
+            ],
+        ));
+    }
+
+    protected function configureRateLimiting(): void
+    {
+        RateLimiter::for(
+            'rum',
+            fn (Request $request): Limit => Limit::perMinute(600)->by($request->ip()),
+        );
+    }
+
+    protected function configurePublicReadModelCache(): void
+    {
+        foreach ([
+            Alert::class,
+            Announcement::class,
+            Category::class,
+            District::class,
+            Document::class,
+            HomeBlock::class,
+            Instruction::class,
+            Media::class,
+            MenuItem::class,
+            News::class,
+            Project::class,
+            Region::class,
+            Setting::class,
+        ] as $model) {
+            $model::observe(InvalidatePublicReadModels::class);
+        }
+    }
+
+    protected function configureEditorialRevisions(): void
+    {
+        foreach ([
+            Announcement::class,
+            Document::class,
+            Instruction::class,
+            News::class,
+            Page::class,
+            Project::class,
+        ] as $model) {
+            $model::observe(CaptureEditorialRevision::class);
+        }
     }
 
     /**

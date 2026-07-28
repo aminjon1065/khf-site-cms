@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
+use App\Services\PublicReadModelCache;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
 
@@ -13,21 +14,28 @@ use Illuminate\Http\JsonResponse;
  */
 class MenuController extends Controller
 {
+    public function __construct(private readonly PublicReadModelCache $cache) {}
+
     public function index(): JsonResponse
     {
-        return response()->json(['data' => [
-            'main' => $this->tree('main'),
-            'footer' => $this->tree('footer'),
-        ]]);
+        $locale = app()->getLocale();
+        $data = $this->cache->remember(
+            PublicReadModelCache::MENU,
+            $locale,
+            fn (): array => [
+                'main' => $this->tree('main', $locale),
+                'footer' => $this->tree('footer', $locale),
+            ],
+        );
+
+        return response()->json(['data' => $data]);
     }
 
     /**
      * @return list<array{label: string, url: string|null, children: list<array{label: string, url: string|null}>}>
      */
-    private function tree(string $location): array
+    private function tree(string $location, string $locale): array
     {
-        $locale = app()->getLocale();
-
         /** @var Collection<int, MenuItem> $items */
         $items = MenuItem::query()
             ->where('location', $location)

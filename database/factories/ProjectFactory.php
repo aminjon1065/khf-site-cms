@@ -24,7 +24,7 @@ class ProjectFactory extends Factory
         return [
             'title' => ['ru' => $title, 'tg' => $title, 'en' => ''],
             'summary' => ['ru' => fake()->sentence(), 'tg' => fake()->sentence(), 'en' => ''],
-            'body' => ['ru' => fake()->paragraph(), 'tg' => '', 'en' => ''],
+            'body' => ['ru' => fake()->paragraph(), 'tg' => fake()->paragraph(), 'en' => ''],
             'status' => ContentStatus::Draft,
             'lifecycle_status' => fake()->randomElement(ProjectStatus::cases()),
             'years' => '2026–2030',

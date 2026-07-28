@@ -4,8 +4,10 @@ namespace App\Http\Resources\Api;
 
 use App\Models\Instruction;
 use App\Support\PublicApiLabels;
+use App\Support\PublicImageData;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Public DTO for a safety instruction (the /guides catalogue + detail on the
@@ -49,6 +51,7 @@ class PublicInstructionResource extends JsonResource
             'priority' => (bool) $this->is_priority,
             'image' => $this->imageUrl(),
             'image_srcset' => $this->thumbnailSrcset('image'),
+            'image_data' => $this->imageData($locale),
         ];
 
         if ($this->withSections) {
@@ -91,5 +94,17 @@ class PublicInstructionResource extends JsonResource
         $url = $this->getFirstMediaUrl('image');
 
         return $url !== '' ? $url : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function imageData(string $locale): ?array
+    {
+        $media = $this->getFirstMedia('image');
+
+        return $media instanceof Media
+            ? PublicImageData::fromMedia($media, $this->tr('name', $locale))
+            : null;
     }
 }

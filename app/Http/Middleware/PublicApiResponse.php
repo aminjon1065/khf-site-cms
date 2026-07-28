@@ -26,13 +26,15 @@ class PublicApiResponse
             $this->addCaching($request, $response);
         }
 
-        Log::info('public_api_request', [
-            'request_id' => $requestId,
-            'method' => $request->method(),
-            'path' => '/'.$request->path(),
-            'status' => $response->getStatusCode(),
-            'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 1),
-        ]);
+        if (! $request->routeIs('api.vitals.store') || ! $response->isSuccessful()) {
+            Log::info('public_api_request', [
+                'request_id' => $requestId,
+                'method' => $request->method(),
+                'path' => '/'.$request->path(),
+                'status' => $response->getStatusCode(),
+                'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 1),
+            ]);
+        }
 
         return $response;
     }

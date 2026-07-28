@@ -14,7 +14,7 @@
 Гражданин ──▶ Next.js (SSR/ISR, /ru /tj /en) ──▶ CMS API (/api/v1) ──▶ БД
 Сотрудник ──▶ CMS-панель (Inertia/React) ──────┘
                     │
-                    └── публикация → Job RevalidateFrontend → POST /api/revalidate → revalidateTag('cms')
+                    └── публикация → unique Job RevalidateFrontend → POST /api/revalidate → granular revalidateTag(...)
 ```
 
 | | `khf-site-cms` | `khf-site-front` |
@@ -47,7 +47,7 @@
 - 20 публичных маршрутов × 3 локали (`app/[locale]/...`), `proxy.ts` (Next 16 переименовал middleware в proxy) с редиректом и cookie `NEXT_LOCALE`.
 - Данные из CMS: главная, новости (+деталь), инструкции (+деталь), документы, проекты (+деталь), объявления, предупреждения (+деталь), карта рисков, поиск, произвольные страницы, шапка/подвал/меню/настройки.
 - SEO: `lib/seo.ts` — canonical + hreflang (`ru`/`tg`/`en`/`x-default`) + OpenGraph + Twitter; `app/sitemap.ts` (динамический, из CMS), `app/robots.ts`.
-- ISR (`revalidate = 60`) + мгновенная инвалидация по вебхуку (`revalidateTag("cms","max")`, 2-арг форма Next 16).
+- ISR (`revalidate = 60`) + гранулярная инвалидация по вебхуку (`cms:{type}:{locale}`, detail/home/shell/sitemap tags; `revalidateTag(tag, "max")`, 2-арг форма Next 16).
 - Мягкая деградация: при недоступности API списки пустые, страница не падает.
 - Доступность: skip-link, `:focus-visible`, `prefers-reduced-motion`, aria-разметка.
 - Шрифт Fira Sans с `cyrillic-ext` — таджикские ҳ ҷ ӣ ӯ қ ғ рендерятся тем же начертанием.
@@ -217,6 +217,19 @@ openssl rand -hex 32     # или: php -r "echo bin2hex(random_bytes(32));"
 ```
 Одно и то же значение положить в CMS `.env` → `FRONTEND_REVALIDATION_SECRET` и во фронтовый `.env.local` → `REVALIDATION_SECRET`; в CMS `FRONTEND_REVALIDATION_URL=http://localhost:3000/api/revalidate`. Затем `php artisan config:clear`.
 Проверка: опубликовать новость в панели → она появляется на `/ru/news` без перезапуска фронта.
+
+**Статус O-009 (27.07.2026): выполнено.** Webhook передаёт и фронт строго проверяет
+`type/id/slug/locales/event/tags`; быстрые одинаковые изменения объединяются
+`ShouldBeUnique`, dispatch выполняется `afterCommit`, а сбои 401/5xx/timeout
+обрабатываются очередью и не ломают синхронную публикацию. Настройки и меню
+инвалидируют только `cms:shell:{locale}`; редакционный контент — только свои
+list/detail/home/sitemap tags.
+
+**Статус O-010 (27.07.2026): выполнено.** `HomePageReadModel` формирует home DTO
+предсказуемым набором SQL-запросов: active alerts загружаются один раз для
+snapshot и карточек, лимиты выполняются в SQL, тяжёлые detail-поля не выбираются.
+Query-budget на заполненном наборе — 15 запросов и один `SELECT alerts`;
+фактический uncached endpoint на текущей БД улучшен с 15 до 14 запросов.
 
 ---
 
@@ -400,7 +413,7 @@ openssl rand -hex 32     # или: php -r "echo bin2hex(random_bytes(32));"
 
 ---
 
-**D-3. OpenAPI + contract-тесты** *(P1-7, ~5 ч)*
+**D-3. OpenAPI + contract-тесты — выполнено 28.07.2026** *(P1-7, ~5 ч)*
 
 - **Шаги:** описать `api/v1` (OpenAPI 3.1) — руками или генератором; тест, проверяющий, что ответы контроллеров соответствуют схеме; во фронте — генерация типов из спеки, чтобы `lib/api.ts` перестал быть рукописным дублем.
 - **Критерий приёмки:** спека в репозитории, contract-тест в `composer ci:check`, типы фронта генерируются командой.
@@ -432,7 +445,7 @@ openssl rand -hex 32     # или: php -r "echo bin2hex(random_bytes(32));"
 **E-1.** Бюджеты Lighthouse (performance ≥ 90, a11y ≥ 95 на мобильном) для `/ru`, `/ru/news`, `/ru/news/[slug]`, `/ru/map`; прогон `axe` в e2e; фиксация результатов в `docs/`.
 **E-2.** Профиль сборки: размеры чанков, `d3-geo`/`topojson` только на карте (динамический импорт), `next/font` уже настроен.
 **E-3.** JSON-LD: `Organization` (глобально), `NewsArticle` (новость), `BreadcrumbList` (все внутренние). Проверить `sitemap.xml`/`robots.txt`/hreflang валидаторами.
-**E-4.** Проверить корректность заголовков кэширования и что `revalidateTag` действительно инвалидирует все теги (тест: опубликовать → страница обновилась < 5 с).
+**E-4.** Гранулярный контракт и invalidation покрыты Pest/Vitest (O-009); на staging остаётся измерить publish → fresh page < 5 s при реальном queue worker.
 
 ### Этап F. Развёртывание и приёмка
 
@@ -483,3 +496,93 @@ openssl rand -hex 32     # или: php -r "echo bin2hex(random_bytes(32));"
 | F — деплой | 5 | зависит от инфраструктуры |
 
 Этапы 0 + A + B дают публично годный сайт без известных функциональных дыр. C + D + E — готовность к сдаче. F — внешняя инфраструктура, в одиночку в репозитории не закрывается.
+
+**Статус O-011 (27.07.2026): выполнено.** Тяжёлые Inertia shared props вынесены
+из каждого перехода: пользователь/permissions и sidebar badges передаются как
+`once` props, список уведомлений загружается только при открытии drawer через
+partial reload, а approval counts выполняются агрегатами в SQL. Полный
+`composer ci:check`: 368 тестов / 1395 assertions; TypeScript, ESLint, Prettier,
+Pint и PHPStan зелёные.
+
+**Статус O-012 (28.07.2026): выполнено.** Девять основных query shapes
+проверены через `EXPLAIN ANALYZE` на MySQL 8.4 и 345 000 production-like строках.
+Добавлены только доказанные composite indexes для публичного меню (−73%) и
+очереди обращений (−99%); четыре неиспользуемых кандидата отклонены. GitHub
+Actions теперь прогоняет полный Pest suite также на MySQL 8. Локально оба
+драйвера проходят 369 тестов / 1399 assertions.
+
+**Статус O-013 (28.07.2026): выполнено.** Кэш и очередь используют Redis с
+durable database fallback; latency-sensitive, notification, revalidation,
+default и media jobs разделены. Scheduler контролирует backlog и ставит worker
+heartbeat, `/ready` выявляет остановленный worker и показывает failed jobs.
+Тест отказа Redis доказывает fallback без потери cache/job. Полный
+`composer ci:check`: 374 теста / 1426 assertions.
+
+**Статус O-014 (28.07.2026): выполнено.** Шесть редакционных форм переведены
+на общий `EditorialFormShell`: единые header, локали, error summary, sticky
+actions, Ctrl/Cmd+S и защита несохранённых данных; навигация и submit используют
+Wayfinder. Браузерная проверка подтвердила dirty-state confirm, мобильные actions
+высотой 44 px и отсутствие console errors. Полный `composer ci:check`: 381 тест /
+1511 assertions; TypeScript, ESLint, Prettier, Pint и PHPStan зелёные.
+
+**Статус O-015 (28.07.2026): выполнено.** Все шесть редакционных форм получили
+debounced autosave, offline/local recovery, понятный save-state, защиту от двух
+вкладок и stale normal save. Immutable revision snapshots доступны в общей
+истории и восстанавливают редакционные поля без изменения workflow-статуса или
+бинарных media. 13 новых Pest-тестов проверяют autosave/conflict/force/policy/
+restore; полный `composer ci:check`: 394 теста / 1563 assertions, Vite build,
+TypeScript, ESLint, Prettier, Pint и PHPStan зелёные.
+
+**Статус O-016 (28.07.2026): выполнено.** Общий preview во всех шести
+редакционных формах показывает несохранённые данные в трёх локалях, desktop,
+mobile и share/OG режимах и явно обозначает fallback. Отдельный private signed
+URL ограничен авторизацией, policy и TTL, не кэшируется и не индексируется.
+Серверный publication checklist блокирует публикацию при неполных обязательных
+переводах, пустом alt обложки, unsafe-ссылках и незавершённых media conversions;
+SEO остаётся понятным warning. Полный `composer ci:check`: 405 тестов /
+1637 assertions; Vite build, TypeScript, ESLint, Prettier, Pint и PHPStan зелёные.
+
+**Статус O-017 (28.07.2026): выполнено.** Media UX поддерживает focal point,
+alt либо явный decorative-флаг, поиск по metadata и «Где используется» для
+структурных копий и прямых rich-text URL. Focal point переносится из библиотеки
+в News/Project/Instruction и применяется публичным frontend. Используемые файлы
+защищены от удаления; свободные assets уходят в фильтруемую корзину и
+восстанавливаются без потери оригинала или derivatives. Полный
+`composer ci:check`: 411 тестов / 1706 assertions; Vite build, TypeScript,
+ESLint, Prettier, Pint и PHPStan зелёные.
+
+**Статус O-018 (28.07.2026): выполнено.** OpenAPI 3.1 фиксирует все 25
+публичные операции `api/v1`; контрактный Pest-тест сверяет schema с реальным
+route registry и рекурсивно валидирует каждый успешный ответ. Frontend
+генерирует 54 TypeScript-типа из синхронизируемого schema snapshot, а
+`api:types:check` включён в CI и не допускает drift. Ручные DTO удалены из
+`lib/api.ts`; выявленные контрактом nullable category и обязательные
+`emergency_contacts` обработаны явно. Полный `composer ci:check`: 413 тестов /
+2016 assertions; frontend TypeScript, ESLint, 36 Vitest-тестов и production
+build на 54 страницы зелёные.
+
+**Статус O-019 (28.07.2026): выполнено.** Next.js 16 собирает реальные
+LCP/INP/CLS отдельным `useReportWebVitals` client island и через same-origin
+proxy передаёт в CMS только metric id/value, нормализуемый pathname, locale,
+device class и navigation type. IP, user-agent и session ID не сохраняются.
+CMS защищает ingestion server-only secret и rate limit, дедуплицирует retry,
+автоматически удаляет samples старше 35 дней и оконными SQL-функциями считает
+точный p75 за 28 дней по метрике, маршруту и устройству. Доступный dashboard
+добавлен в «Центр контроля». Измеримость выросла с 0 RUM-метрик до трёх CWV;
+добавленный client chunk — 9505 bytes / 3667 bytes gzip. Полный
+`composer ci:check`: 420 тестов / 2076 assertions; frontend: 41 Vitest,
+19 Chromium/axe, TypeScript, ESLint и production build на 55 страниц.
+
+**Статус O-020 (28.07.2026): инженерный контур готов, полевая приёмка
+ожидается.** В CMS добавлен доступный защищённый раздел для анонимной записи
+usability-сессий: восемь заданий (семь обязательных и повторная новость), время,
+помощь, завершение и необратимые ошибки, десять ответов SUS. Отчёт считает
+стандартный SUS, nearest-rank p75 и единый gate по всем целям UX-10; схема не
+содержит ФИО, e-mail, телефона, IP или user-agent. 8 целевых Pest-тестов /
+59 assertions и полный `composer ci:check` — 428 тестов / 2135 assertions;
+Vite production build, TypeScript, ESLint, Prettier, Pint и PHPStan зелёные.
+Изолированный browser flow подтвердил вход, сохранение синтетической сессии,
+пересчёт отчёта, отсутствие console errors и 49/49 touch targets высотой не
+менее 44 px на desktop и viewport 390×844.
+Полевых результатов пока 0/5, поэтому O-020 и Definition of Done намеренно не
+отмечены выполненными до сессий с реальными будущими редакторами.

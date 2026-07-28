@@ -60,12 +60,28 @@ DB_DATABASE=khf_site_cms
 DB_USERNAME=khf
 DB_PASSWORD=«надёжный-пароль»
 
-# Сессии/кэш/очередь — в БД (миграции создаются автоматически)
+# Сессии остаются в БД; кэш и очередь используют Redis с fallback в БД.
 SESSION_DRIVER=database
 SESSION_SECURE_COOKIE=true
 SESSION_LIFETIME=120
-CACHE_STORE=database
-QUEUE_CONNECTION=database
+CACHE_STORE=failover
+QUEUE_CONNECTION=failover
+REDIS_CLIENT=phpredis
+REDIS_HOST=127.0.0.1
+REDIS_PORT=6379
+REDIS_DB=0
+REDIS_CACHE_DB=1
+REDIS_CONNECT_TIMEOUT=1
+REDIS_READ_TIMEOUT=1
+REDIS_RETRY_INTERVAL=100
+REDIS_MAX_RETRIES=3
+REDIS_QUEUE_RETRY_AFTER=180
+REDIS_QUEUE_BLOCK_FOR=5
+QUEUE_CRITICAL=critical
+QUEUE_NOTIFICATIONS=notifications
+QUEUE_REVALIDATION=revalidation
+MEDIA_QUEUE=media
+QUEUE_MONITOR_MAX=100
 
 # Медиа хранится на публичном диске (нужен storage:link)
 MEDIA_DISK=public
@@ -161,13 +177,24 @@ npm run build   # Vite: собирает Inertia/React-панель в public/bu
 
 ### 2.8. Очередь (обязательно)
 
-Workflow-уведомления реализуют `ShouldQueue`. При `QUEUE_CONNECTION=database` должен постоянно работать queue worker под Supervisor или systemd:
+Production использует отдельные очереди: `critical`, `notifications`,
+`revalidation`, `default` и CPU-heavy `media`. Основные worker-процессы читают
+Redis, а резервные database workers забирают задания, которые были сохранены в
+БД при недоступности Redis:
 
 ```bash
-php artisan queue:work --tries=3 --max-time=3600
+php artisan queue:work redis --queue=critical,notifications,revalidation,default --sleep=1 --tries=3 --timeout=60 --max-time=3600
+php artisan queue:work redis --queue=media --sleep=1 --tries=3 --timeout=150 --max-time=3600
+php artisan queue:work database --queue=critical,notifications,revalidation,default --sleep=3 --tries=3 --timeout=60 --max-time=3600
+php artisan queue:work database --queue=media --sleep=3 --tries=3 --timeout=150 --max-time=3600
 ```
 
-После каждого deploy выполните `php artisan queue:restart`, чтобы воркеры загрузили новый код.
+Каждая команда должна управляться Supervisor/systemd с автоматическим
+перезапуском и `stopwaitsecs` больше 180 секунд. После каждого deploy выполните
+`php artisan queue:restart`, чтобы воркеры загрузили новый код. Scheduler каждую
+минуту ставит heartbeat в `critical` и запускает `queue:monitor` для Redis и
+database fallback; `/api/v1/ready` возвращает 503, если worker heartbeat старше
+пяти минут.
 
 ### 2.9. Политика 2FA
 
@@ -201,7 +228,7 @@ server {
 Проверки после старта:
 
 - `GET https://cms.khf.tj/api/v1/health` — liveness и соединение с БД;
-- `GET https://cms.khf.tj/api/v1/ready` — БД, writable storage и heartbeat планировщика (команда должна выполняться не реже раза в 15 минут).
+- `GET https://cms.khf.tj/api/v1/ready` — БД, writable storage, heartbeat планировщика и heartbeat queue worker; также возвращает число failed jobs.
 
 ---
 

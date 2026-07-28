@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Support\NavBadges;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
+use Inertia\Inertia;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -36,9 +37,10 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'name' => config('app.name'),
-            'auth' => [
-                'user' => $user ? $this->userPayload($user) : null,
-            ],
+            'auth' => $user
+                ? Inertia::once(fn (): array => ['user' => $this->userPayload($user)])
+                    ->until(now()->addMinutes(5))
+                : ['user' => null],
             'locale' => $this->resolveLocale($request),
             'flash' => [
                 'success' => $request->session()->get('success'),
@@ -46,8 +48,12 @@ class HandleInertiaRequests extends Middleware
                 'warning' => $request->session()->get('warning'),
                 'info' => $request->session()->get('info'),
             ],
-            'nav_badges' => fn (): array => NavBadges::for($user),
-            'notifications' => fn (): array => $this->notifications($user),
+            'nav_badges' => $user
+                ? Inertia::once(fn (): array => NavBadges::for($user))
+                    ->until(now()->addSeconds(30))
+                : [],
+            'notification_unread' => fn (): int => $this->unreadNotifications($user),
+            'notifications' => Inertia::optional(fn (): array => $this->notifications($user)),
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
     }
@@ -112,8 +118,13 @@ class HandleInertiaRequests extends Middleware
         })->all();
 
         return [
-            'unread' => $user->unreadNotifications()->count(),
+            'unread' => $this->unreadNotifications($user),
             'items' => $items,
         ];
+    }
+
+    protected function unreadNotifications(?User $user): int
+    {
+        return $user?->unreadNotifications()->count() ?? 0;
     }
 }

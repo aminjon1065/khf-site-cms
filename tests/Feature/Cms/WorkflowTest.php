@@ -163,5 +163,16 @@ it('queues frontend revalidation after a public transition', function () {
 
     $this->workflow->transition($alert, ContentStatus::Published, $operator);
 
-    Queue::assertPushed(RevalidateFrontend::class, 1);
+    Queue::assertPushed(
+        RevalidateFrontend::class,
+        fn (RevalidateFrontend $job): bool => $job->type === 'alert'
+            && $job->id === $alert->id
+            && $job->slug === $alert->slug
+            && $job->locales === ['ru', 'tj', 'en']
+            && $job->event === 'published'
+            && $job->afterCommit === true
+            && in_array("cms:alerts:{$alert->slug}:ru", $job->tags(), true)
+            && in_array('cms:home:tj', $job->tags(), true)
+            && in_array('cms:sitemap', $job->tags(), true),
+    );
 });

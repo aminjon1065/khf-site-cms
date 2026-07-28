@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Setting\SettingRequest;
+use App\Jobs\RevalidateFrontend;
 use App\Models\Setting;
+use App\Support\FrontendRevalidation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -119,6 +121,15 @@ class SettingController extends Controller
                 );
             }
         }
+
+        $payload = FrontendRevalidation::forShell();
+        RevalidateFrontend::dispatch(
+            type: $payload['type'],
+            id: $payload['id'],
+            slug: $payload['slug'],
+            locales: $payload['locales'],
+            event: $payload['event'],
+        )->afterCommit();
 
         return back()->with('success', 'Настройки сохранены.');
     }

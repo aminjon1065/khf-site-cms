@@ -1,0 +1,2746 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "KHF Public CMS API",
+    "version": "1.0.0",
+    "description": "Versioned public contract consumed by the Next.js App Router frontend."
+  },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
+  "paths": {
+    "/health": {
+      "get": {
+        "operationId": "getHealth",
+        "responses": {
+          "200": {
+            "description": "CMS health",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "responses": {
+          "200": {
+            "description": "CMS is ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "CMS is not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReadinessResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/home": {
+      "get": {
+        "operationId": "getHome",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Home page read model",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HomeResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/news": {
+      "get": {
+        "operationId": "listNews",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published news",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/news/{slug}": {
+      "get": {
+        "operationId": "getNews",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Slug"
+          },
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "News detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NewsResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/alerts": {
+      "get": {
+        "operationId": "listAlerts",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active alerts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alerts/active": {
+      "get": {
+        "operationId": "getActiveAlerts",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Active alert snapshot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertsActiveResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/alerts/{slug}": {
+      "get": {
+        "operationId": "getAlert",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Slug"
+          },
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Alert detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AlertResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/instructions": {
+      "get": {
+        "operationId": "listInstructions",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published instructions",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/instructions/{slug}": {
+      "get": {
+        "operationId": "getInstruction",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Slug"
+          },
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Instruction detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InstructionResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/documents": {
+      "get": {
+        "operationId": "listDocuments",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published documents",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DocumentListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects": {
+      "get": {
+        "operationId": "listProjects",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published projects",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/projects/{slug}": {
+      "get": {
+        "operationId": "getProject",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Slug"
+          },
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Project detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/announcements": {
+      "get": {
+        "operationId": "listAnnouncements",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published announcements",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/announcements/{slug}": {
+      "get": {
+        "operationId": "getAnnouncement",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Slug"
+          },
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Announcement detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnnouncementResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/pages": {
+      "get": {
+        "operationId": "listPages",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Published pages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/pages/{slug}": {
+      "get": {
+        "operationId": "getPage",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Slug"
+          },
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page detail",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions": {
+      "get": {
+        "operationId": "listRegionStatuses",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Risk-map region statuses",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionStatusListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/regions/directory": {
+      "get": {
+        "operationId": "listRegionDirectory",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Regional offices",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RegionOfficeListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/menu": {
+      "get": {
+        "operationId": "getMenu",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Main and footer menus",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MenuResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/settings": {
+      "get": {
+        "operationId": "getSettings",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Whitelisted public settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SettingsResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/search": {
+      "get": {
+        "operationId": "searchContent",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/Locale"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            }
+          },
+          {
+            "$ref": "#/components/parameters/Page"
+          },
+          {
+            "$ref": "#/components/parameters/PerPage"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Public content search",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/submissions": {
+      "post": {
+        "operationId": "createSubmission",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmissionRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Submission accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
+    "/vitals": {
+      "post": {
+        "operationId": "storeWebVital",
+        "summary": "Accept an anonymous Core Web Vitals sample",
+        "parameters": [
+          {
+            "name": "X-RUM-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/WebVitalRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Sample accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WebVitalResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid ingestion secret"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "parameters": {
+      "Locale": {
+        "name": "locale",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "tg",
+            "ru",
+            "en"
+          ],
+          "default": "ru"
+        }
+      },
+      "Page": {
+        "name": "page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "PerPage": {
+        "name": "per_page",
+        "in": "query",
+        "required": false,
+        "schema": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        }
+      },
+      "Slug": {
+        "name": "slug",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        }
+      }
+    },
+    "responses": {
+      "NotFound": {
+        "description": "Resource not found"
+      },
+      "ValidationError": {
+        "description": "Validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ValidationError"
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "PaginationMeta": {
+        "type": "object",
+        "required": [
+          "total",
+          "per_page",
+          "current_page",
+          "last_page"
+        ],
+        "properties": {
+          "total": {
+            "type": "integer"
+          },
+          "per_page": {
+            "type": "integer"
+          },
+          "current_page": {
+            "type": "integer"
+          },
+          "last_page": {
+            "type": "integer"
+          }
+        }
+      },
+      "PaginationLinks": {
+        "type": "object",
+        "properties": {
+          "prev": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "next": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CmsImageSource": {
+        "type": "object",
+        "required": [
+          "url",
+          "width",
+          "height",
+          "bytes"
+        ],
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "bytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "CmsImageDto": {
+        "type": "object",
+        "required": [
+          "version",
+          "id",
+          "uuid",
+          "alt",
+          "caption",
+          "width",
+          "height",
+          "aspect_ratio",
+          "bytes",
+          "mime_type",
+          "checksum",
+          "focal_point",
+          "status",
+          "placeholder",
+          "sources"
+        ],
+        "properties": {
+          "version": {
+            "type": "integer",
+            "enum": [
+              2
+            ]
+          },
+          "id": {
+            "type": "integer"
+          },
+          "uuid": {
+            "type": "string"
+          },
+          "alt": {
+            "type": "string"
+          },
+          "caption": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "width": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "height": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "aspect_ratio": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bytes": {
+            "type": "integer"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "checksum": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "focal_point": {
+            "type": "object",
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          },
+          "status": {
+            "type": "string"
+          },
+          "placeholder": {
+            "oneOf": [
+              {
+                "type": "object",
+                "required": [
+                  "data_url",
+                  "color"
+                ],
+                "properties": {
+                  "data_url": {
+                    "type": "string"
+                  },
+                  "color": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sources": {
+            "type": "object",
+            "required": [
+              "avif",
+              "webp",
+              "fallback"
+            ],
+            "properties": {
+              "avif": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CmsImageSource"
+                }
+              },
+              "webp": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CmsImageSource"
+                }
+              },
+              "fallback": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/CmsImageSource"
+                }
+              }
+            }
+          }
+        }
+      },
+      "ApiNewsItem": {
+        "type": "object",
+        "required": [
+          "slug",
+          "title",
+          "excerpt",
+          "category",
+          "date",
+          "datetime",
+          "image",
+          "image_srcset",
+          "image_data",
+          "featured"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "datetime": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_srcset": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CmsImageDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "featured": {
+            "type": "boolean"
+          },
+          "body": {
+            "type": "string"
+          },
+          "views": {
+            "type": "integer"
+          },
+          "seo": {
+            "type": "object",
+            "required": [
+              "title",
+              "description"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ApiInstruction": {
+        "type": "object",
+        "required": [
+          "slug",
+          "title",
+          "summary",
+          "hazard",
+          "hazard_label",
+          "hazard_icon",
+          "priority",
+          "image",
+          "image_srcset",
+          "image_data"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "hazard": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hazard_label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "hazard_icon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "priority": {
+            "type": "boolean"
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_srcset": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CmsImageDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sections": {
+            "type": "object",
+            "required": [
+              "before",
+              "during",
+              "after",
+              "prohibited"
+            ],
+            "properties": {
+              "before": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "during": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "after": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "prohibited": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "body": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiDocumentFile": {
+        "type": "object",
+        "required": [
+          "lang",
+          "label",
+          "url",
+          "ext",
+          "size",
+          "size_bytes"
+        ],
+        "properties": {
+          "lang": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "ext": {
+            "type": "string"
+          },
+          "size": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer"
+          }
+        }
+      },
+      "ApiDocument": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "type_value",
+          "title",
+          "number",
+          "section",
+          "date",
+          "date_iso",
+          "lang",
+          "size",
+          "href",
+          "files"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer"
+          },
+          "type": {
+            "type": "string"
+          },
+          "type_value": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "section": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_iso": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "lang": {
+            "type": "string"
+          },
+          "size": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "href": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiDocumentFile"
+            }
+          }
+        }
+      },
+      "ApiProjectTimeline": {
+        "type": "object",
+        "required": [
+          "date",
+          "text",
+          "tone"
+        ],
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "tone": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiProject": {
+        "type": "object",
+        "required": [
+          "slug",
+          "title",
+          "status",
+          "status_code",
+          "status_tone",
+          "years",
+          "partner",
+          "budget",
+          "desc",
+          "image",
+          "image_srcset",
+          "image_data"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "status_code": {
+            "type": "string"
+          },
+          "status_tone": {
+            "type": "string"
+          },
+          "years": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "partner": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "budget": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "desc": {
+            "type": "string"
+          },
+          "image": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_srcset": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "image_data": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/CmsImageDto"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "code": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "goals": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiProjectTimeline"
+            }
+          },
+          "direction": {
+            "type": "object",
+            "required": [
+              "address",
+              "phone",
+              "email"
+            ],
+            "properties": {
+              "address": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ApiAnnouncement": {
+        "type": "object",
+        "required": [
+          "slug",
+          "kind",
+          "kind_label",
+          "title",
+          "org",
+          "desc",
+          "deadline",
+          "deadline_at",
+          "deadline_state",
+          "open",
+          "application_url"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "vacancy",
+              "tender"
+            ]
+          },
+          "kind_label": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "org": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "desc": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string"
+          },
+          "deadline_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "deadline_state": {
+            "type": "string",
+            "enum": [
+              "unlimited",
+              "open",
+              "closed"
+            ]
+          },
+          "open": {
+            "type": "boolean"
+          },
+          "application_url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ApiAlertMeta": {
+        "type": "object",
+        "required": [
+          "label",
+          "value"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiAlertRegion": {
+        "type": "object",
+        "required": [
+          "code",
+          "name"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiAlert": {
+        "type": "object",
+        "required": [
+          "slug",
+          "level",
+          "level_label",
+          "severity",
+          "status",
+          "status_code",
+          "is_active",
+          "hazard",
+          "hazard_label",
+          "title",
+          "summary",
+          "region",
+          "region_codes",
+          "datetime",
+          "starts_at",
+          "ends_at",
+          "published_at",
+          "starts_at_iso",
+          "ends_at_iso"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "none",
+              "info",
+              "warning",
+              "danger",
+              "critical"
+            ]
+          },
+          "level_label": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "status_code": {
+            "type": "string",
+            "enum": [
+              "active",
+              "completed"
+            ]
+          },
+          "is_active": {
+            "type": "boolean"
+          },
+          "hazard": {
+            "type": "string"
+          },
+          "hazard_label": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          },
+          "region": {
+            "type": "string"
+          },
+          "region_codes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "datetime": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "starts_at_iso": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ends_at_iso": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "body": {
+            "type": "string"
+          },
+          "instructions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "contacts": {
+            "type": "string"
+          },
+          "source": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "territory_type": {
+            "type": "string"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiAlertRegion"
+            }
+          },
+          "meta": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiAlertMeta"
+            }
+          }
+        }
+      },
+      "ApiRegionStatus": {
+        "type": "object",
+        "required": [
+          "key",
+          "name",
+          "level",
+          "count",
+          "statusText"
+        ],
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string",
+            "enum": [
+              "none",
+              "info",
+              "warning",
+              "danger",
+              "critical"
+            ]
+          },
+          "count": {
+            "type": "integer"
+          },
+          "statusText": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiAlertsActive": {
+        "type": "object",
+        "required": [
+          "state",
+          "count",
+          "regions"
+        ],
+        "properties": {
+          "state": {
+            "type": "string",
+            "enum": [
+              "calm",
+              "warning",
+              "critical"
+            ]
+          },
+          "count": {
+            "type": "integer"
+          },
+          "regions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiRegionStatus"
+            }
+          }
+        }
+      },
+      "ApiHomeBlock": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "config"
+        ],
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "config": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "ApiHome": {
+        "type": "object",
+        "required": [
+          "blocks",
+          "alerts",
+          "news",
+          "instructions",
+          "documents",
+          "announcements",
+          "projects",
+          "emergency_contacts"
+        ],
+        "properties": {
+          "blocks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiHomeBlock"
+            }
+          },
+          "alerts": {
+            "type": "object",
+            "required": [
+              "state",
+              "count",
+              "regions",
+              "items"
+            ],
+            "properties": {
+              "state": {
+                "type": "string",
+                "enum": [
+                  "calm",
+                  "warning",
+                  "critical"
+                ]
+              },
+              "count": {
+                "type": "integer"
+              },
+              "regions": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApiRegionStatus"
+                }
+              },
+              "items": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/ApiAlert"
+                }
+              }
+            }
+          },
+          "news": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiNewsItem"
+            }
+          },
+          "instructions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiInstruction"
+            }
+          },
+          "documents": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiDocument"
+            }
+          },
+          "announcements": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiAnnouncement"
+            }
+          },
+          "projects": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiProject"
+            }
+          },
+          "emergency_contacts": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "ApiSettings": {
+        "type": "object",
+        "required": [
+          "org",
+          "contacts",
+          "social",
+          "emergency_services",
+          "copyright",
+          "seo"
+        ],
+        "properties": {
+          "org": {
+            "type": "object",
+            "required": [
+              "name",
+              "short_name",
+              "about",
+              "address",
+              "email",
+              "emergency_number",
+              "trust_phone"
+            ],
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "short_name": {
+                "type": "string"
+              },
+              "about": {
+                "type": "string"
+              },
+              "address": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string"
+              },
+              "emergency_number": {
+                "type": "string"
+              },
+              "trust_phone": {
+                "type": "string"
+              }
+            }
+          },
+          "contacts": {
+            "type": "object",
+            "required": [
+              "press_email",
+              "press_phone",
+              "duty_phone"
+            ],
+            "properties": {
+              "press_email": {
+                "type": "string"
+              },
+              "press_phone": {
+                "type": "string"
+              },
+              "duty_phone": {
+                "type": "string"
+              }
+            }
+          },
+          "social": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "emergency_services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "num",
+                "label"
+              ],
+              "properties": {
+                "num": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "copyright": {
+            "type": "string"
+          },
+          "seo": {
+            "type": "object",
+            "required": [
+              "meta_title",
+              "meta_description"
+            ],
+            "properties": {
+              "meta_title": {
+                "type": "string"
+              },
+              "meta_description": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ApiMenuItem": {
+        "type": "object",
+        "required": [
+          "label",
+          "url",
+          "children"
+        ],
+        "properties": {
+          "label": {
+            "type": "string"
+          },
+          "url": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "children": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "label",
+                "url"
+              ],
+              "properties": {
+                "label": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "ApiMenu": {
+        "type": "object",
+        "required": [
+          "main",
+          "footer"
+        ],
+        "properties": {
+          "main": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiMenuItem"
+            }
+          },
+          "footer": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiMenuItem"
+            }
+          }
+        }
+      },
+      "ApiRegionOffice": {
+        "type": "object",
+        "required": [
+          "code",
+          "name",
+          "type",
+          "type_code",
+          "head",
+          "regional_center",
+          "address",
+          "phone",
+          "phone_href",
+          "duty_phone",
+          "email",
+          "districts_count",
+          "districts"
+        ],
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          },
+          "type_code": {
+            "type": "string"
+          },
+          "head": {
+            "type": "string"
+          },
+          "regional_center": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone_href": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "duty_phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "districts_count": {
+            "type": "integer"
+          },
+          "districts": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "ApiPage": {
+        "type": "object",
+        "required": [
+          "slug",
+          "title"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          }
+        }
+      },
+      "ApiPageDetail": {
+        "type": "object",
+        "required": [
+          "slug",
+          "title",
+          "body",
+          "updated",
+          "updated_at",
+          "seo"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "updated": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seo": {
+            "type": "object",
+            "required": [
+              "title",
+              "description"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "ApiSearchResult": {
+        "type": "object",
+        "required": [
+          "type",
+          "title",
+          "excerpt",
+          "path",
+          "published_at"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "news",
+              "alert",
+              "instruction",
+              "document",
+              "project",
+              "announcement",
+              "page"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "excerpt": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "published_at": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "ApiCategory": {
+        "type": "object",
+        "required": [
+          "slug",
+          "name",
+          "type"
+        ],
+        "properties": {
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string"
+          }
+        }
+      },
+      "HealthResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "service",
+          "version",
+          "checks",
+          "timestamp"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "unavailable"
+            ]
+          },
+          "service": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "checks": {
+            "type": "object",
+            "required": [
+              "database"
+            ],
+            "properties": {
+              "database": {
+                "type": "boolean"
+              }
+            }
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      },
+      "ReadinessResponse": {
+        "type": "object",
+        "required": [
+          "status",
+          "checks",
+          "scheduler_last_run",
+          "queue_last_run",
+          "timestamp"
+        ],
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "not_ready"
+            ]
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": true
+          },
+          "scheduler_last_run": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "queue_last_run": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "timestamp": {
+            "type": "string"
+          }
+        }
+      },
+      "SubmissionRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "email",
+          "message",
+          "consent"
+        ],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "topic": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "message": {
+            "type": "string"
+          },
+          "region_id": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "consent": {
+            "type": "boolean"
+          }
+        }
+      },
+      "SubmissionResponse": {
+        "type": "object",
+        "required": [
+          "tracking_number"
+        ],
+        "properties": {
+          "tracking_number": {
+            "type": "string"
+          }
+        }
+      },
+      "WebVitalRequest": {
+        "type": "object",
+        "required": [
+          "name",
+          "value",
+          "id",
+          "path",
+          "locale",
+          "device",
+          "navigation_type"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "enum": [
+              "LCP",
+              "INP",
+              "CLS"
+            ]
+          },
+          "value": {
+            "type": "number",
+            "minimum": 0
+          },
+          "id": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "path": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "locale": {
+            "type": "string",
+            "enum": [
+              "ru",
+              "tj",
+              "en"
+            ]
+          },
+          "device": {
+            "type": "string",
+            "enum": [
+              "mobile",
+              "tablet",
+              "desktop"
+            ]
+          },
+          "navigation_type": {
+            "type": "string",
+            "enum": [
+              "navigate",
+              "reload",
+              "prerender",
+              "back-forward",
+              "back-forward-cache",
+              "restore"
+            ]
+          }
+        }
+      },
+      "WebVitalResponse": {
+        "type": "object",
+        "required": [
+          "accepted"
+        ],
+        "properties": {
+          "accepted": {
+            "type": "boolean",
+            "const": true
+          }
+        }
+      },
+      "ValidationError": {
+        "type": "object",
+        "required": [
+          "message",
+          "errors"
+        ],
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "errors": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "NewsListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiNewsItem"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "NewsResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiNewsItem"
+          }
+        }
+      },
+      "AlertListResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiAlert"
+            }
+          }
+        }
+      },
+      "AlertResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiAlert"
+          }
+        }
+      },
+      "AlertsActiveResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiAlertsActive"
+          }
+        }
+      },
+      "InstructionListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiInstruction"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "InstructionResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiInstruction"
+          }
+        }
+      },
+      "DocumentListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiDocument"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "ProjectListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiProject"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "ProjectResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiProject"
+          }
+        }
+      },
+      "AnnouncementListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiAnnouncement"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "AnnouncementResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiAnnouncement"
+          }
+        }
+      },
+      "PageListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiPage"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          }
+        }
+      },
+      "PageResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiPageDetail"
+          }
+        }
+      },
+      "CategoryListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta",
+          "links"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiCategory"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          }
+        }
+      },
+      "RegionStatusListResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiRegionStatus"
+            }
+          }
+        }
+      },
+      "RegionOfficeListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta",
+          "links"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiRegionOffice"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          "links": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "MenuResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiMenu"
+          }
+        }
+      },
+      "SettingsResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiSettings"
+          },
+          "meta": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta",
+          "links"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ApiSearchResult"
+            }
+          },
+          "meta": {
+            "$ref": "#/components/schemas/PaginationMeta"
+          },
+          "links": {
+            "$ref": "#/components/schemas/PaginationLinks"
+          }
+        }
+      },
+      "HomeResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/ApiHome"
+          }
+        }
+      }
+    }
+  }
+}

@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\Alert;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
 
 class NavBadges
 {
@@ -22,18 +23,30 @@ class NavBadges
             'alerts' => Alert::query()->accessibleTo($user)->active()->count(),
         ];
 
+        $permissionNames = $user->getAllPermissions()->pluck('name');
         $approval = 0;
 
         foreach (ContentTypes::MAP as $type => $modelClass) {
-            if (! $user->can(ContentTypes::module($type).'.approve')) {
+            if (! $permissionNames->contains(ContentTypes::module($type).'.approve')) {
                 continue;
             }
 
-            $approval += $modelClass::query()
-                ->whereIn('status', ['review', 'translation_check'])
-                ->get()
-                ->filter(fn ($model): bool => $user->can('approve', $model))
-                ->count();
+            $query = $modelClass::query()
+                ->whereIn('status', ['review', 'translation_check']);
+
+            if ($user->hasRole('regional_editor')) {
+                if ($user->region_id === null) {
+                    $query->whereRaw('1 = 0');
+                } elseif ($modelClass === Alert::class) {
+                    $query
+                        ->where('territory_type', 'regions')
+                        ->whereHas('regions', fn (Builder $regions): Builder => $regions->whereKey($user->region_id));
+                } else {
+                    $query->where('author_id', $user->id);
+                }
+            }
+
+            $approval += $query->count();
         }
 
         $badges['approval'] = $approval;

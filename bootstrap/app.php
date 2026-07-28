@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\EnsureEditorialVersion;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PublicApiResponse;
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             '2fa.required' => RequireTwoFactor::class,
+            'editorial.version' => EnsureEditorialVersion::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

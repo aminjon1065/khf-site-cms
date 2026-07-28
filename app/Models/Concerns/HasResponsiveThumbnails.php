@@ -8,8 +8,8 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 /**
  * Generates down-scaled JPEG variants (sm/md/lg) for uploaded images and builds
  * a `srcset` string from them, so the browser can pick the smallest sufficient
- * size — saving bandwidth. Variants are generated synchronously (`nonQueued`)
- * because this project runs no queue worker; the original is never up-scaled.
+ * size — saving bandwidth. Variants are generated on the dedicated media queue;
+ * the original is never up-scaled.
  */
 trait HasResponsiveThumbnails
 {
@@ -25,7 +25,6 @@ trait HasResponsiveThumbnails
     {
         foreach ($this->thumbnailWidths as $name => $width) {
             $this->addMediaConversion($name)
-                ->nonQueued()
                 ->fit(Fit::Max, $width, $width * 4)
                 ->format('jpg');
         }

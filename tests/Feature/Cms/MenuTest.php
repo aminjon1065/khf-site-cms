@@ -1,8 +1,10 @@
 <?php
 
+use App\Jobs\RevalidateFrontend;
 use App\Models\MenuItem;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -28,6 +30,8 @@ it('forbids a role without settings access from the menu manager', function () {
 });
 
 it('syncs a menu location: creates new items and removes omitted ones', function () {
+    Queue::fake();
+
     $stale = MenuItem::query()->create([
         'location' => 'main',
         'label' => ['ru' => 'Старый пункт'],
@@ -47,6 +51,13 @@ it('syncs a menu location: creates new items and removes omitted ones', function
 
     expect(MenuItem::query()->find($stale->id))->toBeNull()
         ->and(MenuItem::query()->where('location', 'main')->where('url', '/news')->exists())->toBeTrue();
+
+    Queue::assertPushed(
+        RevalidateFrontend::class,
+        fn (RevalidateFrontend $job): bool => $job->type === 'shell'
+            && $job->tags() === ['cms:shell:ru', 'cms:shell:tj', 'cms:shell:en']
+            && $job->afterCommit === true,
+    );
 });
 
 it('drops rows without a Russian label', function () {

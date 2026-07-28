@@ -11,6 +11,7 @@ use App\Http\Resources\DocumentResource;
 use App\Models\Document;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\EditorialContent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,7 +26,10 @@ class DocumentController extends Controller
      */
     private const LOCALES = ['tg', 'ru', 'en'];
 
-    public function __construct(private readonly WorkflowService $workflow) {}
+    public function __construct(
+        private readonly WorkflowService $workflow,
+        private readonly EditorialContent $editorialContent,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -291,6 +295,8 @@ class DocumentController extends Controller
             'status' => $document->status->value,
             'files' => $this->fileInfo($document),
             'published_at' => $document->published_at?->toIso8601String(),
+            'updated_at' => $document->updated_at?->toIso8601String(),
+            'preview_url' => $this->editorialContent->previewUrl($document),
         ];
     }
 

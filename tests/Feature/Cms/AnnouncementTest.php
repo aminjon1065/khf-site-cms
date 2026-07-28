@@ -93,7 +93,7 @@ it('publishes an announcement and it becomes public', function () {
 
     expect($announcement->fresh()->status)->toBe(ContentStatus::Published);
 
-    $this->getJson('/api/v1/announcements')
+    $this->getJson('/api/v1/announcements?locale=ru')
         ->assertOk()
         ->assertJsonPath('data.0.title', 'Публичное объявление');
 });

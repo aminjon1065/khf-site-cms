@@ -3,8 +3,11 @@
 use App\Enums\AnnouncementKind;
 use App\Enums\ContentStatus;
 use App\Models\Announcement;
+use Illuminate\Support\Carbon;
 
 it('returns only publicly visible announcements, open ones first', function () {
+    Carbon::setTestNow(Carbon::parse('2026-07-27 21:00:00', 'Asia/Dushanbe'));
+
     Announcement::factory()->published()->create([
         'deadline' => now()->subDay(), 'title' => ['ru' => 'Закрытая', 'tg' => '', 'en' => ''],
     ]);
