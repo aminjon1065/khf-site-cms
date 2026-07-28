@@ -1890,12 +1890,13 @@
       "ApiSettings": {
         "type": "object",
         "required": [
-          "org",
           "contacts",
-          "social",
-          "emergency_services",
           "copyright",
-          "seo"
+          "emergency_services",
+          "org",
+          "seo",
+          "social",
+          "structure"
         ],
         "properties": {
           "org": {
@@ -1973,6 +1974,21 @@
                 "label": {
                   "type": "string"
                 }
+              }
+            }
+          },
+          "structure": {
+            "type": "object",
+            "required": [
+              "founded_year",
+              "units_count"
+            ],
+            "properties": {
+              "founded_year": {
+                "type": "string"
+              },
+              "units_count": {
+                "type": "string"
               }
             }
           },
