@@ -9,6 +9,7 @@ use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\URL;
@@ -49,6 +50,14 @@ class EditorialContent
     }
 
     /**
+     * @return list<string>
+     */
+    public function types(): array
+    {
+        return array_keys(self::MODELS);
+    }
+
+    /**
      * @return class-string<Model>
      */
     public function modelClass(string $type): string
@@ -60,6 +69,63 @@ class EditorialContent
     public function resolve(string $type, int $id, bool $lockForUpdate = false): Model
     {
         $query = $this->modelClass($type)::query();
+
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+
+        return $query->findOrFail($id);
+    }
+
+    /**
+     * Запрос по корзине конкретного типа.
+     *
+     * Типы перечислены явно, а не через `class-string<Model>`: у базовой Model
+     * нет `onlyTrashed()`, он приходит из трейта SoftDeletes. Так статический
+     * анализ проверяет наличие корзины у каждого типа, тогда как рантайм-проверка
+     * `class_uses_recursive` для анализатора ничего не доказывает.
+     *
+     * @return EloquentBuilder<covariant Model>
+     */
+    public function trashedQuery(string $type): EloquentBuilder
+    {
+        return match ($type) {
+            'news' => News::onlyTrashed(),
+            'pages' => Page::onlyTrashed(),
+            'projects' => Project::onlyTrashed(),
+            'instructions' => Instruction::onlyTrashed(),
+            'announcements' => Announcement::onlyTrashed(),
+            'documents' => Document::onlyTrashed(),
+            default => throw new InvalidArgumentException(
+                "Editorial content type [{$type}] does not support trash.",
+            ),
+        };
+    }
+
+    /**
+     * Восстановление из корзины. Вызов `restore()` тоже живёт здесь, у известного
+     * конкретного класса, — у `Model` этого метода нет.
+     */
+    public function restoreTrashed(string $type, int $id): void
+    {
+        $model = match ($type) {
+            'news' => News::onlyTrashed()->lockForUpdate()->findOrFail($id),
+            'pages' => Page::onlyTrashed()->lockForUpdate()->findOrFail($id),
+            'projects' => Project::onlyTrashed()->lockForUpdate()->findOrFail($id),
+            'instructions' => Instruction::onlyTrashed()->lockForUpdate()->findOrFail($id),
+            'announcements' => Announcement::onlyTrashed()->lockForUpdate()->findOrFail($id),
+            'documents' => Document::onlyTrashed()->lockForUpdate()->findOrFail($id),
+            default => throw new InvalidArgumentException(
+                "Editorial content type [{$type}] does not support trash.",
+            ),
+        };
+
+        $model->restore();
+    }
+
+    public function resolveTrashed(string $type, int $id, bool $lockForUpdate = false): Model
+    {
+        $query = $this->trashedQuery($type);
 
         if ($lockForUpdate) {
             $query->lockForUpdate();

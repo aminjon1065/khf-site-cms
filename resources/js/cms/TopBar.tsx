@@ -62,17 +62,17 @@ export function TopBar({
                 </strong>
             </div>
 
-            <div style={{ flex: 1 }} />
+            <div className="cms-topbar-spacer" />
 
             <button
                 type="button"
                 onClick={onOpenSearch}
                 className="cms-search-trigger"
+                aria-label="Поиск по CMS"
                 style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 8,
-                    minWidth: 240,
                     padding: '7px 10px',
                     border: '1px solid var(--color-divider)',
                     background: '#fff',
@@ -82,10 +82,14 @@ export function TopBar({
                 }}
             >
                 <Search size={15} strokeWidth={1.5} />
-                <span style={{ flex: 1, textAlign: 'left' }}>
+                <span
+                    className="cms-search-trigger-label"
+                    style={{ flex: 1, textAlign: 'left' }}
+                >
                     Поиск по CMS…
                 </span>
                 <kbd
+                    className="cms-search-trigger-shortcut"
                     style={{
                         fontSize: 11,
                         border: '1px solid var(--color-divider)',
@@ -100,13 +104,18 @@ export function TopBar({
             {createItems.length > 0 && (
                 <Dropdown
                     align="right"
-                    trigger={({ toggle }) => (
+                    trigger={({ open, toggle }) => (
                         <Button
                             variant="primary"
                             icon={<Plus size={16} strokeWidth={2} />}
+                            className="cms-create-trigger"
+                            aria-label={t('action.create')}
+                            aria-expanded={open}
                             onClick={toggle}
                         >
-                            {t('action.create')}
+                            <span className="cms-create-trigger-label">
+                                {t('action.create')}
+                            </span>
                         </Button>
                     )}
                     items={createItems}
@@ -169,7 +178,11 @@ export function TopBar({
                 <ExternalLink size={17} strokeWidth={1.5} />
             </a>
 
-            <Link href={editProfile.url()} title={user?.name ?? ''}>
+            <Link
+                href={editProfile.url()}
+                title={user?.name ?? ''}
+                className="cms-topbar-profile"
+            >
                 <Avatar
                     initials={user?.initials ?? '—'}
                     size={34}

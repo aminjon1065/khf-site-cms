@@ -1,33 +1,13 @@
 import { TriangleAlert, X } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import { useDialogFocus } from '@/hooks/use-dialog-focus';
 import { useT } from '@/lib/i18n';
 import { cn } from '@/lib/utils';
 import { Blueprint } from './Blueprint';
 import { Button, IconButton } from './Button';
 import { Field, Textarea } from './Field';
-
-function useEscape(active: boolean, onClose: () => void) {
-    useEffect(() => {
-        if (!active) {
-            return;
-        }
-
-        const handler = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') {
-                onClose();
-            }
-        };
-        window.addEventListener('keydown', handler);
-        document.body.style.overflow = 'hidden';
-
-        return () => {
-            window.removeEventListener('keydown', handler);
-            document.body.style.overflow = '';
-        };
-    }, [active, onClose]);
-}
 
 export function Modal({
     open,
@@ -44,7 +24,8 @@ export function Modal({
     footer?: ReactNode;
     width?: number;
 }) {
-    useEscape(open, onClose);
+    const dialogRef = useDialogFocus<HTMLDivElement>(open, onClose);
+    const titleId = useId();
 
     if (!open) {
         return null;
@@ -53,15 +34,21 @@ export function Modal({
     return createPortal(
         <div className="ui-backdrop" onMouseDown={onClose}>
             <Blueprint
+                ref={dialogRef}
                 className="ui-dialog"
                 style={{ width: `min(${width}px, 100%)` }}
                 onMouseDown={(e) => e.stopPropagation()}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={title ? titleId : undefined}
+                aria-label={title ? undefined : 'Диалог'}
+                tabIndex={-1}
             >
                 {title && (
                     <div className="ui-dialog-head">
-                        <h3 className="ui-dialog-title">{title}</h3>
+                        <h3 id={titleId} className="ui-dialog-title">
+                            {title}
+                        </h3>
                         <IconButton label="Закрыть" onClick={onClose}>
                             <X size={18} strokeWidth={1.5} />
                         </IconButton>
@@ -193,7 +180,8 @@ export function Drawer({
     footer?: ReactNode;
     width?: number;
 }) {
-    useEscape(open, onClose);
+    const dialogRef = useDialogFocus<HTMLElement>(open, onClose);
+    const titleId = useId();
 
     if (!open) {
         return null;
@@ -207,14 +195,20 @@ export function Drawer({
                 onClick={onClose}
             />
             <aside
+                ref={dialogRef}
                 className="ui-drawer"
                 style={{ width: `min(${width}px, 100%)` }}
                 role="dialog"
                 aria-modal="true"
+                aria-labelledby={title ? titleId : undefined}
+                aria-label={title ? undefined : 'Панель'}
+                tabIndex={-1}
             >
                 {title && (
                     <div className="ui-dialog-head">
-                        <h3 className="ui-dialog-title">{title}</h3>
+                        <h3 id={titleId} className="ui-dialog-title">
+                            {title}
+                        </h3>
                         <IconButton label="Закрыть" onClick={onClose}>
                             <X size={18} strokeWidth={1.5} />
                         </IconButton>

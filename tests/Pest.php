@@ -4,6 +4,17 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
+// Тесты медиаконверсий (`MediaConversionQueueTest`, `MediaTest`) реально
+// пересобирают изображения через GD и spatie/image-optimizer. При дефолтных
+// 128 МБ прогон падает Fatal error по памяти — причём НЕ детерминированно:
+// хватит её или нет, зависит от порядка тестов и фрагментации, поэтому
+// падение выглядит как «случайно красный CI». Поднимаем лимит для тестового
+// процесса (`php artisan test` запускает Pest отдельным процессом, так что
+// флаг `-d memory_limit=` из командной строки до него не доходит).
+if ((int) ini_get('memory_limit') !== -1) {
+    ini_set('memory_limit', '512M');
+}
+
 /*
 |--------------------------------------------------------------------------
 | Test Case

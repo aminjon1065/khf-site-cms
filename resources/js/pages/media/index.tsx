@@ -271,6 +271,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                     onChange={(e) => reload({ search: e.target.value })}
                 />
                 <Select
+                    aria-label="Фильтр файлов по типу"
                     value={filters.kind}
                     options={KIND_OPTIONS}
                     onChange={(e) => reload({ kind: e.target.value })}

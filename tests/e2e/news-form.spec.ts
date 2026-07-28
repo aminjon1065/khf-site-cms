@@ -39,12 +39,8 @@ test('editor creates a news draft with a cover image via the form, then deletes 
 }) => {
     await page.goto('/news/create');
 
-    // The title field's <label> isn't id-associated (a pre-existing gap, not
-    // introduced here) and its own accessible name collides with the rich-text
-    // toolbar's "Заголовок 2/3/4" heading buttons under getByLabel's substring
-    // match — placeholder is the reliable selector here.
     await page
-        .getByPlaceholder('Например: КЧС провёл учения…')
+        .getByRole('textbox', { name: 'Заголовок*', exact: true })
         .fill(DRAFT_TITLE);
     await page
         .locator('input[type="file"]')

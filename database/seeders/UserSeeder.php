@@ -22,7 +22,8 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Системный администратор', 'email' => 'admin@khf.tj',
                 'position' => 'Администратор системы', 'department' => 'ИТ-отдел',
-                'role' => RoleName::Superadmin, 'region' => null, 'twoFactor' => true,
+                'role' => RoleName::Superadmin, 'region' => null,
+                'twoFactor' => false,
             ],
             [
                 'name' => 'Фаридун Назаров', 'email' => 'f.nazarov@khf.tj',

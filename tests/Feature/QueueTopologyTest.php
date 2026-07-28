@@ -5,6 +5,7 @@ use App\Jobs\RevalidateFrontend;
 use App\Models\News;
 use App\Notifications\WorkflowNotification;
 use Illuminate\Cache\Events\CacheFailedOver;
+use Illuminate\Foundation\DevCommands;
 use Illuminate\Queue\Events\QueueBusy;
 use Illuminate\Queue\Events\QueueFailedOver;
 use Illuminate\Support\Facades\Cache;
@@ -111,4 +112,38 @@ it('emits an operational alert when a queue exceeds its backlog budget', functio
                 'size' => 101,
             ],
         );
+});
+
+it('makes the local dev worker listen to every configured queue', function () {
+    // Дефолтный процесс `php artisan dev` поднимает `queue:listen` без
+    // `--queue` и слушает только `default`. Тогда heartbeat (очередь
+    // `critical`) не обрабатывается, `/api/v1/ready` навсегда остаётся
+    // `not_ready`, а джобы ревалидации копятся в `revalidation` — сайт молча
+    // перестаёт обновляться. AppServiceProvider переопределяет процесс;
+    // этот тест ловит момент, когда в config('queue.names') добавят очередь,
+    // а переопределение забудут обновить.
+    $queueProcess = collect(DevCommands::commands())
+        ->firstWhere('name', 'queue');
+
+    expect($queueProcess)->not->toBeNull();
+
+    $command = (string) $queueProcess['command'];
+
+    expect($command)->toContain('--queue=');
+
+    foreach (config('queue.names') as $queue) {
+        expect($command)->toContain($queue);
+    }
+});
+
+it('runs the scheduler among the local dev processes', function () {
+    // Без планировщика heartbeat расписания устаревает и `/api/v1/ready`
+    // возвращает `not_ready`, даже когда всё остальное работает.
+    $names = collect(DevCommands::commands())->pluck('name');
+
+    expect($names)->toContain('schedule');
+
+    $schedule = collect(DevCommands::commands())->firstWhere('name', 'schedule');
+
+    expect((string) $schedule['command'])->toContain('schedule:work');
 });

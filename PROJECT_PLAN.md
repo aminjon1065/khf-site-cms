@@ -534,6 +534,15 @@ debounced autosave, offline/local recovery, понятный save-state, защ�
 restore; полный `composer ci:check`: 394 теста / 1563 assertions, Vite build,
 TypeScript, ESLint, Prettier, Pint и PHPStan зелёные.
 
+Инженерный подпункт revision history/trash закрыт полностью: общая корзина
+шести редакционных типов строится одним пагинируемым `UNION ALL`, соблюдает
+module policies и regional author scope. Restore требует delete-policy,
+блокирует строку транзакционно, сохраняет workflow status и возвращает материал
+в его редактор; immutable history перед restore остаётся доступной во всех
+формах. Целевые проверки — 18 Pest / 99 assertions, полный gate — 496 Pest /
+3605 assertions, Playwright 10/10 с axe нового экрана, Vite 2368 modules /
+8.21 s.
+
 **Статус O-016 (28.07.2026): выполнено.** Общий preview во всех шести
 редакционных формах показывает несохранённые данные в трёх локалях, desktop,
 mobile и share/OG режимах и явно обозначает fallback. Отдельный private signed
@@ -585,5 +594,23 @@ Vite production build, TypeScript, ESLint, Prettier, Pint и PHPStan зелён�
 Изолированный browser flow подтвердил вход, сохранение синтетической сессии,
 пересчёт отчёта, отсутствие console errors и 49/49 touch targets высотой не
 менее 44 px на desktop и viewport 390×844.
+Последующий mobile QA устранил горизонтальный overflow общей topbar и строки
+оперативного статуса dashboard: Playwright и in-app browser фиксируют
+`scrollWidth/clientWidth = 390/390`, пять основных действий topbar по 44×44,
+рабочие search/create/notifications и ноль console errors. Одновременно
+возвращена изоляция Inertia SSR в testing: `INERTIA_SSR_ENABLED=false` не даёт
+Feature-тестам обращаться к реальному SSR endpoint, не ослабляя
+`Http::preventStrayRequests()`. Полный `composer ci:check`: 490 тестов /
+3555 assertions; Vite production build зелёный.
+
+Автоматизирован и закрыт инженерный пункт UX-09: axe проверяет четыре ключевых
+CMS-маршрута по WCAG 2.0/2.1 A/AA без serious/critical нарушений, общие dialogs
+получили focus trap, Escape и возврат фокуса, а поля News — связанные labels.
+Контраст базовых neutral/accent/status tokens доведён до AA. Playwright
+доказывает reflow без горизонтального overflow при 320 CSS px, live-region
+autosave и кнопочные media-альтернативы; полный browser suite — 9/9. Итоговые
+`composer ci:check` — 490 тестов / 3555 assertions и production Vite build —
+2366 modules / 8.27 s.
+
 Полевых результатов пока 0/5, поэтому O-020 и Definition of Done намеренно не
 отмечены выполненными до сессий с реальными будущими редакторами.
