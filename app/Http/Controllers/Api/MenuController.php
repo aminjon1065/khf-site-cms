@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\MenuItem;
+use App\Services\PublicReadModelCache;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Public navigation menus (main + footer) for the Next.js site, resolved to the
@@ -14,30 +14,28 @@ use Illuminate\Support\Facades\Cache;
  */
 class MenuController extends Controller
 {
-    /** D-2: flushed from MenuItem's FlushesPublicCache on every save/delete. */
-    private const CACHE_TTL_SECONDS = 60;
+    public function __construct(private readonly PublicReadModelCache $cache) {}
 
     public function index(): JsonResponse
     {
         $locale = app()->getLocale();
-
-        return response()->json(['data' => Cache::remember(
-            "public-api:menu:{$locale}",
-            self::CACHE_TTL_SECONDS,
+        $data = $this->cache->remember(
+            PublicReadModelCache::MENU,
+            $locale,
             fn (): array => [
-                'main' => $this->tree('main'),
-                'footer' => $this->tree('footer'),
+                'main' => $this->tree('main', $locale),
+                'footer' => $this->tree('footer', $locale),
             ],
-        )]);
+        );
+
+        return response()->json(['data' => $data]);
     }
 
     /**
      * @return list<array{label: string, url: string|null, children: list<array{label: string, url: string|null}>}>
      */
-    private function tree(string $location): array
+    private function tree(string $location, string $locale): array
     {
-        $locale = app()->getLocale();
-
         /** @var Collection<int, MenuItem> $items */
         $items = MenuItem::query()
             ->where('location', $location)

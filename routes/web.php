@@ -7,6 +7,8 @@ use App\Http\Controllers\Cms\ApprovalController;
 use App\Http\Controllers\Cms\ControlController;
 use App\Http\Controllers\Cms\DashboardController;
 use App\Http\Controllers\Cms\DocumentController;
+use App\Http\Controllers\Cms\EditorialAutosaveController;
+use App\Http\Controllers\Cms\EditorialPreviewController;
 use App\Http\Controllers\Cms\EmergencyContactController;
 use App\Http\Controllers\Cms\HomeBlockController;
 use App\Http\Controllers\Cms\InstructionController;
@@ -25,6 +27,7 @@ use App\Http\Controllers\Cms\SettingController;
 use App\Http\Controllers\Cms\StructureUnitController;
 use App\Http\Controllers\Cms\SubmissionController;
 use App\Http\Controllers\Cms\TaxonomyController;
+use App\Http\Controllers\Cms\UsabilityController;
 use App\Http\Controllers\Cms\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -41,6 +44,16 @@ Route::get('media/private/{media}/{conversion?}', PrivateMediaController::class)
     ->name('media.private');
 
 Route::middleware(['auth', '2fa.required'])->group(function () {
+    Route::post('editorial/autosave', [EditorialAutosaveController::class, 'store'])
+        ->name('editorial.autosave');
+    Route::get('editorial/{contentType}/{contentId}/revisions', [EditorialAutosaveController::class, 'index'])
+        ->name('editorial.revisions');
+    Route::post('editorial/revisions/{revision}/restore', [EditorialAutosaveController::class, 'restore'])
+        ->name('editorial.revisions.restore');
+    Route::get('editorial/{contentType}/{contentId}/preview', EditorialPreviewController::class)
+        ->middleware('signed')
+        ->name('editorial.preview');
+
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('control', [ControlController::class, 'index'])->name('control');
     Route::get('contacts', [EmergencyContactController::class, 'index'])->name('contacts');
@@ -61,7 +74,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('news/create', [NewsController::class, 'create'])->name('news.create');
     Route::post('news', [NewsController::class, 'store'])->name('news.store');
     Route::get('news/{news}/edit', [NewsController::class, 'edit'])->name('news.edit');
-    Route::put('news/{news}', [NewsController::class, 'update'])->name('news.update');
+    Route::put('news/{news}', [NewsController::class, 'update'])->middleware('editorial.version')->name('news.update');
     Route::delete('news/{news}', [NewsController::class, 'destroy'])->name('news.destroy');
     Route::post('news/{news}/duplicate', [NewsController::class, 'duplicate'])->name('news.duplicate');
     Route::post('news/{news}/publish', [NewsController::class, 'publish'])->name('news.publish');
@@ -72,7 +85,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('instructions/create', [InstructionController::class, 'create'])->name('instructions.create');
     Route::post('instructions', [InstructionController::class, 'store'])->name('instructions.store');
     Route::get('instructions/{instruction}/edit', [InstructionController::class, 'edit'])->name('instructions.edit');
-    Route::put('instructions/{instruction}', [InstructionController::class, 'update'])->name('instructions.update');
+    Route::put('instructions/{instruction}', [InstructionController::class, 'update'])->middleware('editorial.version')->name('instructions.update');
     Route::delete('instructions/{instruction}', [InstructionController::class, 'destroy'])->name('instructions.destroy');
     Route::post('instructions/{instruction}/duplicate', [InstructionController::class, 'duplicate'])->name('instructions.duplicate');
     Route::post('instructions/{instruction}/publish', [InstructionController::class, 'publish'])->name('instructions.publish');
@@ -83,7 +96,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('documents/create', [DocumentController::class, 'create'])->name('documents.create');
     Route::post('documents', [DocumentController::class, 'store'])->name('documents.store');
     Route::get('documents/{document}/edit', [DocumentController::class, 'edit'])->name('documents.edit');
-    Route::put('documents/{document}', [DocumentController::class, 'update'])->name('documents.update');
+    Route::put('documents/{document}', [DocumentController::class, 'update'])->middleware('editorial.version')->name('documents.update');
     Route::delete('documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy');
     Route::post('documents/{document}/duplicate', [DocumentController::class, 'duplicate'])->name('documents.duplicate');
     Route::post('documents/{document}/publish', [DocumentController::class, 'publish'])->name('documents.publish');
@@ -94,7 +107,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('projects/create', [ProjectController::class, 'create'])->name('projects.create');
     Route::post('projects', [ProjectController::class, 'store'])->name('projects.store');
     Route::get('projects/{project}/edit', [ProjectController::class, 'edit'])->name('projects.edit');
-    Route::put('projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
+    Route::put('projects/{project}', [ProjectController::class, 'update'])->middleware('editorial.version')->name('projects.update');
     Route::delete('projects/{project}', [ProjectController::class, 'destroy'])->name('projects.destroy');
     Route::post('projects/{project}/duplicate', [ProjectController::class, 'duplicate'])->name('projects.duplicate');
     Route::post('projects/{project}/publish', [ProjectController::class, 'publish'])->name('projects.publish');
@@ -105,7 +118,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('announcements/create', [AnnouncementController::class, 'create'])->name('announcements.create');
     Route::post('announcements', [AnnouncementController::class, 'store'])->name('announcements.store');
     Route::get('announcements/{announcement}/edit', [AnnouncementController::class, 'edit'])->name('announcements.edit');
-    Route::put('announcements/{announcement}', [AnnouncementController::class, 'update'])->name('announcements.update');
+    Route::put('announcements/{announcement}', [AnnouncementController::class, 'update'])->middleware('editorial.version')->name('announcements.update');
     Route::delete('announcements/{announcement}', [AnnouncementController::class, 'destroy'])->name('announcements.destroy');
     Route::post('announcements/{announcement}/duplicate', [AnnouncementController::class, 'duplicate'])->name('announcements.duplicate');
     Route::post('announcements/{announcement}/publish', [AnnouncementController::class, 'publish'])->name('announcements.publish');
@@ -141,7 +154,11 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     // JSON endpoints for the in-editor media picker (list + inline upload).
     Route::get('media/library', [MediaController::class, 'library'])->name('media.library');
     Route::post('media/library', [MediaController::class, 'upload'])->name('media.upload');
+    Route::get('media/{media}/usages', [MediaController::class, 'usages'])->name('media.usages');
     Route::put('media/{media}', [MediaController::class, 'update'])->name('media.update');
+    Route::post('media/{media}/restore', [MediaController::class, 'restore'])->name('media.restore');
+    Route::post('media/{media}/conversions/retry', [MediaController::class, 'retryConversions'])
+        ->name('media.conversions.retry');
     Route::delete('media/{media}', [MediaController::class, 'destroy'])->name('media.destroy');
 
     // Editorial taxonomy manager (news categories + tags).
@@ -153,7 +170,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('pages/create', [PageController::class, 'create'])->name('pages.create');
     Route::post('pages', [PageController::class, 'store'])->name('pages.store');
     Route::get('pages/{page}/edit', [PageController::class, 'edit'])->name('pages.edit');
-    Route::put('pages/{page}', [PageController::class, 'update'])->name('pages.update');
+    Route::put('pages/{page}', [PageController::class, 'update'])->middleware('editorial.version')->name('pages.update');
     Route::delete('pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
     Route::post('pages/{page}/duplicate', [PageController::class, 'duplicate'])->name('pages.duplicate');
     Route::post('pages/{page}/publish', [PageController::class, 'publish'])->name('pages.publish');
@@ -184,6 +201,8 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::get('roles', [RoleController::class, 'index'])->name('roles');
+    Route::get('usability', [UsabilityController::class, 'index'])->name('usability');
+    Route::post('usability', [UsabilityController::class, 'store'])->name('usability.store');
 
     // Approval center
     Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals');

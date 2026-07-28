@@ -69,7 +69,7 @@ it('rejects an SVG upload (stored-XSS vector)', function () {
     expect(MediaAsset::query()->count())->toBe(0);
 });
 
-it('deletes a library-owned asset', function () {
+it('moves a library-owned asset to the recoverable trash', function () {
     actingAs(mediaUser('admin'))->post('/media', [
         'file' => UploadedFile::fake()->image('photo.jpg'),
     ]);
@@ -78,8 +78,9 @@ it('deletes a library-owned asset', function () {
 
     actingAs(mediaUser('admin'))->delete("/media/{$media->id}")->assertRedirect();
 
-    expect(Media::query()->find($media->id))->toBeNull()
-        ->and(MediaAsset::query()->count())->toBe(0);
+    expect(Media::query()->find($media->id))->not->toBeNull()
+        ->and(MediaAsset::query()->count())->toBe(0)
+        ->and(MediaAsset::onlyTrashed()->count())->toBe(1);
 });
 
 it('refuses to delete content media from the library', function () {

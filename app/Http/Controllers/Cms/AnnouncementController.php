@@ -11,6 +11,7 @@ use App\Http\Resources\AnnouncementResource;
 use App\Models\Announcement;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\EditorialContent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,10 @@ use Inertia\Response;
 
 class AnnouncementController extends Controller
 {
-    public function __construct(private readonly WorkflowService $workflow) {}
+    public function __construct(
+        private readonly WorkflowService $workflow,
+        private readonly EditorialContent $editorialContent,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -263,6 +267,8 @@ class AnnouncementController extends Controller
             'is_open' => $announcement->isOpen(),
             'published_at' => $announcement->published_at?->toIso8601String(),
             'languages' => $announcement->languageCompleteness(),
+            'updated_at' => $announcement->updated_at?->toIso8601String(),
+            'preview_url' => $this->editorialContent->previewUrl($announcement),
         ];
     }
 

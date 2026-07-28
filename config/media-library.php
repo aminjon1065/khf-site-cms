@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\PerformMediaConversions;
 use App\Support\PrivateAwareMediaUrlGenerator;
 use Spatie\ImageOptimizer\Optimizers\Avifenc;
 use Spatie\ImageOptimizer\Optimizers\Cwebp;
@@ -14,7 +15,6 @@ use Spatie\MediaLibrary\Conversions\ImageGenerators\Pdf;
 use Spatie\MediaLibrary\Conversions\ImageGenerators\Svg;
 use Spatie\MediaLibrary\Conversions\ImageGenerators\Video;
 use Spatie\MediaLibrary\Conversions\ImageGenerators\Webp;
-use Spatie\MediaLibrary\Conversions\Jobs\PerformConversionsJob;
 use Spatie\MediaLibrary\Downloaders\DefaultDownloader;
 use Spatie\MediaLibrary\MediaCollections\FileAdder;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -86,7 +86,7 @@ return [
      * This queue will be used to generate derived and responsive images.
      * Leave empty to use the default queue.
      */
-    'queue_name' => env('MEDIA_QUEUE', ''),
+    'queue_name' => env('MEDIA_QUEUE', 'media'),
 
     /*
      * By default all conversions will be performed on a queue.
@@ -271,7 +271,7 @@ return [
      * your custom jobs extend the ones provided by the package.
      */
     'jobs' => [
-        'perform_conversions' => PerformConversionsJob::class,
+        'perform_conversions' => PerformMediaConversions::class,
         'generate_responsive_images' => GenerateResponsiveImagesJob::class,
     ],
 

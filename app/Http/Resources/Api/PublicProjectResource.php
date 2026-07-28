@@ -4,8 +4,10 @@ namespace App\Http\Resources\Api;
 
 use App\Models\Project;
 use App\Support\PublicApiLabels;
+use App\Support\PublicImageData;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Public DTO for a project (the /projects list + detail on the Next.js site).
@@ -44,6 +46,7 @@ class PublicProjectResource extends JsonResource
             'desc' => $this->tr('summary', $locale),
             'image' => $this->coverUrl(),
             'image_srcset' => $this->thumbnailSrcset('cover'),
+            'image_data' => $this->imageData($locale),
         ];
 
         if ($this->withDetail) {
@@ -84,5 +87,17 @@ class PublicProjectResource extends JsonResource
         $url = $this->getFirstMediaUrl('cover');
 
         return $url !== '' ? $url : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function imageData(string $locale): ?array
+    {
+        $media = $this->getFirstMedia('cover');
+
+        return $media instanceof Media
+            ? PublicImageData::fromMedia($media, $this->tr('title', $locale))
+            : null;
     }
 }

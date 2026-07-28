@@ -25,13 +25,19 @@ beforeEach(function () {
     $this->withHeader('Accept-Language', 'ru');
 })->in('Feature/Api');
 
-// P0-1: no Feature test may reach the real network. `Http::fake()` with no
-// argument turns every outgoing request into a fake 200 by default; on top
-// of that, `preventStrayRequests()` makes any request a test does NOT
-// explicitly fake (via its own `Http::fake([...])`) throw instead of
-// silently escaping to a real host — this is what let `RevalidateFrontend`
-// hit a real localhost port during `php artisan test` when the developer's
-// `.env` happened to have a revalidation URL configured.
+// P0-1: no Feature test may reach the real network. `preventStrayRequests()`
+// makes any request a test does NOT explicitly fake (via its own
+// `Http::fake([...])`) throw instead of silently escaping to a real host —
+// this is what let `RevalidateFrontend` hit a real localhost port during
+// `php artisan test` when the developer's `.env` happened to have a
+// revalidation URL configured. `phpunit.xml` additionally forces
+// `FRONTEND_REVALIDATION_URL` empty, so the job short-circuits before any
+// request in tests that don't care about the webhook.
+//
+// Намеренно БЕЗ общего `Http::fake()`: catch-all stub перехватывал бы всё
+// первым и возвращал 200, из-за чего тесты, проверяющие 401/500/обрыв
+// соединения и сам StrayRequestException, переставали видеть свои ошибки.
+// Пусть незамоканный запрос падает громко — это и есть смысл P0-1.
 // Scoped to `Feature` (via `pest()->...->in()`, not the bare `beforeEach()`
 // function, which silently never runs unless the file already falls under
 // an existing `->in()`/`->extend()` scope): `tests/Unit` intentionally uses
@@ -39,7 +45,6 @@ beforeEach(function () {
 // root does not exist there.
 pest()->beforeEach(function () {
     Http::preventStrayRequests();
-    Http::fake();
 })->in('Feature');
 
 /*

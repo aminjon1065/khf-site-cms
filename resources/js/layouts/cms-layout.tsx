@@ -85,7 +85,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
             />
             <div className="ui-main">
                 <TopBar
-                    unread={shared.notifications.unread}
+                    unread={shared.notification_unread}
                     onOpenSearch={() => setPaletteOpen(true)}
                     onOpenNotifications={() => setNotifOpen(true)}
                     onOpenSidebar={() => setMobileOpen(true)}

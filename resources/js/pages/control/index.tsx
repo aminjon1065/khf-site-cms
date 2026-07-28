@@ -1,5 +1,12 @@
 import { Head } from '@inertiajs/react';
-import { Clock3, MapPinned, Radio, Siren } from 'lucide-react';
+import {
+    Clock3,
+    Gauge,
+    MapPinned,
+    MonitorSmartphone,
+    Radio,
+    Siren,
+} from 'lucide-react';
 import type { Severity } from '@/lib/domain';
 import { SeverityBadge, Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
@@ -34,6 +41,33 @@ interface Props {
         affected_regions: number;
     };
     alerts: ActiveAlert[];
+    web_vitals: WebVitalsReport;
+}
+
+type VitalRating = 'good' | 'needs-improvement' | 'poor' | 'no-data';
+
+interface VitalMetric {
+    metric: 'LCP' | 'INP' | 'CLS';
+    p75: number | null;
+    samples: number;
+    rating: VitalRating;
+    provisional: boolean;
+}
+
+interface VitalDimension {
+    route?: string;
+    device?: string;
+    samples: number;
+    metrics: VitalMetric[];
+}
+
+interface WebVitalsReport {
+    period_days: number;
+    since: string;
+    total_samples: number;
+    metrics: VitalMetric[];
+    routes: VitalDimension[];
+    devices: VitalDimension[];
 }
 
 const levelTone: Record<string, 'neutral' | 'accent' | 'warn' | 'danger'> = {
@@ -44,11 +78,36 @@ const levelTone: Record<string, 'neutral' | 'accent' | 'warn' | 'danger'> = {
     critical: 'danger',
 };
 
+const ratingTone: Record<VitalRating, 'neutral' | 'ok' | 'warn' | 'danger'> = {
+    good: 'ok',
+    'needs-improvement': 'warn',
+    poor: 'danger',
+    'no-data': 'neutral',
+};
+
+const ratingLabel: Record<VitalRating, string> = {
+    good: 'Хорошо',
+    'needs-improvement': 'Нужно улучшить',
+    poor: 'Плохо',
+    'no-data': 'Нет данных',
+};
+
+function formatVital(metric: VitalMetric): string {
+    if (metric.p75 === null) {
+        return '—';
+    }
+
+    return metric.metric === 'CLS'
+        ? metric.p75.toFixed(3)
+        : `${Math.round(metric.p75)} мс`;
+}
+
 export default function ControlCenter({
     state,
     regions,
     metrics,
     alerts,
+    web_vitals: webVitals,
 }: Props) {
     const cards = [
         {
@@ -174,6 +233,182 @@ export default function ControlCenter({
                     ))}
                 </Blueprint>
             </div>
+
+            <section aria-labelledby="rum-heading" className="mt-5">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                    <span>
+                        <h2
+                            id="rum-heading"
+                            className="m-0 text-xl font-semibold"
+                        >
+                            Скорость сайта у посетителей
+                        </h2>
+                        <span className="mt-1 block text-sm text-(--color-neutral-600)">
+                            Core Web Vitals, p75 за {webVitals.period_days} дней
+                            · без IP, user-agent и идентификаторов сессии
+                        </span>
+                    </span>
+                    <Tag
+                        tone={
+                            webVitals.total_samples > 0 ? 'accent' : 'neutral'
+                        }
+                    >
+                        {webVitals.total_samples} измерений
+                    </Tag>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                    {webVitals.metrics.map((metric) => (
+                        <Blueprint
+                            key={metric.metric}
+                            className="flex items-start gap-3 p-4"
+                        >
+                            <Gauge
+                                aria-hidden="true"
+                                size={22}
+                                strokeWidth={1.4}
+                                className="mt-1 text-(--color-accent-700)"
+                            />
+                            <span className="min-w-0 flex-1">
+                                <span className="flex flex-wrap items-center justify-between gap-2">
+                                    <strong className="font-mono text-sm">
+                                        {metric.metric} p75
+                                    </strong>
+                                    <Tag tone={ratingTone[metric.rating]}>
+                                        {ratingLabel[metric.rating]}
+                                    </Tag>
+                                </span>
+                                <strong className="mt-2 block font-mono text-2xl font-semibold">
+                                    {formatVital(metric)}
+                                </strong>
+                                <span className="mt-1 block text-xs text-(--color-neutral-600)">
+                                    {metric.samples} измерений
+                                    {metric.provisional && metric.samples > 0
+                                        ? ' · предварительно (нужно 75)'
+                                        : ''}
+                                </span>
+                            </span>
+                        </Blueprint>
+                    ))}
+                </div>
+
+                <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
+                    <Blueprint className="overflow-x-auto p-0">
+                        <table className="w-full min-w-[620px] border-collapse text-left text-sm">
+                            <caption className="sr-only">
+                                Значения p75 Core Web Vitals по маршрутам
+                            </caption>
+                            <thead>
+                                <tr className="border-b border-(--color-divider) text-xs text-(--color-neutral-600)">
+                                    <th scope="col" className="px-4 py-3">
+                                        Маршрут
+                                    </th>
+                                    {webVitals.metrics.map((metric) => (
+                                        <th
+                                            key={metric.metric}
+                                            scope="col"
+                                            className="px-3 py-3 font-mono"
+                                        >
+                                            {metric.metric}
+                                        </th>
+                                    ))}
+                                    <th
+                                        scope="col"
+                                        className="px-4 py-3 text-right"
+                                    >
+                                        Измерения
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {webVitals.routes.length === 0 ? (
+                                    <tr>
+                                        <td
+                                            colSpan={5}
+                                            className="px-4 py-8 text-center text-(--color-neutral-600)"
+                                        >
+                                            Данные появятся после реальных
+                                            посещений публичного сайта.
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    webVitals.routes.map((route) => (
+                                        <tr
+                                            key={route.route}
+                                            className="border-b border-(--color-divider) last:border-0"
+                                        >
+                                            <th
+                                                scope="row"
+                                                className="max-w-[300px] truncate px-4 py-3 font-mono text-xs font-medium"
+                                            >
+                                                {route.route}
+                                            </th>
+                                            {route.metrics.map((metric) => (
+                                                <td
+                                                    key={metric.metric}
+                                                    className="px-3 py-3 font-mono"
+                                                >
+                                                    {formatVital(metric)}
+                                                </td>
+                                            ))}
+                                            <td className="px-4 py-3 text-right font-mono">
+                                                {route.samples}
+                                            </td>
+                                        </tr>
+                                    ))
+                                )}
+                            </tbody>
+                        </table>
+                    </Blueprint>
+
+                    <Blueprint className="overflow-hidden p-0">
+                        <div className="flex items-center gap-2 border-b border-(--color-divider) px-4 py-3">
+                            <MonitorSmartphone
+                                aria-hidden="true"
+                                size={18}
+                                strokeWidth={1.4}
+                                className="text-(--color-accent-700)"
+                            />
+                            <h3 className="ui-card-title m-0">
+                                По устройствам
+                            </h3>
+                        </div>
+                        {webVitals.devices.length === 0 ? (
+                            <EmptyState
+                                title="Пока нет выборки"
+                                hint="RUM не влияет на работу сайта и заполнится автоматически."
+                            />
+                        ) : (
+                            webVitals.devices.map((device) => (
+                                <div
+                                    key={device.device}
+                                    className="border-b border-(--color-divider) px-4 py-3 last:border-0"
+                                >
+                                    <span className="flex items-center justify-between gap-3">
+                                        <strong className="text-sm font-medium capitalize">
+                                            {device.device}
+                                        </strong>
+                                        <span className="font-mono text-xs text-(--color-neutral-600)">
+                                            {device.samples}
+                                        </span>
+                                    </span>
+                                    <span className="mt-2 flex flex-wrap gap-2">
+                                        {device.metrics.map((metric) => (
+                                            <Tag
+                                                key={metric.metric}
+                                                tone={ratingTone[metric.rating]}
+                                            >
+                                                {metric.metric}:{' '}
+                                                {formatVital(metric)}
+                                            </Tag>
+                                        ))}
+                                    </span>
+                                </div>
+                            ))
+                        )}
+                    </Blueprint>
+                </div>
+            </section>
         </>
     );
 }

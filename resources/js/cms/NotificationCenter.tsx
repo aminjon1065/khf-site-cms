@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { BellOff } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
 import NotificationController from '@/actions/App/Http/Controllers/Cms/NotificationController';
 import { useShared } from '@/lib/auth';
 import { toneColor } from '@/lib/domain';
@@ -18,12 +19,31 @@ export function NotificationCenter({
 }) {
     const { t } = useT();
     const { notifications } = useShared();
+    const [loading, setLoading] = useState(false);
+
+    const loadNotifications = useCallback(() => {
+        router.reload({
+            only: ['notifications', 'notification_unread'],
+            onStart: () => setLoading(true),
+            onFinish: () => setLoading(false),
+        });
+    }, []);
+
+    useEffect(() => {
+        if (open) {
+            loadNotifications();
+        }
+    }, [loadNotifications, open]);
 
     const markAll = () => {
         router.post(
             NotificationController.markAllRead.url(),
             {},
-            { preserveScroll: true, preserveState: true },
+            {
+                preserveScroll: true,
+                preserveState: true,
+                onSuccess: loadNotifications,
+            },
         );
     };
 
@@ -47,22 +67,45 @@ export function NotificationCenter({
             width={390}
             title={t('nav.notifications')}
             footer={
-                notifications.items.length > 0 ? (
+                (notifications?.items.length ?? 0) > 0 ? (
                     <Button variant="ghost" onClick={markAll}>
                         {t('action.mark_all_read')}
                     </Button>
                 ) : undefined
             }
         >
-            {notifications.items.length === 0 ? (
+            {loading && !notifications ? (
+                <div
+                    aria-busy="true"
+                    aria-label="Загрузка уведомлений"
+                    style={{ display: 'grid', gap: 10 }}
+                >
+                    {[0, 1, 2].map((item) => (
+                        <div
+                            key={item}
+                            className="animate-pulse"
+                            style={{
+                                height: 58,
+                                background: 'var(--color-neutral-100)',
+                            }}
+                        />
+                    ))}
+                </div>
+            ) : (notifications?.items.length ?? 0) === 0 ? (
                 <EmptyState
                     icon={<BellOff size={28} strokeWidth={1.5} />}
                     title="Нет уведомлений"
                     hint="Здесь появятся задачи и события системы."
                 />
             ) : (
-                <div style={{ margin: '-14px' }}>
-                    {notifications.items.map((n) => {
+                <div
+                    style={{
+                        margin: '-14px',
+                        opacity: loading ? 0.65 : 1,
+                    }}
+                    aria-busy={loading}
+                >
+                    {notifications?.items.map((n) => {
                         const tone = (
                             [
                                 'neutral',

@@ -11,6 +11,7 @@ use App\Http\Resources\ProjectResource;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\EditorialContent;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -27,7 +28,10 @@ class ProjectController extends Controller
      */
     private const LOCALES = ['ru', 'tg', 'en'];
 
-    public function __construct(private readonly WorkflowService $workflow) {}
+    public function __construct(
+        private readonly WorkflowService $workflow,
+        private readonly EditorialContent $editorialContent,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -285,6 +289,8 @@ class ProjectController extends Controller
             'sort' => (int) $project->sort,
             'published_at' => $project->published_at?->toIso8601String(),
             'languages' => $project->languageCompleteness(),
+            'updated_at' => $project->updated_at?->toIso8601String(),
+            'preview_url' => $this->editorialContent->previewUrl($project),
         ];
     }
 
@@ -436,7 +442,11 @@ class ProjectController extends Controller
             $source = Media::find($request->integer('cover_media_id'));
             if ($source !== null) {
                 $project->clearMediaCollection('cover');
-                $source->copy($project, 'cover');
+                $copy = $source->copy($project, 'cover');
+                $copy
+                    ->setCustomProperty('source_media_id', $source->getKey())
+                    ->setCustomProperty('focal_point', $source->getCustomProperty('focal_point'))
+                    ->saveQuietly();
             }
         }
     }

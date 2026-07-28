@@ -4,6 +4,7 @@ import {
     BookOpen,
     Building2,
     ClipboardCheck,
+    ClipboardList,
     FileStack,
     FileText,
     FolderKanban,
@@ -47,7 +48,7 @@ import StructureUnitController from '@/actions/App/Http/Controllers/Cms/Structur
 import SubmissionController from '@/actions/App/Http/Controllers/Cms/SubmissionController';
 import TaxonomyController from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
 import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
-import { control, dashboard } from '@/routes';
+import { control, dashboard, usability } from '@/routes';
 
 export interface NavItem {
     key: string;
@@ -244,6 +245,13 @@ export const NAV: NavGroup[] = [
                 labelKey: 'nav.activity',
                 href: ActivityController.index.url(),
                 icon: Activity,
+                permission: 'users.view',
+            },
+            {
+                key: 'usability',
+                labelKey: 'Проверка удобства',
+                href: usability.url(),
+                icon: ClipboardList,
                 permission: 'users.view',
             },
             {

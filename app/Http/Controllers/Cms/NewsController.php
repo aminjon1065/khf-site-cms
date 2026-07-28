@@ -12,6 +12,7 @@ use App\Models\News;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\EditorialContent;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -23,7 +24,10 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class NewsController extends Controller
 {
-    public function __construct(private readonly WorkflowService $workflow) {}
+    public function __construct(
+        private readonly WorkflowService $workflow,
+        private readonly EditorialContent $editorialContent,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -311,6 +315,8 @@ class NewsController extends Controller
             'published_at' => $news->published_at?->toIso8601String(),
             'views_count' => (int) $news->views_count,
             'languages' => $news->languageCompleteness(),
+            'updated_at' => $news->updated_at?->toIso8601String(),
+            'preview_url' => $this->editorialContent->previewUrl($news),
         ];
     }
 
@@ -391,7 +397,11 @@ class NewsController extends Controller
             $source = Media::find($request->integer('cover_media_id'));
             if ($source !== null) {
                 $news->clearMediaCollection('cover');
-                $source->copy($news, 'cover');
+                $copy = $source->copy($news, 'cover');
+                $copy
+                    ->setCustomProperty('source_media_id', $source->getKey())
+                    ->setCustomProperty('focal_point', $source->getCustomProperty('focal_point'))
+                    ->saveQuietly();
             }
         }
     }

@@ -36,6 +36,11 @@ it('orders by deadline using the app timezone, not the database engine clock', f
 });
 
 it('returns only publicly visible announcements, open ones first', function () {
+    // Клок фиксируем в «опасном» вечернем окне (19:00–24:00 по Душанбе):
+    // именно там раньше расходились дата движка БД и бизнес-таймзона (P0-2),
+    // и именно тогда этот тест падал случайным образом.
+    Carbon::setTestNow(Carbon::create(2026, 7, 27, 21, 0, 0, 'Asia/Dushanbe'));
+
     Announcement::factory()->published()->create([
         'deadline' => now()->subDay(), 'title' => ['ru' => 'Закрытая', 'tg' => '', 'en' => ''],
     ]);

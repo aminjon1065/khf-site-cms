@@ -17,6 +17,7 @@ use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
 use App\Http\Controllers\Api\StructureUnitController;
 use App\Http\Controllers\Api\SubmissionController;
+use App\Http\Controllers\Api\WebVitalController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -70,6 +71,11 @@ Route::middleware('throttle:api-public')->group(function (): void {
     Route::post('submissions', [SubmissionController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('api.submissions.store');
+
+    // Real-user Core Web Vitals ingestion (анонимные сэмплы с фронта).
+    Route::post('vitals', WebVitalController::class)
+        ->middleware('throttle:rum')
+        ->name('api.vitals.store');
 
     // Emergency alerts + region map status. `active` before `{slug}`.
     Route::get('alerts', [AlertController::class, 'index'])->name('api.alerts.index');

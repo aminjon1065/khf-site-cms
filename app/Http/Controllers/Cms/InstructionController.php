@@ -11,6 +11,7 @@ use App\Http\Resources\InstructionResource;
 use App\Models\Instruction;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\EditorialContent;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -32,7 +33,10 @@ class InstructionController extends Controller
      */
     private const LOCALES = ['ru', 'tg', 'en'];
 
-    public function __construct(private readonly WorkflowService $workflow) {}
+    public function __construct(
+        private readonly WorkflowService $workflow,
+        private readonly EditorialContent $editorialContent,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -290,6 +294,8 @@ class InstructionController extends Controller
             'image_url' => $instruction->getFirstMediaUrl('image') ?: null,
             'published_at' => $instruction->published_at?->toIso8601String(),
             'languages' => $instruction->languageCompleteness(),
+            'updated_at' => $instruction->updated_at?->toIso8601String(),
+            'preview_url' => $this->editorialContent->previewUrl($instruction),
         ];
     }
 
@@ -387,7 +393,11 @@ class InstructionController extends Controller
             $source = Media::find($request->integer('image_media_id'));
             if ($source !== null) {
                 $instruction->clearMediaCollection('image');
-                $source->copy($instruction, 'image');
+                $copy = $source->copy($instruction, 'image');
+                $copy
+                    ->setCustomProperty('source_media_id', $source->getKey())
+                    ->setCustomProperty('focal_point', $source->getCustomProperty('focal_point'))
+                    ->saveQuietly();
             }
         }
     }

@@ -6,13 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Models\Alert;
 use App\Models\User;
 use App\Services\AlertMapService;
+use App\Services\WebVitalsReportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class ControlController extends Controller
 {
-    public function __construct(private readonly AlertMapService $map) {}
+    public function __construct(
+        private readonly AlertMapService $map,
+        private readonly WebVitalsReportService $webVitals,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -46,6 +50,7 @@ class ControlController extends Controller
                 'ends_at' => $alert->ends_at?->isoFormat('D MMMM, HH:mm'),
                 'url' => "/alerts/{$alert->id}/edit",
             ])->values()->all(),
+            'web_vitals' => $this->webVitals->summary(),
         ]);
     }
 }

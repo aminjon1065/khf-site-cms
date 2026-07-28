@@ -10,6 +10,8 @@ createInertiaApp({
         switch (true) {
             case name === 'welcome':
                 return null;
+            case name === 'editorial/preview':
+                return null;
             case name.startsWith('auth/'):
                 return AuthShell;
             default:

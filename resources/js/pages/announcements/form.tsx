@@ -1,16 +1,11 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, Save, Send } from 'lucide-react';
+import { useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import AnnouncementController from '@/actions/App/Http/Controllers/Cms/AnnouncementController';
+import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { StatusBadge } from '@/ui/Badge';
+import { index, store, update } from '@/routes/announcements';
 import { Blueprint } from '@/ui/Blueprint';
-import { Button, LinkButton } from '@/ui/Button';
 import { DatePicker, Field, Input, Select, Textarea } from '@/ui/Field';
-import { LanguageTabs } from '@/ui/Nav';
-import { Dropdown } from '@/ui/Overlay';
-import { PageHeader } from '@/ui/PageHeader';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type PublishMode = 'now' | 'review';
@@ -31,6 +26,8 @@ interface AnnouncementData {
     application_url: string | null;
     status: ContentStatus;
     is_open: boolean;
+    updated_at: string;
+    preview_url: string;
 }
 
 interface Props {
@@ -59,7 +56,7 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
-    const { data, setData, processing, errors } = form;
+    const { data, setData, processing, errors, isDirty } = form;
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
@@ -84,51 +81,72 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
-            ...(isEdit ? { _method: 'put' } : {}),
+            ...(isEdit
+                ? {
+                      _method: 'put',
+                      _editorial_version: announcement!.updated_at,
+                  }
+                : {}),
         }));
 
-        form.post(
-            isEdit
-                ? AnnouncementController.update.url(announcement!.id)
-                : AnnouncementController.store.url(),
-            { forceFormData: true, preserveScroll: true },
-        );
+        form.post(isEdit ? update.url(announcement!.id) : store.url(), {
+            forceFormData: true,
+            preserveScroll: true,
+        });
     };
 
     return (
-        <>
-            <Head
-                title={
-                    isEdit ? 'Редактирование объявления' : 'Новое объявление'
-                }
-            />
-
-            <PageHeader
-                eyebrow={
-                    <Link
-                        href={AnnouncementController.index.url()}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            color: 'var(--color-neutral-600)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ArrowLeft size={14} strokeWidth={1.75} /> Объявления
-                    </Link>
-                }
-                title={
-                    isEdit ? 'Редактирование объявления' : 'Новое объявление'
-                }
-                subtitle="Вакансия или тендер. Приём заявок закрывается автоматически после срока."
-                actions={
-                    isEdit && announcement ? (
-                        <StatusBadge status={announcement.status} />
-                    ) : null
-                }
-            />
-
+        <EditorialFormShell
+            title={isEdit ? 'Редактирование объявления' : 'Новое объявление'}
+            subtitle="Вакансия или тендер. Приём заявок закрывается автоматически после срока."
+            backLabel="Объявления"
+            backHref={index.url()}
+            status={announcement?.status}
+            language={{
+                active: lang,
+                onChange: setLang,
+                completeness: compAll,
+            }}
+            errors={errors}
+            isDirty={isDirty}
+            processing={processing}
+            canPublish={can('announcements.publish')}
+            onSaveDraft={() => submit('draft')}
+            onSubmitReview={() => submit('submit', 'review')}
+            onPublishNow={() => submit('submit', 'now')}
+            autosave={{
+                contentType: 'announcements',
+                contentId: announcement?.id ?? null,
+                baseVersion: announcement?.updated_at ?? null,
+                data,
+                onRecover: (recovered) =>
+                    form.setData({ ...data, ...recovered }),
+            }}
+            preview={{
+                locales: {
+                    tg: { title: data.title.tg, body: data.body.tg },
+                    ru: { title: data.title.ru, body: data.body.ru },
+                    en: { title: data.title.en, body: data.body.en },
+                },
+                signedUrl: announcement?.preview_url,
+                checklist: [
+                    {
+                        label: 'Русская версия заполнена',
+                        ok: compAll.ru === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Таджикская версия заполнена',
+                        ok: compAll.tg === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Срок указан',
+                        ok: data.deadline !== '',
+                    },
+                ],
+            }}
+        >
             <div
                 className="cms-two-col"
                 style={{
@@ -160,11 +178,6 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
                                 Текст объявления
                             </h3>
-                            <LanguageTabs
-                                active={lang}
-                                onChange={setLang}
-                                completeness={compAll}
-                            />
                         </div>
 
                         <Field
@@ -297,61 +310,6 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                     </Blueprint>
                 </div>
             </div>
-
-            {/* --------------------------------------------- sticky actions */}
-            <div className="news-form-actions">
-                <LinkButton
-                    href={AnnouncementController.index.url()}
-                    variant="ghost"
-                >
-                    Отмена
-                </LinkButton>
-                <div style={{ flex: 1 }} />
-                <Button
-                    variant="secondary"
-                    icon={<Save size={15} strokeWidth={1.75} />}
-                    loading={processing}
-                    onClick={() => submit('draft')}
-                >
-                    Сохранить черновик
-                </Button>
-                {can('announcements.publish') ? (
-                    <Dropdown
-                        align="right"
-                        trigger={({ toggle }) => (
-                            <Button
-                                variant="primary"
-                                iconRight={
-                                    <ChevronDown size={15} strokeWidth={2} />
-                                }
-                                onClick={toggle}
-                            >
-                                Опубликовать
-                            </Button>
-                        )}
-                        items={[
-                            {
-                                label: 'Опубликовать сейчас',
-                                onSelect: () => submit('submit', 'now'),
-                            },
-                            { separator: true },
-                            {
-                                label: 'Отправить на согласование',
-                                onSelect: () => submit('submit', 'review'),
-                            },
-                        ]}
-                    />
-                ) : (
-                    <Button
-                        variant="primary"
-                        icon={<Send size={15} strokeWidth={1.75} />}
-                        loading={processing}
-                        onClick={() => submit('submit', 'review')}
-                    >
-                        На согласование
-                    </Button>
-                )}
-            </div>
-        </>
+        </EditorialFormShell>
     );
 }

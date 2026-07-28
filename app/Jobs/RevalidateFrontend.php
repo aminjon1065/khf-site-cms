@@ -2,23 +2,63 @@
 
 namespace App\Jobs;
 
+use App\Support\FrontendRevalidation;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Queue\InteractsWithQueue;
+use Illuminate\Queue\Middleware\ThrottlesExceptions;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
-class RevalidateFrontend implements ShouldQueue
+class RevalidateFrontend implements ShouldBeUnique, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
 
+    public int $timeout = 10;
+
+    public int $uniqueFor = 30;
+
     /** @var list<int> */
     public array $backoff = [10, 30, 120];
+
+    /**
+     * @param  list<string>  $locales
+     */
+    public function __construct(
+        public string $type,
+        public ?int $id,
+        public ?string $slug,
+        public array $locales,
+        public string $event,
+    ) {
+        $this->onQueue((string) config('queue.names.revalidation'));
+    }
+
+    /**
+     * @return list<ThrottlesExceptions>
+     */
+    public function middleware(): array
+    {
+        return [
+            (new ThrottlesExceptions(3, 300))
+                ->by('frontend-revalidation')
+                ->backoff(1)
+                ->report(),
+        ];
+    }
+
+    public function uniqueId(): string
+    {
+        return hash('sha256', implode('|', $this->tags()));
+    }
 
     public function handle(): void
     {
@@ -32,20 +72,65 @@ class RevalidateFrontend implements ShouldQueue
         try {
             Http::withToken($secret)
                 ->acceptJson()
+                ->connectTimeout(2)
                 ->timeout(5)
-                ->post($url, ['tag' => 'cms'])
+                ->post($url, $this->payload())
                 ->throw();
-        } catch (ConnectionException|RequestException $e) {
-            report($e);
+        } catch (ConnectionException|RequestException $exception) {
+            report($exception);
 
-            // Under the `sync` connection this job runs inline inside the
-            // editor's publish request, so a frontend outage must not turn
-            // content publication into a 500 (P0-1). On a real queue
-            // (database/redis) re-throw so the worker's own tries/backoff
-            // retries the job as configured.
-            if ($this->job !== null && $this->job->getConnectionName() !== 'sync') {
-                throw $e;
+            // Под соединением `sync` джоба выполняется прямо внутри запроса
+            // редактора, поэтому недоступность фронта не должна превращать
+            // публикацию материала в 500 (P0-1). На настоящей очереди
+            // (database/redis) пробрасываем исключение — воркер повторит
+            // попытку согласно `tries`/`backoff`.
+            $connection = $this->job?->getConnectionName() ?? config('queue.default');
+
+            if ($connection !== 'sync') {
+                throw $exception;
             }
         }
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        Log::critical('Frontend cache revalidation failed permanently.', [
+            'content_type' => $this->type,
+            'content_id' => $this->id,
+            'slug' => $this->slug,
+            'locales' => $this->locales,
+            'event' => $this->event,
+            'tags' => $this->tags(),
+            'error' => $exception?->getMessage(),
+        ]);
+    }
+
+    /**
+     * @return array{
+     *     type: string,
+     *     id: int|null,
+     *     slug: string|null,
+     *     locales: list<string>,
+     *     event: string,
+     *     tags: list<string>
+     * }
+     */
+    public function payload(): array
+    {
+        return FrontendRevalidation::payload(
+            type: $this->type,
+            id: $this->id,
+            slug: $this->slug,
+            locales: $this->locales,
+            event: $this->event,
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function tags(): array
+    {
+        return $this->payload()['tags'];
     }
 }

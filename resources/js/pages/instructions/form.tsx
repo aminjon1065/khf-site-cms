@@ -1,28 +1,15 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import {
-    ArrowLeft,
-    ChevronDown,
-    Images,
-    Plus,
-    Save,
-    Send,
-    Upload,
-    X,
-} from 'lucide-react';
+import { useForm } from '@inertiajs/react';
+import { Images, Plus, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
-import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
-import { useSaveShortcut } from '@/hooks/use-save-shortcut';
+import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { StatusBadge } from '@/ui/Badge';
+import { index, store, update } from '@/routes/instructions';
 import { Blueprint } from '@/ui/Blueprint';
-import { Button, IconButton, LinkButton } from '@/ui/Button';
+import { Button, IconButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
-import { LanguageTabs } from '@/ui/Nav';
-import { Dropdown } from '@/ui/Overlay';
-import { PageHeader } from '@/ui/PageHeader';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
@@ -49,6 +36,8 @@ interface InstructionData {
     sections: Sections;
     image_url: string | null;
     languages: Record<string, number>;
+    updated_at: string;
+    preview_url: string;
 }
 
 interface Props {
@@ -94,7 +83,7 @@ export default function InstructionForm({ instruction, reference }: Props) {
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
-    const { data, setData, processing, errors } = form;
+    const { data, setData, processing, errors, isDirty } = form;
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
@@ -167,58 +156,87 @@ export default function InstructionForm({ instruction, reference }: Props) {
             action,
             publish_mode: mode ?? d.publish_mode,
             stay,
-            ...(isEdit ? { _method: 'put' } : {}),
+            ...(isEdit
+                ? {
+                      _method: 'put',
+                      _editorial_version: instruction!.updated_at,
+                  }
+                : {}),
         }));
 
-        form.post(
-            isEdit
-                ? InstructionController.update.url(instruction!.id)
-                : InstructionController.store.url(),
-            {
-                forceFormData: true,
-                preserveScroll: true,
-                preserveState: stay,
-            },
-        );
+        form.post(isEdit ? update.url(instruction!.id) : store.url(), {
+            forceFormData: true,
+            preserveScroll: true,
+            preserveState: stay,
+        });
     };
 
-    // Ctrl/Cmd+S — сохранить черновик и остаться в редакторе (stay = true).
-    useSaveShortcut(() => submit('draft', undefined, true), !processing);
-
     return (
-        <>
-            <Head
-                title={
-                    isEdit ? 'Редактирование инструкции' : 'Новая инструкция'
-                }
-            />
-
-            <PageHeader
-                eyebrow={
-                    <Link
-                        href={InstructionController.index.url()}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            color: 'var(--color-neutral-600)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ArrowLeft size={14} strokeWidth={1.75} /> Инструкции
-                    </Link>
-                }
-                title={
-                    isEdit ? 'Редактирование инструкции' : 'Новая инструкция'
-                }
-                subtitle="Заполните название, краткое описание и шаги по блокам «До / Во время / После / Нельзя»."
-                actions={
-                    isEdit && instruction ? (
-                        <StatusBadge status={instruction.status} />
-                    ) : null
-                }
-            />
-
+        <EditorialFormShell
+            title={isEdit ? 'Редактирование инструкции' : 'Новая инструкция'}
+            subtitle="Заполните название, краткое описание и шаги по блокам «До / Во время / После / Нельзя»."
+            backLabel="Инструкции"
+            backHref={index.url()}
+            status={instruction?.status}
+            language={{
+                active: lang,
+                onChange: setLang,
+                completeness: compAll,
+            }}
+            errors={errors}
+            isDirty={isDirty}
+            processing={processing}
+            canPublish={can('instructions.publish')}
+            onSaveDraft={() => submit('draft')}
+            onSaveShortcut={() => submit('draft', undefined, true)}
+            onSubmitReview={() => submit('submit', 'review')}
+            onPublishNow={() => submit('submit', 'now')}
+            autosave={{
+                contentType: 'instructions',
+                contentId: instruction?.id ?? null,
+                baseVersion: instruction?.updated_at ?? null,
+                data,
+                onRecover: (recovered) =>
+                    form.setData({ ...data, ...recovered }),
+            }}
+            preview={{
+                locales: {
+                    tg: {
+                        title: data.name.tg,
+                        summary: data.summary.tg,
+                        body: data.body.tg,
+                    },
+                    ru: {
+                        title: data.name.ru,
+                        summary: data.summary.ru,
+                        body: data.body.ru,
+                    },
+                    en: {
+                        title: data.name.en,
+                        summary: data.summary.en,
+                        body: data.body.en,
+                    },
+                },
+                imageUrl: imageSrc,
+                signedUrl: instruction?.preview_url,
+                checklist: [
+                    {
+                        label: 'Русская версия заполнена',
+                        ok: compAll.ru === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Таджикская версия заполнена',
+                        ok: compAll.tg === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Тип опасности выбран',
+                        ok: data.hazard_type !== '',
+                    },
+                ],
+            }}
+        >
             <div
                 className="cms-two-col"
                 style={{
@@ -250,11 +268,6 @@ export default function InstructionForm({ instruction, reference }: Props) {
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
                                 Основное
                             </h3>
-                            <LanguageTabs
-                                active={lang}
-                                onChange={setLang}
-                                completeness={compAll}
-                            />
                         </div>
 
                         <Field
@@ -613,61 +626,6 @@ export default function InstructionForm({ instruction, reference }: Props) {
                     </Blueprint>
                 </div>
             </div>
-
-            {/* --------------------------------------------- sticky actions */}
-            <div className="news-form-actions">
-                <LinkButton
-                    href={InstructionController.index.url()}
-                    variant="ghost"
-                >
-                    Отмена
-                </LinkButton>
-                <div style={{ flex: 1 }} />
-                <Button
-                    variant="secondary"
-                    icon={<Save size={15} strokeWidth={1.75} />}
-                    loading={processing}
-                    onClick={() => submit('draft')}
-                >
-                    Сохранить черновик
-                </Button>
-                {can('instructions.publish') ? (
-                    <Dropdown
-                        align="right"
-                        trigger={({ toggle }) => (
-                            <Button
-                                variant="primary"
-                                iconRight={
-                                    <ChevronDown size={15} strokeWidth={2} />
-                                }
-                                onClick={toggle}
-                            >
-                                Опубликовать
-                            </Button>
-                        )}
-                        items={[
-                            {
-                                label: 'Опубликовать сейчас',
-                                onSelect: () => submit('submit', 'now'),
-                            },
-                            { separator: true },
-                            {
-                                label: 'Отправить на согласование',
-                                onSelect: () => submit('submit', 'review'),
-                            },
-                        ]}
-                    />
-                ) : (
-                    <Button
-                        variant="primary"
-                        icon={<Send size={15} strokeWidth={1.75} />}
-                        loading={processing}
-                        onClick={() => submit('submit', 'review')}
-                    >
-                        На согласование
-                    </Button>
-                )}
-            </div>
-        </>
+        </EditorialFormShell>
     );
 }

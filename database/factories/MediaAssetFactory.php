@@ -20,6 +20,7 @@ class MediaAssetFactory extends Factory
         return [
             'title' => fake()->words(2, true),
             'alt' => null,
+            'is_decorative' => false,
         ];
     }
 }

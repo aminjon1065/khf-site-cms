@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Menu\MenuRequest;
+use App\Jobs\RevalidateFrontend;
 use App\Models\MenuItem;
+use App\Support\FrontendRevalidation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -89,6 +91,15 @@ class MenuController extends Controller
                     ->delete();
             }
         });
+
+        $payload = FrontendRevalidation::forShell();
+        RevalidateFrontend::dispatch(
+            type: $payload['type'],
+            id: $payload['id'],
+            slug: $payload['slug'],
+            locales: $payload['locales'],
+            event: $payload['event'],
+        )->afterCommit();
 
         return back()->with('success', 'Меню сайта сохранено.');
     }

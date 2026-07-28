@@ -21,6 +21,7 @@ class WorkflowNotification extends Notification implements ShouldQueue
         public string $message,
         public string $tone = 'info',
     ) {
+        $this->onQueue((string) config('queue.names.notifications'));
         $this->afterCommit();
     }
 

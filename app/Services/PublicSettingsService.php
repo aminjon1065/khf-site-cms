@@ -7,10 +7,24 @@ use App\Models\Setting;
 /** Builds the whitelisted, locale-aware settings shared by public endpoints. */
 class PublicSettingsService
 {
+    public function __construct(private readonly PublicReadModelCache $cache) {}
+
     /**
      * @return array{data: array<string, mixed>, meta: array<string, mixed>}
      */
     public function resolve(string $locale): array
+    {
+        return $this->cache->remember(
+            PublicReadModelCache::SETTINGS,
+            $locale,
+            fn (): array => $this->build($locale),
+        );
+    }
+
+    /**
+     * @return array{data: array<string, mixed>, meta: array<string, mixed>}
+     */
+    private function build(string $locale): array
     {
         $groups = Setting::grouped();
         $fallbackUsed = false;

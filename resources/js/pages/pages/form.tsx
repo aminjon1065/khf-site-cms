@@ -1,16 +1,11 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, Save, Send } from 'lucide-react';
+import { useForm } from '@inertiajs/react';
 import { useState } from 'react';
-import PageController from '@/actions/App/Http/Controllers/Cms/PageController';
+import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { StatusBadge } from '@/ui/Badge';
+import { index, store, update } from '@/routes/pages';
 import { Blueprint } from '@/ui/Blueprint';
-import { Button, LinkButton } from '@/ui/Button';
 import { Field, Input, Select, Textarea } from '@/ui/Field';
-import { LanguageTabs } from '@/ui/Nav';
-import { Dropdown } from '@/ui/Overlay';
-import { PageHeader } from '@/ui/PageHeader';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
@@ -31,6 +26,8 @@ interface PageData {
     status: ContentStatus;
     parent_id: number | null;
     sort: number;
+    updated_at: string;
+    preview_url: string;
 }
 
 interface Props {
@@ -56,7 +53,7 @@ export default function PageForm({ page, reference }: Props) {
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
-    const { data, setData, processing, errors } = form;
+    const { data, setData, processing, errors, isDirty } = form;
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
@@ -98,48 +95,88 @@ export default function PageForm({ page, reference }: Props) {
             action,
             publish_mode: mode ?? d.publish_mode,
             parent_id: d.parent_id === '' ? null : d.parent_id,
-            ...(isEdit ? { _method: 'put' } : {}),
+            ...(isEdit
+                ? {
+                      _method: 'put',
+                      _editorial_version: page!.updated_at,
+                  }
+                : {}),
         }));
 
-        form.post(
-            isEdit
-                ? PageController.update.url(page!.id)
-                : PageController.store.url(),
-            {
-                preserveScroll: true,
-            },
-        );
+        form.post(isEdit ? update.url(page!.id) : store.url(), {
+            preserveScroll: true,
+        });
     };
 
     return (
-        <>
-            <Head
-                title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
-            />
-
-            <PageHeader
-                eyebrow={
-                    <Link
-                        href={PageController.index.url()}
-                        style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: 6,
-                            color: 'var(--color-neutral-600)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        <ArrowLeft size={14} strokeWidth={1.75} /> Страницы
-                        сайта
-                    </Link>
-                }
-                title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
-                subtitle="Редакционная страница портала с локализованным rich text и SEO."
-                actions={
-                    isEdit && page ? <StatusBadge status={page.status} /> : null
-                }
-            />
-
+        <EditorialFormShell
+            title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
+            subtitle="Редакционная страница портала с локализованным rich text и SEO."
+            backLabel="Страницы сайта"
+            backHref={index.url()}
+            status={page?.status}
+            language={{
+                active: lang,
+                onChange: setLang,
+                completeness: compAll,
+            }}
+            errors={errors}
+            isDirty={isDirty}
+            processing={processing}
+            canPublish={can('pages.publish')}
+            onSaveDraft={() => submit('draft')}
+            onSubmitReview={() => submit('submit', 'review')}
+            onPublishNow={() => submit('submit', 'now')}
+            autosave={{
+                contentType: 'pages',
+                contentId: page?.id ?? null,
+                baseVersion: page?.updated_at ?? null,
+                data,
+                onRecover: (recovered) =>
+                    form.setData({ ...data, ...recovered }),
+            }}
+            preview={{
+                locales: {
+                    tg: {
+                        title: data.title.tg,
+                        body: data.body.tg,
+                        seoTitle: data.seo_title.tg,
+                        seoDescription: data.seo_description.tg,
+                    },
+                    ru: {
+                        title: data.title.ru,
+                        body: data.body.ru,
+                        seoTitle: data.seo_title.ru,
+                        seoDescription: data.seo_description.ru,
+                    },
+                    en: {
+                        title: data.title.en,
+                        body: data.body.en,
+                        seoTitle: data.seo_title.en,
+                        seoDescription: data.seo_description.en,
+                    },
+                },
+                signedUrl: page?.preview_url,
+                checklist: [
+                    {
+                        label: 'Русская версия заполнена',
+                        ok: compAll.ru === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'Таджикская версия заполнена',
+                        ok: compAll.tg === 100,
+                        blocking: true,
+                    },
+                    {
+                        label: 'SEO preview заполнен',
+                        ok:
+                            data.seo_title.ru.trim() !== '' &&
+                            data.seo_description.ru.trim() !== '',
+                    },
+                ],
+            }}
+        >
             <div
                 className="cms-two-col"
                 style={{
@@ -171,11 +208,6 @@ export default function PageForm({ page, reference }: Props) {
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
                                 Содержание
                             </h3>
-                            <LanguageTabs
-                                active={lang}
-                                onChange={setLang}
-                                completeness={compAll}
-                            />
                         </div>
 
                         <Field
@@ -316,58 +348,6 @@ export default function PageForm({ page, reference }: Props) {
                     </Blueprint>
                 </div>
             </div>
-
-            {/* --------------------------------------------- sticky actions */}
-            <div className="news-form-actions">
-                <LinkButton href={PageController.index.url()} variant="ghost">
-                    Отмена
-                </LinkButton>
-                <div style={{ flex: 1 }} />
-                <Button
-                    variant="secondary"
-                    icon={<Save size={15} strokeWidth={1.75} />}
-                    loading={processing}
-                    onClick={() => submit('draft')}
-                >
-                    Сохранить черновик
-                </Button>
-                {can('pages.publish') ? (
-                    <Dropdown
-                        align="right"
-                        trigger={({ toggle }) => (
-                            <Button
-                                variant="primary"
-                                iconRight={
-                                    <ChevronDown size={15} strokeWidth={2} />
-                                }
-                                onClick={toggle}
-                            >
-                                Опубликовать
-                            </Button>
-                        )}
-                        items={[
-                            {
-                                label: 'Опубликовать сейчас',
-                                onSelect: () => submit('submit', 'now'),
-                            },
-                            { separator: true },
-                            {
-                                label: 'Отправить на согласование',
-                                onSelect: () => submit('submit', 'review'),
-                            },
-                        ]}
-                    />
-                ) : (
-                    <Button
-                        variant="primary"
-                        icon={<Send size={15} strokeWidth={1.75} />}
-                        loading={processing}
-                        onClick={() => submit('submit', 'review')}
-                    >
-                        На согласование
-                    </Button>
-                )}
-            </div>
-        </>
+        </EditorialFormShell>
     );
 }

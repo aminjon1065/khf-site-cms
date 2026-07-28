@@ -1,13 +1,13 @@
 <?php
 
 use App\Enums\ContentStatus;
+use App\Jobs\RevalidateFrontend;
 use App\Models\News;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Http\Client\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -24,11 +24,19 @@ function revalidationEditor(): User
     return $user;
 }
 
-it('sends exactly one authenticated POST to the frontend when publishing and a webhook is configured', function () {
+// Проверяем именно ДИСПАТЧ, а не сам HTTP-запрос: джоба ставится через
+// `->afterCommit()`, а под `RefreshDatabase` внешняя транзакция никогда не
+// коммитится, поэтому внутри запроса она принципиально не выполнится.
+// Поведение самого запроса (авторизация, 401/500, обрыв связи, поведение
+// под sync и под реальной очередью) покрыто в
+// `tests/Feature/Jobs/RevalidateFrontendTest.php`.
+it('dispatches exactly one granular revalidation job when publishing and a webhook is configured', function () {
     config([
         'services.frontend.revalidation_url' => 'http://localhost:3000/api/revalidate',
         'services.frontend.revalidation_secret' => 'test-secret',
     ]);
+
+    Queue::fake();
 
     $news = News::factory()->create();
 
@@ -38,11 +46,18 @@ it('sends exactly one authenticated POST to the frontend when publishing and a w
 
     expect($news->fresh()->status)->toBe(ContentStatus::Published);
 
-    Http::assertSentCount(1);
-    Http::assertSent(function (Request $request): bool {
-        return $request->url() === 'http://localhost:3000/api/revalidate'
-            && $request->hasHeader('Authorization', 'Bearer test-secret')
-            && $request->data() === ['tag' => 'cms'];
+    Queue::assertPushed(RevalidateFrontend::class, 1);
+    Queue::assertPushed(function (RevalidateFrontend $job) use ($news): bool {
+        $payload = $job->payload();
+
+        // Полезная нагрузка стала гранулярной (O-009): вместо единственного
+        // `{"tag":"cms"}` уходит тип, идентификатор, slug, локали, событие и
+        // готовый список тегов — фронт инвалидирует только затронутое.
+        return $payload['type'] === 'news'
+            && $payload['id'] === $news->id
+            && $payload['event'] === 'published'
+            && in_array('cms:news:ru', $payload['tags'], true)
+            && $job->afterCommit === true;
     });
 });
 
@@ -82,22 +97,17 @@ it('does not turn a frontend outage into a 500 under the sync queue connection',
     expect($news->fresh()->status)->toBe(ContentStatus::Published);
 });
 
-// D-5: phpunit.xml forces QUEUE_CONNECTION=sync for every other test in this
-// suite, so the `!== 'sync'` branch in RevalidateFrontend::handle() (the one
-// that actually matters once a real deploy runs `database`/`redis`) had
-// never been exercised. Overriding queue.default here — instead of faking
-// the queue — lets the job really round-trip through the `jobs` table via
-// the database driver, same as `queue:work` would in production.
-it('re-throws so the worker retries once a real (non-sync) queue connection is active', function () {
+// D-5: джоба должна уходить на выделенную очередь ревалидации, а не в
+// общий поток — иначе всплеск публикаций задержит уведомления и наоборот.
+// Сам рестарт/ретрай при недоступном фронте проверяется на уровне джобы
+// (`RevalidateFrontendTest`: rethrow при non-sync соединении).
+it('queues revalidation on its own queue so it cannot block other work', function () {
     config([
         'services.frontend.revalidation_url' => 'http://localhost:3000/api/revalidate',
         'services.frontend.revalidation_secret' => 'test-secret',
-        'queue.default' => 'database',
     ]);
 
-    Http::fake(function (): void {
-        throw new ConnectionException('Connection refused.');
-    });
+    Queue::fake();
 
     $news = News::factory()->create();
 
@@ -105,13 +115,8 @@ it('re-throws so the worker retries once a real (non-sync) queue connection is a
         ->post("/news/{$news->id}/publish")
         ->assertRedirect();
 
-    expect($news->fresh()->status)->toBe(ContentStatus::Published)
-        ->and(DB::table('jobs')->count())->toBe(1);
-
-    $this->artisan('queue:work', ['--once' => true])->assertSuccessful();
-
-    // Still on the queue for a retry (not deleted as "successful") proves
-    // the exception propagated out of handle() instead of being swallowed.
-    expect(DB::table('jobs')->count())->toBe(1)
-        ->and(DB::table('jobs')->value('attempts'))->toBe(1);
+    Queue::assertPushed(
+        RevalidateFrontend::class,
+        fn (RevalidateFrontend $job): bool => $job->queue === (string) config('queue.names.revalidation'),
+    );
 });

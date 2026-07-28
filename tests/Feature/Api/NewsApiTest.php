@@ -77,7 +77,7 @@ it('never leaks internal editorial fields', function () {
     $item = $this->getJson('/api/v1/news?locale=ru')->json('data.0');
 
     expect(array_keys($item))->toEqualCanonicalizing([
-        'slug', 'title', 'excerpt', 'category', 'date', 'datetime', 'image', 'image_srcset', 'featured',
+        'slug', 'title', 'excerpt', 'category', 'date', 'datetime', 'image', 'image_srcset', 'image_data', 'featured',
     ]);
 });
 

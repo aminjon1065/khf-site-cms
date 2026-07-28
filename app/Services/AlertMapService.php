@@ -40,6 +40,19 @@ class AlertMapService
             ->orderBy('sort')
             ->get();
 
+        return $this->snapshotFor($alerts, $regions, $locale);
+    }
+
+    /**
+     * Build a snapshot from already-loaded alerts and regions so compound read
+     * models do not repeat the same active-alert query.
+     *
+     * @param  Collection<int, Alert>  $alerts
+     * @param  Collection<int, Region>  $regions
+     * @return array{state: string, count: int, regions: list<array{key: string, name: string, level: string, count: int, statusText: string}>}
+     */
+    public function snapshotFor(Collection $alerts, Collection $regions, string $locale): array
+    {
         $statuses = [];
         $maxRank = 0;
 

@@ -1,32 +1,25 @@
 <?php
 
+use App\Models\Alert;
+use App\Models\Announcement;
+use App\Models\Category;
+use App\Models\Document;
 use App\Models\HomeBlock;
+use App\Models\Instruction;
 use App\Models\News;
+use App\Models\Project;
+use App\Models\Region;
+use App\Services\HomePageReadModel;
 use Database\Seeders\HomeBlockSeeder;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\SettingSeeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 use function Pest\Laravel\seed;
 
 beforeEach(function () {
     seed([RegionSeeder::class, HomeBlockSeeder::class, SettingSeeder::class]);
-});
-
-// D-2: the two tests above that save() a HomeBlock and immediately re-fetch
-// (block limit, disabled block) already prove invalidation-on-save works —
-// this adds the other half: a repeat request must skip the DB entirely.
-it('serves the second identical request from cache without hitting the database', function () {
-    $this->getJson('/api/v1/home?locale=ru')->assertOk();
-
-    $queries = 0;
-    DB::listen(function () use (&$queries) {
-        $queries++;
-    });
-
-    $this->getJson('/api/v1/home?locale=ru')->assertOk();
-
-    expect($queries)->toBe(0);
 });
 
 it('returns enabled blocks in editor order', function () {
@@ -102,4 +95,66 @@ it('returns each home-block title in the requested locale', function () {
 
     expect($blocks['latest_news']['title'])->toBe('Latest news')
         ->and($blocks['instructions']['title'])->toBe('Public safety guides');
+});
+
+it('builds a populated home read model within a fixed query budget', function () {
+    $region = Region::query()->firstOrFail();
+    $alert = Alert::factory()->published()->create();
+    $alert->regions()->attach($region);
+    $category = Category::query()->create([
+        'type' => 'news',
+        'name' => ['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News'],
+        'slug' => 'home-query-budget',
+        'sort' => 1,
+    ]);
+    News::factory()->published()->create([
+        'category_id' => $category->id,
+        'show_on_home' => true,
+    ]);
+    Instruction::factory()->published()->create();
+    Document::factory()->published()->create();
+    Announcement::factory()->published()->create();
+    Project::factory()->published()->create();
+
+    Cache::flush();
+    DB::flushQueryLog();
+    DB::enableQueryLog();
+
+    $data = app(HomePageReadModel::class)->build('ru');
+
+    $queries = collect(DB::getQueryLog())
+        ->pluck('query')
+        ->filter(fn (string $query): bool => str_starts_with($query, 'select ')
+            && preg_match('/from [`"]cache[`"]/', $query) !== 1)
+        ->values();
+    DB::disableQueryLog();
+
+    expect($data['alerts']['items'])->toHaveCount(1)
+        ->and($data['news'])->not->toBeEmpty()
+        ->and($data['instructions'])->not->toBeEmpty()
+        ->and($data['documents'])->not->toBeEmpty()
+        ->and($data['announcements'])->not->toBeEmpty()
+        ->and($data['projects'])->not->toBeEmpty()
+        ->and($queries)->toHaveCount(15)
+        ->and($queries->filter(fn (string $query): bool => preg_match('/from [`"]alerts[`"]/', $query) === 1))->toHaveCount(1);
+
+    $newsQuery = $queries->first(fn (string $query): bool => preg_match('/from [`"]news[`"]/', $query) === 1);
+    expect($newsQuery)->toBeString()
+        ->and($newsQuery)->not->toContain('"body"', '`body`', '"seo"', '`seo`', '"views_count"', '`views_count`');
+});
+
+// D-2 (линия main): тесты выше, которые сохраняют HomeBlock и сразу
+// перечитывают ответ, уже доказывают инвалидацию при save(). Этот проверяет
+// вторую половину — повторный идентичный запрос не должен идти в БД вообще.
+it('serves the second identical request from cache without hitting the database', function () {
+    $this->getJson('/api/v1/home?locale=ru')->assertOk();
+
+    $queries = 0;
+    DB::listen(function () use (&$queries) {
+        $queries++;
+    });
+
+    $this->getJson('/api/v1/home?locale=ru')->assertOk();
+
+    expect($queries)->toBe(0);
 });

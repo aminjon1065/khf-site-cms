@@ -1,9 +1,11 @@
 <?php
 
+use App\Jobs\RevalidateFrontend;
 use App\Models\Setting;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\SettingSeeder;
+use Illuminate\Support\Facades\Queue;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -29,6 +31,8 @@ it('forbids a role without settings access', function () {
 });
 
 it('persists whitelisted settings and ignores sensitive groups', function () {
+    Queue::fake();
+
     actingAs(settingUser('admin'))->put('/settings', [
         'settings' => [
             'org' => ['short_name_ru' => 'КЧС ТЕСТ'],
@@ -40,6 +44,15 @@ it('persists whitelisted settings and ignores sensitive groups', function () {
         ->toBe('КЧС ТЕСТ')
         ->and(Setting::query()->where('group', 'security')->where('key', 'api_key')->exists())
         ->toBeFalse();
+
+    Queue::assertPushed(
+        RevalidateFrontend::class,
+        fn (RevalidateFrontend $job): bool => $job->type === 'shell'
+            && $job->id === null
+            && $job->slug === null
+            && $job->tags() === ['cms:shell:ru', 'cms:shell:tj', 'cms:shell:en']
+            && $job->afterCommit === true,
+    );
 });
 
 it('rejects unsafe social URLs', function () {

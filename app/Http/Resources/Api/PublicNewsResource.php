@@ -3,9 +3,11 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\News;
+use App\Support\PublicImageData;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
  * Public DTO for a news item. Emits exactly the shape the Next.js site expects
@@ -47,6 +49,7 @@ class PublicNewsResource extends JsonResource
             'datetime' => $this->published_at?->toIso8601String(),
             'image' => $this->coverUrl(),
             'image_srcset' => $this->thumbnailSrcset('cover'),
+            'image_data' => $this->imageData($locale),
             'featured' => (bool) $this->is_pinned,
         ];
 
@@ -89,5 +92,24 @@ class PublicNewsResource extends JsonResource
         $url = $this->getFirstMediaUrl('cover');
 
         return $url !== '' ? $url : null;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function imageData(string $locale): ?array
+    {
+        $media = $this->getFirstMedia('cover');
+
+        if (! $media instanceof Media) {
+            return null;
+        }
+
+        $alt = trim((string) $this->cover_alt);
+
+        return PublicImageData::fromMedia(
+            $media,
+            $alt !== '' ? $alt : $this->tr('title', $locale),
+        );
     }
 }
