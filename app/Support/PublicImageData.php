@@ -37,6 +37,15 @@ class PublicImageData
     ];
 
     /**
+     * @var array<string, list<string>>
+     */
+    private const PUBLIC_CONVERSIONS = [
+        'avif' => ['sm-avif', 'md-avif', 'lg-avif'],
+        'webp' => ['sm-webp', 'md-webp', 'lg-webp'],
+        'fallback' => ['sm', 'md', 'lg'],
+    ];
+
+    /**
      * @return ImageData
      */
     public static function fromMedia(
@@ -106,6 +115,10 @@ class PublicImageData
             $bytes = self::positiveInt($item['bytes'] ?? null);
 
             if (! is_string($conversion) || $width === null || $bytes === null) {
+                continue;
+            }
+
+            if (! in_array($conversion, self::PUBLIC_CONVERSIONS[$format] ?? [], true)) {
                 continue;
             }
 

@@ -113,7 +113,63 @@ it('includes non-alert workflow types pending approval in the attention queue', 
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->has('tasks', 1)
-            ->where('tasks.0.href', '/approvals'));
+            ->where('tasks.0.href', '/approvals')
+            ->where('taskCenter.href', '/approvals'));
+});
+
+it('gives translators incomplete translation tasks and their queue link', function () {
+    $news = News::factory()->create([
+        'status' => ContentStatus::TranslationCheck,
+    ]);
+
+    actingAs(dashboardUser('translator'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('tasks', 1)
+            ->where('tasks.0.kind', 'translation')
+            ->where('tasks.0.action', 'Перевести')
+            ->where('tasks.0.href', "/news/{$news->id}/edit")
+            ->where('taskCenter.href', '/editorial/translations')
+            ->where('taskCenter.label', 'Очередь переводов'));
+});
+
+it('prioritizes the authors returned material and only shows their own drafts', function () {
+    $editor = dashboardUser('editor');
+    $otherEditor = dashboardUser('editor');
+    $returned = Page::factory()->create([
+        'author_id' => $editor->id,
+        'status' => ContentStatus::Returned,
+    ]);
+    $draft = News::factory()->create([
+        'author_id' => $editor->id,
+        'status' => ContentStatus::Draft,
+    ]);
+    News::factory()->create([
+        'author_id' => $otherEditor->id,
+        'status' => ContentStatus::Draft,
+    ]);
+
+    actingAs($editor)->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('tasks', 2)
+            ->where('tasks.0.kind', 'returned')
+            ->where('tasks.0.href', "/pages/{$returned->id}/edit")
+            ->where('tasks.1.kind', 'draft')
+            ->where('tasks.1.href', "/news/{$draft->id}/edit"));
+});
+
+it('does not offer viewers edit actions for expiring alerts', function () {
+    Alert::factory()->published()->create([
+        'starts_at' => now()->subHour(),
+        'ends_at' => now()->addHour(),
+    ]);
+
+    actingAs(dashboardUser('viewer'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('tasks', 0)
+            ->where('taskCenter', null));
 });
 
 it('shows recently published non-alert, non-news content on the calendar', function () {

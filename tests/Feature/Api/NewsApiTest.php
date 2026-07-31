@@ -1,8 +1,15 @@
 <?php
 
 use App\Enums\ContentStatus;
+use App\Jobs\PerformMediaConversions;
 use App\Models\Category;
+use App\Models\MediaAsset;
 use App\Models\News;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
+use Spatie\MediaLibrary\Conversions\ConversionCollection;
+use Spatie\MediaLibrary\Conversions\FileManipulator;
 
 it('returns only publicly visible news', function () {
     News::factory()->published()->create(['title' => ['ru' => 'Опубликовано', 'tg' => 'Нашр шуд', 'en' => '']]);
@@ -53,6 +60,42 @@ it('returns a published item by slug with a body', function () {
         ->assertJsonPath('data.body', 'Полный текст новости.')
         ->assertJsonPath('data.seo.title', 'SEO новости')
         ->assertJsonPath('data.seo.description', 'Описание для поиска.');
+});
+
+it('resolves rich text media ids to versioned picture derivatives', function () {
+    Storage::fake('public');
+    Queue::fake();
+    config(['media-library.queue_conversions_after_database_commit' => false]);
+    $asset = MediaAsset::factory()->create();
+    $media = $asset
+        ->addMedia(UploadedFile::fake()->image('article.jpg', 1800, 1200))
+        ->toMediaCollection('asset');
+
+    (new PerformMediaConversions(
+        ConversionCollection::createForMedia($media),
+        $media,
+    ))->handle(app(FileManipulator::class));
+
+    News::factory()->published()->create([
+        'slug' => 'rich-media',
+        'body' => [
+            'ru' => '<p><img src="'.$media->getUrl().'" data-media-id="'.$media->id.'" alt="Учения"></p>',
+            'tg' => '',
+            'en' => '',
+        ],
+    ]);
+
+    $body = $this->getJson('/api/v1/news/rich-media?locale=ru')
+        ->assertOk()
+        ->json('data.body');
+
+    expect($body)
+        ->toContain('<picture data-media-id="'.$media->id.'">')
+        ->toContain('type="image/avif"')
+        ->toContain('type="image/webp"')
+        ->toContain('loading="lazy"')
+        ->toContain('?v=')
+        ->not->toContain('src="'.$media->getUrl().'"');
 });
 
 it('returns 404 for a draft item requested by slug', function () {

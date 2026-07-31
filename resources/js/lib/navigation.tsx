@@ -23,6 +23,7 @@ import {
     Tags,
     TriangleAlert,
     Trash2,
+    Languages,
     UserCog,
     Users,
 } from 'lucide-react';
@@ -49,6 +50,7 @@ import SettingController from '@/actions/App/Http/Controllers/Cms/SettingControl
 import StructureUnitController from '@/actions/App/Http/Controllers/Cms/StructureUnitController';
 import SubmissionController from '@/actions/App/Http/Controllers/Cms/SubmissionController';
 import TaxonomyController from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
+import TranslationQueueController from '@/actions/App/Http/Controllers/Cms/TranslationQueueController';
 import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
 import { control, dashboard, usability } from '@/routes';
 
@@ -168,6 +170,13 @@ export const NAV: NavGroup[] = [
                 href: ProjectController.index.url(),
                 icon: FolderKanban,
                 permission: 'projects.view',
+            },
+            {
+                key: 'editorial-translations',
+                labelKey: 'Очередь переводов',
+                href: TranslationQueueController.index.url(),
+                icon: Languages,
+                permission: 'news.edit',
             },
             {
                 key: 'editorial-trash',

@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Page;
+use App\Support\RichTextMediaResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -38,7 +39,8 @@ class PublicPageResource extends JsonResource
         ];
 
         if ($this->withBody) {
-            $data['body'] = $this->tr('body', $locale);
+            $data['body'] = app(RichTextMediaResolver::class)
+                ->resolve($this->tr('body', $locale));
             $data['seo'] = [
                 'title' => $this->tr('seo_title', $locale),
                 'description' => $this->tr('seo_description', $locale),

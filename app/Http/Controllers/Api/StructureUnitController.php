@@ -33,7 +33,10 @@ class StructureUnitController extends Controller
             "public-api:structure:{$locale}",
             self::CACHE_TTL_SECONDS,
             fn (): array => PublicStructureUnitResource::collection(
-                StructureUnit::query()->ordered()->get(),
+                StructureUnit::query()
+                    ->select(['id', 'num', 'name', 'desc'])
+                    ->ordered()
+                    ->get(),
             )->resolve(),
         );
 

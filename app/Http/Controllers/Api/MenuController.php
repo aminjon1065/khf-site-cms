@@ -38,6 +38,7 @@ class MenuController extends Controller
     {
         /** @var Collection<int, MenuItem> $items */
         $items = MenuItem::query()
+            ->select(['id', 'parent_id', 'label', 'url'])
             ->where('location', $location)
             ->where('enabled', true)
             ->orderBy('sort')

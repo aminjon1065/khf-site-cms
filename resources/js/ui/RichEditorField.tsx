@@ -69,6 +69,7 @@ async function uploadImagesAt(
                         src: res.data.url,
                         alt: res.data.name ?? '',
                         srcset: res.data.srcset,
+                        mediaId: res.data.id,
                     }),
                 ),
             );
@@ -226,6 +227,7 @@ export function RichEditorField({ value, onChange, placeholder }: Props) {
                     alt: item.alt ?? item.name ?? '',
                     caption: item.caption,
                     srcset: item.srcset,
+                    mediaId: item.id,
                 },
             })
             .run();

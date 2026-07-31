@@ -21,14 +21,19 @@ use App\Models\Setting;
 use App\Models\User;
 use App\Observers\CaptureEditorialRevision;
 use App\Observers\InvalidatePublicReadModels;
+use App\Services\OperationalTelemetry;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\Events\CacheFailedOver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
+use Illuminate\Queue\Events\JobExceptionOccurred;
 use Illuminate\Queue\Events\JobFailed;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Queue\Events\QueueBusy;
 use Illuminate\Queue\Events\QueueFailedOver;
 use Illuminate\Support\Facades\Date;
@@ -50,7 +55,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(OperationalTelemetry::class);
     }
 
     /**
@@ -63,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
         $this->configureAuthEvents();
         $this->configureMediaEvents();
         $this->configureInfrastructureEvents();
+        $this->configureSlowQueryLogging();
         $this->configureRateLimiting();
         $this->configurePublicReadModelCache();
         $this->configureEditorialRevisions();
@@ -128,38 +134,85 @@ class AppServiceProvider extends ServiceProvider
 
     protected function configureInfrastructureEvents(): void
     {
+        Event::listen(JobProcessing::class, function (JobProcessing $event): void {
+            app(OperationalTelemetry::class)->startQueueJob($this->queueJobId($event->job));
+        });
+        Event::listen(JobProcessed::class, function (JobProcessed $event): void {
+            app(OperationalTelemetry::class)->finishQueueJob(
+                $this->queueJobId($event->job),
+                $event->job->getQueue(),
+            );
+        });
+        Event::listen(JobExceptionOccurred::class, function (JobExceptionOccurred $event): void {
+            app(OperationalTelemetry::class)->finishQueueJob(
+                $this->queueJobId($event->job),
+                $event->job->getQueue(),
+                true,
+            );
+        });
         Event::listen(CacheFailedOver::class, fn (CacheFailedOver $event) => Log::warning(
-            'Cache store failed over.',
+            'cache_failed_over',
             [
+                'event' => 'cache_failed_over',
                 'store' => $event->storeName,
                 'error' => $event->exception->getMessage(),
             ],
         ));
         Event::listen(QueueFailedOver::class, fn (QueueFailedOver $event) => Log::critical(
-            'Queue connection failed over.',
+            'queue_failed_over',
             [
+                'event' => 'queue_failed_over',
                 'connection' => $event->connectionName,
                 'job' => is_object($event->command) ? $event->command::class : (string) $event->command,
                 'error' => $event->exception->getMessage(),
             ],
         ));
         Event::listen(QueueBusy::class, fn (QueueBusy $event) => Log::critical(
-            'Queue backlog threshold exceeded.',
+            'queue_backlog_exceeded',
             [
+                'event' => 'queue_backlog_exceeded',
                 'connection' => $event->connectionName,
                 'queue' => $event->queue,
                 'size' => $event->size,
             ],
         ));
         Event::listen(JobFailed::class, fn (JobFailed $event) => Log::critical(
-            'Queued job failed permanently.',
+            'queue_job_failed',
             [
+                'event' => 'queue_job_failed',
                 'connection' => $event->connectionName,
                 'queue' => $event->job->getQueue(),
                 'job' => $event->job->resolveName(),
                 'error' => $event->exception->getMessage(),
             ],
         ));
+    }
+
+    private function queueJobId(object $job): string
+    {
+        if (method_exists($job, 'uuid') && is_string($job->uuid())) {
+            return $job->uuid();
+        }
+
+        return (string) spl_object_id($job);
+    }
+
+    protected function configureSlowQueryLogging(): void
+    {
+        DB::listen(function (QueryExecuted $query): void {
+            $threshold = (float) config('observability.database.slow_query_ms', 250);
+
+            if ($query->time < $threshold) {
+                return;
+            }
+
+            Log::warning('slow_database_query', [
+                'event' => 'slow_database_query',
+                'connection' => $query->connectionName,
+                'duration_ms' => round($query->time, 1),
+                'sql' => $query->sql,
+            ]);
+        });
     }
 
     /**

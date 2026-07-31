@@ -5,6 +5,7 @@ namespace App\Http\Resources\Api;
 use App\Models\Project;
 use App\Support\PublicApiLabels;
 use App\Support\PublicImageData;
+use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -52,7 +53,8 @@ class PublicProjectResource extends JsonResource
         if ($this->withDetail) {
             $data['code'] = $this->code;
             $data['customer'] = $this->customer;
-            $data['body'] = $this->tr('body', $locale);
+            $data['body'] = app(RichTextMediaResolver::class)
+                ->resolve($this->tr('body', $locale));
             $data['goals'] = $this->localizedGoals($locale);
             $data['timeline'] = is_array($this->timeline) ? array_values($this->timeline) : [];
             $data['direction'] = $this->direction ?? ['address' => '', 'phone' => '', 'email' => ''];

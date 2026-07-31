@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api;
 
 use App\Models\Alert;
 use App\Support\PublicApiLabels;
+use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -64,7 +65,8 @@ class PublicAlertResource extends JsonResource
         ];
 
         if ($this->withDetail) {
-            $data['body'] = $this->tr('body', $locale);
+            $data['body'] = app(RichTextMediaResolver::class)
+                ->resolve($this->tr('body', $locale));
             $data['instructions'] = $this->steps($locale);
             $data['contacts'] = $this->tr('contacts', $locale);
             $data['source'] = $this->source;

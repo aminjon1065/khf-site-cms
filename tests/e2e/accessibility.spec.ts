@@ -9,6 +9,7 @@ const CONTROL_ROUTES = [
     '/media',
     '/news/create',
     '/editorial/trash',
+    '/editorial/translations',
 ] as const;
 
 async function expectNoBlockingViolations(page: Page) {

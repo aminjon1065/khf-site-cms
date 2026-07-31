@@ -47,6 +47,7 @@ class DashboardController extends Controller
                     'status' => $r->status,
                 ])->all(),
             'tasks' => $this->attentionTasks($user),
+            'taskCenter' => $this->taskCenter($user),
             'activity' => $this->recentActivity($user),
             'calendar' => $this->calendar($user),
             'today' => now()->isoFormat('dddd, D MMMM YYYY'),
@@ -128,12 +129,6 @@ class DashboardController extends Controller
     {
         $tasks = [];
 
-        // D-6 (CMS_AUDIT.md P2): used to only look at Alert. Loops every
-        // workflow type in ContentTypes::MAP order (Alert first, matching
-        // how the rest of the app already treats Alert as the highest-
-        // urgency type — e.g. ApprovalController's own `urgent` flag), so
-        // the final `array_slice(..., 0, 4)` below still favors alerts
-        // first without needing separate sort logic.
         foreach (ContentTypes::MAP as $type => $modelClass) {
             if (! $user->can(ContentTypes::module($type).'.approve')) {
                 continue;
@@ -150,32 +145,137 @@ class DashboardController extends Controller
 
                 $authorName = is_string($n = data_get($model, 'author.name')) ? $n : '—';
                 $tasks[] = [
+                    'id' => "approval-{$type}-{$model->getKey()}",
+                    'priority' => 20,
                     'kind' => 'urgent',
-                    'kind_label' => 'Срочно',
+                    'kind_label' => 'Согласовать',
                     'title' => $this->typeTitle($model, $type),
                     'meta' => ContentTypes::label($type).' · автор '.$authorName.' · ожидает согласования',
                     'due' => 'сегодня',
                     'due_tone' => 'danger',
                     'action' => 'Согласовать',
-                    'href' => '/approvals',
+                    'href' => route('approvals', [], false),
                 ];
             }
         }
 
-        foreach ($this->alertQuery($user)->active()->whereNotNull('ends_at')->where('ends_at', '<=', now()->addDays(2))->limit(2)->get() as $alert) {
-            $tasks[] = [
-                'kind' => 'expiring',
-                'kind_label' => 'Истекает',
-                'title' => ($alert->getTranslation('title', 'ru', false) ?: $alert->internal_title).' — срок действия истекает',
-                'meta' => 'Предупреждение · завершается '.$alert->ends_at?->isoFormat('D.MM в HH:mm'),
-                'due' => $alert->ends_at?->diffForHumans(['parts' => 1]) ?? '',
-                'due_tone' => 'warn',
-                'action' => 'Продлить',
-                'href' => '/alerts/'.$alert->id.'/edit',
-            ];
+        foreach (ContentTypes::MAP as $type => $modelClass) {
+            $module = ContentTypes::module($type);
+
+            if (! $user->can("{$module}.edit")) {
+                continue;
+            }
+
+            foreach ($modelClass::query()
+                ->accessibleTo($user)
+                ->where('author_id', $user->id)
+                ->whereIn('status', [ContentStatus::Returned->value, ContentStatus::Draft->value])
+                ->orderByRaw("CASE status WHEN 'returned' THEN 0 ELSE 1 END")
+                ->oldest('updated_at')
+                ->limit(2)
+                ->get() as $model) {
+                if (! $user->can('update', $model)) {
+                    continue;
+                }
+
+                $isReturned = $model->status === ContentStatus::Returned;
+                $tasks[] = [
+                    'id' => ($isReturned ? 'returned' : 'draft')."-{$type}-{$model->getKey()}",
+                    'priority' => $isReturned ? 10 : 50,
+                    'kind' => $isReturned ? 'returned' : 'draft',
+                    'kind_label' => $isReturned ? 'Исправить' : 'Черновик',
+                    'title' => $this->typeTitle($model, $type),
+                    'meta' => ContentTypes::label($type).($isReturned
+                        ? ' · возвращено с проверки'
+                        : ' · ваш незавершённый материал'),
+                    'due' => $model->updated_at?->diffForHumans(['parts' => 1]) ?? '',
+                    'due_tone' => $isReturned ? 'danger' : 'neutral',
+                    'action' => $isReturned ? 'Исправить' : 'Продолжить',
+                    'href' => route("{$module}.edit", $model, false),
+                ];
+            }
+
+            if ($user->can("{$module}.approve") || ! method_exists($modelClass, 'languageCompleteness')) {
+                continue;
+            }
+
+            foreach ($modelClass::query()
+                ->accessibleTo($user)
+                ->where('status', ContentStatus::TranslationCheck->value)
+                ->oldest('updated_at')
+                ->limit(2)
+                ->get()
+                ->filter(fn (Model $model): bool => collect($model->languageCompleteness())
+                    ->contains(fn (int $percent): bool => $percent < 100)) as $model) {
+                if (! $user->can('update', $model)) {
+                    continue;
+                }
+
+                $tasks[] = [
+                    'id' => "translation-{$type}-{$model->getKey()}",
+                    'priority' => 30,
+                    'kind' => 'translation',
+                    'kind_label' => 'Перевести',
+                    'title' => $this->typeTitle($model, $type),
+                    'meta' => ContentTypes::label($type).' · не завершены обязательные локали',
+                    'due' => $model->updated_at?->diffForHumans(['parts' => 1]) ?? '',
+                    'due_tone' => 'warn',
+                    'action' => 'Перевести',
+                    'href' => route("{$module}.edit", $model, false),
+                ];
+            }
         }
 
-        return array_slice($tasks, 0, 4);
+        if ($user->can('alerts.edit')) {
+            foreach ($this->alertQuery($user)->active()->whereNotNull('ends_at')->where('ends_at', '<=', now()->addDays(2))->limit(2)->get() as $alert) {
+                $tasks[] = [
+                    'id' => "expiring-alert-{$alert->id}",
+                    'priority' => 40,
+                    'kind' => 'expiring',
+                    'kind_label' => 'Истекает',
+                    'title' => ($alert->getTranslation('title', 'ru', false) ?: $alert->internal_title).' — срок действия истекает',
+                    'meta' => 'Предупреждение · завершается '.$alert->ends_at?->isoFormat('D.MM в HH:mm'),
+                    'due' => $alert->ends_at?->diffForHumans(['parts' => 1]) ?? '',
+                    'due_tone' => 'warn',
+                    'action' => 'Продлить',
+                    'href' => route('alerts.edit', $alert, false),
+                ];
+            }
+        }
+
+        usort($tasks, fn (array $left, array $right): int => [$left['priority'], $left['id']] <=> [$right['priority'], $right['id']]);
+
+        return array_map(function (array $task): array {
+            unset($task['priority']);
+
+            return $task;
+        }, array_slice($tasks, 0, 6));
+    }
+
+    /**
+     * @return array{href: string, label: string}|null
+     */
+    private function taskCenter(User $user): ?array
+    {
+        foreach (ContentTypes::MAP as $type => $_modelClass) {
+            if ($user->can(ContentTypes::module($type).'.approve')) {
+                return [
+                    'href' => route('approvals', [], false),
+                    'label' => 'Центр согласования',
+                ];
+            }
+        }
+
+        foreach (['news', 'pages', 'projects', 'instructions', 'announcements', 'documents'] as $module) {
+            if ($user->can("{$module}.edit")) {
+                return [
+                    'href' => route('editorial.translations', [], false),
+                    'label' => 'Очередь переводов',
+                ];
+            }
+        }
+
+        return null;
     }
 
     /**

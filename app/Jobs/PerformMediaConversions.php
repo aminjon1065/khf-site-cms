@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Services\AvifDerivativeGenerator;
 use Illuminate\Queue\Middleware\WithoutOverlapping;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -51,15 +52,34 @@ class PerformMediaConversions extends PerformConversionsJob
         ];
     }
 
-    public function handle(FileManipulator $fileManipulator): bool
-    {
+    public function handle(
+        FileManipulator $fileManipulator,
+        ?AvifDerivativeGenerator $avifDerivativeGenerator = null,
+    ): bool {
         $this->setStatus('processing');
 
         try {
-            $processed = parent::handle($fileManipulator);
+            $avifDerivativeGenerator ??= app(AvifDerivativeGenerator::class);
+            $standardConversions = $this->conversions->reject(
+                fn (Conversion $conversion): bool => $avifDerivativeGenerator->handles($conversion),
+            );
+            $avifConversions = $this->conversions->filter(
+                fn (Conversion $conversion): bool => $avifDerivativeGenerator->handles($conversion),
+            );
+
+            $fileManipulator->performConversions(
+                $standardConversions,
+                $this->media,
+                $this->onlyMissing,
+            );
+            $avifDerivativeGenerator->generate(
+                $this->media,
+                $avifConversions,
+                $this->onlyMissing,
+            );
             $this->setStatus('ready');
 
-            return $processed;
+            return true;
         } catch (Throwable $exception) {
             $this->setStatus('failed', $exception->getMessage());
 

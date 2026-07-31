@@ -37,7 +37,9 @@ it('renders a live control center instead of a section stub', function () {
             ->has('alerts', 1)
             ->has('regions')
             ->has('web_vitals.metrics', 3)
-            ->where('web_vitals.total_samples', 0));
+            ->where('web_vitals.total_samples', 0)
+            ->has('operations.api')
+            ->has('operations.queue'));
 });
 
 it('forbids the control center without alerts permission', function () {

@@ -821,9 +821,24 @@ Production-like performance тесты не запускать против prod
 - [x] Запретить внешнюю сеть в tests. **Доказательство:** глобальный `Http::preventStrayRequests()` и Pest-тест на `StrayRequestException`; `RevalidateFrontend` отдельно покрыт для success/disabled/sync failure/async retry.
 - [x] Добавить front CI и первые smoke/E2E. **Доказательство:** GitHub Actions запускает Node 22, test CMS, TypeScript, ESLint, 24 Vitest-теста, production build, 15 Chromium smoke/axe-тестов и сохраняет Playwright-отчёт; локально весь функциональный набор зелёный.
 - [x] Добавить Lighthouse CI с артефактами. **Доказательство:** merge-gate выполняет по 3 mobile-прогона на `/ru`, `/tj`, `/en`, `/ru/news`, `/ru/news/test-news`, `/ru/map` и сохраняет JSON/HTML; локальные медианы Performance — 95/95/95/97/97/96, Accessibility/Best Practices/SEO — 100. Nightly включает строгие 99 и LCP ≤ 1,8 s: текущий LCP 2,69–3,07 s остаётся явно отслеживаемым performance debt, а не скрытым ослаблением merge-порога.
-- [ ] Добавить bundle report.
+- [x] Добавить bundle report. **Доказательство:** CMS и Next.js получают
+  воспроизводимые JSON/Markdown-отчёты из Vite manifest и Next 16
+  `route-bundle-stats`, сохраняют top routes/chunks, raw+gzip и валят CI при
+  превышении четырёх/трёх зафиксированных budgets; оба отчёта загружаются как
+  GitHub Actions artifacts. Текущий CMS: entry 199,4 KiB, largest JS 458,3 KiB,
+  total JS 1517,1 KiB; frontend: largest route 578,3 KiB, largest chunk
+  227,1 KiB, total route chunks 721,1 KiB. Budget tests 2+2 зелёные; CMS
+  `composer ci:check` — 504/504, frontend — 87 Vitest, TypeScript, ESLint и
+  Next production build на 52 страницах.
 - [x] Включить RUM Web Vitals. **Доказательство:** Next.js 16 `useReportWebVitals` собирает только LCP/INP/CLS с настраиваемой выборкой и отправляет их через same-origin proxy; payload не содержит IP, user-agent или session ID. CMS проверяет server-only secret, rate limit, дедупликацию и нормализует slug-маршруты, хранит 35 дней и считает точный p75 по метрике/маршруту/устройству. До внедрения RUM-покрытие было 0 метрик; после — 3 CWV с exact-p75 и CMS dashboard, client chunk 9 505 bytes / 3 667 bytes gzip. Полный `composer ci:check` — 420 тестов / 2076 assertions; frontend — 41 Vitest, 19 Chromium/axe, TypeScript, ESLint и production build на 55 страниц.
-- [ ] Зафиксировать production-like test content.
+- [x] Зафиксировать production-like test content. **Доказательство:**
+  `benchmark:seed` создаёт в изолированных DB/storage детерминированные 10 000
+  published news, длинные rich-text записи, 5 000 media и ровно 500 MiB
+  оригиналов, включая SVG 8000×8000 и файл 10 MiB. Команда идемпотентна,
+  ограничивает профиль и отказывается работать вне `APP_ENV=benchmark` или БД
+  без `benchmark` в имени. Полный временный прогон: 10 000/5 000/524 288 000
+  bytes за 0,953 s, 540 MiB on disk; 3 Pest-теста / 21 assertions, Pint и
+  PHPStan зелёные.
 - [x] Сделать production build fail-fast при недоступной CMS. **Доказательство:** `npm test` — 12 Node contract/assertion checks; production `npm run build` останавливается до компиляции за 0,72 с при `ECONNREFUSED` и за 0,60 с при неверном `/ready` contract; с ready CMS Next.js 16 собирает 98/98 страниц; preview build остаётся зелёным с diagnostic banner, а outage-лог сокращён с 1710 до 139 строк (6 агрегированных worker events).
 
 **Gate:** все проверки зелёные; есть baseline по каждому контрольному маршруту.
@@ -833,13 +848,32 @@ Production-like performance тесты не запускать против prod
 - [x] Спроектировать DTO и API compatibility window. **Доказательство:** `image_data.version=2` добавлен параллельно legacy `image`/`image_srcset` для news/projects/instructions; публичные `sources` содержат только generated derivatives, а frontend выбирает derivative через `cmsImageSource`. Pest API contract, 3 Vitest-теста и Playwright `currentSrc`/`naturalWidth` check зелёные.
 - [x] Добавить width/height/checksum/focal/status/placeholder metadata. **Доказательство:** event listeners сохраняют dimensions, bytes, MIME, SHA-256, focal point, conversion status, derivative metadata и WebP data-URL/average color placeholder; Pest доказывает metadata, неизменность SHA-256 оригинала и 3 fallback derivatives. Полный `composer ci:check` — 351 тест / 1302 assertions, PHPStan/Pint/CMS frontend checks зелёные; frontend — 27 Vitest, TypeScript, ESLint, 16 Playwright (включая axe) и production build зелёные.
 - [x] Перевести conversions в queue. **Доказательство:** `nonQueued()` удалён; сохранение выполняет 0 inline-conversions и ставит job для 3 derivatives в отдельную `media` queue after commit. 6 Pest-тестов (22 assertions) доказывают создание `sm/md/lg`, неизменность SHA-256 оригинала, идемпотентный повтор без новых файлов, timeout/retry/backoff, status/error/retry и 403 без permission; полный `composer ci:check` — 349 тестов / 1277 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan зелёные; Vite production build зелёный.
-- [ ] Создать AVIF/WebP/fallback matrix.
-- [ ] Добавить CMS thumbnails.
-- [ ] Настроить immutable CDN cache.
+- [x] Создать AVIF/WebP/fallback matrix. **Доказательство:** media queue
+  создаёт `sm/md/lg` в исходном fallback-формате без upscale, три WebP и три
+  настоящих AVIF через проверяемый `avifenc`; DTO отдаёт ровно 3×3 публичных
+  source. PNG alpha=127 и SHA-256 оригинала сохраняются. 11 media Pest /
+  75 assertions зелёные.
+- [x] Добавить CMS thumbnails. **Доказательство:** отдельные WebP `cms-192` и
+  `cms-320` quality 65 создаются той же идемпотентной media job, а MediaPicker
+  использует только их versioned `srcset`, не публичные крупные derivatives.
+  Pest проверяет оба файла; CMS TypeScript, ESLint и production build зелёные.
+- [x] Настроить immutable CDN cache. **Доказательство:** Media Library включает
+  versioned URLs (`?v=updated_at`), Apache применяет только к
+  `/storage/*/conversions/*` `public, max-age=31536000, immutable`, оригиналы
+  под правило не попадают. Конфигурационный Pest и API URL contract зелёные.
 - [x] Сделать `CmsImage`/custom loader. **Доказательство:** `CmsImage` требует `sizes`, использует Next.js 16 `fill`/generated `srcset`, поддерживает blur DTO; production build и browser derivative check зелёные.
 - [x] Заменить 10 `<img>`. **Доказательство:** source-guard Vitest не допускает raw `<img>` в `app`/`components`; Playwright проверяет успешные `/_next/image` derivatives, 24 unit + 15 browser/axe tests проходят.
-- [ ] Обновить rich-text media resolution.
-- [ ] Добавить media audit/regenerate.
+- [x] Обновить rich-text media resolution. **Доказательство:** Tiptap сохраняет
+  очищаемый `data-media-id`; public API одним запросом разрешает ID в versioned
+  `<picture>` с AVIF/WebP/fallback `srcset`, `sizes`, lazy loading и decoding,
+  не подставляя original. CMS sanitizer и detail API покрыты Pest; 29 news
+  regression tests / 115 assertions зелёные.
+- [x] Добавить media audit/regenerate. **Доказательство:** `media:audit`
+  завершается ошибкой при отсутствующем original/любом из 11 derivatives, а
+  `--regenerate` безопасно ставит повреждённые изображения в отдельную
+  `media` queue. Два command Pest проверяют failure, regeneration dispatch и
+  clean library. Общий Stage 1 gate: 41 Pest / 193 assertions, PHPStan, Pint,
+  TypeScript, ESLint и Vite build (2370 modules / 8.27 s) зелёные.
 
 **Gate:** оригинал сохранён; публичная страница не загружает original; CLS от media равен нулю; LCP media входит в бюджет.
 
@@ -873,7 +907,14 @@ Production-like performance тесты не запускать против prod
 
 ### Этап 4 — простая CMS, 10–20 дней
 
-- [ ] Role-based task dashboard.
+- [x] Role-based task dashboard. **Доказательство:** сервер формирует только
+  выполнимые текущей ролью задачи: автору — свои returned/draft, переводчику —
+  неполные `translation_check`, согласующему — approvals, оператору — истекающие
+  alerts. Все выборки проходят module permission, model policy и regional
+  scope; приоритеты `исправить → согласовать → перевести → истекает → черновик`
+  стабильны, а dashboard ведёт в доступный роли task center. 9 целевых Pest /
+  114 assertions, Playwright role regression 2/2; полный `composer ci:check` —
+  504 теста / 3716 assertions; production Vite build — 2370 modules / 8.34 s.
 - [x] Общий `EditorialFormShell`. **Доказательство:** News/Page/Project/Instruction/Announcement/Document используют один shell с единым header, language switcher, error summary, порядком действий, Ctrl/Cmd+S и защитой несохранённых данных; submit/back URL генерируются Wayfinder. Браузерная проверка реальной News-формы подтвердила dirty-state confirm, отсутствие console errors и 44 px actions при viewport 390×844. 84 релевантных Pest-теста / 333 assertions и полный `composer ci:check` зелёные: 381 тест / 1511 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan.
 - [x] Autosave/recovery/concurrency. **Доказательство:** общий `useEditorialAutosave` для шести сущностей сохраняет только изменившийся JSON после 1,5-секундной паузы, держит offline/localStorage recovery copy и показывает «Сохранено в HH:MM». Immutable `editorial_revisions` дают историю/restore; restore не меняет workflow status и бинарные media. `updated_at` version token блокирует stale normal save, а server autosave cursor выявляет две вкладки и показывает выбор server/local. 13 новых Pest-тестов / 52 assertions проверяют durable autosave без мутации published model, conflict/force resolution, policy, revision list и restore; полный `composer ci:check` зелёный: 394 теста / 1563 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan; Vite production build зелёный.
 - [x] Единый preview/checklist. **Доказательство:** шесть редакционных форм используют общий preview с live unsaved data, локалями `tg/ru/en`, desktop/mobile и share/OG режимами; fallback явно помечен. Private signed URL требует авторизацию и policy, имеет TTL 15 минут, `no-store` и `noindex`. Серверный `PublicationChecklist` блокирует публикацию при неполном обязательном переводе, пустом alt обложки, unsafe href или незавершённой media conversion и показывает неблокирующий SEO warning. 11 новых Pest-сценариев и workflow/form regression suite зелёные; полный `composer ci:check` — 405 тестов / 1637 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan; Vite production build зелёный.
@@ -887,7 +928,14 @@ Production-like performance тесты не запускать против prod
   и сохраняет прежний workflow status. 18 целевых Pest-тестов / 99 assertions;
   полный `composer ci:check` — 496 тестов / 3605 assertions; Playwright 10/10,
   включая axe экрана корзины; production Vite build — 2368 modules / 8.21 s.
-- [ ] Translation queue.
+- [x] Translation queue. **Доказательство:** единая пагинируемая очередь
+  News/Page/Project/Instruction/Announcement/Document использует SQL `UNION
+  ALL`, показывает только неполные смысловые поля `tg/ru/en`, фильтруется по
+  типу и требуемой локали и ставит `translation_check` выше остальных статусов.
+  Доступ ограничен module edit-policy и regional author scope; каждая строка
+  ведёт прямо в разрешённый редактор. 5 Pest-тестов / 62 assertions; полный
+  `composer ci:check` — 501 тест / 3667 assertions; axe accessibility 9/9;
+  production Vite build — 2370 modules / 8.15 s.
 - [x] Accessibility browser tests. **Доказательство:** `@axe-core/playwright`
   проверяет `/dashboard`, `/news`, `/media` и `/news/create` по WCAG 2.0/2.1
   A/AA без serious/critical нарушений; общие Modal/Drawer и command palette

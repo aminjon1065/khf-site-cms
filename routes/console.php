@@ -1,7 +1,10 @@
 <?php
 
+use App\Console\Commands\CleanupOrphanedMedia;
+use App\Console\Commands\CreateOperationalBackup;
 use App\Console\Commands\ProcessScheduledContent;
 use App\Console\Commands\PruneWebVitals;
+use App\Console\Commands\RestoreBackupDrill;
 use App\Jobs\QueueHeartbeat;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -15,6 +18,17 @@ Artisan::command('inspire', function () {
 Schedule::command(ProcessScheduledContent::class)->everyFiveMinutes()->withoutOverlapping();
 Schedule::job(new QueueHeartbeat)->everyMinute();
 Schedule::command(PruneWebVitals::class)->dailyAt('03:15')->withoutOverlapping();
+Schedule::command(CreateOperationalBackup::class)
+    ->dailyAt('02:15')
+    ->when(fn (): bool => (bool) config('operations.backups.enabled'))
+    ->withoutOverlapping(180);
+Schedule::command(RestoreBackupDrill::class)
+    ->weeklyOn(0, '03:15')
+    ->when(fn (): bool => (bool) config('operations.backups.enabled'))
+    ->withoutOverlapping(180);
+Schedule::command(CleanupOrphanedMedia::class, ['--delete', '--grace-hours=24'])
+    ->weeklyOn(1, '04:15')
+    ->withoutOverlapping(180);
 
 $queueNames = array_values(config('queue.names'));
 $redisQueues = implode(',', array_map(fn (string $queue): string => "redis:{$queue}", $queueNames));

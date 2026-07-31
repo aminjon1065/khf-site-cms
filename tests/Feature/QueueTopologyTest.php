@@ -105,8 +105,9 @@ it('emits an operational alert when a queue exceeds its backlog budget', functio
     Log::shouldHaveReceived('critical')
         ->once()
         ->with(
-            'Queue backlog threshold exceeded.',
+            'queue_backlog_exceeded',
             [
+                'event' => 'queue_backlog_exceeded',
                 'connection' => 'redis',
                 'queue' => 'media',
                 'size' => 101,

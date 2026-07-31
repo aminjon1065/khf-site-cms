@@ -42,6 +42,7 @@ interface Props {
     };
     alerts: ActiveAlert[];
     web_vitals: WebVitalsReport;
+    operations: OperationalReport;
 }
 
 type VitalRating = 'good' | 'needs-improvement' | 'poor' | 'no-data';
@@ -68,6 +69,26 @@ interface WebVitalsReport {
     metrics: VitalMetric[];
     routes: VitalDimension[];
     devices: VitalDimension[];
+}
+
+interface OperationalReport {
+    api: {
+        samples: number;
+        errors: number;
+        p95_ms: number | null;
+        routes: {
+            route: string;
+            samples: number;
+            errors: number;
+            p95_ms: number | null;
+        }[];
+    };
+    queue: {
+        samples: number;
+        failures: number;
+        p95_ms: number | null;
+        last_processed_at: string | null;
+    };
 }
 
 const levelTone: Record<string, 'neutral' | 'accent' | 'warn' | 'danger'> = {
@@ -108,6 +129,7 @@ export default function ControlCenter({
     metrics,
     alerts,
     web_vitals: webVitals,
+    operations,
 }: Props) {
     const cards = [
         {
@@ -233,6 +255,113 @@ export default function ControlCenter({
                     ))}
                 </Blueprint>
             </div>
+
+            <section aria-labelledby="operations-heading" className="mt-5">
+                <div className="mb-4">
+                    <h2
+                        id="operations-heading"
+                        className="m-0 text-xl font-semibold"
+                    >
+                        Надёжность API и очередей
+                    </h2>
+                    <span className="mt-1 block text-sm text-(--color-neutral-600)">
+                        Последние 200 sampled/slow/error запросов и заданий без
+                        URL, содержимого и персональных данных
+                    </span>
+                </div>
+
+                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                    {[
+                        {
+                            label: 'API p95',
+                            value:
+                                operations.api.p95_ms === null
+                                    ? '—'
+                                    : `${operations.api.p95_ms} мс`,
+                        },
+                        {
+                            label: 'Ошибки API',
+                            value: operations.api.errors,
+                        },
+                        {
+                            label: 'Очередь p95',
+                            value:
+                                operations.queue.p95_ms === null
+                                    ? '—'
+                                    : `${operations.queue.p95_ms} мс`,
+                        },
+                        {
+                            label: 'Ошибки очереди',
+                            value: operations.queue.failures,
+                        },
+                    ].map((metric) => (
+                        <Blueprint key={metric.label} className="p-4">
+                            <strong className="block font-mono text-2xl font-semibold">
+                                {metric.value}
+                            </strong>
+                            <span className="mt-1 block text-xs text-(--color-neutral-600)">
+                                {metric.label}
+                            </span>
+                        </Blueprint>
+                    ))}
+                </div>
+
+                {operations.api.routes.length > 0 && (
+                    <Blueprint className="mt-4 overflow-x-auto p-0">
+                        <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+                            <caption className="sr-only">
+                                p95 и ошибки публичного API по именованным
+                                маршрутам
+                            </caption>
+                            <thead>
+                                <tr className="border-b border-(--color-divider) text-xs text-(--color-neutral-600)">
+                                    <th scope="col" className="px-4 py-3">
+                                        Маршрут
+                                    </th>
+                                    <th scope="col" className="px-4 py-3">
+                                        p95
+                                    </th>
+                                    <th scope="col" className="px-4 py-3">
+                                        Ошибки
+                                    </th>
+                                    <th
+                                        scope="col"
+                                        className="px-4 py-3 text-right"
+                                    >
+                                        Выборка
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {operations.api.routes.map((route) => (
+                                    <tr
+                                        key={route.route}
+                                        className="border-b border-(--color-divider) last:border-0"
+                                    >
+                                        <th
+                                            scope="row"
+                                            className="px-4 py-3 font-mono text-xs"
+                                        >
+                                            {route.route}
+                                        </th>
+                                        <td className="px-4 py-3 font-mono">
+                                            {route.p95_ms === null
+                                                ? '—'
+                                                : `${route.p95_ms} мс`}
+                                        </td>
+                                        <td className="px-4 py-3 font-mono">
+                                            {route.errors}
+                                        </td>
+                                        <td className="px-4 py-3 text-right font-mono">
+                                            {route.samples}
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </Blueprint>
+                )}
+            </section>
 
             <section aria-labelledby="rum-heading" className="mt-5">
                 <div className="mb-4 flex flex-wrap items-end justify-between gap-3">

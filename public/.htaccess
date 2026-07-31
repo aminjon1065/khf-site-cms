@@ -23,3 +23,10 @@
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteRule ^ index.php [L]
 </IfModule>
+
+<IfModule mod_headers.c>
+    # Conversion URLs carry a media version query string. They are therefore
+    # safe to cache at the browser/CDN edge for one year.
+    SetEnvIf Request_URI "^/storage/.+/conversions/" immutable_media=1
+    Header always set Cache-Control "public, max-age=31536000, immutable" env=immutable_media
+</IfModule>

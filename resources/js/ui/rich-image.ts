@@ -84,6 +84,13 @@ export const RichImage = TiptapImage.extend({
                 parseHTML: (el) =>
                     imgOf(el as HTMLElement)?.getAttribute('srcset') ?? null,
             },
+            mediaId: {
+                default: null,
+                renderHTML: () => ({}),
+                parseHTML: (el) =>
+                    imgOf(el as HTMLElement)?.getAttribute('data-media-id') ??
+                    null,
+            },
         };
     },
 
@@ -98,7 +105,8 @@ export const RichImage = TiptapImage.extend({
     },
 
     renderHTML({ node }) {
-        const { src, alt, title, align, size, caption, srcset } = node.attrs;
+        const { src, alt, title, align, size, caption, srcset, mediaId } =
+            node.attrs;
         const wrap = [
             're-figure',
             align && ALIGN_CLASS[align],
@@ -127,6 +135,10 @@ export const RichImage = TiptapImage.extend({
         if (srcset) {
             imgAttrs.srcset = srcset;
             imgAttrs.sizes = SIZES_ATTR[size ?? 'full'] ?? SIZES_ATTR.full;
+        }
+
+        if (mediaId) {
+            imgAttrs['data-media-id'] = String(mediaId);
         }
 
         if (caption) {

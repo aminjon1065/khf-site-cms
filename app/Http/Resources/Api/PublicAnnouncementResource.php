@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api;
 
 use App\Models\Announcement;
 use App\Support\PublicApiLabels;
+use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -30,7 +31,8 @@ class PublicAnnouncementResource extends JsonResource
             'kind_label' => PublicApiLabels::get('announcement_kind', $this->kind->value, $locale),
             'title' => $this->tr('title', $locale),
             'org' => $this->org,
-            'desc' => $this->tr('body', $locale),
+            'desc' => app(RichTextMediaResolver::class)
+                ->resolve($this->tr('body', $locale)),
             'deadline' => $this->deadlineLabel($open, $locale),
             'deadline_at' => $this->deadline?->toDateString(),
             'deadline_state' => $this->deadline === null ? 'unlimited' : ($open ? 'open' : 'closed'),

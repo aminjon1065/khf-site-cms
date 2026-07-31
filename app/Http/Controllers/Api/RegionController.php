@@ -47,9 +47,22 @@ class RegionController extends Controller
             "{$locale}:directory:{$page}:{$perPage}",
             function () use ($locale, $page, $perPage): array {
                 $regions = Region::query()
-                    ->with('districts')
+                    ->select([
+                        'id',
+                        'code',
+                        'name',
+                        'type',
+                        'head',
+                        'regional_center',
+                        'address',
+                        'phone',
+                        'duty_phone',
+                        'email',
+                        'districts_count',
+                    ])
+                    ->with('districts:id,region_id,name')
                     ->orderBy('sort')
-                    ->paginate($perPage, ['*'], 'page', $page)
+                    ->paginate($perPage, ['id'], 'page', $page)
                     ->appends(['locale' => $locale, 'per_page' => $perPage]);
 
                 return PublicRegionResource::collection($regions)

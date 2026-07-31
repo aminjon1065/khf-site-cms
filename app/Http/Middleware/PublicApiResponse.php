@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\OperationalTelemetry;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -26,17 +27,53 @@ class PublicApiResponse
             $this->addCaching($request, $response);
         }
 
-        if (! $request->routeIs('api.vitals.store') || ! $response->isSuccessful()) {
-            Log::info('public_api_request', [
-                'request_id' => $requestId,
-                'method' => $request->method(),
-                'path' => '/'.$request->path(),
-                'status' => $response->getStatusCode(),
-                'duration_ms' => round((hrtime(true) - $startedAt) / 1_000_000, 1),
-            ]);
-        }
+        $this->logRequest($request, $response, $requestId, $startedAt);
 
         return $response;
+    }
+
+    private function logRequest(
+        Request $request,
+        Response $response,
+        string $requestId,
+        int $startedAt,
+    ): void {
+        $durationMs = round((hrtime(true) - $startedAt) / 1_000_000, 1);
+        $status = $response->getStatusCode();
+        $slowThreshold = (float) config('observability.api.slow_request_ms', 750);
+        $sampleRate = min(max((float) config('observability.api.sample_rate', 0.01), 0), 1);
+
+        $level = match (true) {
+            $status >= 500 => 'error',
+            $status >= 400, $durationMs >= $slowThreshold => 'warning',
+            $this->sample($sampleRate) => 'info',
+            default => null,
+        };
+
+        if ($level === null) {
+            return;
+        }
+
+        app(OperationalTelemetry::class)->recordApi(
+            $request->route()?->getName() ?? 'unmatched',
+            $status,
+            $durationMs,
+        );
+
+        Log::log($level, 'public_api_response', [
+            'event' => 'public_api_response',
+            'request_id' => $requestId,
+            'method' => $request->method(),
+            'route' => $request->route()?->getName() ?? 'unmatched',
+            'status' => $status,
+            'duration_ms' => $durationMs,
+            'slow' => $durationMs >= $slowThreshold,
+        ]);
+    }
+
+    private function sample(float $rate): bool
+    {
+        return $rate >= 1 || ($rate > 0 && random_int(1, 1_000_000) <= (int) round($rate * 1_000_000));
     }
 
     private function addCaching(Request $request, Response $response): void

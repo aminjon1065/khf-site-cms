@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api;
 
 use App\Models\News;
 use App\Support\PublicImageData;
+use App\Support\RichTextMediaResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -54,7 +55,8 @@ class PublicNewsResource extends JsonResource
         ];
 
         if ($this->withBody) {
-            $data['body'] = $this->tr('body', $locale);
+            $data['body'] = app(RichTextMediaResolver::class)
+                ->resolve($this->tr('body', $locale));
             $data['views'] = (int) $this->views_count;
             $data['seo'] = $this->localizedSeo($locale);
         }
