@@ -32,7 +32,11 @@ class LeaderController extends Controller
             "public-api:leadership:{$locale}",
             self::CACHE_TTL_SECONDS,
             fn (): array => PublicLeaderResource::collection(
-                Leader::query()->ordered()->get(),
+                Leader::query()
+                    ->select(['id', 'role', 'name', 'meta', 'bio', 'is_chairman'])
+                    ->ordered()
+                    ->with('media')
+                    ->get(),
             )->resolve(),
         );
 

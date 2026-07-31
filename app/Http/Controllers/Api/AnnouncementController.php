@@ -18,7 +18,10 @@ class AnnouncementController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Announcement::query()->public()->ordered();
+        $query = Announcement::query()
+            ->select(['id', 'slug', 'kind', 'title', 'body', 'org', 'deadline', 'application_url'])
+            ->public()
+            ->ordered();
         PublicLocale::available($query, 'title');
 
         if ($kind = $request->string('kind')->toString()) {
@@ -33,6 +36,7 @@ class AnnouncementController extends Controller
     public function show(string $slug): JsonResource
     {
         $query = Announcement::query()
+            ->select(['id', 'slug', 'kind', 'title', 'body', 'org', 'deadline', 'application_url'])
             ->public()
             ->where('slug', $slug);
 

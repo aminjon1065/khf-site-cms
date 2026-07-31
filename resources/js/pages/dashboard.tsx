@@ -2,7 +2,6 @@ import { Head, Link } from '@inertiajs/react';
 import { ArrowRight, CheckCircle2, TriangleAlert } from 'lucide-react';
 import ActivityController from '@/actions/App/Http/Controllers/Cms/ActivityController';
 import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
-import ApprovalController from '@/actions/App/Http/Controllers/Cms/ApprovalController';
 import { useAuth } from '@/lib/auth';
 import { toneColor } from '@/lib/domain';
 import type { Severity } from '@/lib/domain';
@@ -30,6 +29,7 @@ interface Metric {
     tone: 'warn' | 'danger' | 'ok' | 'accent' | null;
 }
 interface Task {
+    id: string;
     kind: string;
     kind_label: string;
     title: string;
@@ -38,6 +38,10 @@ interface Task {
     due_tone: string;
     action: string;
     href: string;
+}
+interface TaskCenter {
+    href: string;
+    label: string;
 }
 interface ActivityItem {
     initials: string;
@@ -63,6 +67,7 @@ interface Props {
     activeAlerts: AlertLite[];
     regionStatuses: RegionStatus[];
     tasks: Task[];
+    taskCenter: TaskCenter | null;
     activity: ActivityItem[];
     calendar: CalendarEvent[];
     today: string;
@@ -77,6 +82,8 @@ const regionStateLabel: Record<string, { label: string; tone: string }> = {
 
 const kindTone: Record<string, string> = {
     urgent: 'danger',
+    returned: 'danger',
+    draft: 'neutral',
     expiring: 'warn',
     translation: 'warn',
     publication: 'info',
@@ -88,6 +95,7 @@ export default function Dashboard({
     activeAlerts,
     regionStatuses,
     tasks,
+    taskCenter,
     activity,
     calendar,
     today,
@@ -326,8 +334,8 @@ export default function Dashboard({
                     <section>
                         <SectionTitle
                             title={`Требует внимания · ${tasks.length}`}
-                            link={ApprovalController.index.url()}
-                            linkLabel="Центр согласования"
+                            link={taskCenter?.href}
+                            linkLabel={taskCenter?.label}
                         />
                         <Blueprint>
                             {tasks.length === 0 ? (
@@ -344,7 +352,7 @@ export default function Dashboard({
                             ) : (
                                 tasks.map((task, i) => (
                                     <div
-                                        key={i}
+                                        key={task.id}
                                         style={{
                                             display: 'flex',
                                             alignItems: 'center',

@@ -85,6 +85,21 @@ QUEUE_MONITOR_MAX=100
 
 # Медиа хранится на публичном диске (нужен storage:link)
 MEDIA_DISK=public
+MEDIA_PUBLIC_URL=https://media.khf.tj
+
+# Рассчитайте по фактическому RSS одного FPM worker:
+# floor((RAM для PHP − запас ОС/БД) / p95 RSS worker).
+PHP_FPM_MAX_CHILDREN=8
+OPCACHE_MEMORY_CONSUMPTION=192
+OPCACHE_MAX_ACCELERATED_FILES=20000
+
+# Daily database + immutable media originals backup and weekly restore drill.
+# Use a mounted/encrypted path outside the release directory.
+BACKUP_ENABLED=true
+BACKUP_PATH=/var/backups/khf-cms
+MYSQLDUMP_BINARY=/usr/bin/mysqldump
+MYSQL_BINARY=/usr/bin/mysql
+MEDIA_ORPHAN_GRACE_HOURS=24
 
 # CORS: перечислите ТОЧНЫЕ origin публичного сайта (через запятую)
 CORS_ALLOWED_ORIGINS=https://khf.tj,https://www.khf.tj
@@ -157,10 +172,8 @@ $u->assignRole(App\Enums\RoleName::Superadmin->value);
 ```bash
 php artisan storage:link          # public/storage → storage/app/public (медиа)
 
-php artisan config:cache
-php artisan route:cache
-php artisan view:cache
-php artisan event:cache
+php artisan optimize
+php artisan ops:production-check
 ```
 
 Права доступа:
@@ -223,6 +236,23 @@ server {
 
     location / { try_files $uri $uri/ /index.php?$query_string; }
 
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 6;
+    gzip_types application/json application/javascript text/css text/plain image/svg+xml;
+
+    location ~* ^/storage/.*/conversions/ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
+    location ~* ^/build/ {
+        expires 1y;
+        add_header Cache-Control "public, max-age=31536000, immutable";
+        try_files $uri =404;
+    }
+
     location ~ \.php$ {
         fastcgi_pass unix:/run/php/php8.3-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
@@ -233,6 +263,52 @@ server {
     location ~ /\.(?!well-known).* { deny all; }
 }
 ```
+
+В PHP-FPM включите OPcache и задайте pool по измеренной памяти, а не по числу
+CPU наугад:
+
+```ini
+; php.ini / conf.d/99-khf-production.ini
+opcache.enable=1
+opcache.memory_consumption=192
+opcache.interned_strings_buffer=24
+opcache.max_accelerated_files=20000
+opcache.validate_timestamps=0
+```
+
+```ini
+; pool.d/khf.conf
+pm=dynamic
+pm.max_children=8
+pm.start_servers=2
+pm.min_spare_servers=2
+pm.max_spare_servers=4
+pm.max_requests=500
+```
+
+После атомарного переключения release выполните `php artisan queue:restart` и
+graceful reload PHP-FPM. CDN должен проксировать `MEDIA_PUBLIC_URL`, уважать
+immutable headers derivatives и не кэшировать `/api/v1/health`,
+`/api/v1/ready` или ответы CMS-сессии.
+
+### 2.11. Backup, restore drill и аварийные процедуры
+
+Проверка вручную после настройки отдельного backup volume:
+
+```bash
+php artisan ops:backup
+php artisan ops:restore-drill
+php artisan schedule:list
+```
+
+Backup содержит консистентный dump БД и все immutable media originals с
+SHA-256 manifest; regenerable derivatives туда не копируются. Scheduler делает
+backup ежедневно, а раз в неделю восстанавливает последний снимок в
+изолированную временную БД и удаляет только временную БД после проверки.
+Оповещение должно срабатывать по ненулевому exit code обеих команд.
+
+Полный порядок диагностики Redis/queue/scheduler/webhook/media, controlled chaos
+и безопасного отката: [`OPS_RUNBOOK.md`](./OPS_RUNBOOK.md).
 
 Проверки после старта:
 

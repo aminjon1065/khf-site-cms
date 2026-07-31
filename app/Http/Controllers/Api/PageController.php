@@ -20,6 +20,7 @@ class PageController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $pages = Page::query()
+            ->select(['id', 'slug', 'title'])
             ->public()
             ->orderBy('sort')
             ->orderBy('id');
@@ -34,6 +35,16 @@ class PageController extends Controller
     public function show(string $slug): JsonResource
     {
         $query = Page::query()
+            ->select([
+                'id',
+                'slug',
+                'title',
+                'body',
+                'seo_title',
+                'seo_description',
+                'published_at',
+                'updated_at',
+            ])
             ->public()
             ->where('slug', $slug);
 

@@ -41,7 +41,7 @@ return [
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
-            'url' => rtrim((string) env('APP_URL', 'http://localhost'), '/').'/storage',
+            'url' => rtrim((string) env('MEDIA_PUBLIC_URL', env('APP_URL', 'http://localhost')), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
             'report' => false,
@@ -53,6 +53,15 @@ return [
         'content_private' => [
             'driver' => 'local',
             'root' => storage_path('app/content-private'),
+            'visibility' => 'private',
+            'serve' => false,
+            'throw' => true,
+            'report' => true,
+        ],
+
+        'benchmark' => [
+            'driver' => 'local',
+            'root' => env('BENCHMARK_STORAGE_PATH', storage_path('benchmark')),
             'visibility' => 'private',
             'serve' => false,
             'throw' => true,

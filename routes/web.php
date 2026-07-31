@@ -28,6 +28,7 @@ use App\Http\Controllers\Cms\SettingController;
 use App\Http\Controllers\Cms\StructureUnitController;
 use App\Http\Controllers\Cms\SubmissionController;
 use App\Http\Controllers\Cms\TaxonomyController;
+use App\Http\Controllers\Cms\TranslationQueueController;
 use App\Http\Controllers\Cms\UsabilityController;
 use App\Http\Controllers\Cms\UserController;
 use Illuminate\Support\Facades\Route;
@@ -58,6 +59,8 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
         ->name('editorial.trash');
     Route::post('editorial/trash/{contentType}/{contentId}/restore', [EditorialTrashController::class, 'restore'])
         ->name('editorial.trash.restore');
+    Route::get('editorial/translations', [TranslationQueueController::class, 'index'])
+        ->name('editorial.translations');
 
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('control', [ControlController::class, 'index'])->name('control');

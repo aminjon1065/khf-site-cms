@@ -30,13 +30,14 @@ class CategoryController extends Controller
             "{$locale}:{$categoryType}:{$page}:{$perPage}",
             function () use ($categoryType, $locale, $page, $perPage): array {
                 $categories = Category::query()
+                    ->select(['id', 'slug', 'name', 'type'])
                     ->when($categoryType !== '', fn ($query) => $query->where('type', $categoryType))
                     ->orderBy('sort');
 
                 PublicLocale::available($categories, 'name', $locale);
 
                 $categories = $categories
-                    ->paginate($perPage, ['*'], 'page', $page)
+                    ->paginate($perPage, ['id', 'slug', 'name', 'type'], 'page', $page)
                     ->appends([
                         'locale' => $locale,
                         'type' => $categoryType,

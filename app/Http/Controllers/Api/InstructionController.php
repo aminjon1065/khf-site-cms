@@ -19,7 +19,11 @@ class InstructionController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Instruction::query()->public()->ordered()->with('media');
+        $query = Instruction::query()
+            ->select(['id', 'slug', 'name', 'summary', 'hazard_type', 'is_priority'])
+            ->public()
+            ->ordered()
+            ->with('media');
         PublicLocale::available($query, 'name');
 
         if ($request->boolean('priority')) {
@@ -40,6 +44,7 @@ class InstructionController extends Controller
     public function show(string $slug): JsonResource
     {
         $query = Instruction::query()
+            ->select(['id', 'slug', 'name', 'summary', 'hazard_type', 'is_priority', 'sections', 'body'])
             ->public()
             ->with('media')
             ->where('slug', $slug);

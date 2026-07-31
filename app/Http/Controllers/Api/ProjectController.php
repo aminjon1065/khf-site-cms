@@ -18,7 +18,20 @@ class ProjectController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Project::query()->public()->ordered()->with('media');
+        $query = Project::query()
+            ->select([
+                'id',
+                'slug',
+                'title',
+                'summary',
+                'lifecycle_status',
+                'years',
+                'partner',
+                'budget',
+            ])
+            ->public()
+            ->ordered()
+            ->with('media');
         PublicLocale::available($query, 'title');
 
         if ($lifecycle = $request->string('lifecycle')->toString()) {
@@ -33,6 +46,22 @@ class ProjectController extends Controller
     public function show(string $slug): JsonResource
     {
         $query = Project::query()
+            ->select([
+                'id',
+                'slug',
+                'title',
+                'summary',
+                'body',
+                'lifecycle_status',
+                'code',
+                'years',
+                'customer',
+                'partner',
+                'budget',
+                'goals',
+                'timeline',
+                'direction',
+            ])
             ->public()
             ->with('media')
             ->where('slug', $slug);

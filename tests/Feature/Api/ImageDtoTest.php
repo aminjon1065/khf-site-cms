@@ -51,9 +51,18 @@ it('publishes structured derivative metadata without exposing the original as a 
         ->and($imageData['mime_type'])->toBe('image/jpeg')
         ->and($imageData['placeholder']['data_url'])->toStartWith('data:image/webp;base64,')
         ->and($imageData['placeholder']['color'])->toMatch('/^#[0-9a-f]{6}$/')
+        ->and($imageData['sources']['avif'])->toHaveCount(3)
+        ->and($imageData['sources']['webp'])->toHaveCount(3)
         ->and($imageData['sources']['fallback'])->toHaveCount(3)
+        ->and(collect($imageData['sources']['avif'])->pluck('width')->all())
+        ->toBe([480, 960, 1600])
+        ->and(collect($imageData['sources']['webp'])->pluck('width')->all())
+        ->toBe([480, 960, 1600])
         ->and(collect($imageData['sources']['fallback'])->pluck('width')->all())
         ->toBe([480, 960, 1600])
+        ->and(collect($sourceUrls)->every(
+            fn (string $url): bool => str_contains($url, '?v='),
+        ))->toBeTrue()
         ->and($sourceUrls)->not->toContain($payload['image'])
         ->and(hash_file('sha256', $originalPath))->toBe($originalChecksum);
 });

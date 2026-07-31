@@ -18,7 +18,11 @@ class DocumentController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Document::query()->public()->ordered()->with('media');
+        $query = Document::query()
+            ->select(['id', 'name', 'doc_type', 'number', 'doc_date', 'section'])
+            ->public()
+            ->ordered()
+            ->with('media');
         PublicLocale::available($query, 'name');
 
         if ($type = $request->string('type')->toString()) {

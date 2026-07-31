@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\OperationalTelemetry;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
@@ -24,7 +25,7 @@ class HealthController extends Controller
         ], $database ? 200 : 503);
     }
 
-    public function ready(): JsonResponse
+    public function ready(OperationalTelemetry $telemetry): JsonResponse
     {
         $lastRun = Cache::get('health.scheduler.last_run');
         $queueLastRun = Cache::get('health.queue.last_run');
@@ -41,6 +42,7 @@ class HealthController extends Controller
             'queue_worker' => $queueWorker,
             'queue_connection' => $queueConnection,
             'queue_failed_jobs' => $this->failedJobCount(),
+            'queue_telemetry' => $telemetry->summary()['queue'],
         ];
         $ready = $checks['database'] && $checks['storage'] && $checks['scheduler'] && $checks['queue_worker'];
 

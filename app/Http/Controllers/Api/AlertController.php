@@ -25,8 +25,22 @@ class AlertController extends Controller
     public function index(): AnonymousResourceCollection
     {
         $query = Alert::query()
+            ->select([
+                'id',
+                'slug',
+                'severity',
+                'hazard_type',
+                'status',
+                'title',
+                'summary',
+                'territory_type',
+                'territory_note',
+                'published_at',
+                'starts_at',
+                'ends_at',
+            ])
             ->active()
-            ->with('regions');
+            ->with('regions:id,code,name');
 
         PublicLocale::available($query, 'title');
 
@@ -49,8 +63,26 @@ class AlertController extends Controller
     public function show(string $slug): JsonResource
     {
         $query = Alert::query()
+            ->select([
+                'id',
+                'slug',
+                'severity',
+                'hazard_type',
+                'status',
+                'title',
+                'summary',
+                'body',
+                'instructions',
+                'contacts',
+                'source',
+                'territory_type',
+                'territory_note',
+                'published_at',
+                'starts_at',
+                'ends_at',
+            ])
             ->public()
-            ->with(['regions', 'districts'])
+            ->with('regions:id,code,name')
             ->where('slug', $slug);
 
         PublicLocale::available($query, 'title');

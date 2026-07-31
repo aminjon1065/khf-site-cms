@@ -5,6 +5,7 @@ namespace App\Http\Resources\Api;
 use App\Models\Instruction;
 use App\Support\PublicApiLabels;
 use App\Support\PublicImageData;
+use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -56,7 +57,8 @@ class PublicInstructionResource extends JsonResource
 
         if ($this->withSections) {
             $data['sections'] = $this->localizedSections($locale);
-            $data['body'] = $this->tr('body', $locale);
+            $data['body'] = app(RichTextMediaResolver::class)
+                ->resolve($this->tr('body', $locale));
         }
 
         return $data;

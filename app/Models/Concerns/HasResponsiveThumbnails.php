@@ -6,10 +6,9 @@ use Spatie\Image\Enums\Fit;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 /**
- * Generates down-scaled JPEG variants (sm/md/lg) for uploaded images and builds
- * a `srcset` string from them, so the browser can pick the smallest sufficient
- * size — saving bandwidth. Variants are generated on the dedicated media queue;
- * the original is never up-scaled.
+ * Generates the public responsive matrix and the smaller CMS-only thumbnails.
+ * All variants are generated on the dedicated media queue and never upscale the
+ * original.
  */
 trait HasResponsiveThumbnails
 {
@@ -24,9 +23,29 @@ trait HasResponsiveThumbnails
     public function registerMediaConversions(?Media $media = null): void
     {
         foreach ($this->thumbnailWidths as $name => $width) {
+            $fallback = $this->addMediaConversion($name);
+            $fallback->fit(Fit::Max, $width, $width * 4);
+            $fallback->keepOriginalImageFormat();
+            $fallback->quality(82);
+
+            $this->addMediaConversion("{$name}-webp")
+                ->fit(Fit::Max, $width, $width * 4)
+                ->format('webp')
+                ->quality(72);
+
+            // The media job delegates these conversions to avifenc because GD
+            // does not provide AVIF support on every deployment target.
+            $this->addMediaConversion("{$name}-avif")
+                ->fit(Fit::Max, $width, $width * 4)
+                ->format('avif')
+                ->quality(50);
+        }
+
+        foreach (['cms-192' => 192, 'cms-320' => 320] as $name => $width) {
             $this->addMediaConversion($name)
                 ->fit(Fit::Max, $width, $width * 4)
-                ->format('jpg');
+                ->format('webp')
+                ->quality(65);
         }
     }
 
@@ -44,6 +63,14 @@ trait HasResponsiveThumbnails
         return self::srcsetFromMedia($media, $this->thumbnailWidths);
     }
 
+    public static function cmsThumbnailSrcset(Media $media): ?string
+    {
+        return self::srcsetFromMedia($media, [
+            'cms-192' => 192,
+            'cms-320' => 320,
+        ]);
+    }
+
     /**
      * Build a `srcset` from a media item's generated variants.
      *
@@ -53,6 +80,10 @@ trait HasResponsiveThumbnails
     {
         $parts = [];
         foreach ($widths as $name => $width) {
+            if (! $media->hasGeneratedConversion($name)) {
+                continue;
+            }
+
             $url = $media->getUrl($name);
             if ($url !== '') {
                 $parts[] = $url.' '.$width.'w';

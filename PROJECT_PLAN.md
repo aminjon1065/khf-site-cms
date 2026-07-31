@@ -543,6 +543,40 @@ module policies и regional author scope. Restore требует delete-policy,
 3605 assertions, Playwright 10/10 с axe нового экрана, Vite 2368 modules /
 8.21 s.
 
+Инженерный подпункт Translation queue закрыт полностью: единая очередь
+шести редакционных типов строится пагинируемым `UNION ALL`, отбирает записи
+с незаполненными смысловыми полями `tg/ru/en`, поддерживает фильтры типа/локали
+и приоритет `translation_check`. Module edit-policy, regional author scope и
+повторная policy-проверка перед выдачей edit URL не позволяют увидеть или
+открыть чужую задачу. Целевые проверки — 5 Pest / 62 assertions; полный gate —
+501 Pest / 3667 assertions; Playwright accessibility — 9/9; Vite 2370 modules /
+8.15 s.
+
+Role-based task dashboard закрыт: автор получает только свои возвращённые
+материалы и черновики, переводчик — неполные `translation_check`, согласующий —
+доступные approvals, оператор предупреждений — истекающие записи. Действия
+проверяются module permission, model policy и regional scope; viewer не получает
+edit-ссылок. Целевой DashboardTest — 9 тестов / 114 assertions, Playwright
+role regression — 2/2, полный `composer ci:check` — 504 теста / 3716 assertions,
+Vite build — 2370 modules / 8.34 s.
+
+Bundle report зафиксирован для обоих приложений без новой зависимости. CMS
+читает Vite manifest, frontend — встроенный в Next.js 16
+`route-bundle-stats`; отчёты содержат raw/gzip top assets/routes, JSON и
+Markdown, а CI загружает их artifacts и падает при превышении budgets. Baseline:
+CMS entry 199,4 KiB / largest JS 458,3 KiB / total JS 1517,1 KiB; frontend
+largest route 578,3 KiB / largest chunk 227,1 KiB / total route chunks
+721,1 KiB. Budget tests 2+2, CMS gate 504/504, frontend 87 Vitest и production
+build зелёные.
+
+Production-like dataset теперь воспроизводим командой `benchmark:seed` только
+в изолированных `APP_ENV=benchmark`, DB и storage. Полный профиль создаёт
+10 000 published news, длинные rich-text записи, 5 000 media и ровно 500 MiB
+оригиналов, включая 8000×8000 / 10 MiB; повторный запуск идемпотентен. Проверка
+во временной SQLite БД: 10 000/5 000/524 288 000 bytes за 0,953 s, 540 MiB
+on disk. Guard/profile/idempotency покрыты 3 Pest / 21 assertions; Pint и
+PHPStan зелёные.
+
 **Статус O-016 (28.07.2026): выполнено.** Общий preview во всех шести
 редакционных формах показывает несохранённые данные в трёх локалях, desktop,
 mobile и share/OG режимах и явно обозначает fallback. Отдельный private signed
@@ -614,3 +648,15 @@ autosave и кнопочные media-альтернативы; полный brow
 
 Полевых результатов пока 0/5, поэтому O-020 и Definition of Done намеренно не
 отмечены выполненными до сессий с реальными будущими редакторами.
+
+**Image pipeline Stage 1 (28.07.2026): выполнено.** Media queue теперь создаёт
+неизменяемую публичную матрицу из fallback/WebP/AVIF `sm/md/lg` и отдельные
+WebP CMS thumbnails 192/320. AVIF формирует проверяемый `avifenc` с явной
+ошибкой конфигурации worker; прозрачный PNG остаётся PNG с alpha=127, SHA-256
+оригинала не меняется. Все URL derivatives версионированы, Apache/CDN cache
+ограничен conversion-путями и получает годовой `immutable`. Rich-text хранит
+media ID и на публичном API динамически разрешается в `<picture>` с тремя
+форматами, не выдавая original. `media:audit --regenerate` проверяет original и
+все 11 derivatives и ставит только повреждённые записи в media queue.
+Итоговый пакет: 41 Pest / 193 assertions, PHPStan, Pint, TypeScript, ESLint и
+Vite production build (2370 modules / 8.27 s) зелёные.

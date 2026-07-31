@@ -299,7 +299,8 @@ it('preserves image srcset and sizes for responsive images', function () {
         'body' => [
             'ru' => '<img src="/storage/1/x.jpg" '
                 .'srcset="/storage/1/conversions/x-sm.jpg 480w, /storage/1/conversions/x-md.jpg 960w" '
-                .'sizes="(max-width: 920px) 50vw, 360px" class="re-img size-medium" alt="ф">',
+                .'sizes="(max-width: 920px) 50vw, 360px" data-media-id="42" '
+                .'class="re-img size-medium" alt="ф">',
             'tg' => '',
             'en' => '',
         ],
@@ -311,5 +312,6 @@ it('preserves image srcset and sizes for responsive images', function () {
     expect($body)
         ->toContain('srcset="/storage/1/conversions/x-sm.jpg 480w')
         ->toContain('sizes=')
+        ->toContain('data-media-id="42"')
         ->toContain('size-medium');
 });

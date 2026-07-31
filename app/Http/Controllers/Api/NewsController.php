@@ -24,8 +24,18 @@ class NewsController extends Controller
         $perPage = min(max($request->integer('per_page', 12), 1), 50);
 
         $query = News::query()
+            ->select([
+                'id',
+                'category_id',
+                'slug',
+                'title',
+                'summary',
+                'published_at',
+                'is_pinned',
+                'cover_alt',
+            ])
             ->public()
-            ->with('category', 'media')
+            ->with(['category:id,slug,name', 'media'])
             ->orderByDesc('is_pinned')
             ->orderByDesc('published_at');
 
@@ -49,8 +59,21 @@ class NewsController extends Controller
     public function show(string $slug): JsonResource
     {
         $news = News::query()
+            ->select([
+                'id',
+                'category_id',
+                'slug',
+                'title',
+                'summary',
+                'body',
+                'published_at',
+                'is_pinned',
+                'cover_alt',
+                'views_count',
+                'seo',
+            ])
             ->public()
-            ->with('category', 'media')
+            ->with(['category:id,slug,name', 'media'])
             ->where('slug', $slug);
 
         PublicLocale::available($news, 'title');

@@ -47,7 +47,12 @@ it('queues conversions without changing the original and creates derivatives in 
     expect(hash_file('sha256', $media->getPath()))->toBe($originalChecksum)
         ->and($media->getCustomProperty('conversion_status'))->toBe('ready');
 
-    foreach (['sm', 'md', 'lg'] as $conversion) {
+    foreach ([
+        'sm', 'sm-webp', 'sm-avif',
+        'md', 'md-webp', 'md-avif',
+        'lg', 'lg-webp', 'lg-avif',
+        'cms-192', 'cms-320',
+    ] as $conversion) {
         Storage::disk('public')->assertExists(
             $media->getPathRelativeToRoot($conversion),
         );
@@ -58,6 +63,45 @@ it('queues conversions without changing the original and creates derivatives in 
 
     expect(Storage::disk('public')->allFiles())->toHaveCount($fileCount)
         ->and(hash_file('sha256', $media->getPath()))->toBe($originalChecksum);
+});
+
+it('preserves a transparent png fallback and the immutable original', function () {
+    Queue::fake();
+    config(['media-library.queue_conversions_after_database_commit' => false]);
+    $temporaryPath = tempnam(sys_get_temp_dir(), 'transparent-png-');
+    expect($temporaryPath)->not->toBeFalse();
+
+    $image = imagecreatetruecolor(600, 400);
+    imagealphablending($image, false);
+    imagesavealpha($image, true);
+    imagefill($image, 0, 0, imagecolorallocatealpha($image, 20, 40, 60, 127));
+    imagepng($image, $temporaryPath);
+    imagedestroy($image);
+
+    $asset = MediaAsset::factory()->create();
+    $media = $asset
+        ->addMedia(new UploadedFile(
+            $temporaryPath,
+            'transparent.png',
+            'image/png',
+            null,
+            true,
+        ))
+        ->toMediaCollection('asset');
+    $originalChecksum = hash_file('sha256', $media->getPath());
+
+    mediaConversionJob($media)->handle(app(FileManipulator::class));
+
+    $fallbackPath = $media->getPath('sm');
+    $fallback = imagecreatefrompng($fallbackPath);
+    $alpha = (imagecolorat($fallback, 0, 0) >> 24) & 0x7F;
+    imagedestroy($fallback);
+
+    expect(pathinfo($fallbackPath, PATHINFO_EXTENSION))->toBe('png')
+        ->and($alpha)->toBe(127)
+        ->and(hash_file('sha256', $media->getPath()))->toBe($originalChecksum);
+    Storage::disk('public')->assertExists($media->getPathRelativeToRoot('sm-webp'));
+    Storage::disk('public')->assertExists($media->getPathRelativeToRoot('sm-avif'));
 });
 
 it('records a bounded error when conversion processing fails', function () {

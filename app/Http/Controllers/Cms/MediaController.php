@@ -347,7 +347,7 @@ class MediaController extends Controller
             'ext' => strtoupper(pathinfo($m->file_name, PATHINFO_EXTENSION) ?: 'FILE'),
             'mime' => $mime,
             'kind' => $isImage ? 'image' : 'file',
-            'srcset' => $isImage ? MediaAsset::srcsetFromMedia($m) : null,
+            'srcset' => $isImage ? MediaAsset::cmsThumbnailSrcset($m) : null,
             'conversion_status' => $isImage
                 ? (is_string($conversionStatus) ? $conversionStatus : 'pending')
                 : null,

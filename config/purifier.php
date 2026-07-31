@@ -38,7 +38,7 @@ return [
         // restricted to YouTube/Vimeo embeds via URI.SafeIframeRegexp.
         'news' => [
             'HTML.Doctype' => 'HTML 4.01 Transitional',
-            'HTML.Allowed' => 'p[style],br,strong,b,em,i,u,s,span[style],h2[style],h3[style],h4[style],ul,ol,li,blockquote,hr,a[href|title|target|rel],img[src|alt|title|width|height|class|srcset|sizes],figure[class],figcaption,table,thead,tbody,tr,th[colspan|rowspan],td[colspan|rowspan],div[data-youtube-video],iframe[src|width|height|frameborder|allowfullscreen]',
+            'HTML.Allowed' => 'p[style],br,strong,b,em,i,u,s,span[style],h2[style],h3[style],h4[style],ul,ol,li,blockquote,hr,a[href|title|target|rel],img[src|alt|title|width|height|class|srcset|sizes|data-media-id],figure[class],figcaption,table,thead,tbody,tr,th[colspan|rowspan],td[colspan|rowspan],div[data-youtube-video],iframe[src|width|height|frameborder|allowfullscreen]',
             'CSS.AllowedProperties' => 'text-align,color',
             'AutoFormat.AutoParagraph' => false,
             'AutoFormat.RemoveEmpty' => true,
@@ -107,6 +107,7 @@ return [
                 ['div', 'data-youtube-video', 'Text'],
                 ['img', 'srcset', 'Text'],
                 ['img', 'sizes', 'Text'],
+                ['img', 'data-media-id', 'Text'],
                 ['table', 'height', 'Text'],
                 ['td', 'border', 'Text'],
                 ['th', 'border', 'Text'],

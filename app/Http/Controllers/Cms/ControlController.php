@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Alert;
 use App\Models\User;
 use App\Services\AlertMapService;
+use App\Services\OperationalTelemetry;
 use App\Services\WebVitalsReportService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -16,6 +17,7 @@ class ControlController extends Controller
     public function __construct(
         private readonly AlertMapService $map,
         private readonly WebVitalsReportService $webVitals,
+        private readonly OperationalTelemetry $telemetry,
     ) {}
 
     public function index(Request $request): Response
@@ -51,6 +53,7 @@ class ControlController extends Controller
                 'url' => "/alerts/{$alert->id}/edit",
             ])->values()->all(),
             'web_vitals' => $this->webVitals->summary(),
+            'operations' => $this->telemetry->summary(),
         ]);
     }
 }

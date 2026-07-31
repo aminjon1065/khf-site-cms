@@ -31,4 +31,5 @@ yarn-error.log
 /test-results
 /playwright-report
 /playwright/.cache
+/bundle-reports
 /tests/e2e/.auth
