@@ -895,7 +895,18 @@ Production-like performance тесты не запускать против prod
   назвала все 4 маршрута с картой. Полный фронт-гейт: TypeScript, ESLint,
   107 Vitest, production build, `bundle:report` без нарушений, 62 Playwright.
 - [x] Уменьшить fonts. **Доказательство:** Fira Sans/Fira Sans Condensed сохранены и self-hosted; критический путь сокращён с 7 subset-файлов до 2 успешных WOFF2-запросов (48 724 bytes суммарно, бюджет ≤ 100 KB), что защищено Vitest и Playwright.
-- [ ] Убрать повторные API calls.
+- [x] Убрать повторные API calls. **Доказательство:** замер на mock-CMS со
+  счётчиком запросов и чистым кэшем — повторов не осталось ни на одной
+  проверенной странице. `/ru`: `settings ×1`, `menu ×1`, `home ×1`;
+  `/ru/structure`: `settings ×1`, `menu ×1`, `structure ×1` — хотя настройки
+  нужны и макету, и странице; `/ru/news/test-news`: `/news/test-news ×1` —
+  хотя `fetchNewsItem` вызывают и `generateMetadata`, и тело страницы.
+  Отдельно замечено и НЕ закрыто здесь: `generateStaticParams` и блок related
+  тянут полные списки (`per_page=50` на каждую из трёх локалей) ради одного
+  поля `slug` — полный список против slug-only даёт 13,6× у news, 41,9× у
+  projects, 19,6× у announcements, 21,0× у instructions. Это не повтор
+  запроса, а лишние поля в ответе, поэтому передано в пункт «Select only
+  required columns».
 - [x] Granular tags и webhook. **Доказательство:** CMS отправляет проверяемый контракт `type/id/slug/locales/event/tags`; `RevalidateFrontend` имеет `ShouldBeUnique` (30 s), explicit `afterCommit()`, timeout, backoff, exception throttling и permanent-failure alert. Next 16 валидирует соответствие metadata→tags и вызывает `revalidateTag(tag, "max")` только для `shell/home/list/detail/sitemap` нужного типа и локали. Pest покрывает success/disabled/timeout/401/5xx/retry/unique/after-commit, Vitest — list/detail tags, auth и invalid contract; полный CMS CI: 363 теста / 1352 assertions, frontend: 36 unit tests, TypeScript, ESLint и production build на 54 страницы.
 - [ ] Pagination/filtering server-side.
 - [ ] CSS/rendering audit.
