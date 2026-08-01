@@ -880,7 +880,20 @@ Production-like performance тесты не запускать против prod
 ### Этап 2 — Lighthouse frontend, 5–10 дней
 
 - [x] Разделить `PublicHeader`. **Доказательство:** статическая оболочка и вся навигация переведены в Server Component, интерактивность изолирована в `ThemeToggle`, `LocaleSwitcher` и `MobileMenuButton`; объём исходников под client boundary сокращён с 23 540 до 2 629 bytes (-88,8%), production chunks не содержат статический copy шапки. 31 Vitest, TypeScript, ESLint, 18 Playwright/axe и production build на 54 страницы зелёные; Lighthouse CI (18 прогонов) — Performance 95/95/95/96/95/96, Accessibility/Best Practices/SEO 100, median TBT 4,5–6 ms.
-- [ ] Lazy-load map и остальные islands.
+- [x] Lazy-load map и остальные islands. **Доказательство:** `d3-geo` и
+  `topojson-client` лежат в отдельных чанках (26,0 и 24,3 KiB) и не входят в
+  граф первой загрузки ни одного маршрута — проверено по `firstLoadChunkPaths`
+  всех маршрутов. Остальные islands (`MapExplorer`, `NewsSlider`,
+  `ContactForm`, `ShareButton`, `ArticleActions`) — небольшие собственные
+  компоненты без тяжёлых внешних зависимостей: маршрутный JS сверх общей
+  оболочки 555,8 KiB составляет `/map` +11,5 KiB, главная +6,1, `contacts` и
+  `alerts` +3,3, остальные 0, поэтому дополнительное дробление не окупается.
+  Байтовый бюджет эту ленивость не защищал: запас до `largestRouteBytes` ~53 KiB
+  при весе карты ~50 KiB, и подложенный статический импорт дал 588,3 KiB против
+  бюджета 620 KiB — то есть прошёл бы молча. Добавлена отдельная проверка
+  «библиотека обязана грузиться только по требованию»; на той же регрессии она
+  назвала все 4 маршрута с картой. Полный фронт-гейт: TypeScript, ESLint,
+  107 Vitest, production build, `bundle:report` без нарушений, 62 Playwright.
 - [x] Уменьшить fonts. **Доказательство:** Fira Sans/Fira Sans Condensed сохранены и self-hosted; критический путь сокращён с 7 subset-файлов до 2 успешных WOFF2-запросов (48 724 bytes суммарно, бюджет ≤ 100 KB), что защищено Vitest и Playwright.
 - [ ] Убрать повторные API calls.
 - [x] Granular tags и webhook. **Доказательство:** CMS отправляет проверяемый контракт `type/id/slug/locales/event/tags`; `RevalidateFrontend` имеет `ShouldBeUnique` (30 s), explicit `afterCommit()`, timeout, backoff, exception throttling и permanent-failure alert. Next 16 валидирует соответствие metadata→tags и вызывает `revalidateTag(tag, "max")` только для `shell/home/list/detail/sitemap` нужного типа и локали. Pest покрывает success/disabled/timeout/401/5xx/retry/unique/after-commit, Vitest — list/detail tags, auth и invalid contract; полный CMS CI: 363 теста / 1352 assertions, frontend: 36 unit tests, TypeScript, ESLint и production build на 54 страницы.
