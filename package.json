@@ -13,7 +13,8 @@
         "types:check": "tsc --noEmit",
         "bundle:report": "node resources/js/lib/bundle-report.mjs",
         "test:bundle": "node --test tests/Node/bundle-report.test.mjs",
-        "test:e2e": "playwright test"
+        "test:e2e": "playwright test",
+        "load:probe": "node scripts/load-probe.mjs"
     },
     "devDependencies": {
         "@axe-core/playwright": "4.12.1",
