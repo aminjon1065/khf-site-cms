@@ -5,6 +5,10 @@ use App\Jobs\RevalidateFrontend;
 use App\Models\News;
 use App\Notifications\WorkflowNotification;
 use Illuminate\Cache\Events\CacheFailedOver;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskSkipped;
+use Illuminate\Console\Scheduling\CacheEventMutex;
+use Illuminate\Console\Scheduling\Event as ScheduledTask;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Queue\Events\QueueBusy;
 use Illuminate\Queue\Events\QueueFailedOver;
@@ -147,4 +151,27 @@ it('runs the scheduler among the local dev processes', function () {
     $schedule = collect(DevCommands::commands())->firstWhere('name', 'schedule');
 
     expect((string) $schedule['command'])->toContain('schedule:work');
+});
+
+it('raises an alert when a scheduled task fails or keeps being skipped', function () {
+    // Раньше упавшее задание планировщика не давало ни одного сигнала: ночная
+    // резервная копия могла падать неделями, а `/ready` отвечал «готов» — он
+    // следит за биением планировщика, а не за успехом его заданий.
+    Log::spy();
+
+    $task = new ScheduledTask(app(CacheEventMutex::class), 'php artisan ops:backup');
+
+    event(new ScheduledTaskFailed($task, new RuntimeException('disk full')));
+    event(new ScheduledTaskSkipped($task));
+
+    Log::shouldHaveReceived('critical')->withArgs(
+        fn (string $message, array $context): bool => $message === 'scheduled_task_failed'
+            && $context['task'] === 'php artisan ops:backup'
+            && $context['error'] === 'disk full',
+    )->once();
+
+    Log::shouldHaveReceived('warning')->withArgs(
+        fn (string $message, array $context): bool => $message === 'scheduled_task_skipped'
+            && $context['task'] === 'php artisan ops:backup',
+    )->once();
 });
