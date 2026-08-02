@@ -10,6 +10,7 @@ it('reports exact bounded API and queue operational percentiles', function () {
     foreach ([10, 20, 30, 40, 500] as $duration) {
         $telemetry->recordApi('api.news.index', $duration === 500 ? 503 : 200, $duration);
     }
+    $telemetry->recordApi('api.news.show', 404, 8);
     $telemetry->recordApi('api.health', 200, 5);
 
     $telemetry->startQueueJob('job-1');
@@ -18,15 +19,42 @@ it('reports exact bounded API and queue operational percentiles', function () {
     $summary = $telemetry->summary();
 
     expect($summary['api'])
-        ->samples->toBe(6)
-        ->errors->toBe(1)
+        ->samples->toBe(7)
+        // 4xx и 5xx разделены: общее число «ошибок» смешивало бы 404 от
+        // краулера с отказом сервера, и по нему нельзя решить, инцидент это
+        // или обычный шум.
+        ->server_errors->toBe(1)
+        ->client_errors->toBe(1)
         ->p95_ms->toBe(500.0)
         ->and($summary['api']['routes'][0])
         ->route->toBe('api.news.index')
         ->samples->toBe(5)
-        ->errors->toBe(1)
+        ->server_errors->toBe(1)
+        ->client_errors->toBe(0)
         ->and($summary['queue'])
         ->samples->toBe(1)
         ->failures->toBe(0)
         ->last_processed_at->not->toBeNull();
+});
+
+it('says which period the samples cover', function () {
+    // Без окна «p95 = 400 мс» нельзя прочитать: двести замеров могли уложиться
+    // в минуту пиковой нагрузки или растянуться на трое суток.
+    Cache::forget(OperationalTelemetry::CACHE_KEY);
+    $telemetry = app(OperationalTelemetry::class);
+
+    expect($telemetry->summary()['api']['window'])
+        ->from->toBeNull()
+        ->to->toBeNull();
+
+    $this->travelTo('2026-08-01 10:00:00');
+    $telemetry->recordApi('api.news.index', 200, 10);
+    $this->travelTo('2026-08-01 12:30:00');
+    $telemetry->recordApi('api.news.index', 200, 12);
+    $this->travelBack();
+
+    $window = $telemetry->summary()['api']['window'];
+
+    expect($window['from'])->toStartWith('2026-08-01T10:00:00')
+        ->and($window['to'])->toStartWith('2026-08-01T12:30:00');
 });

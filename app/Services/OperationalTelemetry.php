@@ -92,8 +92,8 @@ final class OperationalTelemetry
 
     /**
      * @return array{
-     *   api: array{samples: int, errors: int, p95_ms: float|null, routes: list<array{route: string, samples: int, errors: int, p95_ms: float|null}>},
-     *   queue: array{samples: int, failures: int, p95_ms: float|null, last_processed_at: string|null},
+     *   api: array{samples: int, client_errors: int, server_errors: int, p95_ms: float|null, window: array{from: string|null, to: string|null}, routes: list<array{route: string, samples: int, client_errors: int, server_errors: int, p95_ms: float|null}>},
+     *   queue: array{samples: int, failures: int, p95_ms: float|null, window: array{from: string|null, to: string|null}, last_processed_at: string|null},
      *   cache: array{hits: int, misses: int, partial: int, requests: int, hit_rate: float|null}
      * }
      */
@@ -119,7 +119,11 @@ final class OperationalTelemetry
             $routes[] = [
                 'route' => $route,
                 'samples' => count($samples),
-                'errors' => count(array_filter($samples, fn (array $sample): bool => $sample['status'] >= 400)),
+                // 4xx и 5xx разделены намеренно: общее число «ошибок»
+                // смешивает 404 от краулера с отказом сервера, и по нему
+                // нельзя решить, инцидент это или обычный шум.
+                'client_errors' => $this->countStatuses($samples, 400, 499),
+                'server_errors' => $this->countStatuses($samples, 500, 599),
                 'p95_ms' => $this->percentile($this->durations($samples), 0.95),
             ];
         }
@@ -134,18 +138,53 @@ final class OperationalTelemetry
         return [
             'api' => [
                 'samples' => count($api),
-                'errors' => count(array_filter($api, fn (array $sample): bool => $sample['status'] >= 400)),
+                'client_errors' => $this->countStatuses($api, 400, 499),
+                'server_errors' => $this->countStatuses($api, 500, 599),
                 'p95_ms' => $this->percentile($this->durations($api), 0.95),
+                // Окно, которое покрывает выборка. Без него «p95 = 400 мс»
+                // нельзя прочитать: двести замеров могли уложиться в минуту
+                // пиковой нагрузки или растянуться на три дня.
+                'window' => $this->window($api),
                 'routes' => $routes,
             ],
             'queue' => [
                 'samples' => count($queue),
                 'failures' => count(array_filter($queue, fn (array $sample): bool => $sample['failed'])),
                 'p95_ms' => $this->percentile($this->durations($queue), 0.95),
+                'window' => $this->window($queue),
                 'last_processed_at' => $lastQueueSample['recorded_at'] ?? null,
             ],
             'cache' => $this->cacheSummary(),
         ];
+    }
+
+    /**
+     * @param  list<array{status?: int, ...}>  $samples
+     */
+    private function countStatuses(array $samples, int $from, int $to): int
+    {
+        return count(array_filter(
+            $samples,
+            fn (array $sample): bool => ($sample['status'] ?? 0) >= $from && ($sample['status'] ?? 0) <= $to,
+        ));
+    }
+
+    /**
+     * @param  list<array{recorded_at?: string, ...}>  $samples
+     * @return array{from: string|null, to: string|null}
+     */
+    private function window(array $samples): array
+    {
+        $timestamps = array_values(array_filter(array_map(
+            fn (array $sample): ?string => $sample['recorded_at'] ?? null,
+            $samples,
+        )));
+
+        if ($timestamps === []) {
+            return ['from' => null, 'to' => null];
+        }
+
+        return ['from' => min($timestamps), 'to' => max($timestamps)];
     }
 
     /**

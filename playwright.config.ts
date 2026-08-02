@@ -9,6 +9,13 @@ import { defineConfig, devices } from '@playwright/test';
 // tests; see PROGRESS.md and the spawned follow-up task for what that
 // still leaves uncovered (menu management, approve/publish).
 
+// Стенд можно не поднимать самим: если CMS уже работает (например, в
+// контейнере lerd по https://khf-site-cms.test), путь к ней передаётся через
+// CMS_E2E_BASE_URL. Иначе `artisan serve` пытается занять порт, который уже
+// проброшен контейнером, и прогон падает не по вине тестов.
+const baseURL = process.env.CMS_E2E_BASE_URL ?? 'http://127.0.0.1:8848';
+const startsOwnServer = !process.env.CMS_E2E_BASE_URL;
+
 export default defineConfig({
     testDir: './tests/e2e',
     fullyParallel: false,
@@ -17,8 +24,11 @@ export default defineConfig({
     retries: process.env.CI ? 1 : 0,
     reporter: 'list',
     use: {
-        baseURL: 'http://127.0.0.1:8848',
+        baseURL,
         trace: 'on-first-retry',
+        // Локальный стенд ходит по сертификату mkcert, которого нет в
+        // хранилище Playwright.
+        ignoreHTTPSErrors: true,
     },
     projects: [
         {
@@ -35,10 +45,12 @@ export default defineConfig({
             },
         },
     ],
-    webServer: {
-        command: 'php artisan serve --port=8848',
-        url: 'http://127.0.0.1:8848',
-        reuseExistingServer: !process.env.CI,
-        timeout: 30_000,
-    },
+    webServer: startsOwnServer
+        ? {
+              command: 'php artisan serve --port=8848',
+              url: baseURL,
+              reuseExistingServer: !process.env.CI,
+              timeout: 30_000,
+          }
+        : undefined,
 });

@@ -71,15 +71,23 @@ interface WebVitalsReport {
     devices: VitalDimension[];
 }
 
+interface SampleWindow {
+    from: string | null;
+    to: string | null;
+}
+
 interface OperationalReport {
     api: {
         samples: number;
-        errors: number;
+        client_errors: number;
+        server_errors: number;
         p95_ms: number | null;
+        window: SampleWindow;
         routes: {
             route: string;
             samples: number;
-            errors: number;
+            client_errors: number;
+            server_errors: number;
             p95_ms: number | null;
         }[];
     };
@@ -87,6 +95,7 @@ interface OperationalReport {
         samples: number;
         failures: number;
         p95_ms: number | null;
+        window: SampleWindow;
         last_processed_at: string | null;
     };
     cache: {
@@ -119,6 +128,27 @@ const ratingLabel: Record<VitalRating, string> = {
     poor: 'Плохо',
     'no-data': 'Нет данных',
 };
+
+/**
+ * Период, который покрывает выборка. Без него «p95 = 400 мс» невозможно
+ * прочитать: двести замеров могли уложиться в минуту пиковой нагрузки или
+ * растянуться на три дня.
+ */
+function sampleWindow(window: SampleWindow): string {
+    if (!window.from || !window.to) {
+        return 'Данных пока нет';
+    }
+
+    const format = (value: string) =>
+        new Date(value).toLocaleString('ru-RU', {
+            day: 'numeric',
+            month: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+
+    return `Выборка за ${format(window.from)} — ${format(window.to)}`;
+}
 
 function formatVital(metric: VitalMetric): string {
     if (metric.p75 === null) {
@@ -272,9 +302,10 @@ export default function ControlCenter({
                         Надёжность API и очередей
                     </h2>
                     <span className="mt-1 block text-sm text-(--color-neutral-600)">
-                        Последние 200 sampled/slow/error запросов и заданий без
-                        URL, содержимого и персональных данных. Доля попаданий в
-                        кэш считается по всем запросам за сутки, а не по этой
+                        {sampleWindow(operations.api.window)} · последние 200
+                        sampled/slow/error запросов и заданий без URL,
+                        содержимого и персональных данных. Доля попаданий в кэш
+                        считается по всем запросам за сутки, а не по этой
                         выборке — иначе медленные ответы перевесили бы
                     </span>
                 </div>
@@ -289,8 +320,12 @@ export default function ControlCenter({
                                     : `${operations.api.p95_ms} мс`,
                         },
                         {
-                            label: 'Ошибки API',
-                            value: operations.api.errors,
+                            label: 'Отказы сервера (5xx)',
+                            value: operations.api.server_errors,
+                        },
+                        {
+                            label: 'Ответы 4xx',
+                            value: operations.api.client_errors,
                         },
                         {
                             label: 'Очередь p95',
@@ -338,7 +373,7 @@ export default function ControlCenter({
                                         p95
                                     </th>
                                     <th scope="col" className="px-4 py-3">
-                                        Ошибки
+                                        5xx / 4xx
                                     </th>
                                     <th
                                         scope="col"
@@ -366,7 +401,8 @@ export default function ControlCenter({
                                                 : `${route.p95_ms} мс`}
                                         </td>
                                         <td className="px-4 py-3 font-mono">
-                                            {route.errors}
+                                            {route.server_errors} /{' '}
+                                            {route.client_errors}
                                         </td>
                                         <td className="px-4 py-3 text-right font-mono">
                                             {route.samples}
