@@ -21,6 +21,15 @@ class CreateOperationalBackup extends Command
             "Backup created: {$result['directory']} ({$result['manifest']['original_count']} originals).",
         );
 
+        // Об удалении старых копий сообщаем явно: молчаливое удаление данных —
+        // худший вид тишины в журнале дежурного.
+        if ($result['pruned'] !== []) {
+            $this->components->info(
+                'Pruned '.count($result['pruned']).' backup(s) beyond the retention window of '
+                .config('operations.backups.keep').'.',
+            );
+        }
+
         return self::SUCCESS;
     }
 }

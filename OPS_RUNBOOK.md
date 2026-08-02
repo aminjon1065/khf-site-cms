@@ -109,6 +109,17 @@ checksums, and then removes the temporary database. Alert if either scheduled
 command fails. Copy backups to a separate account/region and apply the approved
 retention policy there; a backup on the application host alone is not a backup.
 
+Locally the command keeps the last `BACKUP_KEEP` (default 7) backups and prunes
+older ones **after** a new backup is complete — a failed run never removes the
+previous good copy. Without this the daily copy of every media original filled
+the disk, and the first thing to fail was the next backup.
+
+`mysqldump`/`mysql` on many hosts are symlinks to the MariaDB client, which
+cannot authenticate against MySQL 8 (`caching_sha2_password`). The failure then
+looks like a permissions problem in a 02:15 cron log, so `ops:backup` detects
+the MariaDB client and says so explicitly; point `MYSQLDUMP_BINARY` and
+`MYSQL_BINARY` at the real MySQL client.
+
 ## Dashboards and alert thresholds
 
 - Edge/Nginx owns full access logs.

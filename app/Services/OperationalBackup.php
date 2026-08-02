@@ -13,7 +13,7 @@ use Symfony\Component\Process\Process;
 final class OperationalBackup
 {
     /**
-     * @return array{directory: string, manifest: array<string, mixed>}
+     * @return array{directory: string, manifest: array<string, mixed>, pruned: list<string>}
      */
     public function create(string $connectionName, string $destination): array
     {
@@ -46,12 +46,42 @@ final class OperationalBackup
                 true,
             );
 
-            return ['directory' => $directory, 'manifest' => $manifest];
+            $pruned = $this->prune($destination);
+
+            return ['directory' => $directory, 'manifest' => $manifest, 'pruned' => $pruned];
         } catch (\Throwable $exception) {
             File::deleteDirectory($directory);
 
             throw $exception;
         }
+    }
+
+    /**
+     * Удаляет всё, кроме `operations.backups.keep` последних копий. Обрезка
+     * идёт **после** успешного создания новой: сначала убеждаемся, что свежая
+     * копия есть, и только потом расстаёмся со старой. Имена каталогов
+     * начинаются с метки времени, поэтому лексикографический порядок совпадает
+     * с хронологическим.
+     *
+     * @return list<string>
+     */
+    private function prune(string $destination): array
+    {
+        $keep = max(1, (int) config('operations.backups.keep', 7));
+        $directories = File::directories($destination);
+        $backups = array_values(array_filter(
+            $directories,
+            fn (string $path): bool => File::exists($path.DIRECTORY_SEPARATOR.'manifest.json'),
+        ));
+
+        rsort($backups);
+        $stale = array_slice($backups, $keep);
+
+        foreach ($stale as $path) {
+            File::deleteDirectory($path);
+        }
+
+        return $stale;
     }
 
     /**
@@ -130,10 +160,44 @@ final class OperationalBackup
         }
 
         if (! $process->isSuccessful()) {
-            throw new RuntimeException('mysqldump failed: '.trim($process->getErrorOutput()));
+            throw new RuntimeException(
+                'mysqldump failed: '.trim($process->getErrorOutput()).$this->mariadbHint(),
+            );
         }
 
         return $target;
+    }
+
+    /**
+     * На многих системах `mysqldump` — это симлинк на `mariadb-dump`, а клиент
+     * MariaDB не умеет аутентификацию MySQL 8 (`caching_sha2_password`) и
+     * падает с сообщением про отсутствующую библиотеку плагина. Ошибка при
+     * этом выглядит как проблема с правами, и разбираться с ней приходится в
+     * 02:15 по логу cron. Подсказка добавляется только когда бинарник
+     * действительно от MariaDB — чтобы не сбивать с толку в остальных случаях.
+     */
+    private function mariadbHint(): string
+    {
+        $binary = (string) config('operations.backups.mysql_dump_binary');
+        $version = new Process([$binary, '--version']);
+        $version->setTimeout(15);
+
+        try {
+            $version->run();
+        } catch (\Throwable) {
+            return '';
+        }
+
+        $output = $version->getOutput().$version->getErrorOutput();
+
+        if (stripos($output, 'mariadb') === false) {
+            return '';
+        }
+
+        return " \n\nПодсказка: `{$binary}` — это клиент MariaDB ("
+            .trim(strtok($output, "\n") ?: '')
+            .'), а он не поддерживает аутентификацию MySQL 8 `caching_sha2_password`. '
+            .'Установите клиент MySQL и укажите его в MYSQLDUMP_BINARY/MYSQL_BINARY.';
     }
 
     /**
