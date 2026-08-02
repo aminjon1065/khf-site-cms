@@ -7,9 +7,7 @@ use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use Spatie\MediaLibrary\Conversions\ConversionCollection;
 use Spatie\MediaLibrary\Conversions\FileManipulator;
-use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\mock;
@@ -19,14 +17,6 @@ beforeEach(function () {
     seed(RolePermissionSeeder::class);
     Storage::fake('public');
 });
-
-function mediaConversionJob(Media $media): PerformMediaConversions
-{
-    return new PerformMediaConversions(
-        ConversionCollection::createForMedia($media),
-        $media,
-    );
-}
 
 it('queues conversions without changing the original and creates derivatives in the job', function () {
     Queue::fake();
