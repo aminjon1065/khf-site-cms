@@ -2,11 +2,17 @@
 
 namespace App\Observers;
 
+use App\Http\Controllers\Api\SlugController;
 use App\Models\Alert;
+use App\Models\Announcement;
 use App\Models\Category;
 use App\Models\District;
 use App\Models\HomeBlock;
+use App\Models\Instruction;
 use App\Models\MenuItem;
+use App\Models\News;
+use App\Models\Page;
+use App\Models\Project;
 use App\Models\Region;
 use App\Models\Setting;
 use App\Services\PublicReadModelCache;
@@ -38,6 +44,21 @@ final class InvalidatePublicReadModels implements ShouldHandleEventsAfterCommit
         $this->invalidate($model);
     }
 
+    /**
+     * Models whose rows appear in the slug-only listings served by
+     * {@see SlugController}.
+     *
+     * @var list<class-string<Model>>
+     */
+    private const SLUG_SOURCES = [
+        Alert::class,
+        Announcement::class,
+        Instruction::class,
+        News::class,
+        Page::class,
+        Project::class,
+    ];
+
     private function invalidate(Model $model): void
     {
         $namespaces = match (true) {
@@ -64,6 +85,10 @@ final class InvalidatePublicReadModels implements ShouldHandleEventsAfterCommit
             $model instanceof Media => [PublicReadModelCache::HOME],
             default => [PublicReadModelCache::HOME],
         };
+
+        if (in_array($model::class, self::SLUG_SOURCES, true)) {
+            $namespaces[] = PublicReadModelCache::SLUGS;
+        }
 
         $this->cache->invalidate(...$namespaces);
     }
