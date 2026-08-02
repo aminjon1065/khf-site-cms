@@ -908,8 +908,47 @@ Production-like performance тесты не запускать против prod
   запроса, а лишние поля в ответе, поэтому передано в пункт «Select only
   required columns».
 - [x] Granular tags и webhook. **Доказательство:** CMS отправляет проверяемый контракт `type/id/slug/locales/event/tags`; `RevalidateFrontend` имеет `ShouldBeUnique` (30 s), explicit `afterCommit()`, timeout, backoff, exception throttling и permanent-failure alert. Next 16 валидирует соответствие metadata→tags и вызывает `revalidateTag(tag, "max")` только для `shell/home/list/detail/sitemap` нужного типа и локали. Pest покрывает success/disabled/timeout/401/5xx/retry/unique/after-commit, Vitest — list/detail tags, auth и invalid contract; полный CMS CI: 363 теста / 1352 assertions, frontend: 36 unit tests, TypeScript, ESLint и production build на 54 страницы.
-- [ ] Pagination/filtering server-side.
-- [ ] CSS/rendering audit.
+- [x] Pagination/filtering server-side. **Доказательство:** проверено запросами
+  ко всем двенадцати публичным спискам: `per_page=999999` зажимается до 50
+  везде, кроме `/alerts`, у которого постраничности нет намеренно. Шесть
+  списочных страниц портала берут страницу с сервера (`news` 12, `projects` 12,
+  `guides` 15, `documents` 20, `announcements` 20, `search` 20) и рендерят
+  `Pagination`; отбор по категории, типу, виду и поисковой строке выполняет CMS
+  до постраничности, счётчики берутся из `meta.total`. Ключевое — что это
+  действительно сервер, а не клиентская фильтрация: новый
+  `tests/e2e/no-js-lists.spec.ts` гоняет категории, GET-форму поиска и ссылки
+  страниц **с выключенным JavaScript**. Страж дополнен: `PublicPaginationTest`
+  не покрывал `/news` и `/search` (обе постраничны, ни одна не была защищена) —
+  теперь покрывает, а отсутствие постраничности у `/alerts` зафиксировано
+  отдельным тестом как решение. Стоимость этого решения измерена на стенде с
+  41 предупреждением: +128 B gzip (3 288 B без сжатия) HTML на предупреждение
+  при бюджете документа 80 KB — запас в несколько сотен записей. CMS —
+  539 тестов / 3945 assertions, PHPStan, Pint; фронт — tsc, ESLint, 110 Vitest,
+  65 Playwright.
+- [x] CSS/rendering audit. **Доказательство:** Lighthouse (mobile, по 3 прогона)
+  на пяти контрольных страницах — `CLS = 0,0000` и медианой, и худшим прогоном
+  при блокирующем бюджете 0,02; аудит `layout-shifts` — notApplicable, то есть
+  сдвигов нет вообще (геометрия media/баннеров/карты зарезервирована).
+  `unused-css-rules` и `unminified-css` — 0 B; разбор `globals.css`: 146 правил,
+  144 уникальных селектора, **0 полных дублей**. Вес CSS 47 471 B без сжатия и
+  10,1 KiB gzip при бюджете 35 KB. DOM главной — 467 элементов (порог
+  предупреждения Lighthouse 800). `non-composited-animations` — notApplicable;
+  `prefers-reduced-motion` соблюдается двумя блоками CSS и остановкой
+  автопрокрутки слайдера; DOM для невидимых слайдов не создаётся; тяжёлых
+  `blur`/`backdrop-filter` нет вовсе, единственный `mix-blend-mode: color`
+  работает на баннерах фиксированной высоты 220–340 px, а не на больших
+  областях. `content-visibility: auto` сознательно не применён: при DOM 467 и
+  нулевом CLS выигрыша нет, а риски для anchor-навигации и поиска по странице
+  реальны — план разрешает применять его только после такой проверки.
+  Единственный render-blocking ресурс — собственная таблица стилей (11 468 B,
+  153 ms); при FCP 756–908 ms против бюджета 1,2 s дробление на критический и
+  отложенный CSS не окупается. **Что исправлено:** бюджет CSS из §3.3 не
+  проверялся нигде — добавлен в `bundle:report` (`cssGzipBytes`), проверен
+  подложенной регрессией на настоящей сборке (1 400 правил → 37 082 B против
+  35 840 B, страж назвал метрику по имени). Фронт — tsc, ESLint, 112 Vitest,
+  65 Playwright, `bundle:report` без нарушений.
+  **Вне пункта:** LCP 2,9–3,5 s против бюджета 1,8 s — уже зафиксированный
+  долг Этапа 0, к CSS и рендерингу отношения не имеет.
 - [ ] JSON-LD и localized 404.
 - [ ] Security headers и compression.
 
@@ -920,7 +959,22 @@ Production-like performance тесты не запускать против prod
 - [x] Redis/cache/queue topology. **Доказательство:** production topology использует Laravel 13 cache/queue failover Redis→database, bounded Redis reconnect, `after_commit` и отдельные `critical/notifications/revalidation/default/media` queues; CPU-heavy media обслуживается отдельным worker. Scheduler ставит worker heartbeat и запускает `queue:monitor` для Redis и database fallback, `/ready` проверяет scheduler/worker и показывает failed jobs, а QueueBusy/failed-over/job-failed события логируются как operational alerts. Pest с принудительно недоступным Redis доказывает сохранение cache/job в БД; 35 релевантных тестов и полный `composer ci:check` зелёные: 374 теста / 1426 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan.
 - [x] Cache read models + invalidation. **Доказательство:** `PublicReadModelCache` хранит готовые locale/query-aware DTO через Laravel 13 `Cache::flexible()` и versioned keys, совместимые с database/Redis; after-commit observer инвалидирует settings/menu/categories/regions/alerts/home при изменениях моделей. На повторном GET application-table queries снижены: settings 1→0, menu 2→0, home 15→0, regions 3→0, categories 2→0. 7 новых cache/query/invalidation Pest-тестов и полный `composer ci:check` зелёные: 358 тестов / 1339 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan.
 - [x] Оптимизировать HomeController. **Доказательство:** сборка DTO вынесена в `HomePageReadModel`; snapshot и карточки используют одну выборку active alerts, все content limits применяются в SQL, list queries выбирают только поля публичного DTO и только нужные media collections. На текущих данных uncached application queries снижены 15→14; populated query-budget Pest фиксирует 15 запросов и ровно один `SELECT alerts` (старый план — 17). 94 API-теста / 447 assertions и полный `composer ci:check` зелёные: 364 теста / 1362 assertions, ESLint, Prettier, TypeScript, Pint и PHPStan.
-- [ ] Select only required columns.
+- [x] Select only required columns. **Доказательство:** список-контроллеры уже
+  выбирали поля явно, и это защищено `PublicApiColumnSelectionTest` (ни одного
+  `select *` по 12 публичным таблицам). Оставался переданный из F-06 остаток:
+  `generateStaticParams` шести детальных маршрутов и `sitemap.ts` тянули полный
+  DTO ради одного поля `slug`. Добавлен `GET /api/v1/slugs/{type}` — те же
+  строки, что у соответствующего списка (тот же `public()`/`active()` и тот же
+  контракт локали), одна колонка. Замер на живой CMS: сборочные вызовы
+  `generateStaticParams` (6 типов × 3 локали) 60 338 → 2 860 B (21,1×), карта
+  сайта (6 типов) 26 585 → 1 178 B (22,6×); по типам 14,2×–47,1×. Множества
+  slug'ов совпадают со старыми по всем шести типам, сборка даёт те же 111
+  страниц, карта сайта — те же 138 URL. `SlugApiTest` держит паритет строк со
+  списком, фильтр по локали, отсев непубличных, единственную колонку и
+  соотношение к списку; счётчик операций OpenAPI 27 → 28. Полный CMS-набор
+  536 тестов / 3933 assertions, PHPStan, Pint, Prettier, tsc, bundle-тесты;
+  фронт — tsc, ESLint, 110 Vitest, production build, `bundle:report` без
+  нарушений (largest route 567,3 KiB), 62 Playwright.
 - [x] Убрать тяжёлые shared props. **Доказательство:** Inertia `auth`/permissions и `nav_badges` стали `once` props с TTL, notification list загружается `optional` partial reload только при открытии drawer, а начальный payload содержит один дешёвый unread `count(*)` без body (8×4 KB fixture отсутствует, response < 50 KB). Approval badges считаются SQL `count(*)` без гидрации review-моделей. 16 релевантных Pest-тестов / 99 assertions, TypeScript, ESLint, Prettier и полный `composer ci:check` зелёные: 368 тестов / 1395 assertions, Pint и PHPStan.
 - [x] EXPLAIN и составные индексы. **Доказательство:** на отдельной MySQL 8.4 БД с 345 000 production-like строк выполнен `EXPLAIN ANALYZE` для 9 основных query shapes. Добавлены только два индекса, реально выбранные оптимизатором: `menu_items(location, enabled, sort, parent_id)` уменьшил 0,765→0,206 ms (−73%), `submissions(status, created_at, id)` — 4,96→0,036 ms (−99%). Кандидаты для news/instructions/projects/pages не добавлены, поскольку MySQL продолжил выбирать table scan. CI дополнен полным Pest job на MySQL 8; локально SQLite и MySQL: 369 тестов / 1399 assertions, полный `composer ci:check`, Pint и PHPStan зелёные.
 - [x] OpenAPI и generated types. **Доказательство:** OpenAPI 3.1 описывает все 25 публичных операций `api/v1` (включая добавленный O-019 RUM endpoint); Pest сверяет реальный route registry и рекурсивно валидирует успешные ответы всех операций. Frontend генерирует 54 TypeScript-типа из зафиксированного schema snapshot, `api:types:check` блокирует drift в CI, ручные API DTO удалены из `lib/api.ts`. Текущий полный `composer ci:check` — 420 тестов / 2076 assertions; frontend TypeScript, ESLint, 41 Vitest-тест и production build на 55 страниц зелёные.
