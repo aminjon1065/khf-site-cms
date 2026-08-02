@@ -89,6 +89,13 @@ interface OperationalReport {
         p95_ms: number | null;
         last_processed_at: string | null;
     };
+    cache: {
+        hits: number;
+        misses: number;
+        partial: number;
+        requests: number;
+        hit_rate: number | null;
+    };
 }
 
 const levelTone: Record<string, 'neutral' | 'accent' | 'warn' | 'danger'> = {
@@ -266,7 +273,9 @@ export default function ControlCenter({
                     </h2>
                     <span className="mt-1 block text-sm text-(--color-neutral-600)">
                         Последние 200 sampled/slow/error запросов и заданий без
-                        URL, содержимого и персональных данных
+                        URL, содержимого и персональных данных. Доля попаданий в
+                        кэш считается по всем запросам за сутки, а не по этой
+                        выборке — иначе медленные ответы перевесили бы
                     </span>
                 </div>
 
@@ -293,6 +302,13 @@ export default function ControlCenter({
                         {
                             label: 'Ошибки очереди',
                             value: operations.queue.failures,
+                        },
+                        {
+                            label: 'Попаданий в кэш за сутки',
+                            value:
+                                operations.cache.hit_rate === null
+                                    ? '—'
+                                    : `${Math.round(operations.cache.hit_rate * 100)}%`,
                         },
                     ].map((metric) => (
                         <Blueprint key={metric.label} className="p-4">

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Concerns\FlushesPublicCache;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Enums\RegionType;
 use Illuminate\Database\Eloquent\Model;
@@ -29,18 +28,7 @@ use Spatie\Translatable\HasTranslations;
  */
 class Region extends Model
 {
-    use FlushesPublicCache, HasTranslations, LogsActivity, TracksTranslationCompleteness;
-
-    /**
-     * D-2: RegionController@directory caches its whole (locale-resolved)
-     * office directory — a District save doesn't flush this (District data
-     * is embedded via eager-loading, but district edits are rare and the
-     * same 60s TTL bounds that staleness, same as home's sub-content).
-     */
-    protected static function publicCacheKey(string $locale): string
-    {
-        return "public-api:regions-directory:{$locale}";
-    }
+    use HasTranslations, LogsActivity, TracksTranslationCompleteness;
 
     /**
      * @var list<string>

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Services\PublicSettingsService;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Public site settings for the Next.js header/footer. Only whitelisted,
@@ -13,21 +12,19 @@ use Illuminate\Support\Facades\Cache;
  */
 class SettingController extends Controller
 {
-    /** D-2: complements the ETag layer (still recomputes the body to hash
-     * it) by skipping the DB/service work entirely on a cache hit. Flushed
-     * from Setting's FlushesPublicCache on every save/delete. */
-    private const CACHE_TTL_SECONDS = 60;
-
     public function __construct(private readonly PublicSettingsService $settings) {}
 
+    /**
+     * Кэширование живёт внутри `PublicSettingsService` — в общем
+     * `PublicReadModelCache` с версионными ключами и инвалидацией по
+     * наблюдателю. Здесь раньше стоял ещё один слой `Cache::remember` на 60
+     * секунд поверх него: он перехватывал ответ первым, поэтому обращение к
+     * общему кэшу не происходило вовсе — и метрика попаданий видела не
+     * попадание, а «кэш не использовался». Двух механизмов с разной
+     * инвалидацией для одного и того же чтения быть не должно.
+     */
     public function index(): JsonResponse
     {
-        $locale = app()->getLocale();
-
-        return response()->json(Cache::remember(
-            "public-api:settings:{$locale}",
-            self::CACHE_TTL_SECONDS,
-            fn () => $this->settings->resolve($locale),
-        ));
+        return response()->json($this->settings->resolve(app()->getLocale()));
     }
 }

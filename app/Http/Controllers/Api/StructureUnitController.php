@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicStructureUnitResource;
 use App\Models\StructureUnit;
+use App\Services\PublicReadModelCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Public structure-units endpoint for the Next.js site: the specialised
@@ -17,21 +17,22 @@ use Illuminate\Support\Facades\Cache;
 class StructureUnitController extends Controller
 {
     /**
-     * D-2: the full (small, rarely-changing) list is cached and paginated in
-     * memory — far too few units to bother caching per page/per_page
-     * combination. Flushed from StructureUnit's FlushesPublicCache on every
-     * save/delete.
+     * Полный (небольшой и редко меняющийся) список подразделений кэшируется целиком и
+     * постранично режется в памяти: вариантов page/per_page слишком мало,
+     * чтобы кэшировать каждый. Кэш — общий `PublicReadModelCache`: те же
+     * версионные ключи и та же инвалидация по наблюдателю, что у остальных
+     * публичных read-моделей, вместо собственного TTL.
      */
-    private const CACHE_TTL_SECONDS = 60;
+    public function __construct(private readonly PublicReadModelCache $cache) {}
 
     public function index(Request $request): JsonResponse
     {
         $locale = app()->getLocale();
 
         /** @var list<array<string, mixed>> $all */
-        $all = Cache::remember(
-            "public-api:structure:{$locale}",
-            self::CACHE_TTL_SECONDS,
+        $all = $this->cache->remember(
+            PublicReadModelCache::STRUCTURE,
+            $locale,
             fn (): array => PublicStructureUnitResource::collection(
                 StructureUnit::query()
                     ->select(['id', 'num', 'name', 'desc'])

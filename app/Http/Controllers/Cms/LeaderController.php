@@ -130,8 +130,9 @@ class LeaderController extends Controller
 
         if ($changed) {
             // Media attach/detach doesn't touch Leader's own saved/deleted
-            // events, so FlushesPublicCache wouldn't otherwise see a
-            // photo-only change — touch() re-saves the model to trigger it.
+            // events, so the read-model invalidation observer wouldn't
+            // otherwise see a photo-only change — touch() re-saves the model
+            // to trigger it.
             $leader->touch();
         }
     }
