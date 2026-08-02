@@ -234,12 +234,31 @@ server {
     ssl_certificate     /etc/ssl/khf/cms.crt;
     ssl_certificate_key /etc/ssl/khf/cms.key;
 
+    # Версии ПО — бесплатная разведка для сканера. `expose_php=Off` в php.ini,
+    # заголовок PHP-FPM снимается тут же.
+    server_tokens off;
+    fastcgi_hide_header X-Powered-By;
+
     location / { try_files $uri $uri/ /index.php?$query_string; }
+
+    # Заголовки безопасности PHP-ответов ставит middleware SecurityHeaders
+    # (он же покрывает 404 несовпавших маршрутов). Здесь — те же заголовки для
+    # ответов, которые отдаёт сам nginx и которые до PHP не доходят: медиа,
+    # собранные ассеты, статические ошибки. `always` обязателен, иначе на
+    # 4xx/5xx заголовка не будет.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=63072000; includeSubDomains" always;
+
+    brotli on;                  # модуль ngx_brotli; без него останется gzip
+    brotli_comp_level 5;
+    brotli_types application/json application/javascript application/xml text/css text/plain image/svg+xml;
 
     gzip on;
     gzip_vary on;
     gzip_comp_level 6;
-    gzip_types application/json application/javascript text/css text/plain image/svg+xml;
+    gzip_types application/json application/javascript application/xml text/css text/plain image/svg+xml;
 
     location ~* ^/storage/.*/conversions/ {
         expires 1y;
@@ -269,6 +288,7 @@ CPU наугад:
 
 ```ini
 ; php.ini / conf.d/99-khf-production.ini
+expose_php=Off
 opcache.enable=1
 opcache.memory_consumption=192
 opcache.interned_strings_buffer=24
@@ -380,6 +400,14 @@ WantedBy=multi-user.target
 Nginx-прокси на порт 3000:
 
 ```nginx
+# Пул соединений к Next: без него nginx ходит к апстриму по HTTP/1.0 и
+# закрывает соединение после каждого ответа — лишний TCP-handshake на каждый
+# запрос страницы.
+upstream khf_front {
+    server 127.0.0.1:3000;
+    keepalive 32;
+}
+
 server {
     listen 443 ssl http2;
     server_name khf.tj www.khf.tj;
@@ -387,14 +415,51 @@ server {
     ssl_certificate     /etc/ssl/khf/site.crt;
     ssl_certificate_key /etc/ssl/khf/site.key;
 
+    server_tokens off;
+
+    # Сжатие делает edge, а не Next. Поэтому у апстрима запрашивается несжатый
+    # ответ: иначе Next вернул бы gzip, и перепаковать его в Brotli уже нельзя.
+    # Заголовки безопасности приходят от самого приложения (next.config.ts) —
+    # дублировать их здесь не нужно.
+    proxy_set_header Accept-Encoding "";
+
+    brotli on;                  # модуль ngx_brotli; без него останется gzip
+    brotli_comp_level 5;
+    brotli_types text/html application/json application/javascript application/xml text/css text/plain image/svg+xml;
+
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 6;
+    gzip_types application/json application/javascript application/xml text/css text/plain image/svg+xml;
+
     location / {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://khf_front;
+        proxy_http_version 1.1;
+        proxy_set_header Connection "";
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     }
 }
 ```
+
+**Почему сжатие вынесено на nginx, а не оставлено Next.** `next start` умеет
+только gzip и не сжимает `/sitemap.xml` вовсе. Замер на текущей сборке
+(идентичный контент, gzip -6 против brotli -5):
+
+| Ответ | без сжатия | gzip | brotli | выигрыш brotli |
+|---|---:|---:|---:|---:|
+| `/ru` (HTML) | 102 250 B | 20 059 B | 16 093 B | −19,8 % |
+| `/ru/news` (HTML) | 68 911 B | 13 610 B | 11 635 B | −14,5 % |
+| `/sitemap.xml` | 13 185 B | 635 B | 509 B | **Next не сжимает вовсе** |
+| `.css` чанк | 47 471 B | 10 327 B | 9 345 B | −9,5 % |
+| `.js` чанк | 17 597 B | 5 639 B | 5 471 B | −3,0 % |
+
+`compress: true` в `next.config.ts` при этом остаётся: он защищает случай,
+когда до origin ходят напрямую (проверка, обход CDN, локальный `next start`).
+Если модуля `ngx_brotli` на сервере нет, ничего не ломается — остаётся gzip,
+но строку `proxy_set_header Accept-Encoding "";` тогда стоит убрать, чтобы
+gzip хотя бы делал сам Next.
 
 > Данные кэшируются через ISR (`revalidate = 60`) — изменения в CMS появляются на сайте в течение минуты. При недоступности API страницы деградируют мягко (пустые списки / статические заглушки), а не падают.
 
@@ -449,3 +514,10 @@ systemctl restart khf-front     # или: pm2 reload khf-front
 - [ ] Загрузка медиа ограничена типами (изображения + документы, без SVG) и размером 15 МБ.
 - [ ] Регулярные резервные копии БД `khf_site_cms` и каталога `storage/app/public`.
 - [ ] Логи активности (`activity_log`) и журнал согласований сохраняются.
+- [ ] Заголовки безопасности приходят с **обоих** доменов, включая 404 и статику:
+      `curl -sI https://khf.tj/ru | grep -iE 'content-security-policy|x-frame|x-content-type|referrer|permissions|strict-transport'`
+      и то же для `https://cms.khf.tj/login`, `https://cms.khf.tj/nope` (несовпавший маршрут — заголовки должны быть и там).
+- [ ] Версии ПО не раскрываются: в ответах нет `X-Powered-By`, а `Server` без номера версии.
+- [ ] Сжатие работает на edge: `curl -sI -H 'Accept-Encoding: br' https://khf.tj/ru | grep -i content-encoding` → `br`;
+      `curl -sI -H 'Accept-Encoding: br' https://khf.tj/sitemap.xml | grep -i content-encoding` → не пусто
+      (карта сайта — единственный ответ, который сам Next не сжимает вовсе).
