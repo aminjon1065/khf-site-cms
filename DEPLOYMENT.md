@@ -228,7 +228,7 @@ Fortify 2FA включён. Настройки `security.require_2fa` и `securi
 server {
     listen 443 ssl http2;
     server_name cms.khf.tj;
-    root /var/www/khf-site-cms/public;
+    root /var/www/khf-site-cms/current/public;
     index index.php;
 
     ssl_certificate     /etc/ssl/khf/cms.crt;
@@ -292,13 +292,26 @@ expose_php=Off
 opcache.enable=1
 opcache.memory_consumption=192
 opcache.interned_strings_buffer=24
+; Не круглое число «на глаз»: в релизе 11 944 PHP-файла (`php artisan
+; ops:capacity`), с запасом 20 % это 14 333. Значение ниже реального числа
+; означает, что OPcache вытесняет классы и компилирует их заново на каждом
+; запросе — при формально включённом кэше.
 opcache.max_accelerated_files=20000
+; Файлы релиза неизменяемы (каталог не правится после переключения ссылки),
+; поэтому сверять mtime незачем. При откате меняется путь — кэш холодный,
+; но корректный.
 opcache.validate_timestamps=0
 ```
 
 ```ini
 ; pool.d/khf.conf
 pm=dynamic
+; Считается от измеренной памяти, а не «максимально»: `php artisan ops:capacity
+; --ram=<MB>` замеряет пик на запрос (на текущем релизе — 43 MB при базовой
+; загрузке 36 MB) и печатает, сколько воркеров помещается в бюджет. При 4 GB,
+; отданных PHP-FPM, это 95; ниже — консервативное значение для узла, который
+; делит память с MySQL и Redis. `ops:capacity` завершается ошибкой, если
+; настроенное число в бюджет не помещается.
 pm.max_children=8
 pm.start_servers=2
 pm.min_spare_servers=2
@@ -387,7 +400,7 @@ Description=KHF public site (Next.js)
 After=network.target
 
 [Service]
-WorkingDirectory=/var/www/khf-site-front
+WorkingDirectory=/var/www/khf-site-front/current
 ExecStart=/usr/bin/npm run start -- -p 3000
 Environment=NODE_ENV=production
 Restart=always
@@ -467,22 +480,60 @@ gzip хотя бы делал сам Next.
 
 ## 4. Обновление (redeploy)
 
+Развёртывание — переключение символической ссылки на готовый каталог релиза, а
+не сборка поверх работающего кода. Прежний способ (`php artisan down`, `git
+pull` в рабочем каталоге, сборка на месте) означал заведомый простой и не
+имел отката: если сборка падала на середине, в каталоге оставалось смешанное
+состояние, а `artisan up` возвращать было некуда.
+
 **CMS:**
 ```bash
-cd /var/www/khf-site-cms && php artisan down
-git pull
-composer install --no-dev --optimize-autoloader
+RELEASE=/var/www/khf-site-cms/releases/$(date +%Y%m%d%H%M%S)
+SHARED=/var/www/khf-site-cms/shared          # .env, storage/, база SQLite (если есть)
+
+git clone --depth 1 --branch main git@github.com:…/khf-site-cms.git "$RELEASE"
+ln -s "$SHARED/.env" "$RELEASE/.env"
+rm -rf "$RELEASE/storage" && ln -s "$SHARED/storage" "$RELEASE/storage"
+
+cd "$RELEASE"
+# `--classmap-authoritative`: автозагрузчик перестаёт искать классы по файловой
+# системе, что и требуется в неизменяемом релизе.
+composer install --no-dev --prefer-dist --classmap-authoritative --no-interaction
 npm ci && npm run build
-php artisan migrate --force
-php artisan config:cache && php artisan route:cache && php artisan view:cache && php artisan event:cache
-php artisan up
+php artisan migrate --force                  # миграции обязаны быть совместимы с текущим релизом
+php artisan optimize                         # config + route + view + event в один шаг
+php artisan ops:capacity --ram=4096          # OPcache и воркеры — по измерению, а не на глаз
+php artisan ops:production-check
+
+ln -sfn "$RELEASE" /var/www/khf-site-cms/current
+systemctl reload php8.5-fpm                  # graceful: текущие запросы дорабатывают
+php artisan queue:restart                    # воркеры подхватят новый код после текущей задачи
 ```
 
-**Публичный сайт:**
+Откат — переключение ссылки обратно, без сборки:
+
 ```bash
-cd /var/www/khf-site-front && git pull
-npm ci && npm run build
-systemctl restart khf-front     # или: pm2 reload khf-front
+ln -sfn /var/www/khf-site-cms/releases/<предыдущий> /var/www/khf-site-cms/current
+systemctl reload php8.5-fpm && php artisan queue:restart
+```
+
+> Откат кода мгновенный, откат схемы БД — нет. Поэтому миграции пишутся так,
+> чтобы предыдущий релиз продолжал работать с новой схемой (сначала добавить
+> колонку, потом перестать писать в старую, и только следующим релизом её
+> удалить). Иначе «мгновенный откат» существует только на бумаге.
+
+**Публичный сайт:** та же схема — сборка в новом каталоге релиза, затем
+переключение ссылки и `systemctl reload khf-front`. `next build` обязан
+завершиться до переключения: сборка проверяет доступность CMS и падает, если
+та не отвечает (fail-fast против пустого релиза).
+
+```bash
+RELEASE=/var/www/khf-site-front/releases/$(date +%Y%m%d%H%M%S)
+git clone --depth 1 --branch main git@github.com:…/khf-site-front.git "$RELEASE"
+ln -s /var/www/khf-site-front/shared/.env.production "$RELEASE/.env.production"
+cd "$RELEASE" && npm ci && npm run build
+ln -sfn "$RELEASE" /var/www/khf-site-front/current
+systemctl reload khf-front
 ```
 
 ---
@@ -518,6 +569,9 @@ systemctl restart khf-front     # или: pm2 reload khf-front
       `curl -sI https://khf.tj/ru | grep -iE 'content-security-policy|x-frame|x-content-type|referrer|permissions|strict-transport'`
       и то же для `https://cms.khf.tj/login`, `https://cms.khf.tj/nope` (несовпавший маршрут — заголовки должны быть и там).
 - [ ] Версии ПО не раскрываются: в ответах нет `X-Powered-By`, а `Server` без номера версии.
+- [ ] `php artisan ops:production-check` и `php artisan ops:capacity --ram=<бюджет>` на релизе — оба успешны
+      (второй падает, если OPcache настроен меньше, чем файлов в релизе, или воркеры не помещаются в память).
+- [ ] Откат проверен на самом релизе: переключение ссылки `current` на предыдущий каталог и `reload` возвращают рабочую версию.
 - [ ] Сжатие работает на edge: `curl -sI -H 'Accept-Encoding: br' https://khf.tj/ru | grep -i content-encoding` → `br`;
       `curl -sI -H 'Accept-Encoding: br' https://khf.tj/sitemap.xml | grep -i content-encoding` → не пусто
       (карта сайта — единственный ответ, который сам Next не сжимает вовсе).
