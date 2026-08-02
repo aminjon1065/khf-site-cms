@@ -15,6 +15,16 @@ it('keeps recovery commands and non destructive rollback rules in the runbook', 
         'Do not automatically roll',
         'back a database migration',
         'Never run destructive chaos against production',
+        // Каждый сценарий хаоса должен быть привязан к тесту, который его
+        // закрывает: иначе список остаётся благим намерением, а связь
+        // «сценарий → чем проверен» живёт только в голове автора.
+        'QueueTopologyTest',
+        'RevalidateFrontendTest',
+        'MediaConversionQueueTest',
+        'HealthApiTest',
+        'OperationalBackupTest',
+        'MediaOrphanCleanupTest',
+        'npm run load:probe',
     );
 });
 

@@ -148,7 +148,40 @@ the MariaDB client and says so explicitly; point `MYSQLDUMP_BINARY` and
 - `/health` is liveness (DB); `/ready` additionally covers storage, scheduler,
   queue worker and failed-job count. Neither endpoint exposes secrets.
 
+## Load probe
+
+```bash
+npm run load:probe -- https://cms.khf.tj/api/v1 "/home?locale=ru" 50 4
+```
+
+Каждая волна печатает rps, p50/p95/max, распределение статусов и `X-Cache`.
+Замеренное на стенде разработчика (контейнер на ноутбуке, MySQL рядом) — как
+точка отсчёта, а не как обещание для production:
+
+| Сценарий | Результат |
+|---|---|
+| `/home`, 50 одновременных, тёплый кэш | 100 % `200`, ~190–200 rps, p50 145 мс, p95 250 мс |
+| `/home`, 50 одновременных, кэш только что очищен | 100 % `200`, пересобрали модель 3 запроса из 50 — остальные успели попасть в уже прогретый кэш |
+| `/news?per_page=12`, 200 одновременных (без read-model-кэша) | 100 % `200`, ~154–190 rps, p95 1,0–1,2 с |
+| `/search?q=…`, 100 одновременных | ограничитель отдаёт `429` сверх 60 запросов в минуту — дорогой эндпоинт защищён, а не «просто медленный» |
+
+Сравнивать имеет смысл замеры одного стенда до и после изменения: абсолютные
+числа привязаны к железу.
+
 ## Controlled chaos checklist
+
+Каждый сценарий ниже закрыт автоматическим тестом — прогон на staging
+подтверждает связку целиком (реальный Redis, реальный воркер, реальный диск),
+но не является единственной защитой:
+
+| Сценарий | Чем закрыт автоматически |
+|---|---|
+| Redis недоступен | `QueueTopologyTest::falls back to durable stores when redis is unavailable` |
+| Webhook фронта отдаёт 401/500/таймаут | `Jobs/RevalidateFrontendTest` (публикация сохраняется, задание повторяется, есть алерт о постоянном отказе) |
+| Нет `avifenc` | `MediaConversionQueueTest` (черновик сохраняется, оригинал не тронут, статус `failed`, повтор работает) |
+| Воркер и планировщик остановлены | `Api/HealthApiTest` (`/ready` → 503, `/health` → 200, после биения оба восстанавливаются) |
+| Испорченный файл в копии | `OperationalBackupTest` (проверка падает на контрольной сумме до восстановления) |
+| Осиротевший файл в `conversions/` | `MediaOrphanCleanupTest` (отчёт, затем удаление; оригинал побайтово цел) |
 
 Run on staging after every infrastructure change:
 
