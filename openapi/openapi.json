@@ -648,6 +648,33 @@
         }
       }
     },
+    "/slugs/{type}": {
+      "get": {
+        "operationId": "listSlugs",
+        "summary": "Slugs of every publicly reachable material of one type",
+        "description": "Same rows as the matching list endpoint, one column. Serves the static-generation params and the sitemap of the public site, which need the URL segment only.",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/SlugType"
+          },
+          {
+            "$ref": "#/components/parameters/Locale"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slugs available in the requested locale",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlugListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/structure": {
       "get": {
         "operationId": "listStructureUnits",
@@ -798,6 +825,22 @@
         "required": true,
         "schema": {
           "type": "string"
+        }
+      },
+      "SlugType": {
+        "name": "type",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "enum": [
+            "news",
+            "projects",
+            "announcements",
+            "instructions",
+            "pages",
+            "alerts"
+          ]
         }
       }
     },
@@ -2914,6 +2957,32 @@
           },
           "links": {
             "$ref": "#/components/schemas/PaginationLinks"
+          }
+        }
+      },
+      "SlugListResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "required": [
+              "total"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer"
+              }
+            }
           }
         }
       }

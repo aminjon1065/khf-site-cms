@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\SlugController;
 use App\Http\Controllers\Api\StructureUnitController;
 use App\Http\Controllers\Api\SubmissionController;
 use App\Http\Controllers\Api\WebVitalController;
@@ -51,6 +52,13 @@ Route::middleware('throttle:api-public')->group(function (): void {
 
     // Editorial taxonomy (content categories).
     Route::get('categories', [CategoryController::class, 'index'])->name('api.categories.index');
+
+    // Slug-only listings for static generation and the sitemap. `{type}` is
+    // constrained to the known content types, so an unknown one is a router
+    // 404 and never reaches the controller.
+    Route::get('slugs/{type}', SlugController::class)
+        ->whereIn('type', SlugController::TYPES)
+        ->name('api.slugs');
 
     // Population safety instructions (guides).
     Route::get('instructions', [InstructionController::class, 'index'])->name('api.instructions.index');

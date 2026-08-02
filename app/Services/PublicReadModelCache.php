@@ -17,6 +17,7 @@ final class PublicReadModelCache
         self::MENU => [600, 3600],
         self::REGIONS => [300, 1800],
         self::SETTINGS => [600, 3600],
+        self::SLUGS => [300, 1800],
     ];
 
     public const ALERTS = 'alerts';
@@ -30,6 +31,8 @@ final class PublicReadModelCache
     public const REGIONS = 'regions';
 
     public const SETTINGS = 'settings';
+
+    public const SLUGS = 'slugs';
 
     public function remember(string $namespace, string $variant, Closure $resolver): mixed
     {

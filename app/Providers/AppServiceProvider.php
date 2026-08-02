@@ -260,6 +260,9 @@ class AppServiceProvider extends ServiceProvider
             Media::class,
             MenuItem::class,
             News::class,
+            // Pages contribute no denormalised home/menu data, but their slugs
+            // are served from cache (SlugController), so edits must invalidate.
+            Page::class,
             Project::class,
             Region::class,
             Setting::class,
