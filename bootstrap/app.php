@@ -6,6 +6,7 @@ use App\Http\Middleware\HandleInertiaRequests;
 use App\Http\Middleware\PublicApiResponse;
 use App\Http\Middleware\RequireTwoFactor;
 use App\Http\Middleware\ResolveApiLocale;
+use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -23,6 +24,11 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->encryptCookies(except: ['appearance', 'sidebar_state']);
+
+        // Global, not per-stack: middleware of the `web`/`api` groups does not
+        // run for a request that matched no route at all, and a 404 page is
+        // exactly the kind of response an attacker gets to shape.
+        $middleware->append(SecurityHeaders::class);
 
         $middleware->web(append: [
             HandleAppearance::class,
