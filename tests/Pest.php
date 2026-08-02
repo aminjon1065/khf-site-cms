@@ -1,7 +1,10 @@
 <?php
 
+use App\Jobs\PerformMediaConversions;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
+use Spatie\MediaLibrary\Conversions\ConversionCollection;
+use Spatie\MediaLibrary\MediaCollections\Models\Media;
 use Tests\TestCase;
 
 // Тесты медиаконверсий (`MediaConversionQueueTest`, `MediaTest`) реально
@@ -87,4 +90,20 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Задание конверсий для уже загруженного media — ровно то, что кладёт в
+ * очередь media-library при добавлении файла. Живёт здесь, а не в файле
+ * теста: `MediaAuditCommandTest` и `MediaConversionQueueTest` оба им
+ * пользуются, а при `php artisan test --parallel` файлы попадают в разные
+ * процессы, и тест, где функция объявлена, может просто не загрузиться —
+ * второй падал с `Call to undefined function`.
+ */
+function mediaConversionJob(Media $media): PerformMediaConversions
+{
+    return new PerformMediaConversions(
+        ConversionCollection::createForMedia($media),
+        $media,
+    );
 }
