@@ -29,6 +29,11 @@ it('schedules monitoring backups restore drills and derivative cleanup without o
         ->toContain('ops:backup')
         ->toContain('ops:restore-drill')
         ->toContain('media:cleanup-orphans')
+        // Аудит производных и очистка корзины — тоже часть жизненного цикла
+        // медиа, и оба должны выполняться сами: битая конверсия иначе живёт
+        // до тех пор, пока её не заметят на сайте, а удалённый файл — вечно.
+        ->toContain('media:audit')
+        ->toContain('media:purge-trashed')
         ->and($backup)->not->toBeNull()
         ->and($backup->withoutOverlapping)->toBeTrue()
         ->and($restore)->not->toBeNull()

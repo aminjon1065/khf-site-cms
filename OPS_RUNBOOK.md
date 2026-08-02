@@ -91,6 +91,19 @@ AVIF/WebP/fallback and CMS thumbnails exist and rerun `media:audit`. The weekly
 `media:cleanup-orphans --delete --grace-hours=24` removes only unreferenced
 derivatives; originals are excluded by construction.
 
+The full lifecycle now runs on its own, and each step alerts through the
+scheduled-task listener when it fails:
+
+| Когда | Команда | Что делает |
+|---|---|---|
+| ежедневно 04:45 | `media:audit --regenerate` | чинит недостающие производные; падает, если чинить нечем (нет оригинала) |
+| понедельник 04:15 | `media:cleanup-orphans --delete --grace-hours=24` | удаляет производные без записи в БД; оригиналы не трогает |
+| понедельник 05:15 | `media:purge-trashed --delete` | окончательно удаляет ассеты, пролежавшие в корзине дольше `MEDIA_TRASH_GRACE_DAYS` (30) |
+
+`media:purge-trashed` без `--delete` только отчитывается и **повторно проверяет
+использование**: ссылка на файл могла появиться уже после удаления — например,
+редактор восстановил старую ревизию материала.
+
 ## Backup and restore
 
 Set `BACKUP_ENABLED=true` and a restricted `BACKUP_PATH` outside the release
