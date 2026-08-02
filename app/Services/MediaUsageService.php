@@ -10,6 +10,7 @@ use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class MediaUsageService
@@ -82,7 +83,12 @@ class MediaUsageService
                 }
             });
 
-        $url = $media->getUrl();
+        // Без версии: media-library подписывает URL как `?v=updated_at`, а тело
+        // материала хранит ту версию, что была на момент вставки. Сравнение по
+        // полному URL означало бы, что любая правка самого файла (подпись,
+        // alt, фокус) делает ссылку невидимой — и файл, стоящий в статье,
+        // начинает считаться свободным, то есть его разрешено удалить.
+        $url = Str::before($media->getUrl(), '?');
         if ($url === '') {
             return array_values($usages);
         }
