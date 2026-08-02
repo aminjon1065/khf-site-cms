@@ -13,9 +13,15 @@ npm ci
 npm run build
 php artisan migrate --force
 php artisan optimize
+php artisan ops:capacity --ram=4096
 php artisan ops:production-check
 php artisan ops:backup
 ```
+
+`ops:capacity` пересчитывает две настройки, которые иначе живут в ini годами:
+сколько PHP-файлов должен держать OPcache и сколько воркеров помещается в
+память по измеренному пику на запрос. Команда падает, если релиз перерос
+настройку, — до переключения трафика, а не после.
 
 Deploy into a new timestamped release directory, then atomically point the
 `current` symlink at it. After the switch:

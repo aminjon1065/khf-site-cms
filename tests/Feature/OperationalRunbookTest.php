@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 
 it('keeps recovery commands and non destructive rollback rules in the runbook', function () {
     $runbook = file_get_contents(base_path('OPS_RUNBOOK.md'));
@@ -48,4 +50,33 @@ it('schedules monitoring backups restore drills and derivative cleanup without o
         ->and($backup->withoutOverlapping)->toBeTrue()
         ->and($restore)->not->toBeNull()
         ->and($restore->withoutOverlapping)->toBeTrue();
+});
+
+it('only tells the operator to run commands that actually exist', function () {
+    // Runbook читают в четыре утра, когда что-то уже сломалось. Опечатка или
+    // переименованная команда в нём — это не «неточность в документе», а
+    // потерянные минуты в инциденте. Поэтому каждая упомянутая команда artisan
+    // проверяется по реальному реестру.
+    $runbook = file_get_contents(base_path('OPS_RUNBOOK.md'));
+    preg_match_all('/php artisan ([a-z0-9:_-]+)/', $runbook, $matches);
+
+    $mentioned = array_values(array_unique($matches[1]));
+    $registered = array_keys(Artisan::all());
+
+    expect($mentioned)->not->toBeEmpty()
+        ->and(array_values(array_diff($mentioned, $registered)))->toBe([]);
+});
+
+it('only points at health endpoints that are actually routed', function () {
+    $runbook = file_get_contents(base_path('OPS_RUNBOOK.md'));
+    preg_match_all('#https://cms\.khf\.tj(/api/v1/[a-z0-9/_-]+)#', $runbook, $matches);
+
+    $paths = array_values(array_unique($matches[1]));
+
+    expect($paths)->not->toBeEmpty();
+
+    foreach ($paths as $path) {
+        expect(Route::has('api.'.trim(str_replace('/api/v1/', '', $path), '/')))
+            ->toBeTrue("Runbook ссылается на {$path}, но такого маршрута нет");
+    }
 });
