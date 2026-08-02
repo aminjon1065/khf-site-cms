@@ -1039,7 +1039,30 @@ Production-like performance тесты не запускать против prod
 - [x] Убрать тяжёлые shared props. **Доказательство:** Inertia `auth`/permissions и `nav_badges` стали `once` props с TTL, notification list загружается `optional` partial reload только при открытии drawer, а начальный payload содержит один дешёвый unread `count(*)` без body (8×4 KB fixture отсутствует, response < 50 KB). Approval badges считаются SQL `count(*)` без гидрации review-моделей. 16 релевантных Pest-тестов / 99 assertions, TypeScript, ESLint, Prettier и полный `composer ci:check` зелёные: 368 тестов / 1395 assertions, Pint и PHPStan.
 - [x] EXPLAIN и составные индексы. **Доказательство:** на отдельной MySQL 8.4 БД с 345 000 production-like строк выполнен `EXPLAIN ANALYZE` для 9 основных query shapes. Добавлены только два индекса, реально выбранные оптимизатором: `menu_items(location, enabled, sort, parent_id)` уменьшил 0,765→0,206 ms (−73%), `submissions(status, created_at, id)` — 4,96→0,036 ms (−99%). Кандидаты для news/instructions/projects/pages не добавлены, поскольку MySQL продолжил выбирать table scan. CI дополнен полным Pest job на MySQL 8; локально SQLite и MySQL: 369 тестов / 1399 assertions, полный `composer ci:check`, Pint и PHPStan зелёные.
 - [x] OpenAPI и generated types. **Доказательство:** OpenAPI 3.1 описывает все 25 публичных операций `api/v1` (включая добавленный O-019 RUM endpoint); Pest сверяет реальный route registry и рекурсивно валидирует успешные ответы всех операций. Frontend генерирует 54 TypeScript-типа из зафиксированного schema snapshot, `api:types:check` блокирует drift в CI, ручные API DTO удалены из `lib/api.ts`. Текущий полный `composer ci:check` — 420 тестов / 2076 assertions; frontend TypeScript, ESLint, 41 Vitest-тест и production build на 55 страниц зелёные.
-- [ ] Нормализовать logging/metrics.
+- [x] Нормализовать logging/metrics. **Доказательство:** из шести требований
+  B-10 четыре уже работали и проверены (приложение не дублирует access-log
+  nginx, а пишет ошибки, медленные ответы и выборку 1 %; медленные SQL — по
+  порогу 250 мс без биндингов; метрики группируются по имени маршрута, а не
+  по slug; тела запросов и персональных данных нет ни в одном из четырёх мест
+  логирования). Закрыты две оставшиеся. **Кэш стал видимым:** `X-Cache:
+  HIT|MISS|PARTIAL` на ответе и доля попаданий за сутки на панели управления;
+  счётчик отдельный от выборки метрик, потому что в выборку по построению
+  попадают медленные и ошибочные ответы, то есть промахи, — доля по ней была
+  бы заниженной. **Метрика сразу показала дефект:** `/settings` кэшировался
+  дважды — общим `PublicReadModelCache` и ещё одним слоем `Cache::remember` на
+  60 с поверх него, с другой инвалидацией; разбор показал, что старый механизм
+  (`FlushesPublicCache` + ключи `public-api:*`) вытеснен лишь частично: три
+  модели сбрасывали ключи, которые уже никто не читал, а `Leader` и
+  `StructureUnit` остались на нём целиком. Механизм остался один: руководство
+  и структура переведены на общий кэш с инвалидацией через наблюдатель, трейт
+  и шесть методов `publicCacheKey()` удалены. **Корреляция сервисов:**
+  `X-Request-ID` из ответа CMS попадает в запись фронта об отказе (раньше там
+  было только «API 500»); обратное направление отвергнуто по исходникам Next —
+  ключ кэша данных считается по URL и заголовкам, поэтому уникальный на запрос
+  заголовок разрушил бы кэш каждого обращения к CMS (Next по той же причине
+  вырезает из ключа `traceparent`/`tracestate`). CMS — 550 тестов /
+  4033 assertions, PHPStan, Pint; фронт — tsc, ESLint, 114 Vitest,
+  71 Playwright.
 - [ ] Production optimize/OPcache/FPM/CDN.
 
 **Gate:** p95 и query-count бюджеты проходят на production-like data; cache invalidation корректна.
