@@ -127,6 +127,39 @@ it('finds direct rich-text references to a library image', function () {
         ->assertJsonPath('data.0.edit_url', "/news/{$news->id}/edit");
 });
 
+it('keeps finding a rich-text reference after the image itself is edited', function () {
+    // media-library подписывает URL версией (`?v=updated_at`), а тело материала
+    // хранит тот URL, что был на момент вставки. Любая правка самого файла —
+    // подпись, фокус, alt — меняет версию, и поиск по полному URL перестаёт
+    // видеть ссылку: «файл никем не используется», хотя он стоит в статье.
+    $source = mediaLifecycleAsset();
+    $news = News::factory()->create([
+        'body' => [
+            'ru' => '<p><img src="'.$source->getUrl().'" alt="Фото"></p>',
+            'tg' => '',
+            'en' => '',
+        ],
+    ]);
+
+    $source->setCustomProperty('focal_point', ['x' => 0.4, 'y' => 0.6]);
+    $source->updated_at = $source->updated_at->addMinute();
+    $source->save();
+
+    actingAs(mediaLifecycleUser('editor'))
+        ->getJson("/media/{$source->id}/usages")
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $news->id);
+
+    // Список «где используется» — это же и есть защита от удаления. Раньше
+    // после правки файла она отключалась молча: картинку из опубликованной
+    // статьи разрешалось удалить, и в статье оставался битый <img>.
+    actingAs(mediaLifecycleUser('admin'))
+        ->delete("/media/{$source->id}")
+        ->assertSessionHas('error');
+
+    expect(Media::query()->find($source->id))->not->toBeNull();
+});
+
 it('moves an unused asset to trash and restores it without touching original or derivatives', function () {
     $media = mediaLifecycleAsset();
     $originalPath = $media->getPathRelativeToRoot();

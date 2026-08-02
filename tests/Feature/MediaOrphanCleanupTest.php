@@ -13,6 +13,16 @@ it('only deletes orphan derivatives and never originals', function () {
     Storage::disk('public')->put('orphan/conversions/lost.webp', 'derivative');
     Storage::disk('public')->put('orphan/original.jpg', 'immutable original');
 
+    // Файлы состариваем явно. `--grace-hours 0` ставит отсечку ровно на «сейчас»,
+    // а mtime только что записанного файла попадает в ту же секунду — сравнение
+    // оказывается на границе, и тест падал примерно в одном прогоне из трёх, не
+    // имея к самой команде отношения. Час назад — это уже про поведение
+    // (файл старше окна отсрочки), а не про то, чья секунда округлилась первой.
+    $stale = now()->subHour()->getTimestamp();
+    foreach (['orphan/conversions/lost.webp', 'orphan/original.jpg'] as $path) {
+        touch(Storage::disk('public')->path($path), $stale);
+    }
+
     $this->artisan('media:cleanup-orphans', ['--grace-hours' => 0])
         ->expectsOutputToContain('1 derivative(s) reported; originals untouched.')
         ->assertSuccessful();
