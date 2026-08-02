@@ -30,6 +30,9 @@ use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
 use Illuminate\Cache\Events\CacheFailedOver;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Console\Events\ScheduledTaskSkipped;
+use Illuminate\Console\Scheduling\Event as ScheduledTask;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Foundation\DevCommands;
 use Illuminate\Http\Request;
@@ -193,6 +196,39 @@ class AppServiceProvider extends ServiceProvider
                 'error' => $event->exception->getMessage(),
             ],
         ));
+        // Упавшее задание планировщика раньше не выдавало ни одного сигнала:
+        // ночная резервная копия или недельная проверка восстановления могли
+        // падать неделями, а `/ready` продолжал бы отвечать «готов» — он
+        // следит за биением планировщика, а не за успехом его заданий.
+        Event::listen(ScheduledTaskFailed::class, fn (ScheduledTaskFailed $event) => Log::critical(
+            'scheduled_task_failed',
+            [
+                'event' => 'scheduled_task_failed',
+                'task' => $this->scheduledTaskName($event->task),
+                'error' => $event->exception->getMessage(),
+            ],
+        ));
+        // Пропуск из-за `withoutOverlapping` — не ошибка сам по себе, но
+        // задание, которое пропускается раз за разом, стоит на месте: прошлый
+        // запуск не завершился.
+        Event::listen(ScheduledTaskSkipped::class, fn (ScheduledTaskSkipped $event) => Log::warning(
+            'scheduled_task_skipped',
+            [
+                'event' => 'scheduled_task_skipped',
+                'task' => $this->scheduledTaskName($event->task),
+                'reason' => 'previous run still holds the overlap lock',
+            ],
+        ));
+    }
+
+    /**
+     * Имя задания для журнала: у команд — их сигнатура, у замыканий и заданий
+     * очереди — описание. Полная командная строка сюда не идёт: в ней могут
+     * оказаться аргументы, а высокая кардинальность мешает группировать.
+     */
+    private function scheduledTaskName(ScheduledTask $task): string
+    {
+        return $task->command ?? ($task->description ?? 'closure');
     }
 
     private function queueJobId(object $job): string

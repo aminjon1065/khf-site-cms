@@ -23,6 +23,10 @@ class ProcessScheduledContent extends Command
         $completed = $this->completeExpired($workflow);
         $notified = $this->notifyExpiring();
 
+        // Отметка ставится последней строкой намеренно: она означает «цикл
+        // планировщика дошёл до конца», а не «планировщик запустился». Если
+        // публикация упадёт на середине, `/ready` перестанет отвечать
+        // «готов» — и это правильный сигнал, а не ложная бодрость.
         Cache::put('health.scheduler.last_run', now()->toIso8601String(), now()->addHour());
 
         $this->info("Опубликовано: {$published} · завершено: {$completed} · уведомлений об истечении: {$notified}");

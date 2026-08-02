@@ -114,8 +114,10 @@ retention policy there; a backup on the application host alone is not a backup.
 - Edge/Nginx owns full access logs.
 - Application records structured errors, slow requests and a sample, keyed by
   route name rather than slug. Alert on API p95 above 750 ms, any sustained 5xx,
-  stale scheduler/worker heartbeat, failed jobs, or queue depth above
-  `QUEUE_MONITOR_MAX`.
+  stale scheduler/worker heartbeat, failed jobs, queue depth above
+  `QUEUE_MONITOR_MAX`, or `scheduled_task_failed` / repeated
+  `scheduled_task_skipped` — a nightly backup that fails does not move the
+  scheduler heartbeat, so `/ready` alone would keep answering "ready".
 - **Центр контроля** shows API p95/errors, queue p95/failures and exact p75
   LCP/INP/CLS by route/device. Logs contain no request body, query bindings,
   search terms, IP, user agent or session identifiers.
