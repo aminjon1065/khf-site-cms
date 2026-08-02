@@ -10,6 +10,11 @@ const CONTROL_ROUTES = [
     '/news/create',
     '/editorial/trash',
     '/editorial/translations',
+    // Центр контроля: таблицы метрик и плитки состояния. Страница целиком
+    // состоит из чисел, которые нужно читать глазами и скринридером, — как
+    // раз тот случай, где потерянный заголовок таблицы или подпись без связи
+    // с ячейкой стоят дорого.
+    '/control',
 ] as const;
 
 async function expectNoBlockingViolations(page: Page) {
