@@ -12,16 +12,19 @@ use App\Models\District;
 use App\Models\Document;
 use App\Models\HomeBlock;
 use App\Models\Instruction;
+use App\Models\Leader;
 use App\Models\MenuItem;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
 use App\Models\Region;
 use App\Models\Setting;
+use App\Models\StructureUnit;
 use App\Models\User;
 use App\Observers\CaptureEditorialRevision;
 use App\Observers\InvalidatePublicReadModels;
 use App\Services\OperationalTelemetry;
+use App\Services\PublicReadModelCache;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
@@ -56,6 +59,10 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(OperationalTelemetry::class);
+        // `scoped`, а не `singleton`: счётчики попаданий в кэш живут ровно один
+        // запрос. Под FPM разницы нет, но под Octane singleton утащил бы
+        // статистику одного запроса в следующий.
+        $this->app->scoped(PublicReadModelCache::class);
     }
 
     /**
@@ -257,6 +264,7 @@ class AppServiceProvider extends ServiceProvider
             Document::class,
             HomeBlock::class,
             Instruction::class,
+            Leader::class,
             Media::class,
             MenuItem::class,
             News::class,
@@ -266,6 +274,7 @@ class AppServiceProvider extends ServiceProvider
             Project::class,
             Region::class,
             Setting::class,
+            StructureUnit::class,
         ] as $model) {
             $model::observe(InvalidatePublicReadModels::class);
         }

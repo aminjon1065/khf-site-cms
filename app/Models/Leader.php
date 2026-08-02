@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Concerns\FlushesPublicCache;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Models\Concerns\HasResponsiveThumbnails;
 use Database\Factories\LeaderFactory;
@@ -32,13 +31,8 @@ use Spatie\Translatable\HasTranslations;
 class Leader extends Model implements HasMedia
 {
     /** @use HasFactory<LeaderFactory> */
-    use FlushesPublicCache, HasFactory, HasResponsiveThumbnails, HasTranslations, InteractsWithMedia, LogsActivity, TracksTranslationCompleteness {
+    use HasFactory, HasResponsiveThumbnails, HasTranslations, InteractsWithMedia, LogsActivity, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
-    }
-
-    protected static function publicCacheKey(string $locale): string
-    {
-        return "public-api:leadership:{$locale}";
     }
 
     /**

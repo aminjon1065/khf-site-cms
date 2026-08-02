@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Services\OperationalTelemetry;
+use App\Services\PublicReadModelCache;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -20,14 +21,26 @@ class PublicApiResponse
             ? $incomingId
             : (string) Str::uuid();
 
+        $readModels = app(PublicReadModelCache::class);
+        $readModels->startRequest();
+
         $response = $next($request);
         $response->headers->set('X-Request-ID', $requestId);
+
+        // Отдельным заголовком, а не только в метрике: без него «медленно»
+        // и «холодный кэш» невозможно различить на конкретном запросе — ни
+        // в логе edge, ни руками через curl.
+        $cache = $readModels->outcome();
+        if ($cache !== null) {
+            $response->headers->set('X-Cache', strtoupper($cache));
+            app(OperationalTelemetry::class)->recordCacheOutcome($cache);
+        }
 
         if ($request->isMethod('GET')) {
             $this->addCaching($request, $response);
         }
 
-        $this->logRequest($request, $response, $requestId, $startedAt);
+        $this->logRequest($request, $response, $requestId, $startedAt, $cache);
 
         return $response;
     }
@@ -37,6 +50,7 @@ class PublicApiResponse
         Response $response,
         string $requestId,
         int $startedAt,
+        ?string $cache,
     ): void {
         $durationMs = round((hrtime(true) - $startedAt) / 1_000_000, 1);
         $status = $response->getStatusCode();
@@ -58,6 +72,7 @@ class PublicApiResponse
             $request->route()?->getName() ?? 'unmatched',
             $status,
             $durationMs,
+            $cache,
         );
 
         Log::log($level, 'public_api_response', [
@@ -68,6 +83,7 @@ class PublicApiResponse
             'status' => $status,
             'duration_ms' => $durationMs,
             'slow' => $durationMs >= $slowThreshold,
+            'cache' => $cache,
         ]);
     }
 

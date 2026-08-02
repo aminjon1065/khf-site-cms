@@ -5,10 +5,10 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicLeaderResource;
 use App\Models\Leader;
+use App\Services\PublicReadModelCache;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\Cache;
 
 /**
  * Public leadership-roster endpoint for the Next.js site: the chairman and
@@ -17,20 +17,22 @@ use Illuminate\Support\Facades\Cache;
 class LeaderController extends Controller
 {
     /**
-     * D-2: the full (small, rarely-changing) roster is cached and paginated
-     * in memory — far too few leaders to bother caching per page/per_page
-     * combination. Flushed from Leader's FlushesPublicCache on every save/delete.
+     * Полный (небольшой и редко меняющийся) состав руководства кэшируется целиком и
+     * постранично режется в памяти: вариантов page/per_page слишком мало,
+     * чтобы кэшировать каждый. Кэш — общий `PublicReadModelCache`: те же
+     * версионные ключи и та же инвалидация по наблюдателю, что у остальных
+     * публичных read-моделей, вместо собственного TTL.
      */
-    private const CACHE_TTL_SECONDS = 60;
+    public function __construct(private readonly PublicReadModelCache $cache) {}
 
     public function index(Request $request): JsonResponse
     {
         $locale = app()->getLocale();
 
         /** @var list<array<string, mixed>> $all */
-        $all = Cache::remember(
-            "public-api:leadership:{$locale}",
-            self::CACHE_TTL_SECONDS,
+        $all = $this->cache->remember(
+            PublicReadModelCache::LEADERSHIP,
+            $locale,
             fn (): array => PublicLeaderResource::collection(
                 Leader::query()
                     ->select(['id', 'role', 'name', 'meta', 'bio', 'is_chairman'])

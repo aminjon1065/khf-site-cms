@@ -9,12 +9,14 @@ use App\Models\Category;
 use App\Models\District;
 use App\Models\HomeBlock;
 use App\Models\Instruction;
+use App\Models\Leader;
 use App\Models\MenuItem;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
 use App\Models\Region;
 use App\Models\Setting;
+use App\Models\StructureUnit;
 use App\Services\PublicReadModelCache;
 use Illuminate\Contracts\Events\ShouldHandleEventsAfterCommit;
 use Illuminate\Database\Eloquent\Model;
@@ -82,6 +84,8 @@ final class InvalidatePublicReadModels implements ShouldHandleEventsAfterCommit
                 PublicReadModelCache::ALERTS,
                 PublicReadModelCache::HOME,
             ],
+            $model instanceof Leader => [PublicReadModelCache::LEADERSHIP],
+            $model instanceof StructureUnit => [PublicReadModelCache::STRUCTURE],
             $model instanceof Media => [PublicReadModelCache::HOME],
             default => [PublicReadModelCache::HOME],
         };

@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Concerns\FlushesPublicCache;
 use App\Concerns\TracksTranslationCompleteness;
 use Database\Factories\StructureUnitFactory;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,12 +25,7 @@ use Spatie\Translatable\HasTranslations;
 class StructureUnit extends Model
 {
     /** @use HasFactory<StructureUnitFactory> */
-    use FlushesPublicCache, HasFactory, HasTranslations, LogsActivity, TracksTranslationCompleteness;
-
-    protected static function publicCacheKey(string $locale): string
-    {
-        return "public-api:structure:{$locale}";
-    }
+    use HasFactory, HasTranslations, LogsActivity, TracksTranslationCompleteness;
 
     /**
      * @var list<string>

@@ -34,26 +34,73 @@ final class OperationalTelemetry
         ]);
     }
 
-    public function recordApi(string $route, int $status, float $durationMs): void
+    public function recordApi(string $route, int $status, float $durationMs, ?string $cache = null): void
     {
         $this->update('api', [
             'route' => $route,
             'status' => $status,
             'duration_ms' => round($durationMs, 1),
+            'cache' => $cache,
             'recorded_at' => now()->toIso8601String(),
         ]);
     }
 
     /**
+     * Попадания в read-model-кэш считаются отдельно от выборки запросов и на
+     * каждом запросе. Иначе доля попаданий считалась бы по той же выборке, что
+     * и остальные метрики, — а туда по построению попадают медленные и
+     * ошибочные ответы, то есть как раз промахи: получилась бы не метрика, а
+     * заниженное число, в которое нельзя верить. Счётчик — один атомарный
+     * инкремент в сутки на исход, а не запись выборки под локом.
+     */
+    public function recordCacheOutcome(string $outcome): void
+    {
+        $key = $this->cacheCounterKey($outcome);
+
+        Cache::add($key, 0, now()->addDays(2));
+        Cache::increment($key);
+    }
+
+    private function cacheCounterKey(string $outcome): string
+    {
+        return self::CACHE_KEY.":cache:{$outcome}:".now()->format('Y-m-d');
+    }
+
+    /**
+     * @return array{hits: int, misses: int, partial: int, requests: int, hit_rate: float|null}
+     */
+    private function cacheSummary(): array
+    {
+        $hits = (int) Cache::get($this->cacheCounterKey('hit'), 0);
+        $misses = (int) Cache::get($this->cacheCounterKey('miss'), 0);
+        $partial = (int) Cache::get($this->cacheCounterKey('partial'), 0);
+        $requests = $hits + $misses + $partial;
+
+        return [
+            'hits' => $hits,
+            'misses' => $misses,
+            // Частичное попадание считаем половиной: запрос, собравший часть
+            // данных из кэша, честнее округлять к середине, чем записывать
+            // целиком в одну из сторон.
+            'partial' => $partial,
+            'requests' => $requests,
+            'hit_rate' => $requests === 0
+                ? null
+                : round(($hits + $partial / 2) / $requests, 3),
+        ];
+    }
+
+    /**
      * @return array{
      *   api: array{samples: int, errors: int, p95_ms: float|null, routes: list<array{route: string, samples: int, errors: int, p95_ms: float|null}>},
-     *   queue: array{samples: int, failures: int, p95_ms: float|null, last_processed_at: string|null}
+     *   queue: array{samples: int, failures: int, p95_ms: float|null, last_processed_at: string|null},
+     *   cache: array{hits: int, misses: int, partial: int, requests: int, hit_rate: float|null}
      * }
      */
     public function summary(): array
     {
         /** @var array{
-         *   api?: list<array{route: string, status: int, duration_ms: float, recorded_at: string}>,
+         *   api?: list<array{route: string, status: int, duration_ms: float, cache?: string|null, recorded_at: string}>,
          *   queue?: list<array{name: string, duration_ms: float, failed: bool, recorded_at: string}>
          * } $data
          */
@@ -97,6 +144,7 @@ final class OperationalTelemetry
                 'p95_ms' => $this->percentile($this->durations($queue), 0.95),
                 'last_processed_at' => $lastQueueSample['recorded_at'] ?? null,
             ],
+            'cache' => $this->cacheSummary(),
         ];
     }
 
