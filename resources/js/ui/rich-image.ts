@@ -1,5 +1,7 @@
 import { mergeAttributes } from '@tiptap/core';
 import { Image as TiptapImage } from '@tiptap/extension-image';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import { RichImageView } from './RichImageView';
 
 export type ImageAlign = 'left' | 'center' | 'right' | null;
 export type ImageSize = 'small' | 'medium' | 'large' | 'full' | null;
@@ -36,11 +38,21 @@ function imgOf(el: HTMLElement): HTMLImageElement | null {
 }
 
 /**
- * Изображение с параметрами вставки (как в WordPress): выравнивание, размер и
- * подпись. С подписью рендерится в `<figure><img><figcaption>`, без — обычным
- * `<img>`. Выравнивание/размер хранятся классами `align-*` / `size-*`.
+ * Изображение как фигура: в редакторе — React NodeView (подпись и инструменты
+ * на самой картинке), в HTML — всегда `<figure>`, чтобы появление подписи
+ * не меняло тег и не сбрасывало выделение.
  */
 export const RichImage = TiptapImage.extend({
+    addNodeView() {
+        return ReactNodeViewRenderer(RichImageView, {
+            stopEvent: ({ event }) => {
+                const target = event.target as HTMLElement | null;
+
+                return Boolean(target?.closest('[data-re-image-ui]'));
+            },
+        });
+    },
+
     addAttributes() {
         return {
             src: {
@@ -114,13 +126,6 @@ export const RichImage = TiptapImage.extend({
         ]
             .filter(Boolean)
             .join(' ');
-        const bare = [
-            're-img',
-            align && ALIGN_CLASS[align],
-            size && SIZE_CLASS[size],
-        ]
-            .filter(Boolean)
-            .join(' ');
 
         const imgAttrs: Record<string, string> = { src: src ?? '' };
 
@@ -141,15 +146,13 @@ export const RichImage = TiptapImage.extend({
             imgAttrs['data-media-id'] = String(mediaId);
         }
 
+        const img = ['img', mergeAttributes(imgAttrs, { class: 're-img' })];
+        const attrs = { class: wrap || 're-figure' };
+
         if (caption) {
-            return [
-                'figure',
-                { class: wrap },
-                ['img', mergeAttributes(imgAttrs, { class: 're-img' })],
-                ['figcaption', {}, String(caption)],
-            ];
+            return ['figure', attrs, img, ['figcaption', {}, String(caption)]];
         }
 
-        return ['img', mergeAttributes(imgAttrs, { class: bare })];
+        return ['figure', attrs, img];
     },
 });

@@ -1,6 +1,17 @@
 import { Link, router, usePage } from '@inertiajs/react';
-import { Bell, ExternalLink, Menu, Plus, Search } from 'lucide-react';
+import {
+    Bell,
+    ExternalLink,
+    Menu,
+    Monitor,
+    Moon,
+    Plus,
+    Search,
+    Sun,
+} from 'lucide-react';
 import { edit as editProfile } from '@/actions/App/Http/Controllers/Settings/ProfileController';
+import type { Appearance } from '@/hooks/use-appearance';
+import { useAppearance } from '@/hooks/use-appearance';
 import { useAuth, useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { CREATE_ITEMS, NAV } from '@/lib/navigation';
@@ -25,6 +36,7 @@ export function TopBar({
     const user = useAuth();
     const url = usePage().url;
 
+    const { appearance, updateAppearance } = useAppearance();
     const crumb = resolveCrumb(url, t);
     const createItems = CREATE_ITEMS.filter(
         (i) => !i.permission || can(i.permission),
@@ -57,9 +69,7 @@ export function TopBar({
             <div className="ui-breadcrumb">
                 <span>{crumb.group}</span>
                 <span className="sep">/</span>
-                <strong style={{ color: 'var(--color-text)' }}>
-                    {crumb.label}
-                </strong>
+                <strong>{crumb.label}</strong>
             </div>
 
             <div className="cms-topbar-spacer" />
@@ -69,36 +79,10 @@ export function TopBar({
                 onClick={onOpenSearch}
                 className="cms-search-trigger"
                 aria-label="Поиск по CMS"
-                style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    padding: '7px 10px',
-                    border: '1px solid var(--color-divider)',
-                    background: '#fff',
-                    color: 'var(--color-neutral-600)',
-                    cursor: 'pointer',
-                    fontSize: 13,
-                }}
             >
                 <Search size={15} strokeWidth={1.5} />
-                <span
-                    className="cms-search-trigger-label"
-                    style={{ flex: 1, textAlign: 'left' }}
-                >
-                    Поиск по CMS…
-                </span>
-                <kbd
-                    className="cms-search-trigger-shortcut"
-                    style={{
-                        fontSize: 11,
-                        border: '1px solid var(--color-divider)',
-                        padding: '1px 5px',
-                        borderRadius: 3,
-                    }}
-                >
-                    Ctrl K
-                </kbd>
+                <span className="cms-search-trigger-label">Поиск по CMS…</span>
+                <kbd className="cms-search-trigger-shortcut">Ctrl K</kbd>
             </button>
 
             {createItems.length > 0 && (
@@ -150,6 +134,20 @@ export function TopBar({
                     </span>
                 )}
             </div>
+
+            <IconButton
+                label={themeLabel(appearance)}
+                className="cms-desktop-only"
+                onClick={() => updateAppearance(nextTheme(appearance))}
+            >
+                {appearance === 'dark' ? (
+                    <Moon size={17} strokeWidth={1.5} />
+                ) : appearance === 'system' ? (
+                    <Monitor size={17} strokeWidth={1.5} />
+                ) : (
+                    <Sun size={17} strokeWidth={1.5} />
+                )}
+            </IconButton>
 
             <div className="ui-seg cms-desktop-only" style={{ minHeight: 32 }}>
                 <button
@@ -214,4 +212,28 @@ function resolveCrumb(
     }
 
     return { group: t('app.name'), label: '—' };
+}
+
+function nextTheme(current: Appearance): Appearance {
+    if (current === 'light') {
+        return 'dark';
+    }
+
+    if (current === 'dark') {
+        return 'system';
+    }
+
+    return 'light';
+}
+
+function themeLabel(current: Appearance): string {
+    if (current === 'dark') {
+        return 'Тема: тёмная. Нажмите, чтобы выбрать системную.';
+    }
+
+    if (current === 'system') {
+        return 'Тема: как в системе. Нажмите, чтобы выбрать светлую.';
+    }
+
+    return 'Тема: светлая. Нажмите, чтобы выбрать тёмную.';
 }

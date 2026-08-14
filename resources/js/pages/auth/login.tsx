@@ -18,7 +18,7 @@ export default function Login({
     const [show, setShow] = useState(false);
 
     return (
-        <Blueprint style={{ background: '#fff', padding: 28 }}>
+        <Blueprint style={{ padding: 28 }}>
             <Head title={t('auth.login_title')} />
             <h2
                 style={{

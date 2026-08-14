@@ -179,7 +179,7 @@ export function Step2({
                                     border: `1px solid ${active ? 'var(--sev-warning)' : 'var(--color-divider)'}`,
                                     background: active
                                         ? 'var(--sev-warning-soft)'
-                                        : '#fff',
+                                        : 'var(--color-surface)',
                                     cursor: 'pointer',
                                     textAlign: 'left',
                                     fontSize: 12.5,
@@ -210,7 +210,7 @@ export function Step2({
                             style={{
                                 width: 12,
                                 height: 12,
-                                background: '#fff',
+                                background: 'var(--color-surface)',
                                 border: '1px solid var(--color-divider)',
                             }}
                         />{' '}

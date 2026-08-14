@@ -1,7 +1,8 @@
 import { Head, useForm } from '@inertiajs/react';
-import { KeyRound, Save, ShieldCheck } from 'lucide-react';
+import { KeyRound, Save, ShieldCheck, SwatchBook } from 'lucide-react';
 import { update as updateProfile } from '@/actions/App/Http/Controllers/Settings/ProfileController';
 import { edit as editSecurity } from '@/actions/App/Http/Controllers/Settings/SecurityController';
+import AppearanceToggleTab from '@/components/appearance-tabs';
 import { useAuth } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, LinkButton } from '@/ui/Button';
@@ -136,6 +137,28 @@ export default function Profile({ mustVerifyEmail, status }: Props) {
                         >
                             Открыть настройки безопасности
                         </LinkButton>
+                    </div>
+                </Blueprint>
+
+                <Blueprint style={{ padding: 20 }}>
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-start gap-3">
+                            <SwatchBook
+                                size={22}
+                                strokeWidth={1.6}
+                                className="mt-0.5 text-[var(--color-accent-700)]"
+                            />
+                            <div>
+                                <h2 className="ui-card-title">
+                                    Тема оформления
+                                </h2>
+                                <p className="ui-hint">
+                                    Светлая, тёмная или как в системе. Выбор
+                                    сохраняется в этом браузере.
+                                </p>
+                            </div>
+                        </div>
+                        <AppearanceToggleTab />
                     </div>
                 </Blueprint>
             </div>

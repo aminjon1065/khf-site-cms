@@ -56,7 +56,7 @@ class DashboardController extends Controller
     }
 
     /**
-     * @return array<int, array{key: string, value: int, label: string, tone: string|null}>
+     * @return array<int, array{key: string, value: int, label: string, tone: string|null, href: string|null}>
      */
     private function metrics(User $user): array
     {
@@ -74,38 +74,165 @@ class DashboardController extends Controller
         // change); this loop adds Instruction/Document/Project/Announcement/
         // Page into the same four totals, which were previously silently
         // excluded from all of them.
-        $otherTotals = ['drafts' => 0, 'review' => 0, 'published_month' => 0, 'translations' => 0];
+        $byType = [
+            'alert' => [
+                'drafts' => $this->alertQuery($user)->where('status', ContentStatus::Draft->value)->count(),
+                'review' => $this->alertQuery($user)->whereIn('status', ['review', 'translation_check'])->count(),
+                'scheduled' => $this->alertQuery($user)->where('status', 'scheduled')->count(),
+                'published_month' => $this->alertQuery($user)->whereMonth('published_at', now()->month)->count(),
+                'translations' => $incompleteTranslations,
+            ],
+            'news' => [
+                'drafts' => $this->newsQuery($user)->where('status', 'draft')->count(),
+                'review' => $this->newsQuery($user)->where('status', 'review')->count(),
+                'scheduled' => $this->newsQuery($user)->where('status', 'scheduled')->count(),
+                'published_month' => $this->newsQuery($user)->where('status', 'published')->whereMonth('published_at', now()->month)->count(),
+                'translations' => 0,
+            ],
+        ];
 
         foreach (ContentTypes::MAP as $type => $modelClass) {
             if (in_array($type, ['alert', 'news'], true)) {
                 continue;
             }
 
-            $otherTotals['drafts'] += $modelClass::query()->accessibleTo($user)->where('status', ContentStatus::Draft->value)->count();
-            $otherTotals['review'] += $modelClass::query()->accessibleTo($user)->whereIn('status', [ContentStatus::Review->value, ContentStatus::TranslationCheck->value])->count();
-            $otherTotals['published_month'] += $modelClass::query()->accessibleTo($user)->where('status', ContentStatus::Published->value)->whereMonth('published_at', now()->month)->count();
-
+            $translations = 0;
             if (method_exists($modelClass, 'languageCompleteness')) {
-                $otherTotals['translations'] += $modelClass::query()->accessibleTo($user)
+                $translations = $modelClass::query()->accessibleTo($user)
                     ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
                     ->get()
                     ->filter(fn (Model $m): bool => collect($m->languageCompleteness())->contains(fn (int $p): bool => $p < 100))
                     ->count();
             }
+
+            $byType[$type] = [
+                'drafts' => $modelClass::query()->accessibleTo($user)->where('status', ContentStatus::Draft->value)->count(),
+                'review' => $modelClass::query()->accessibleTo($user)->whereIn('status', [ContentStatus::Review->value, ContentStatus::TranslationCheck->value])->count(),
+                'scheduled' => 0,
+                'published_month' => $modelClass::query()->accessibleTo($user)->where('status', ContentStatus::Published->value)->whereMonth('published_at', now()->month)->count(),
+                'translations' => $translations,
+            ];
         }
 
         return [
-            ['key' => 'active', 'value' => $this->alertQuery($user)->active()->count(), 'label' => 'активных предупреждения', 'tone' => 'warn'],
-            ['key' => 'drafts', 'value' => $this->alertQuery($user)->where('status', ContentStatus::Draft->value)->count() + $this->newsQuery($user)->where('status', 'draft')->count() + $otherTotals['drafts'], 'label' => 'черновиков', 'tone' => null],
-            ['key' => 'review', 'value' => $this->alertQuery($user)->whereIn('status', ['review', 'translation_check'])->count() + $this->newsQuery($user)->where('status', 'review')->count() + $otherTotals['review'], 'label' => 'на согласовании', 'tone' => null],
+            ['key' => 'active', 'value' => $this->alertQuery($user)->active()->count(), 'label' => 'активных предупреждения', 'tone' => 'warn', 'href' => $this->metricHref($user, 'active', $byType)],
+            ['key' => 'drafts', 'value' => $this->metricSum($byType, 'drafts'), 'label' => 'черновиков', 'tone' => null, 'href' => $this->metricHref($user, 'drafts', $byType)],
+            ['key' => 'review', 'value' => $this->metricSum($byType, 'review'), 'label' => 'на согласовании', 'tone' => null, 'href' => $this->metricHref($user, 'review', $byType)],
             // Not expanded to the other 5 types: only Alert/News have a
             // `scheduled_at` column and a scheduler at all (see
             // ProcessScheduledContent) — the rest structurally never reach
             // status=scheduled, so looping them would just add 0.
-            ['key' => 'scheduled', 'value' => $this->alertQuery($user)->where('status', 'scheduled')->count() + $this->newsQuery($user)->where('status', 'scheduled')->count(), 'label' => 'запланировано', 'tone' => null],
-            ['key' => 'published_month', 'value' => $this->newsQuery($user)->where('status', 'published')->whereMonth('published_at', now()->month)->count() + $this->alertQuery($user)->whereMonth('published_at', now()->month)->count() + $otherTotals['published_month'], 'label' => 'опубликовано за месяц', 'tone' => null],
-            ['key' => 'translations', 'value' => $incompleteTranslations + $otherTotals['translations'], 'label' => 'незавершённых переводов', 'tone' => 'danger'],
+            ['key' => 'scheduled', 'value' => $this->metricSum($byType, 'scheduled'), 'label' => 'запланировано', 'tone' => null, 'href' => $this->metricHref($user, 'scheduled', $byType)],
+            ['key' => 'published_month', 'value' => $this->metricSum($byType, 'published_month'), 'label' => 'опубликовано за месяц', 'tone' => null, 'href' => $this->metricHref($user, 'published_month', $byType)],
+            ['key' => 'translations', 'value' => $this->metricSum($byType, 'translations'), 'label' => 'незавершённых переводов', 'tone' => 'danger', 'href' => $this->metricHref($user, 'translations', $byType)],
         ];
+    }
+
+    /**
+     * @param  array<string, array{drafts: int, review: int, scheduled: int, published_month: int, translations: int}>  $byType
+     */
+    private function metricSum(array $byType, string $metric): int
+    {
+        return array_sum(array_map(fn (array $row): int => $row[$metric], $byType));
+    }
+
+    /**
+     * Карточка открывает уже существующий срез — сохранённый вид списка,
+     * центр согласования или очередь переводов — и только если роль
+     * может открыть этот экран.
+     *
+     * @param  array<string, array{drafts: int, review: int, scheduled: int, published_month: int, translations: int}>  $byType
+     */
+    private function metricHref(User $user, string $key, array $byType): ?string
+    {
+        return match ($key) {
+            'active' => $user->can('alerts.view')
+                ? route('alerts.index', ['view' => 'active'], false)
+                : null,
+            'translations' => $this->translationsHref($user),
+            'review' => $this->reviewHref($user, $byType),
+            'drafts' => $this->metricListHref($user, $byType, 'drafts', 'drafts', ['news', 'page', 'announcement', 'project', 'document', 'instruction', 'alert']),
+            'scheduled' => $this->metricListHref($user, $byType, 'scheduled', 'scheduled', ['news', 'alert']),
+            'published_month' => $this->metricListHref($user, $byType, 'published_month', 'published', ['news', 'page', 'announcement', 'project', 'document', 'instruction', 'alert']),
+            default => null,
+        };
+    }
+
+    private function translationsHref(User $user): ?string
+    {
+        foreach (['news', 'pages', 'projects', 'instructions', 'announcements', 'documents'] as $module) {
+            if ($user->can("{$module}.edit")) {
+                return route('editorial.translations', [], false);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, array{drafts: int, review: int, scheduled: int, published_month: int, translations: int}>  $byType
+     */
+    private function reviewHref(User $user, array $byType): ?string
+    {
+        foreach (ContentTypes::MAP as $type => $_modelClass) {
+            if ($user->can(ContentTypes::module($type).'.approve')) {
+                return route('approvals', [], false);
+            }
+        }
+
+        return $this->metricListHref($user, $byType, 'review', 'review', ['news', 'alert', 'page', 'announcement', 'project', 'document', 'instruction']);
+    }
+
+    /**
+     * @param  array<string, array{drafts: int, review: int, scheduled: int, published_month: int, translations: int}>  $byType
+     * @param  list<string>  $fallback
+     */
+    private function metricListHref(User $user, array $byType, string $metric, string $view, array $fallback): ?string
+    {
+        $chosen = null;
+        $max = 0;
+
+        foreach (ContentTypes::MAP as $type => $_modelClass) {
+            if (! $user->can(ContentTypes::module($type).'.view')) {
+                continue;
+            }
+
+            $count = $byType[$type][$metric] ?? 0;
+            if ($count > $max) {
+                $chosen = $type;
+                $max = $count;
+            }
+        }
+
+        if ($chosen === null) {
+            foreach ($fallback as $type) {
+                if ($user->can(ContentTypes::module($type).'.view')) {
+                    $chosen = $type;
+                    break;
+                }
+            }
+        }
+
+        if ($chosen === null) {
+            return null;
+        }
+
+        return $this->typeListUrl($chosen, $view);
+    }
+
+    private function typeListUrl(string $type, string $view): string
+    {
+        $module = ContentTypes::module($type);
+
+        if ($type === 'alert') {
+            return match ($view) {
+                'drafts' => route('alerts.index', ['view' => 'all', 'status' => ContentStatus::Draft->value], false),
+                'published' => route('alerts.index', ['view' => 'all', 'status' => ContentStatus::Published->value], false),
+                default => route('alerts.index', ['view' => $view], false),
+            };
+        }
+
+        return route("{$module}.index", ['view' => $view], false);
     }
 
     /**

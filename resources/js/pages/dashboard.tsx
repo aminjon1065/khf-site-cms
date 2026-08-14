@@ -27,6 +27,7 @@ interface Metric {
     value: number;
     label: string;
     tone: 'warn' | 'danger' | 'ok' | 'accent' | null;
+    href: string | null;
 }
 interface Task {
     id: string;
@@ -120,7 +121,7 @@ export default function Dashboard({
             {/* Operational status */}
             <div
                 className={`ui-opstatus ${operationalLevel !== 'calm' ? (operationalLevel === 'critical' ? 'is-critical' : 'is-active') : ''}`}
-                style={{ marginBottom: 20, padding: 0 }}
+                style={{ marginBottom: 20 }}
             >
                 <div
                     style={{
@@ -129,12 +130,6 @@ export default function Dashboard({
                         flexWrap: 'wrap',
                         gap: 12,
                         padding: '12px 16px',
-                        background:
-                            operationalLevel === 'calm'
-                                ? 'var(--ok-soft)'
-                                : operationalLevel === 'critical'
-                                  ? 'var(--danger-soft)'
-                                  : 'var(--sev-warning-soft)',
                         borderBottom: '1px solid var(--color-divider)',
                     }}
                 >
@@ -193,7 +188,6 @@ export default function Dashboard({
                             'minmax(0,1fr) minmax(0,1fr) 280px',
                         gap: 16,
                         padding: 16,
-                        background: '#fbfbfc',
                     }}
                     className="cms-ops-grid"
                 >
@@ -311,6 +305,7 @@ export default function Dashboard({
                         value={m.value}
                         label={m.label}
                         tone={m.tone ?? undefined}
+                        href={m.href}
                     />
                 ))}
             </div>

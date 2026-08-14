@@ -23,7 +23,7 @@ export function PageHeader({
                 {subtitle && <div className="ui-page-sub">{subtitle}</div>}
             </div>
             {actions && (
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <div className="flex flex-wrap items-center gap-2">
                     {actions}
                 </div>
             )}

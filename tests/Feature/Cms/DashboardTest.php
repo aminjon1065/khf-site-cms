@@ -179,3 +179,68 @@ it('shows recently published non-alert, non-news content on the calendar', funct
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page->has('calendar', 1));
 });
+
+it('links empty dashboard metrics to the default filtered lists', function () {
+    actingAs(dashboardUser('admin'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.0.key', 'active')
+            ->where('metrics.0.href', route('alerts.index', ['view' => 'active'], false))
+            ->where('metrics.1.key', 'drafts')
+            ->where('metrics.1.href', route('news.index', ['view' => 'drafts'], false))
+            ->where('metrics.2.key', 'review')
+            ->where('metrics.2.href', route('approvals', [], false))
+            ->where('metrics.3.key', 'scheduled')
+            ->where('metrics.3.href', route('news.index', ['view' => 'scheduled'], false))
+            ->where('metrics.4.key', 'published_month')
+            ->where('metrics.4.href', route('news.index', ['view' => 'published'], false))
+            ->where('metrics.5.key', 'translations')
+            ->where('metrics.5.href', route('editorial.translations', [], false)));
+});
+
+it('sends editors to a review list instead of the approval center', function () {
+    actingAs(dashboardUser('editor'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.2.href', route('news.index', ['view' => 'review'], false)));
+});
+
+it('does not send viewers to the translation queue they cannot open', function () {
+    actingAs(dashboardUser('viewer'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.2.href', route('news.index', ['view' => 'review'], false))
+            ->where('metrics.5.href', null));
+});
+
+it('points the drafts card at the type that actually has drafts', function () {
+    Page::factory()->create(['status' => ContentStatus::Draft]);
+
+    actingAs(dashboardUser('admin'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.1.href', route('pages.index', ['view' => 'drafts'], false)));
+});
+
+it('points the scheduled card at alerts when only alerts are scheduled', function () {
+    Alert::factory()->create([
+        'status' => ContentStatus::Scheduled,
+        'scheduled_at' => now()->addDay(),
+    ]);
+
+    actingAs(dashboardUser('editor'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.3.href', route('alerts.index', ['view' => 'scheduled'], false)));
+});
+
+it('lets an editor open every default metric destination', function (string $path) {
+    actingAs(dashboardUser('editor'))->get($path)->assertOk();
+})->with([
+    '/alerts?view=active',
+    '/news?view=drafts',
+    '/news?view=review',
+    '/news?view=scheduled',
+    '/news?view=published',
+    '/editorial/translations',
+]);

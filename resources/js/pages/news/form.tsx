@@ -351,9 +351,13 @@ export default function NewsForm({ news, reference }: Props) {
                             />
                         </Field>
 
-                        <Field label="Текст новости">
+                        <Field
+                            label="Текст новости"
+                            hint="Заголовки, списки, фото из медиатеки и видео. На весь экран — чтобы писать без отвлечений."
+                        >
                             <RichEditor
                                 key={lang}
+                                variant="article"
                                 value={data.body[lang]}
                                 onChange={(html) =>
                                     setLocaleField('body', html)

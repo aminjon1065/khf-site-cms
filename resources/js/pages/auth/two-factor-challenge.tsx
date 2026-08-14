@@ -67,7 +67,7 @@ export default function TwoFactorChallenge() {
     };
 
     return (
-        <Blueprint style={{ background: '#fff', padding: 28 }}>
+        <Blueprint style={{ padding: 28 }}>
             <Head title={t('auth.2fa_title')} />
             <h2
                 style={{

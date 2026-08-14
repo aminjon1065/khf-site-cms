@@ -6,35 +6,64 @@ import { Youtube } from '@tiptap/extension-youtube';
 import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
+import { BubbleMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
+import { Bold, Heading2, Heading3, Italic, Link2 } from 'lucide-react';
 import { useEffect, useReducer, useState } from 'react';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { postForm } from '@/lib/http';
+import { cn } from '@/lib/utils';
 import { MediaPicker } from './MediaPicker';
 import type { MediaItem } from './MediaPicker';
+import { cleanPastedHtml, countWords, readingMinutes } from './rich-editor';
 import { RichImage } from './rich-image';
-import type { ImageAlign, ImageSize } from './rich-image';
-import { RichEditorToolbar } from './RichEditorToolbar';
+import { LinkDialog, YoutubeDialog } from './RichEditorDialogs';
+import type { LinkDialogValue } from './RichEditorDialogs';
+import { Btn, RichEditorToolbar } from './RichEditorToolbar';
+import { useToast } from './Toast';
 
 export interface Props {
     value: string;
     onChange: (html: string) => void;
     placeholder?: string;
+    /** Высокое полотно без внутренней прокрутки — для новостей. */
+    variant?: 'default' | 'article';
 }
 
-/** Параметры вставки изображения (как в WordPress). */
-const IMG_ALIGN: { value: ImageAlign; label: string }[] = [
-    { value: null, label: 'Без обтекания' },
-    { value: 'left', label: 'Слева' },
-    { value: 'center', label: 'По центру' },
-    { value: 'right', label: 'Справа' },
-];
-const IMG_SIZE: { value: ImageSize; label: string }[] = [
-    { value: 'small', label: 'Маленький' },
-    { value: 'medium', label: 'Средний' },
-    { value: 'large', label: 'Большой' },
-    { value: 'full', label: 'Полный' },
-];
+function imageAttrsFromMedia(item: MediaItem): Record<string, unknown> {
+    return {
+        src: item.url,
+        alt: item.alt ?? item.name ?? '',
+        caption: item.caption ?? '',
+        srcset: item.srcset,
+        mediaId: item.id,
+        align: 'center',
+        size: 'large',
+    };
+}
+
+function selectImageNearCursor(editor: Editor): void {
+    const cursor = editor.state.selection.from;
+    let nearest: number | null = null;
+    let nearestDistance = Number.POSITIVE_INFINITY;
+
+    editor.state.doc.descendants((node, pos) => {
+        if (node.type.name !== 'image') {
+            return;
+        }
+
+        const distance = Math.abs(pos - cursor);
+
+        if (distance < nearestDistance) {
+            nearest = pos;
+            nearestDistance = distance;
+        }
+    });
+
+    if (nearest !== null) {
+        editor.commands.setNodeSelection(nearest);
+    }
+}
 
 /**
  * Загружает картинки в медиатеку и вставляет их с позиции `pos`. Работает
@@ -44,6 +73,7 @@ async function uploadImagesAt(
     view: EditorView,
     files: File[],
     pos: number,
+    onError: (message: string) => void,
 ): Promise<void> {
     const imageType = view.state.schema.nodes.image;
 
@@ -65,17 +95,12 @@ async function uploadImagesAt(
             view.dispatch(
                 view.state.tr.insert(
                     at,
-                    imageType.create({
-                        src: res.data.url,
-                        alt: res.data.name ?? '',
-                        srcset: res.data.srcset,
-                        mediaId: res.data.id,
-                    }),
+                    imageType.create(imageAttrsFromMedia(res.data)),
                 ),
             );
             at += 1;
-        } catch (e) {
-            console.error('Не удалось загрузить изображение:', e);
+        } catch {
+            onError(`Не удалось загрузить «${file.name}» в медиатеку`);
         }
     }
 }
@@ -90,10 +115,19 @@ async function uploadImagesAt(
  * лениво через `RichEditor.tsx`, поэтому им можно пользоваться напрямую
  * только оттуда.
  */
-export function RichEditorField({ value, onChange, placeholder }: Props) {
+export function RichEditorField({
+    value,
+    onChange,
+    placeholder,
+    variant = 'default',
+}: Props) {
+    const toast = useToast();
     const [pickerOpen, setPickerOpen] = useState(false);
-    // Перерисовываем тулбар на каждую транзакцию, чтобы активные состояния
-    // кнопок были актуальны (Tiptap v3 не ререндерит компонент сам).
+    const [linkOpen, setLinkOpen] = useState(false);
+    const [videoOpen, setVideoOpen] = useState(false);
+    const [focusMode, setFocusMode] = useState(false);
+    const [sourceMode, setSourceMode] = useState(false);
+    const [source, setSource] = useState(value);
     const [, force] = useReducer((n: number) => n + 1, 0);
 
     const editor = useEditor({
@@ -126,8 +160,11 @@ export function RichEditorField({ value, onChange, placeholder }: Props) {
         ],
         content: value,
         editorProps: {
-            attributes: { class: 're-content' },
-            // Перетаскивание картинки в текст: грузим в медиатеку и вставляем.
+            attributes: {
+                class: 're-content',
+                'aria-label': placeholder ?? 'Текст материала',
+            },
+            transformPastedHTML: cleanPastedHtml,
             handleDrop: (view, event) => {
                 const files = Array.from(
                     event.dataTransfer?.files ?? [],
@@ -146,11 +183,11 @@ export function RichEditorField({ value, onChange, placeholder }: Props) {
                     view,
                     files,
                     coords?.pos ?? view.state.selection.from,
+                    (message) => toast(message, 'error'),
                 );
 
                 return true;
             },
-            // Вставка картинки из буфера обмена.
             handlePaste: (view, event) => {
                 const files = Array.from(
                     event.clipboardData?.files ?? [],
@@ -161,12 +198,17 @@ export function RichEditorField({ value, onChange, placeholder }: Props) {
                 }
 
                 event.preventDefault();
-                void uploadImagesAt(view, files, view.state.selection.from);
+                void uploadImagesAt(
+                    view,
+                    files,
+                    view.state.selection.from,
+                    (message) => toast(message, 'error'),
+                );
 
                 return true;
             },
         },
-        onUpdate: ({ editor }) => onChange(editor.getHTML()),
+        onUpdate: ({ editor: instance }) => onChange(instance.getHTML()),
     });
 
     useEffect(() => {
@@ -184,36 +226,69 @@ export function RichEditorField({ value, onChange, placeholder }: Props) {
         };
     }, [editor]);
 
+    useEffect(() => {
+        if (!focusMode) {
+            return;
+        }
+
+        const previous = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setFocusMode(false);
+            }
+        };
+
+        window.addEventListener('keydown', onKey);
+
+        return () => {
+            document.body.style.overflow = previous;
+            window.removeEventListener('keydown', onKey);
+        };
+    }, [focusMode]);
+
     if (!editor) {
         return <div className="re-shell re-loading">Загрузка редактора…</div>;
     }
 
-    const setLink = () => {
-        if (editor.isActive('link')) {
-            editor.chain().focus().unsetLink().run();
+    const selectedText = editor.state.doc.textBetween(
+        editor.state.selection.from,
+        editor.state.selection.to,
+        ' ',
+    );
+    const linkAttrs = editor.getAttributes('link');
+    const linkDraft: LinkDialogValue = {
+        href: (linkAttrs.href as string) ?? '',
+        text: selectedText,
+        newTab:
+            (linkAttrs.target as string | undefined) !== undefined
+                ? linkAttrs.target === '_blank'
+                : true,
+    };
 
-            return;
+    const applyLink = (next: LinkDialogValue) => {
+        const attrs = {
+            href: next.href,
+            target: next.newTab ? '_blank' : null,
+            rel: next.newTab ? 'noopener nofollow' : 'nofollow',
+        };
+
+        if (editor.state.selection.empty) {
+            editor
+                .chain()
+                .focus()
+                .insertContent({
+                    type: 'text',
+                    text: next.text || next.href,
+                    marks: [{ type: 'link', attrs }],
+                })
+                .run();
+        } else {
+            editor.chain().focus().extendMarkRange('link').setLink(attrs).run();
         }
 
-        const prev = (editor.getAttributes('link').href as string) ?? '';
-        const url = window.prompt('Ссылка (URL):', prev);
-
-        if (url === null) {
-            return; // отмена
-        }
-
-        if (url === '') {
-            editor.chain().focus().unsetLink().run();
-
-            return;
-        }
-
-        editor
-            .chain()
-            .focus()
-            .extendMarkRange('link')
-            .setLink({ href: url })
-            .run();
+        setLinkOpen(false);
     };
 
     const insertImage = (item: MediaItem) => {
@@ -222,108 +297,179 @@ export function RichEditorField({ value, onChange, placeholder }: Props) {
             .focus()
             .insertContent({
                 type: 'image',
-                attrs: {
-                    src: item.url,
-                    alt: item.alt ?? item.name ?? '',
-                    caption: item.caption,
-                    srcset: item.srcset,
-                    mediaId: item.id,
-                },
+                attrs: imageAttrsFromMedia(item),
             })
             .run();
+        selectImageNearCursor(editor);
         setPickerOpen(false);
     };
 
-    const insertVideo = () => {
-        const url = window.prompt(
-            'Ссылка на видео YouTube (watch, youtu.be или embed):',
-            '',
-        );
+    const words = countWords(editor.getText());
+    const chars = editor.getText().length;
+    const minutes = readingMinutes(words);
 
-        if (url) {
-            editor.commands.setYoutubeVideo({ src: url });
+    const toggleSource = () => {
+        if (sourceMode) {
+            editor.commands.setContent(source, { emitUpdate: true });
+            setSourceMode(false);
+            editor.commands.focus();
+
+            return;
         }
-    };
 
-    const inTable = editor.isActive('table');
-
-    const imageActive = editor.isActive('image');
-    const imageAttrs = imageActive ? editor.getAttributes('image') : {};
-    const setImageAttr = (attrs: Record<string, unknown>) =>
-        editor.chain().focus().updateAttributes('image', attrs).run();
-    const editCaption = () => {
-        const value = window.prompt(
-            'Подпись к изображению:',
-            (imageAttrs.caption as string) ?? '',
-        );
-
-        if (value !== null) {
-            setImageAttr({ caption: value.trim() || null });
-        }
+        setSource(editor.getHTML());
+        setSourceMode(true);
     };
 
     return (
-        <div className="re-shell">
+        <div
+            className={cn(
+                're-shell',
+                variant === 'article' && 'is-article',
+                focusMode && 'is-focus',
+                sourceMode && 'is-source',
+            )}
+        >
             <RichEditorToolbar
                 editor={editor}
-                setLink={setLink}
-                insertVideo={insertVideo}
-                inTable={inTable}
+                setLink={() => setLinkOpen(true)}
+                insertVideo={() => setVideoOpen(true)}
+                inTable={editor.isActive('table')}
                 setPickerOpen={setPickerOpen}
+                focusMode={focusMode}
+                onToggleFocus={() => setFocusMode((open) => !open)}
+                sourceMode={sourceMode}
+                onToggleSource={toggleSource}
             />
 
-            {imageActive && (
-                <div
-                    className="re-imagebar"
-                    role="toolbar"
-                    aria-label="Параметры изображения"
-                >
-                    <span className="re-imagebar-label">Обтекание:</span>
-                    {IMG_ALIGN.map((o) => (
-                        <button
-                            key={o.label}
-                            type="button"
-                            className={`re-pill${(imageAttrs.align ?? null) === o.value ? 'is-active' : ''}`}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => setImageAttr({ align: o.value })}
-                        >
-                            {o.label}
-                        </button>
-                    ))}
-                    <span className="re-sep" aria-hidden />
-                    <span className="re-imagebar-label">Размер:</span>
-                    {IMG_SIZE.map((o) => (
-                        <button
-                            key={o.value ?? 'none'}
-                            type="button"
-                            className={`re-pill${(imageAttrs.size ?? null) === o.value ? 'is-active' : ''}`}
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => setImageAttr({ size: o.value })}
-                        >
-                            {o.label}
-                        </button>
-                    ))}
-                    <span className="re-sep" aria-hidden />
-                    <button
-                        type="button"
-                        className={`re-pill${imageAttrs.caption ? 'is-active' : ''}`}
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={editCaption}
-                    >
-                        Подпись…
-                    </button>
-                </div>
+            {sourceMode ? (
+                <textarea
+                    className="re-source"
+                    value={source}
+                    onChange={(e) => {
+                        setSource(e.target.value);
+                        onChange(e.target.value);
+                    }}
+                    aria-label="Исходный HTML"
+                    spellCheck={false}
+                />
+            ) : (
+                <EditorContent editor={editor} className="re-content-wrap" />
             )}
 
-            <EditorContent editor={editor} className="re-content-wrap" />
+            {!sourceMode && (
+                <BubbleMenu
+                    editor={editor}
+                    appendTo={() => document.body}
+                    shouldShow={({ editor: instance, from, to }) =>
+                        from !== to &&
+                        !instance.isActive('image') &&
+                        !instance.isActive('youtube')
+                    }
+                    className="re-bubble"
+                >
+                    <Btn
+                        icon={<Bold size={15} />}
+                        label="Полужирный"
+                        active={editor.isActive('bold')}
+                        onClick={() =>
+                            editor.chain().focus().toggleBold().run()
+                        }
+                    />
+                    <Btn
+                        icon={<Italic size={15} />}
+                        label="Курсив"
+                        active={editor.isActive('italic')}
+                        onClick={() =>
+                            editor.chain().focus().toggleItalic().run()
+                        }
+                    />
+                    <Btn
+                        icon={<Heading2 size={15} />}
+                        label="Заголовок 2"
+                        active={editor.isActive('heading', { level: 2 })}
+                        onClick={() =>
+                            editor
+                                .chain()
+                                .focus()
+                                .toggleHeading({ level: 2 })
+                                .run()
+                        }
+                    />
+                    <Btn
+                        icon={<Heading3 size={15} />}
+                        label="Заголовок 3"
+                        active={editor.isActive('heading', { level: 3 })}
+                        onClick={() =>
+                            editor
+                                .chain()
+                                .focus()
+                                .toggleHeading({ level: 3 })
+                                .run()
+                        }
+                    />
+                    <Btn
+                        icon={<Link2 size={15} />}
+                        label="Ссылка"
+                        active={editor.isActive('link')}
+                        onClick={() => setLinkOpen(true)}
+                    />
+                </BubbleMenu>
+            )}
+
+            <div className="re-status" aria-live="polite">
+                <span>
+                    {words} {plural(words, 'слово', 'слова', 'слов')}
+                </span>
+                <span aria-hidden>·</span>
+                <span>{chars} знаков</span>
+                <span aria-hidden>·</span>
+                <span>
+                    {minutes === 0
+                        ? 'меньше минуты чтения'
+                        : `${minutes} мин чтения`}
+                </span>
+                {focusMode && (
+                    <span className="re-status-hint">Esc — выйти</span>
+                )}
+            </div>
 
             <MediaPicker
                 open={pickerOpen}
                 onClose={() => setPickerOpen(false)}
                 onSelect={insertImage}
             />
+            <LinkDialog
+                open={linkOpen}
+                initial={linkDraft}
+                onClose={() => setLinkOpen(false)}
+                onApply={applyLink}
+            />
+            <YoutubeDialog
+                open={videoOpen}
+                onClose={() => setVideoOpen(false)}
+                onApply={(src) => {
+                    editor.commands.setYoutubeVideo({ src });
+                    setVideoOpen(false);
+                }}
+            />
         </div>
     );
+}
+
+function plural(count: number, one: string, few: string, many: string): string {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+
+    if (mod10 === 1 && mod100 !== 11) {
+        return one;
+    }
+
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+        return few;
+    }
+
+    return many;
 }
 
 export type { Editor };

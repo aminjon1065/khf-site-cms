@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Concerns\TracksTranslationCompleteness;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Translatable\HasTranslations;
@@ -37,6 +39,22 @@ class MenuItem extends Model
     protected function casts(): array
     {
         return ['enabled' => 'boolean'];
+    }
+
+    /**
+     * @return BelongsTo<MenuItem, $this>
+     */
+    public function parent(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'parent_id');
+    }
+
+    /**
+     * @return HasMany<MenuItem, $this>
+     */
+    public function children(): HasMany
+    {
+        return $this->hasMany(self::class, 'parent_id')->orderBy('sort');
     }
 
     public function getActivitylogOptions(): LogOptions

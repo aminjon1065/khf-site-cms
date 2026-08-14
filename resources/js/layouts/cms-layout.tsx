@@ -4,9 +4,12 @@ import { AppSidebar } from '@/cms/AppSidebar';
 import { CommandPalette } from '@/cms/CommandPalette';
 import { NotificationCenter } from '@/cms/NotificationCenter';
 import { TopBar } from '@/cms/TopBar';
+import { initializeTheme } from '@/hooks/use-appearance';
 import { useShared } from '@/lib/auth';
 import { I18nProvider } from '@/lib/i18n';
 import { ToastProvider, useToast } from '@/ui/Toast';
+
+initializeTheme();
 
 function setCookie(name: string, value: string) {
     document.cookie = `${name}=${value};path=/;max-age=31536000;samesite=lax`;

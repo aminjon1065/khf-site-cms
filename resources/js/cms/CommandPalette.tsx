@@ -45,37 +45,15 @@ export function CommandPalette({
             aria-modal="true"
             aria-label="Командная палитра"
             tabIndex={-1}
-            style={{
-                position: 'fixed',
-                inset: 0,
-                zIndex: 90,
-                background:
-                    'color-mix(in srgb, var(--color-neutral-900) 42%, transparent)',
-                display: 'flex',
-                justifyContent: 'center',
-                alignItems: 'flex-start',
-                paddingTop: '14vh',
-            }}
+            className="cms-cmd-backdrop"
         >
             <Blueprint
                 corners={false}
                 onMouseDown={(e) => e.stopPropagation()}
-                style={{
-                    width: 'min(560px, 92vw)',
-                    background: '#fbfbfc',
-                    boxShadow: 'var(--shadow-lg)',
-                }}
+                className="cms-cmd-panel"
             >
                 <Command label="Командная палитра">
-                    <div
-                        style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 9,
-                            padding: '12px 14px',
-                            borderBottom: '1px solid var(--color-divider)',
-                        }}
-                    >
+                    <div className="cms-cmd-head">
                         <Search
                             size={17}
                             strokeWidth={1.5}
@@ -84,26 +62,8 @@ export function CommandPalette({
                         <Command.Input
                             placeholder="Команда или поиск: предупреждения, новости, документы, пользователи…"
                             className="cms-cmd-input"
-                            style={{
-                                flex: 1,
-                                border: 0,
-                                outline: 'none',
-                                background: 'transparent',
-                                fontSize: 14,
-                                fontFamily: 'var(--font-body)',
-                            }}
                         />
-                        <kbd
-                            style={{
-                                fontSize: 11,
-                                border: '1px solid var(--color-divider)',
-                                padding: '1px 5px',
-                                borderRadius: 3,
-                                color: 'var(--color-neutral-500)',
-                            }}
-                        >
-                            Esc
-                        </kbd>
+                        <kbd className="cms-cmd-esc">Esc</kbd>
                     </div>
                     <Command.List
                         style={{ maxHeight: 360, overflow: 'auto', padding: 6 }}

@@ -1,3 +1,4 @@
+import { Link } from '@inertiajs/react';
 import { Inbox } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
@@ -87,10 +88,12 @@ export function MetricCard({
     value,
     label,
     tone,
+    href,
 }: {
     value: ReactNode;
     label: ReactNode;
     tone?: 'warn' | 'danger' | 'ok' | 'accent';
+    href?: string | null;
 }) {
     const color =
         tone === 'warn'
@@ -103,13 +106,28 @@ export function MetricCard({
                   ? 'var(--color-accent-700)'
                   : 'var(--color-text)';
 
-    return (
-        <Blueprint className="ui-metric">
+    const card = (
+        <Blueprint className={cn('ui-metric', href && 'is-link')}>
             <span className="val" style={{ color }}>
                 {value}
             </span>
             <span className="lbl">{label}</span>
         </Blueprint>
+    );
+
+    if (!href) {
+        return card;
+    }
+
+    return (
+        <Link
+            href={href}
+            prefetch
+            className="ui-metric-link"
+            aria-label={`${String(value)} ${String(label)}`}
+        >
+            {card}
+        </Link>
     );
 }
 

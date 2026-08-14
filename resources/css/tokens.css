@@ -4,9 +4,9 @@
    ========================================================================== */
 
 :root {
-    --color-bg: #f2f2f3;
-    --color-surface: #e9e9ea;
-    --color-text: #1d1f20;
+    --color-bg: #eef1f4;
+    --color-surface: #ffffff;
+    --color-text: #1a1d1f;
 
     --color-accent: #416180;
     --color-accent-100: #eef6ff;
@@ -29,8 +29,11 @@
     --color-neutral-800: #424244;
     --color-neutral-900: #2b2b2d;
 
-    --color-divider: color-mix(in srgb, #1d1f20 16%, transparent);
-    --color-divider-strong: color-mix(in srgb, #1d1f20 28%, transparent);
+    --color-divider: color-mix(in srgb, #1a1d1f 10%, transparent);
+    --color-divider-strong: color-mix(in srgb, #1a1d1f 18%, transparent);
+    --color-sidebar: #15202b;
+    --color-sidebar-text: rgba(255, 255, 255, 0.82);
+    --color-sidebar-muted: rgba(255, 255, 255, 0.52);
 
     /* Semantic status roles */
     --ok: #276a3c;
@@ -69,16 +72,65 @@
     --space-10: 34px;
     --space-12: 40.8px;
 
-    --radius-sm: 2px;
-    --radius-md: 4px;
-    --radius-lg: 7px;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
 
-    --shadow-sm: 0 1px 2px rgba(43, 43, 45, 0.14);
-    --shadow-md: 0 3px 10px rgba(43, 43, 45, 0.16);
-    --shadow-lg: 0 12px 32px rgba(43, 43, 45, 0.22);
+    --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
+    --shadow-md: 0 8px 24px rgba(16, 24, 40, 0.07);
+    --shadow-lg: 0 18px 48px rgba(16, 24, 40, 0.14);
 
     /* Chrome dimensions */
     --sidebar-w: 256px;
     --sidebar-w-collapsed: 70px;
     --topbar-h: 56px;
+}
+
+.dark {
+    --color-bg: #101418;
+    --color-surface: #1a2026;
+    --color-text: #edf0f2;
+    --color-accent: #5a7e9e;
+    --color-accent-100: #1b2833;
+    --color-accent-200: #243442;
+    --color-accent-300: #35536b;
+    --color-accent-400: #4d7296;
+    --color-accent-500: #749dc4;
+    --color-accent-600: #94bce3;
+    --color-accent-700: #b7d3ec;
+    --color-accent-800: #d6ebff;
+    --color-accent-900: #0c1014;
+    --color-neutral-100: #1b2128;
+    --color-neutral-200: #252c34;
+    --color-neutral-300: #3a424b;
+    --color-neutral-400: #7d8690;
+    --color-neutral-500: #a8b0b8;
+    --color-neutral-600: #c2c8ce;
+    --color-neutral-700: #d5dae0;
+    --color-neutral-800: #e4e8ec;
+    --color-neutral-900: #f3f5f7;
+    --color-divider: color-mix(in srgb, #edf0f2 12%, transparent);
+    --color-divider-strong: color-mix(in srgb, #edf0f2 20%, transparent);
+    --color-sidebar: #0c1014;
+    --ok: #5dba78;
+    --ok-soft: #173022;
+    --warn: #e0b54a;
+    --warn-soft: #33280f;
+    --danger: #e57368;
+    --danger-soft: #3a1714;
+    --info: #8eb0cc;
+    --info-soft: #1b2833;
+    --sev-info: #8eb0cc;
+    --sev-info-soft: #1b2833;
+    --sev-attention: #d4b04a;
+    --sev-attention-soft: #33280f;
+    --sev-warning: #e08a3c;
+    --sev-warning-soft: #3a2610;
+    --sev-danger: #e57368;
+    --sev-danger-soft: #3a1714;
+    --sev-critical: #a32218;
+    --sev-critical-soft: #2a100e;
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+    --shadow-md: 0 10px 28px rgba(0, 0, 0, 0.38);
+    --shadow-lg: 0 22px 56px rgba(0, 0, 0, 0.48);
 }

@@ -51,24 +51,9 @@ export function AppSidebar({
                     <span className="mark">
                         <ShieldAlert size={18} strokeWidth={1.75} />
                     </span>
-                    <span className="brand-text" style={{ lineHeight: 1.2 }}>
-                        <span
-                            style={{
-                                display: 'block',
-                                fontFamily: 'var(--font-heading)',
-                                fontWeight: 600,
-                                fontSize: 15,
-                            }}
-                        >
-                            КЧС Таджикистана
-                        </span>
-                        <span
-                            style={{
-                                display: 'block',
-                                fontSize: 10.5,
-                                color: 'rgba(255,255,255,.55)',
-                            }}
-                        >
+                    <span className="brand-text">
+                        <span className="brand-name">КЧС Таджикистана</span>
+                        <span className="brand-sub">
                             Система управления сайтом
                         </span>
                     </span>
@@ -134,17 +119,12 @@ export function AppSidebar({
                     })}
                 </nav>
 
-                <div
-                    style={{
-                        borderTop: '1px solid rgba(255,255,255,.08)',
-                        padding: 8,
-                    }}
-                >
+                <div className="ui-sidebar-foot">
                     <button
                         type="button"
                         onClick={onToggleCollapse}
                         className="ui-nav-item"
-                        style={{ width: '100%', borderLeft: 'none' }}
+                        style={{ width: '100%' }}
                         title={t('Свернуть панель')}
                     >
                         <ChevronsLeft
