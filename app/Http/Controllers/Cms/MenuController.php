@@ -28,15 +28,13 @@ class MenuController extends Controller
 
         $menus = [];
         foreach (self::LOCATIONS as $location) {
-            $menus[$location] = $items
-                ->where('location', $location)
+            $atLocation = $items->where('location', $location);
+            $menus[$location] = $atLocation
                 ->whereNull('parent_id')
-                ->map(fn (MenuItem $m): array => [
-                    'id' => $m->id,
-                    'label' => $m->getTranslations('label'),
-                    'url' => $m->url,
-                    'enabled' => (bool) $m->enabled,
-                ])->values()->all();
+                ->map(fn (MenuItem $item): array => $this->serializeItem(
+                    $item,
+                    array_values($atLocation->where('parent_id', $item->id)->all()),
+                ))->values()->all();
         }
 
         return Inertia::render('menu/index', ['menus' => $menus]);
@@ -50,45 +48,7 @@ class MenuController extends Controller
             foreach (self::LOCATIONS as $location) {
                 /** @var array<int, array<string, mixed>> $rows */
                 $rows = $request->input("items.{$location}", []);
-                $keep = [];
-
-                foreach (array_values($rows) as $sort => $row) {
-                    /** @var array<string, string|null> $labels */
-                    $labels = is_array($row['label'] ?? null)
-                        ? array_filter($row['label'], fn ($v): bool => is_string($v) && trim($v) !== '')
-                        : [];
-
-                    if (($labels['ru'] ?? '') === '') {
-                        continue;
-                    }
-
-                    $item = ! empty($row['id'])
-                        ? MenuItem::query()->where('location', $location)->whereNull('parent_id')->find((int) $row['id'])
-                        : null;
-                    $item ??= new MenuItem;
-
-                    $item->location = $location;
-                    $item->setTranslations('label', $labels);
-                    $item->url = is_string($row['url'] ?? null) ? $row['url'] : null;
-                    $item->enabled = (bool) ($row['enabled'] ?? true);
-                    $item->sort = $sort;
-                    $item->parent_id = null;
-                    $item->save();
-
-                    $keep[] = $item->id;
-                }
-
-                $parentIds = MenuItem::query()
-                    ->where('location', $location)
-                    ->whereNotNull('parent_id')
-                    ->pluck('parent_id');
-
-                MenuItem::query()
-                    ->where('location', $location)
-                    ->whereNull('parent_id')
-                    ->whereNotIn('id', $keep)
-                    ->whereNotIn('id', $parentIds)
-                    ->delete();
+                $this->syncLocation($location, array_values($rows));
             }
         });
 
@@ -102,5 +62,102 @@ class MenuController extends Controller
         )->afterCommit();
 
         return back()->with('success', 'Меню сайта сохранено.');
+    }
+
+    /**
+     * @param  list<MenuItem>  $children
+     * @return array{id: int, label: array<string, string>, url: string|null, enabled: bool, children?: list<array{id: int, label: array<string, string>, url: string|null, enabled: bool}>}
+     */
+    private function serializeItem(MenuItem $item, array $children = []): array
+    {
+        $payload = [
+            'id' => $item->id,
+            'label' => $item->getTranslations('label'),
+            'url' => $item->url,
+            'enabled' => (bool) $item->enabled,
+        ];
+
+        if ($children !== []) {
+            $payload['children'] = array_map(
+                fn (MenuItem $child): array => $this->serializeItem($child),
+                $children,
+            );
+        } else {
+            $payload['children'] = [];
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rows
+     */
+    private function syncLocation(string $location, array $rows): void
+    {
+        $keep = [];
+
+        foreach ($rows as $sort => $row) {
+            $parent = $this->persistItem($location, $row, null, $sort);
+
+            if ($parent === null) {
+                continue;
+            }
+
+            $keep[] = $parent->id;
+
+            /** @var list<array<string, mixed>> $children */
+            $children = is_array($row['children'] ?? null) ? array_values($row['children']) : [];
+
+            foreach ($children as $childSort => $childRow) {
+                $child = $this->persistItem($location, $childRow, $parent->id, $childSort);
+
+                if ($child !== null) {
+                    $keep[] = $child->id;
+                }
+            }
+        }
+
+        // restrictOnDelete: children first, then roots.
+        MenuItem::query()
+            ->where('location', $location)
+            ->whereNotNull('parent_id')
+            ->whereNotIn('id', $keep)
+            ->delete();
+
+        MenuItem::query()
+            ->where('location', $location)
+            ->whereNull('parent_id')
+            ->whereNotIn('id', $keep)
+            ->delete();
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    private function persistItem(string $location, array $row, ?int $parentId, int $sort): ?MenuItem
+    {
+        /** @var array<string, string> $labels */
+        $labels = is_array($row['label'] ?? null)
+            ? array_filter($row['label'], fn ($value): bool => is_string($value) && trim($value) !== '')
+            : [];
+
+        if (($labels['ru'] ?? '') === '') {
+            return null;
+        }
+
+        $item = ! empty($row['id'])
+            ? MenuItem::query()->where('location', $location)->find((int) $row['id'])
+            : null;
+        $item ??= new MenuItem;
+
+        $item->location = $location;
+        $item->setTranslations('label', $labels);
+        $item->url = is_string($row['url'] ?? null) && $row['url'] !== '' ? $row['url'] : null;
+        $item->enabled = (bool) ($row['enabled'] ?? true);
+        $item->sort = $sort;
+        $item->parent_id = $parentId;
+        $item->save();
+
+        return $item;
     }
 }

@@ -23,7 +23,31 @@ function menuUser(string $role): User
 }
 
 it('lets an admin open the menu manager', function () {
-    actingAs(menuUser('admin'))->get('/menu')->assertOk();
+    $parent = MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Раздел', 'tg' => 'Бахш'],
+        'url' => '/section',
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+    MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Дочерний пункт', 'tg' => 'Зербанд'],
+        'url' => '/section/child',
+        'parent_id' => $parent->id,
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+
+    actingAs(menuUser('admin'))
+        ->get('/menu')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->component('menu/index')
+            ->has('menus.main', 1)
+            ->where('menus.main.0.label.ru', 'Раздел')
+            ->has('menus.main.0.children', 1)
+            ->where('menus.main.0.children.0.url', '/section/child'));
 });
 
 it('forbids a role without settings access from the menu manager', function () {
@@ -87,7 +111,48 @@ it('rejects unsafe public menu URLs', function () {
     expect(MenuItem::query()->where('url', 'javascript:alert(1)')->exists())->toBeFalse();
 });
 
-it('preserves nested items that are not represented by the root-only editor', function () {
+it('saves a one-level tree and exposes it on the public menu', function () {
+    Queue::fake();
+
+    actingAs(menuUser('admin'))->put('/menu', [
+        'items' => [
+            'main' => [
+                [
+                    'id' => null,
+                    'label' => ['ru' => 'О комитете', 'tg' => 'Дар бораи кумита', 'en' => 'About'],
+                    'url' => '',
+                    'enabled' => true,
+                    'children' => [
+                        [
+                            'id' => null,
+                            'label' => ['ru' => 'Руководство', 'tg' => 'Роҳбарӣ', 'en' => 'Leadership'],
+                            'url' => '/leadership',
+                            'enabled' => true,
+                        ],
+                    ],
+                ],
+            ],
+            'footer' => [],
+        ],
+    ])->assertRedirect();
+
+    $parent = MenuItem::query()->where('location', 'main')->whereNull('parent_id')->first();
+
+    expect($parent)->not->toBeNull()
+        ->and($parent->url)->toBeNull()
+        ->and($parent->children)->toHaveCount(1)
+        ->and($parent->children->first()?->url)->toBe('/leadership');
+
+    $public = $this->getJson('/api/v1/menu?locale=ru')->assertOk()->json('data.main');
+
+    expect($public)->toHaveCount(1)
+        ->and($public[0]['label'])->toBe('О комитете')
+        ->and($public[0]['url'])->toBeNull()
+        ->and($public[0]['children'])->toHaveCount(1)
+        ->and($public[0]['children'][0]['url'])->toBe('/leadership');
+});
+
+it('deletes omitted children and then the parent', function () {
     $parent = MenuItem::query()->create([
         'location' => 'main',
         'label' => ['ru' => 'Раздел'],
@@ -108,9 +173,110 @@ it('preserves nested items that are not represented by the root-only editor', fu
         'items' => ['main' => [], 'footer' => []],
     ])->assertRedirect();
 
-    expect($parent->fresh())->not->toBeNull()
-        ->and($child->fresh())->not->toBeNull()
-        ->and($child->fresh()->parent_id)->toBe($parent->id);
+    expect(MenuItem::query()->find($child->id))->toBeNull()
+        ->and(MenuItem::query()->find($parent->id))->toBeNull();
+});
+
+it('rejects a third nesting level', function () {
+    actingAs(menuUser('admin'))->put('/menu', [
+        'items' => [
+            'main' => [
+                [
+                    'id' => null,
+                    'label' => ['ru' => 'Раздел', 'tg' => 'Бахш', 'en' => 'Section'],
+                    'url' => '/section',
+                    'enabled' => true,
+                    'children' => [
+                        [
+                            'id' => null,
+                            'label' => ['ru' => 'Дочерний', 'tg' => 'Фарзанд', 'en' => 'Child'],
+                            'url' => '/section/child',
+                            'enabled' => true,
+                            'children' => [
+                                [
+                                    'id' => null,
+                                    'label' => ['ru' => 'Внук', 'tg' => 'Набера', 'en' => 'Grand'],
+                                    'url' => '/section/grand',
+                                    'enabled' => true,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+            'footer' => [],
+        ],
+    ])->assertSessionHasErrors('items.main.0.children.0.children');
+});
+
+it('rejects the same menu item id twice in one location', function () {
+    $item = MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Новости', 'tg' => 'Хабарҳо'],
+        'url' => '/news',
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+
+    actingAs(menuUser('admin'))->put('/menu', [
+        'items' => [
+            'main' => [
+                [
+                    'id' => $item->id,
+                    'label' => ['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News'],
+                    'url' => '/news',
+                    'enabled' => true,
+                    'children' => [
+                        [
+                            'id' => $item->id,
+                            'label' => ['ru' => 'Ещё раз', 'tg' => 'Бори дигар', 'en' => 'Again'],
+                            'url' => '/news/again',
+                            'enabled' => true,
+                        ],
+                    ],
+                ],
+            ],
+            'footer' => [],
+        ],
+    ])->assertSessionHasErrors('items.main.0.children.0.id');
+});
+
+it('does not rewrite a footer item when its id is submitted in the main menu', function () {
+    $footer = MenuItem::query()->create([
+        'location' => 'footer',
+        'label' => ['ru' => 'Контакты', 'tg' => 'Тамос'],
+        'url' => '/contacts',
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+
+    actingAs(menuUser('admin'))->put('/menu', [
+        'items' => [
+            'main' => [
+                [
+                    'id' => $footer->id,
+                    'label' => ['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News'],
+                    'url' => '/news',
+                    'enabled' => true,
+                    'children' => [],
+                ],
+            ],
+            'footer' => [
+                [
+                    'id' => $footer->id,
+                    'label' => ['ru' => 'Контакты', 'tg' => 'Тамос', 'en' => 'Contacts'],
+                    'url' => '/contacts',
+                    'enabled' => true,
+                    'children' => [],
+                ],
+            ],
+        ],
+    ])->assertRedirect();
+
+    expect($footer->fresh())
+        ->location->toBe('footer')
+        ->url->toBe('/contacts')
+        ->and(MenuItem::query()->where('location', 'main')->where('url', '/news')->exists())->toBeTrue();
 });
 
 it('refuses at the DB level to delete a menu item that still has children', function () {

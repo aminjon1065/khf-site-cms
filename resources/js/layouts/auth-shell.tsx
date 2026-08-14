@@ -1,7 +1,10 @@
 import { router } from '@inertiajs/react';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { initializeTheme } from '@/hooks/use-appearance';
 import { I18nProvider, useT } from '@/lib/i18n';
+
+initializeTheme();
 import { locale as localeRoute } from '@/routes';
 import { Blueprint } from '@/ui/Blueprint';
 

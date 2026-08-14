@@ -13,6 +13,7 @@
         "types:check": "tsc --noEmit",
         "bundle:report": "node resources/js/lib/bundle-report.mjs",
         "test:bundle": "node --test tests/Node/bundle-report.test.mjs",
+        "test:node": "node --experimental-strip-types --test tests/Node/*.test.mjs tests/Node/*.test.ts",
         "test:e2e": "playwright test",
         "load:probe": "node scripts/load-probe.mjs"
     },

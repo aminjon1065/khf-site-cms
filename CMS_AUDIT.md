@@ -82,7 +82,7 @@
 | Обращения граждан | Базовый intake и CMS workflow готовы | Вложения, уведомления заявителю, публичный статус, retention/PII policy |
 | Медиабиблиотека | Основной безопасный сценарий готов | Региональные правила повторного использования, антивирус для документов |
 | Категории и теги | Готово | Дополнительный granular UI — по необходимости |
-| Меню | Безопасное сохранение готово | Полноценный nested drag-and-drop editor или отказ от вложенности |
+| Меню | Дерево из одного уровня готово | Drag-and-drop не нужен: indent/outdent с клавиатуры покрывает тот же контракт, что и публичный API |
 | Главная страница | Базовое редактирование готово | Preview и расширенные publication rules |
 | Настройки сайта | Частично готово | UI для integrations, backup, emergency services и части footer |
 | Пользователи | CRUD, профиль и пароль готовы | Решение, нужны ли self-service email changes и email verification |
@@ -126,7 +126,7 @@
 - [x] Расширить dashboard на все workflow-типы — сделано (D-6): metrics/tasks/calendar теперь по всем 7 типам вместо только Alert/News.
 - [x] Разбить крупные `alerts/wizard.tsx`, `RichEditor.tsx`, `projects/form.tsx`; динамически загружать RichEditor и уменьшить чанки — сделано (D-6, E-2): RichEditor — реальный отдельный чанк по требованию (подтверждено сетевым запросом в браузере), wizard/projects-form разбиты на файлы.
 - [x] Установить optional `fontaine` или отключить `optimizedFallbacks`, если предупреждение сборки нежелательно — сделано: установлен `fontaine` (реальная оптимизация метрик font-fallback, а не просто отключение предупреждения), сборка чистая.
-- [~] Добавить browser/component/E2E-тесты форм, RichEditor, media picker, меню, responsive sidebar и workflow — частично: E2E на risk-map/JSON-LD/axe-доступность фронта (E-1/E-2/E-3); отдельно (P3-7) поднята сама Playwright-инфраструктура для CMS-админки (её не было вообще) и добавлен первый реальный тест — форма новости + загрузка обложки. Медиапикер (вариант «из библиотеки»), меню и workflow-согласование остаются открытыми — упираются в 2FA (см. `PROGRESS.md`, запись «P3-7», и переданную дальше задачу).
+- [~] Добавить browser/component/E2E-тесты форм, RichEditor, media picker, меню, responsive sidebar и workflow — частично: E2E на risk-map/JSON-LD/axe-доступность фронта (E-1/E-2/E-3); CMS — форма новости + загрузка обложки (P3-7) и вложенное меню (`menu-tree.spec.ts`). Медиапикер «из библиотеки» и workflow-согласование остаются открытыми — упираются в 2FA.
 - [x] Добавить OpenAPI, API contract tests и явные правила rate limiting — сделано (D-1, D-3): `openapi.yaml`, spectator contract-тесты, `throttle:api-public`.
 - [x] Определить DB constraints для `parent_id` Page/Menu с учётом стратегии удаления — сделано (D-6): FK с `nullOnDelete()`/`restrictOnDelete()` соответственно.
 

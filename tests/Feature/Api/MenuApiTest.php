@@ -21,6 +21,33 @@ it('returns main and footer menus as localized trees', function () {
         ->and($data['main'][0]['label'])->toBeString()->not->toBe('');
 });
 
+it('nests enabled children under their parent and hides disabled ones', function () {
+    $parent = MenuItem::query()->where('location', 'main')->orderBy('sort')->first();
+    MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Видимый подпункт', 'tg' => 'Зербанди намоён'],
+        'url' => '/nested-visible',
+        'parent_id' => $parent->id,
+        'enabled' => true,
+        'sort' => 0,
+    ]);
+    MenuItem::query()->create([
+        'location' => 'main',
+        'label' => ['ru' => 'Скрытый подпункт'],
+        'url' => '/nested-hidden',
+        'parent_id' => $parent->id,
+        'enabled' => false,
+        'sort' => 1,
+    ]);
+
+    $tree = $this->getJson('/api/v1/menu?locale=ru')->assertOk()->json('data.main');
+    $node = collect($tree)->firstWhere('url', $parent->url);
+
+    expect($node['children'])->toHaveCount(1)
+        ->and($node['children'][0]['url'])->toBe('/nested-visible')
+        ->and(json_encode($tree))->not->toContain('/nested-hidden');
+});
+
 it('excludes disabled menu items', function () {
     $hidden = MenuItem::query()->where('location', 'main')->first();
     $hidden->update(['enabled' => false, 'url' => '/hidden-secret-link']);
