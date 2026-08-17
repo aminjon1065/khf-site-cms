@@ -44,19 +44,28 @@ class PublicationChecklist
         }
 
         if ($subject instanceof HasMedia) {
-            $notReady = $subject->getMedia('*')->filter(
+            $mediaItems = $subject->getMedia('*');
+            $failed = $mediaItems->filter(
+                fn ($media): bool => $media->getCustomProperty('conversion_status') === 'failed',
+            );
+            $inProgress = $mediaItems->filter(
                 fn ($media): bool => in_array(
                     $media->getCustomProperty('conversion_status'),
-                    ['pending', 'processing', 'failed'],
+                    ['pending', 'processing'],
                     true,
                 ),
             );
+
             $items[] = [
                 'key' => 'media_ready',
                 'label' => 'Обработка медиа завершена',
-                'ok' => $notReady->isEmpty(),
-                'blocking' => true,
-                'detail' => $notReady->isEmpty() ? null : "Не готово файлов: {$notReady->count()}",
+                'ok' => $failed->isEmpty() && $inProgress->isEmpty(),
+                'blocking' => $failed->isNotEmpty(),
+                'detail' => match (true) {
+                    $failed->isNotEmpty() => "Не удалось обработать файлов: {$failed->count()}",
+                    $inProgress->isNotEmpty() => "Файлы ещё обрабатываются: {$inProgress->count()}. Можно опубликовать — на сайте покажется оригинал.",
+                    default => null,
+                },
             ];
         }
 

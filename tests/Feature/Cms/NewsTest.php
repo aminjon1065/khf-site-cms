@@ -6,6 +6,9 @@ use App\Models\Region;
 use App\Models\User;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -127,6 +130,56 @@ it('lets a chief editor publish immediately', function () {
 
     expect($news->status)->toBe(ContentStatus::Published)
         ->and($news->published_at)->not->toBeNull();
+});
+
+it('publishes news even when cover conversions are still queued', function () {
+    Storage::fake('content_private');
+    Queue::fake();
+    $news = News::factory()->create(['cover_alt' => 'Обложка новости']);
+    $media = $news
+        ->addMedia(UploadedFile::fake()->image('cover.jpg', 1200, 630))
+        ->toMediaCollection('cover');
+    $media->setCustomProperty('conversion_status', 'pending')->save();
+
+    actingAs(newsUser('chief_editor'))
+        ->post("/news/{$news->id}/publish")
+        ->assertRedirect();
+
+    expect($news->fresh()->status)->toBe(ContentStatus::Published)
+        ->and($news->fresh()->published_at)->not->toBeNull();
+});
+
+it('still blocks publication when cover conversion failed', function () {
+    Storage::fake('content_private');
+    Queue::fake();
+    $news = News::factory()->create(['cover_alt' => 'Обложка новости']);
+    $media = $news
+        ->addMedia(UploadedFile::fake()->image('cover.jpg', 1200, 630))
+        ->toMediaCollection('cover');
+    $media->setCustomProperty('conversion_status', 'failed')->save();
+
+    actingAs(newsUser('chief_editor'))
+        ->post("/news/{$news->id}/publish")
+        ->assertSessionHasErrors('publication_checklist');
+
+    expect($news->fresh()->status)->toBe(ContentStatus::Draft);
+});
+
+it('keeps a newly created news when immediate publish is blocked', function () {
+    $response = actingAs(newsUser('chief_editor'))->post('/news', [
+        'title' => ['ru' => 'Только русский заголовок', 'tg' => '', 'en' => ''],
+        'action' => 'submit',
+        'publish_mode' => 'now',
+    ]);
+
+    $news = News::query()->first();
+
+    expect($news)->not->toBeNull()
+        ->and($news->status)->toBe(ContentStatus::Draft);
+
+    $response
+        ->assertRedirect("/news/{$news->id}/edit")
+        ->assertSessionHasErrors('publication_checklist');
 });
 
 it('downgrades a publish attempt to review when the user cannot publish', function () {
