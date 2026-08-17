@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -103,10 +104,11 @@ class NewsController extends Controller
 
             $this->syncRelations($news, $request);
             $this->syncMedia($news, $request);
-            $this->runPublishAction($news, $request);
 
             return $news;
         });
+
+        $this->runPublishAction($news, $request, "/news/{$news->id}/edit");
 
         return $this->redirectAfterSave($news, $request);
     }
@@ -121,8 +123,9 @@ class NewsController extends Controller
 
             $this->syncRelations($news, $request);
             $this->syncMedia($news, $request);
-            $this->runPublishAction($news, $request);
         });
+
+        $this->runPublishAction($news, $request);
 
         return $this->redirectAfterSave($news, $request);
     }
@@ -406,7 +409,7 @@ class NewsController extends Controller
         }
     }
 
-    private function runPublishAction(News $news, NewsRequest $request): void
+    private function runPublishAction(News $news, NewsRequest $request, ?string $errorRedirect = null): void
     {
         if ($request->input('action') !== 'submit') {
             return;
@@ -415,13 +418,21 @@ class NewsController extends Controller
         $mode = $request->input('publish_mode', 'review');
         $user = $request->user();
 
-        match ($mode) {
-            'now' => $this->authorizeAndPublish($news, $user),
-            'schedule' => $news->scheduled_at
-                ? $this->workflow->transition($news, ContentStatus::Scheduled, $user)
-                : $this->workflow->transition($news, ContentStatus::Review, $user),
-            default => $this->workflow->transition($news, ContentStatus::Review, $user),
-        };
+        try {
+            match ($mode) {
+                'now' => $this->authorizeAndPublish($news, $user),
+                'schedule' => $news->scheduled_at
+                    ? $this->workflow->transition($news, ContentStatus::Scheduled, $user)
+                    : $this->workflow->transition($news, ContentStatus::Review, $user),
+                default => $this->workflow->transition($news, ContentStatus::Review, $user),
+            };
+        } catch (ValidationException $exception) {
+            if ($errorRedirect !== null) {
+                throw $exception->redirectTo($errorRedirect);
+            }
+
+            throw $exception;
+        }
     }
 
     private function authorizeAndPublish(News $news, ?User $user): void

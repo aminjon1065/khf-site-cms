@@ -8,6 +8,7 @@ use App\Services\WorkflowService;
 use App\Support\EditorialContent;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Validation\ValidationException;
@@ -82,6 +83,7 @@ it('reports fallback for an unavailable signed preview locale', function () {
 
 it('blocks publication when a cover has no alt text', function () {
     Storage::fake('private');
+    Queue::fake();
     $chiefEditor = previewUser('chief_editor');
     $news = News::factory()->create([
         'status' => ContentStatus::Approved,
@@ -106,6 +108,7 @@ it('blocks publication when a cover has no alt text', function () {
 
 it('blocks unsafe links and unfinished media but leaves SEO as a warning', function () {
     Storage::fake('private');
+    Queue::fake();
     $news = News::factory()->create([
         'body' => [
             'ru' => '<p><a href="javascript:alert(1)">Плохая ссылка</a></p>',
@@ -127,6 +130,25 @@ it('blocks unsafe links and unfinished media but leaves SEO as a warning', funct
         ->toMatchArray(['ok' => false, 'blocking' => true])
         ->and($items->firstWhere('key', 'seo'))
         ->toMatchArray(['ok' => false, 'blocking' => false]);
+});
+
+it('does not block publication while cover conversions are still queued', function () {
+    Storage::fake('content_private');
+    Queue::fake();
+    $news = News::factory()->create(['cover_alt' => 'Обложка новости']);
+    $media = $news
+        ->addMedia(UploadedFile::fake()->image('cover.jpg', 1200, 630))
+        ->toMediaCollection('cover');
+    $media->setCustomProperty('conversion_status', 'pending')->save();
+
+    $subject = $news->fresh()->load('media');
+    $items = collect(app(PublicationChecklist::class)->inspect($subject));
+
+    expect($items->firstWhere('key', 'media_ready'))
+        ->toMatchArray(['ok' => false, 'blocking' => false]);
+
+    expect(fn () => app(PublicationChecklist::class)->ensurePublishable($subject))
+        ->not->toThrow(ValidationException::class);
 });
 
 it('wires locale, mobile, desktop, OG and checklist preview into every form', function (string $form) {
