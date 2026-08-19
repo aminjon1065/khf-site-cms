@@ -346,6 +346,34 @@ it('keeps image figure, caption and align/size classes when sanitising', functio
         ->not->toContain('onerror');                                      // обработчик вырезан
 });
 
+it('keeps table fill, alignment and column width when sanitising', function () {
+    actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => 'Таблица в тексте', 'tg' => '', 'en' => ''],
+        'body' => [
+            'ru' => '<table><colgroup><col style="width:120px"><col style="min-width:25px"></colgroup>'
+                .'<tbody><tr>'
+                .'<th colspan="1" style="background-color:#d7e2ea;text-align:center">Заголовок</th>'
+                .'<td style="background-color:#f7efd4" colwidth="180">Ячейка</td>'
+                .'</tr></tbody></table>'
+                .'<p style="background-color:expression(alert(1))">опасно</p>',
+            'tg' => '',
+            'en' => '',
+        ],
+        'action' => 'draft',
+    ])->assertRedirect('/news');
+
+    $body = News::query()->first()->getTranslation('body', 'ru');
+
+    expect($body)
+        ->toContain('<table')
+        ->toContain('Заголовок')
+        ->toContain('Ячейка')
+        ->toContain('background-color:#d7e2ea')
+        ->toContain('text-align:center')
+        ->toContain('width:120px')
+        ->not->toContain('expression');
+});
+
 it('preserves image srcset and sizes for responsive images', function () {
     actingAs(newsUser('editor'))->post('/news', [
         'title' => ['ru' => 'Адаптивная картинка', 'tg' => '', 'en' => ''],

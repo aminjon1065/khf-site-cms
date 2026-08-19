@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ChevronsLeft, ShieldAlert } from 'lucide-react';
+import { ChevronsLeft, Search, ShieldAlert } from 'lucide-react';
 import { useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { NAV } from '@/lib/navigation';
@@ -13,12 +13,14 @@ export function AppSidebar({
     badges,
     onToggleCollapse,
     onCloseMobile,
+    onOpenSearch,
 }: {
     collapsed: boolean;
     mobileOpen: boolean;
     badges: NavBadges;
     onToggleCollapse: () => void;
     onCloseMobile: () => void;
+    onOpenSearch: () => void;
 }) {
     const { t } = useT();
     const can = useCan();
@@ -52,12 +54,22 @@ export function AppSidebar({
                         <ShieldAlert size={18} strokeWidth={1.75} />
                     </span>
                     <span className="brand-text">
-                        <span className="brand-name">КЧС Таджикистана</span>
-                        <span className="brand-sub">
-                            Система управления сайтом
-                        </span>
+                        <span className="brand-name">КЧС</span>
+                        <span className="brand-sub">Control Panel</span>
                     </span>
                 </div>
+
+                <button
+                    type="button"
+                    className="ui-sidebar-search"
+                    onClick={onOpenSearch}
+                    aria-label="Найти в панели"
+                    title={collapsed ? 'Поиск' : undefined}
+                >
+                    <Search size={16} strokeWidth={1.75} />
+                    <span className="label">Поиск…</span>
+                    <kbd>Ctrl K</kbd>
+                </button>
 
                 <nav className="ui-sidebar-nav ui-scroll">
                     {NAV.map((group) => {

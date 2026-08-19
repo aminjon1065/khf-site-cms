@@ -327,6 +327,9 @@ export default function InstructionsIndex({
                 rows={instructions}
                 rowKey={(r) => r.id}
                 sort={sort}
+                onRowClick={(r) =>
+                    router.visit(InstructionController.edit.url(r.id))
+                }
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
                 emptyTitle="Инструкций не найдено"
                 emptyHint="Измените фильтры или создайте новую инструкцию."

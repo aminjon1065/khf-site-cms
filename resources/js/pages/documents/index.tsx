@@ -370,6 +370,9 @@ export default function DocumentsIndex({
                 rows={documents}
                 rowKey={(r) => r.id}
                 sort={sort}
+                onRowClick={(r) =>
+                    router.visit(DocumentController.edit.url(r.id))
+                }
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
                 emptyTitle="Документов не найдено"
                 emptyHint="Измените фильтры или добавьте новый документ."

@@ -2,24 +2,39 @@ import { Placeholder } from '@tiptap/extension-placeholder';
 import { TableKit } from '@tiptap/extension-table';
 import { TextAlign } from '@tiptap/extension-text-align';
 import { Color, TextStyle } from '@tiptap/extension-text-style';
+import { Underline } from '@tiptap/extension-underline';
 import { Youtube } from '@tiptap/extension-youtube';
 import type { EditorView } from '@tiptap/pm/view';
-import { EditorContent, useEditor } from '@tiptap/react';
+import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
-import { Bold, Heading2, Heading3, Italic, Link2 } from 'lucide-react';
-import { useEffect, useReducer, useState } from 'react';
+import { Bold, Heading2, Heading3, Italic, Link2, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { postForm } from '@/lib/http';
 import { cn } from '@/lib/utils';
 import { MediaPicker } from './MediaPicker';
 import type { MediaItem } from './MediaPicker';
-import { cleanPastedHtml, countWords, readingMinutes } from './rich-editor';
+import {
+    cleanPastedHtml,
+    countWords,
+    htmlHasYoutube,
+    readingMinutes,
+} from './rich-editor';
 import { RichImage } from './rich-image';
+import {
+    deleteLastTable,
+    documentHasTable,
+    lastTableRange,
+    RichTableCell,
+    RichTableHeader,
+    selectInsideLastTable,
+} from './rich-table';
 import { LinkDialog, YoutubeDialog } from './RichEditorDialogs';
 import type { LinkDialogValue } from './RichEditorDialogs';
 import { Btn, RichEditorToolbar } from './RichEditorToolbar';
+import { RichTableBar } from './RichTableBar';
 import { useToast } from './Toast';
 
 export interface Props {
@@ -63,6 +78,83 @@ function selectImageNearCursor(editor: Editor): void {
     if (nearest !== null) {
         editor.commands.setNodeSelection(nearest);
     }
+}
+
+function insertBlock(
+    editor: Editor,
+    content: Record<string, unknown>,
+): boolean {
+    editor.view.focus();
+    const from = editor.state.selection.from;
+
+    if (editor.chain().focus().insertContentAt(from, content).run()) {
+        return true;
+    }
+
+    return editor
+        .chain()
+        .focus()
+        .insertContentAt(editor.state.doc.content.size - 1, content)
+        .run();
+}
+
+function lastNodeRange(
+    editor: Editor,
+    name: string,
+): { pos: number; size: number } | null {
+    let last: { pos: number; size: number } | null = null;
+
+    editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === name) {
+            last = { pos, size: node.nodeSize };
+        }
+    });
+
+    return last;
+}
+
+function deleteNamedNode(editor: Editor, name: string): boolean {
+    if (editor.isActive(name)) {
+        return editor.chain().focus().deleteSelection().run();
+    }
+
+    const range = lastNodeRange(editor, name);
+
+    if (!range) {
+        return false;
+    }
+
+    return editor
+        .chain()
+        .focus()
+        .deleteRange({ from: range.pos, to: range.pos + range.size })
+        .run();
+}
+
+function editorSnapshot(editor: Editor | null): {
+    hasTable: boolean;
+    hasYoutube: boolean;
+    words: number;
+    chars: number;
+} {
+    if (!editor) {
+        return {
+            hasTable: false,
+            hasYoutube: false,
+            words: 0,
+            chars: 0,
+        };
+    }
+
+    const html = editor.getHTML();
+    const text = editor.getText();
+
+    return {
+        hasTable: documentHasTable(editor),
+        hasYoutube: htmlHasYoutube(html) || editor.isActive('youtube'),
+        words: countWords(text),
+        chars: text.length,
+    };
 }
 
 /**
@@ -128,10 +220,14 @@ export function RichEditorField({
     const [focusMode, setFocusMode] = useState(false);
     const [sourceMode, setSourceMode] = useState(false);
     const [source, setSource] = useState(value);
-    const [, force] = useReducer((n: number) => n + 1, 0);
+    const [dragging, setDragging] = useState(false);
+    const [focused, setFocused] = useState(false);
+    const [tableBarOpen, setTableBarOpen] = useState(false);
+    const [videoBarOpen, setVideoBarOpen] = useState(false);
 
     const editor = useEditor({
         immediatelyRender: false,
+        shouldRerenderOnTransaction: true,
         extensions: [
             StarterKit.configure({
                 heading: { levels: [2, 3, 4] },
@@ -146,8 +242,19 @@ export function RichEditorField({
             }),
             RichImage.configure({ inline: false }),
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
-            TableKit.configure({ table: { resizable: false } }),
+            TableKit.configure({
+                table: {
+                    resizable: true,
+                    lastColumnResizable: true,
+                    allowTableNodeSelection: true,
+                },
+                tableCell: false,
+                tableHeader: false,
+            }),
+            RichTableCell,
+            RichTableHeader,
             TextStyle,
+            Underline,
             Color,
             Youtube.configure({
                 nocookie: true,
@@ -155,7 +262,9 @@ export function RichEditorField({
                 HTMLAttributes: { class: 're-video' },
             }),
             Placeholder.configure({
-                placeholder: placeholder ?? 'Текст новости…',
+                placeholder:
+                    placeholder ??
+                    'Начните писать текст. Выделите фразу — появится панель форматирования.',
             }),
         ],
         content: value,
@@ -209,22 +318,15 @@ export function RichEditorField({
             },
         },
         onUpdate: ({ editor: instance }) => onChange(instance.getHTML()),
+        onFocus: () => setFocused(true),
+        onBlur: () => setFocused(false),
     });
 
-    useEffect(() => {
-        if (!editor) {
-            return;
-        }
-
-        const update = () => force();
-        editor.on('transaction', update);
-        editor.on('selectionUpdate', update);
-
-        return () => {
-            editor.off('transaction', update);
-            editor.off('selectionUpdate', update);
-        };
-    }, [editor]);
+    const snapshot =
+        useEditorState({
+            editor,
+            selector: ({ editor: instance }) => editorSnapshot(instance),
+        }) ?? editorSnapshot(editor);
 
     useEffect(() => {
         if (!focusMode) {
@@ -249,7 +351,7 @@ export function RichEditorField({
     }, [focusMode]);
 
     if (!editor) {
-        return <div className="re-shell re-loading">Загрузка редактора…</div>;
+        return <EditorSkeleton />;
     }
 
     const selectedText = editor.state.doc.textBetween(
@@ -292,20 +394,59 @@ export function RichEditorField({
     };
 
     const insertImage = (item: MediaItem) => {
-        editor
-            .chain()
-            .focus()
-            .insertContent({
-                type: 'image',
-                attrs: imageAttrsFromMedia(item),
-            })
-            .run();
-        selectImageNearCursor(editor);
+        const attrs = imageAttrsFromMedia(item);
+        editor.view.focus();
+        const inserted =
+            editor.chain().focus().setImage(attrs).run() ||
+            insertBlock(editor, { type: 'image', attrs });
+
+        if (inserted) {
+            selectImageNearCursor(editor);
+        } else {
+            toast('Не удалось вставить изображение в текст', 'error');
+        }
+
         setPickerOpen(false);
     };
 
-    const words = countWords(editor.getText());
-    const chars = editor.getText().length;
+    const insertTable = () => {
+        editor.view.focus();
+        const inserted = editor
+            .chain()
+            .focus()
+            .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
+            .run();
+
+        if (!inserted && lastTableRange(editor) === null) {
+            toast('Не удалось вставить таблицу', 'error');
+
+            return;
+        }
+
+        selectInsideLastTable(editor);
+        setTableBarOpen(true);
+    };
+
+    const insertYoutube = (src: string) => {
+        editor.view.focus();
+        const inserted =
+            editor.chain().focus().setYoutubeVideo({ src }).run() ||
+            insertBlock(editor, { type: 'youtube', attrs: { src } });
+
+        if (!inserted) {
+            toast(
+                'Не удалось вставить видео. Проверьте ссылку YouTube.',
+                'error',
+            );
+        } else {
+            setVideoBarOpen(true);
+        }
+
+        setVideoOpen(false);
+    };
+
+    const words = snapshot.words;
+    const chars = snapshot.chars;
     const minutes = readingMinutes(words);
 
     const toggleSource = () => {
@@ -328,19 +469,54 @@ export function RichEditorField({
                 variant === 'article' && 'is-article',
                 focusMode && 'is-focus',
                 sourceMode && 'is-source',
+                focused && 'is-focused',
+                dragging && 'is-dragging',
             )}
+            onDragEnter={(event) => {
+                if (Array.from(event.dataTransfer.types).includes('Files')) {
+                    setDragging(true);
+                }
+            }}
+            onDragOver={(event) => {
+                if (dragging) {
+                    event.preventDefault();
+                }
+            }}
+            onDragLeave={(event) => {
+                if (
+                    !event.currentTarget.contains(event.relatedTarget as Node)
+                ) {
+                    setDragging(false);
+                }
+            }}
+            onDrop={() => setDragging(false)}
         >
             <RichEditorToolbar
                 editor={editor}
                 setLink={() => setLinkOpen(true)}
                 insertVideo={() => setVideoOpen(true)}
-                inTable={editor.isActive('table')}
                 setPickerOpen={setPickerOpen}
                 focusMode={focusMode}
                 onToggleFocus={() => setFocusMode((open) => !open)}
                 sourceMode={sourceMode}
                 onToggleSource={toggleSource}
+                onInsertTable={insertTable}
             />
+
+            {(snapshot.hasTable || tableBarOpen) && (
+                <RichTableBar
+                    editor={editor}
+                    onDeleteTable={() => {
+                        if (!deleteLastTable(editor)) {
+                            toast('Не удалось удалить таблицу', 'error');
+
+                            return;
+                        }
+
+                        setTableBarOpen(false);
+                    }}
+                />
+            )}
 
             {sourceMode ? (
                 <textarea
@@ -417,6 +593,30 @@ export function RichEditorField({
                 </BubbleMenu>
             )}
 
+            {(snapshot.hasYoutube || videoBarOpen) && (
+                <div className="re-table-bar" role="toolbar" aria-label="Видео">
+                    <strong>Видео</strong>
+                    <Btn
+                        icon={<Trash2 size={15} />}
+                        label="Удалить видео"
+                        onClick={() => {
+                            if (!deleteNamedNode(editor, 'youtube')) {
+                                toast('Не удалось удалить видео', 'error');
+
+                                return;
+                            }
+
+                            setVideoBarOpen(false);
+                        }}
+                    />
+                </div>
+            )}
+            {dragging && (
+                <div className="re-drop" aria-hidden>
+                    Перетащите изображение в текст
+                </div>
+            )}
+
             <div className="re-status" aria-live="polite">
                 <span>
                     {words} {plural(words, 'слово', 'слова', 'слов')}
@@ -429,9 +629,11 @@ export function RichEditorField({
                         ? 'меньше минуты чтения'
                         : `${minutes} мин чтения`}
                 </span>
-                {focusMode && (
-                    <span className="re-status-hint">Esc — выйти</span>
-                )}
+                <span className="re-status-hint">
+                    {focusMode
+                        ? 'Esc — выйти из режима письма'
+                        : 'Перетащите фото в текст или вставьте из буфера'}
+                </span>
             </div>
 
             <MediaPicker
@@ -448,11 +650,27 @@ export function RichEditorField({
             <YoutubeDialog
                 open={videoOpen}
                 onClose={() => setVideoOpen(false)}
-                onApply={(src) => {
-                    editor.commands.setYoutubeVideo({ src });
-                    setVideoOpen(false);
-                }}
+                onApply={insertYoutube}
             />
+        </div>
+    );
+}
+
+function EditorSkeleton() {
+    return (
+        <div
+            className="re-shell re-loading"
+            aria-busy="true"
+            aria-label="Загрузка редактора"
+        >
+            <div className="re-toolbar">
+                <span className="re-skel re-skel-bar" />
+            </div>
+            <div className="re-skel-body">
+                <span className="re-skel re-skel-line" />
+                <span className="re-skel re-skel-line is-short" />
+                <span className="re-skel re-skel-line is-mid" />
+            </div>
         </div>
     );
 }

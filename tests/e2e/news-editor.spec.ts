@@ -71,3 +71,62 @@ test('news editor lets you click a photo and edit it in place', async ({
     await page.getByRole('button', { name: 'Удалить изображение' }).click();
     await expect(photo).toHaveCount(0);
 });
+
+test('news editor inserts a library photo, a youtube video and can delete a table', async ({
+    page,
+}) => {
+    await page.goto('/news/create');
+    await expect(page.locator('.re-content')).toBeVisible();
+
+    await page
+        .getByRole('button', { name: 'Изображение из медиатеки' })
+        .click();
+    const media = page.getByRole('dialog', { name: 'Медиабиблиотека' });
+    await expect(media).toBeVisible();
+    await media.locator('.media-tile-main').first().click();
+    await expect(media).toBeHidden();
+    await expect(
+        page.locator('.re-image-view, .re-content img').first(),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Видео с YouTube' }).click();
+    const video = page.getByRole('dialog', { name: 'Видео YouTube' });
+    await expect(video).toBeVisible();
+    await video
+        .getByLabel('Ссылка на видео')
+        .fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
+    await video.getByRole('button', { name: 'Вставить', exact: true }).click();
+    await expect(video).toBeHidden();
+    await expect(
+        page.locator('[data-youtube-video], .re-content iframe'),
+    ).toBeVisible();
+
+    await page.getByRole('button', { name: 'Вставить таблицу' }).click();
+    await expect(page.locator('.re-content table')).toBeVisible();
+    await expect(page.getByRole('toolbar', { name: 'Таблица' })).toBeVisible();
+
+    const rowsBefore = await page.locator('.re-content table tr').count();
+    await page.getByRole('button', { name: 'Строка снизу' }).click();
+    await expect(page.locator('.re-content table tr')).toHaveCount(
+        rowsBefore + 1,
+    );
+
+    const cell = page.locator('.re-content th, .re-content td').first();
+    await cell.click();
+    await page.getByRole('button', { name: 'Заливка ячейки' }).click();
+    await page.getByRole('button', { name: 'Синий КЧС' }).click();
+    await expect(cell).toHaveCSS(
+        'background-color',
+        'rgb(215, 226, 234)',
+    );
+
+    const edge = await cell.boundingBox();
+    if (edge) {
+        await page.mouse.move(edge.x + edge.width - 2, edge.y + 8);
+        await expect(page.locator('.column-resize-handle').first()).toBeAttached();
+    }
+
+    await page.getByRole('button', { name: 'Удалить таблицу' }).click();
+    await expect(page.locator('.re-content table')).toHaveCount(0);
+    await expect(page.getByRole('toolbar', { name: 'Таблица' })).toHaveCount(0);
+});

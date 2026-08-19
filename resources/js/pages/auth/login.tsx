@@ -18,23 +18,25 @@ export default function Login({
     const [show, setShow] = useState(false);
 
     return (
-        <Blueprint style={{ padding: 28 }}>
+        <Blueprint corners={false} style={{ padding: 32 }}>
             <Head title={t('auth.login_title')} />
             <h2
                 style={{
-                    fontSize: 21,
-                    fontWeight: 600,
+                    fontSize: 20,
+                    fontWeight: 650,
                     fontFamily: 'var(--font-heading)',
+                    letterSpacing: '-0.03em',
                 }}
             >
                 {t('auth.login_title')}
             </h2>
             <p
                 style={{
-                    fontSize: 13,
+                    fontSize: 13.5,
                     color: 'var(--color-neutral-600)',
-                    marginTop: 4,
-                    marginBottom: 18,
+                    marginTop: 6,
+                    marginBottom: 22,
+                    lineHeight: 1.45,
                 }}
             >
                 Доступ только для уполномоченных сотрудников Комитета
