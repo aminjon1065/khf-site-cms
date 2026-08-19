@@ -292,21 +292,6 @@ export default function NewsForm({ news, reference }: Props) {
                     }}
                 >
                     <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 14,
-                                flexWrap: 'wrap',
-                                gap: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Содержание
-                            </h3>
-                        </div>
-
                         <Field
                             label="Заголовок"
                             htmlFor={`news-title-${lang}`}
@@ -319,6 +304,7 @@ export default function NewsForm({ news, reference }: Props) {
                         >
                             <Input
                                 id={`news-title-${lang}`}
+                                className="ui-input-title"
                                 value={data.title[lang]}
                                 onChange={(e) =>
                                     setLocaleField('title', e.target.value)
@@ -328,7 +314,7 @@ export default function NewsForm({ news, reference }: Props) {
                                 }
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Например: КЧС провёл учения…'
+                                        ? 'Название записи'
                                         : 'Перевод заголовка'
                                 }
                                 maxLength={255}
@@ -351,10 +337,7 @@ export default function NewsForm({ news, reference }: Props) {
                             />
                         </Field>
 
-                        <Field
-                            label="Текст новости"
-                            hint="Заголовки, списки, фото из медиатеки и видео. На весь экран — чтобы писать без отвлечений."
-                        >
+                        <Field label="Текст новости">
                             <RichEditor
                                 key={lang}
                                 variant="article"
@@ -379,25 +362,9 @@ export default function NewsForm({ news, reference }: Props) {
                             }}
                         >
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                SEO и адрес
+                                SEO
                             </h3>
                         </div>
-                        <Field
-                            label="Адрес (slug)"
-                            htmlFor="news-slug"
-                            hint="Оставьте пустым — сгенерируется автоматически из заголовка."
-                            error={fieldError('slug')}
-                        >
-                            <Input
-                                id="news-slug"
-                                value={data.slug}
-                                onChange={(e) =>
-                                    setData('slug', e.target.value)
-                                }
-                                hasError={!!fieldError('slug')}
-                                placeholder="naprimer-ucheniya-2026"
-                            />
-                        </Field>
                         <Field
                             label="SEO-заголовок"
                             htmlFor={`news-seo-title-${lang}`}
@@ -443,8 +410,25 @@ export default function NewsForm({ news, reference }: Props) {
                             className="ui-card-title"
                             style={{ marginTop: 0, marginBottom: 14 }}
                         >
-                            Параметры
+                            Публикация
                         </h3>
+
+                        <Field
+                            label="Адрес (slug)"
+                            htmlFor="news-slug"
+                            hint="Пустое значение сгенерируется из заголовка."
+                            error={fieldError('slug')}
+                        >
+                            <Input
+                                id="news-slug"
+                                value={data.slug}
+                                onChange={(e) =>
+                                    setData('slug', e.target.value)
+                                }
+                                hasError={!!fieldError('slug')}
+                                placeholder="naprimer-ucheniya-2026"
+                            />
+                        </Field>
 
                         <Field
                             label="Категория"

@@ -308,6 +308,9 @@ export default function ProjectsIndex({
                 rows={projects}
                 rowKey={(r) => r.id}
                 sort={sort}
+                onRowClick={(r) =>
+                    router.visit(ProjectController.edit.url(r.id))
+                }
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
                 emptyTitle="Проектов не найдено"
                 emptyHint="Измените фильтры или создайте новый проект."

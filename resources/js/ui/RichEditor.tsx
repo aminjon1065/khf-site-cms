@@ -21,7 +21,19 @@ export function RichEditor(props: Props) {
     return (
         <Suspense
             fallback={
-                <div className="re-shell re-loading">Загрузка редактора…</div>
+                <div
+                    className="re-shell re-loading"
+                    aria-busy="true"
+                    aria-label="Загрузка редактора"
+                >
+                    <div className="re-toolbar">
+                        <span className="re-skel re-skel-bar" />
+                    </div>
+                    <div className="re-skel-body">
+                        <span className="re-skel re-skel-line" />
+                        <span className="re-skel re-skel-line is-short" />
+                    </div>
+                </div>
             }
         >
             <LazyRichEditorField {...props} />

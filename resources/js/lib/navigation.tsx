@@ -127,7 +127,7 @@ export const NAV: NavGroup[] = [
         ],
     },
     {
-        labelKey: 'nav.group.content',
+        labelKey: 'nav.group.collections',
         items: [
             {
                 key: 'news',
@@ -185,6 +185,32 @@ export const NAV: NavGroup[] = [
                 icon: Trash2,
                 permission: 'news.view',
             },
+        ],
+    },
+    {
+        labelKey: 'nav.group.navigation',
+        items: [
+            {
+                key: 'menu',
+                labelKey: 'Меню сайта',
+                href: MenuController.index.url(),
+                icon: Map,
+                permission: 'settings.view',
+            },
+            {
+                key: 'home',
+                labelKey: 'nav.home_blocks',
+                href: HomeBlockController.index.url(),
+                icon: Home,
+                permission: 'home.view',
+            },
+            {
+                key: 'taxonomy',
+                labelKey: 'Категории и теги',
+                href: TaxonomyController.index.url(),
+                icon: Tags,
+                permission: 'taxonomy.view',
+            },
             {
                 key: 'regions',
                 labelKey: 'Регионы и районы',
@@ -209,7 +235,7 @@ export const NAV: NavGroup[] = [
         ],
     },
     {
-        labelKey: 'nav.group.management',
+        labelKey: 'nav.group.assets',
         items: [
             {
                 key: 'media',
@@ -217,27 +243,6 @@ export const NAV: NavGroup[] = [
                 href: MediaController.index.url(),
                 icon: Image,
                 permission: 'media.view',
-            },
-            {
-                key: 'taxonomy',
-                labelKey: 'Категории и теги',
-                href: TaxonomyController.index.url(),
-                icon: Tags,
-                permission: 'taxonomy.view',
-            },
-            {
-                key: 'menu',
-                labelKey: 'Меню сайта',
-                href: MenuController.index.url(),
-                icon: Map,
-                permission: 'settings.view',
-            },
-            {
-                key: 'home',
-                labelKey: 'nav.home_blocks',
-                href: HomeBlockController.index.url(),
-                icon: Home,
-                permission: 'home.view',
             },
         ],
     },

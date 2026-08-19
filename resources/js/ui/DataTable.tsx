@@ -274,11 +274,21 @@ export function DataTable<T>({
                                         {columns.map((col) => (
                                             <td
                                                 key={col.key}
-                                                className={col.className}
+                                                className={cn(
+                                                    col.className,
+                                                    col.key === 'actions' &&
+                                                        'cell-actions',
+                                                )}
                                                 style={{
                                                     textAlign:
                                                         col.align ?? 'left',
                                                 }}
+                                                onClick={
+                                                    col.key === 'actions'
+                                                        ? (event) =>
+                                                              event.stopPropagation()
+                                                        : undefined
+                                                }
                                             >
                                                 {col.render(row)}
                                             </td>

@@ -330,6 +330,9 @@ export default function AnnouncementsIndex({
                 rows={announcements}
                 rowKey={(r) => r.id}
                 sort={sort}
+                onRowClick={(r) =>
+                    router.visit(AnnouncementController.edit.url(r.id))
+                }
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
                 emptyTitle="Объявлений не найдено"
                 emptyHint="Измените фильтры или создайте новое объявление."

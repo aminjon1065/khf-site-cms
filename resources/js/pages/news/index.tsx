@@ -109,6 +109,7 @@ export default function NewsIndex({
         {
             key: 'title',
             header: 'Заголовок',
+            width: '32%',
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
@@ -117,19 +118,31 @@ export default function NewsIndex({
                             fontWeight: 600,
                             color: 'var(--color-text)',
                             textDecoration: 'none',
-                            display: 'inline-flex',
+                            display: 'flex',
                             alignItems: 'center',
                             gap: 6,
+                            minWidth: 0,
                         }}
                     >
                         {r.is_pinned && (
                             <Pin
                                 size={13}
                                 strokeWidth={1.75}
-                                style={{ color: 'var(--color-accent-600)' }}
+                                style={{
+                                    color: 'var(--color-accent-600)',
+                                    flex: 'none',
+                                }}
                             />
                         )}
-                        {r.title}
+                        <span
+                            style={{
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                            }}
+                        >
+                            {r.title}
+                        </span>
                     </Link>
                     <div
                         style={{
@@ -344,6 +357,7 @@ export default function NewsIndex({
                 rows={news}
                 rowKey={(r) => r.id}
                 sort={sort}
+                onRowClick={(r) => router.visit(NewsController.edit.url(r.id))}
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
                 emptyTitle="Новостей не найдено"
                 emptyHint="Измените фильтры или создайте новую новость."

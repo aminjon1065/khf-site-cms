@@ -67,9 +67,19 @@ export function TopBar({
             </button>
 
             <div className="ui-breadcrumb">
-                <span>{crumb.group}</span>
+                {crumb.groupHref ? (
+                    <Link href={crumb.groupHref}>{crumb.group}</Link>
+                ) : (
+                    <span>{crumb.group}</span>
+                )}
                 <span className="sep">/</span>
-                <strong>{crumb.label}</strong>
+                {crumb.href ? (
+                    <Link href={crumb.href}>
+                        <strong>{crumb.label}</strong>
+                    </Link>
+                ) : (
+                    <strong>{crumb.label}</strong>
+                )}
             </div>
 
             <div className="cms-topbar-spacer" />
@@ -80,8 +90,8 @@ export function TopBar({
                 className="cms-search-trigger"
                 aria-label="Поиск по CMS"
             >
-                <Search size={15} strokeWidth={1.5} />
-                <span className="cms-search-trigger-label">Поиск по CMS…</span>
+                <Search size={15} strokeWidth={1.75} />
+                <span className="cms-search-trigger-label">Поиск…</span>
                 <kbd className="cms-search-trigger-shortcut">Ctrl K</kbd>
             </button>
 
@@ -194,7 +204,7 @@ export function TopBar({
 function resolveCrumb(
     url: string,
     t: (k: string) => string,
-): { group: string; label: string } {
+): { group: string; label: string; groupHref?: string; href?: string } {
     const path = url.split('?')[0];
 
     for (const group of NAV) {
@@ -202,7 +212,12 @@ function resolveCrumb(
             const base = item.href.split('?')[0];
 
             if (path === base || path.startsWith(base + '/')) {
-                return { group: t(group.labelKey), label: t(item.labelKey) };
+                return {
+                    group: t(group.labelKey),
+                    label: t(item.labelKey),
+                    groupHref: group.items[0]?.href,
+                    href: item.href,
+                };
             }
         }
     }

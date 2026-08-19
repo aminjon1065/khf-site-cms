@@ -85,6 +85,7 @@ function LayoutInner({ children }: { children: ReactNode }) {
                 badges={shared.nav_badges}
                 onToggleCollapse={toggleCollapse}
                 onCloseMobile={() => setMobileOpen(false)}
+                onOpenSearch={() => setPaletteOpen(true)}
             />
             <div className="ui-main">
                 <TopBar

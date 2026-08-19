@@ -1,5 +1,5 @@
 import { TriangleAlert, X } from 'lucide-react';
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useDialogFocus } from '@/hooks/use-dialog-focus';
@@ -226,6 +226,7 @@ export function Drawer({
 
 export interface MenuItem {
     label?: string;
+    description?: string;
     icon?: ReactNode;
     onSelect?: () => void;
     href?: string;
@@ -233,18 +234,65 @@ export interface MenuItem {
     separator?: boolean;
 }
 
-/** A click-triggered dropdown menu anchored to its trigger. */
+/** A click-triggered menu, portaled so sticky bars cannot clip it. */
 export function Dropdown({
     trigger,
     items,
     align = 'right',
+    placement = 'auto',
 }: {
     trigger: (props: { open: boolean; toggle: () => void }) => ReactNode;
     items: MenuItem[];
     align?: 'left' | 'right';
+    placement?: 'top' | 'bottom' | 'auto';
 }) {
     const [open, setOpen] = useState(false);
-    const ref = useRef<HTMLDivElement>(null);
+    const [ready, setReady] = useState(false);
+    const [coords, setCoords] = useState({ top: 0, left: 0 });
+    const triggerRef = useRef<HTMLDivElement>(null);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    const updatePosition = () => {
+        const triggerEl = triggerRef.current;
+        const menuEl = menuRef.current;
+
+        if (!triggerEl || !menuEl) {
+            return;
+        }
+
+        const rect = triggerEl.getBoundingClientRect();
+        const menu = menuEl.getBoundingClientRect();
+        const gap = 8;
+        const spaceBelow = window.innerHeight - rect.bottom;
+        const openUp =
+            placement === 'top' ||
+            (placement === 'auto' && spaceBelow < menu.height + gap + 12);
+        let top = openUp ? rect.top - menu.height - gap : rect.bottom + gap;
+        let left = align === 'right' ? rect.right - menu.width : rect.left;
+
+        left = Math.min(Math.max(8, left), window.innerWidth - menu.width - 8);
+        top = Math.min(Math.max(8, top), window.innerHeight - menu.height - 8);
+
+        setCoords({ top, left });
+        setReady(true);
+    };
+
+    useLayoutEffect(() => {
+        if (!open) {
+            setReady(false);
+
+            return;
+        }
+
+        updatePosition();
+        window.addEventListener('resize', updatePosition);
+        window.addEventListener('scroll', updatePosition, true);
+
+        return () => {
+            window.removeEventListener('resize', updatePosition);
+            window.removeEventListener('scroll', updatePosition, true);
+        };
+    }, [align, open, placement]);
 
     useEffect(() => {
         if (!open) {
@@ -252,11 +300,22 @@ export function Dropdown({
         }
 
         const handler = (e: MouseEvent) => {
-            if (ref.current && !ref.current.contains(e.target as Node)) {
+            const target = e.target as Node;
+
+            if (
+                triggerRef.current?.contains(target) ||
+                menuRef.current?.contains(target)
+            ) {
+                return;
+            }
+
+            setOpen(false);
+        };
+        const esc = (e: KeyboardEvent) => {
+            if (e.key === 'Escape') {
                 setOpen(false);
             }
         };
-        const esc = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);
         window.addEventListener('mousedown', handler);
         window.addEventListener('keydown', esc);
 
@@ -267,42 +326,57 @@ export function Dropdown({
     }, [open]);
 
     return (
-        <div ref={ref} style={{ position: 'relative', display: 'inline-flex' }}>
+        <div
+            ref={triggerRef}
+            style={{ position: 'relative', display: 'inline-flex' }}
+        >
             {trigger({ open, toggle: () => setOpen((v) => !v) })}
-            {open && (
-                <Blueprint
-                    corners={false}
-                    className="ui-menu"
-                    style={{
-                        position: 'absolute',
-                        top: '100%',
-                        marginTop: 4,
-                        [align]: 0,
-                    }}
-                >
-                    {items.map((item, i) =>
-                        item.separator ? (
-                            <div key={i} className="ui-menu-sep" />
-                        ) : (
-                            <button
-                                key={i}
-                                type="button"
-                                className={cn(
-                                    'ui-menu-item',
-                                    item.danger && 'is-danger',
-                                )}
-                                onClick={() => {
-                                    setOpen(false);
-                                    item.onSelect?.();
-                                }}
-                            >
-                                {item.icon}
-                                {item.label}
-                            </button>
-                        ),
-                    )}
-                </Blueprint>
-            )}
+            {open &&
+                createPortal(
+                    <Blueprint
+                        ref={menuRef}
+                        corners={false}
+                        className="ui-menu"
+                        role="menu"
+                        style={{
+                            top: coords.top,
+                            left: coords.left,
+                            visibility: ready ? 'visible' : 'hidden',
+                        }}
+                    >
+                        {items.map((item, i) =>
+                            item.separator ? (
+                                <div key={i} className="ui-menu-sep" />
+                            ) : (
+                                <button
+                                    key={i}
+                                    type="button"
+                                    role="menuitem"
+                                    className={cn(
+                                        'ui-menu-item',
+                                        item.description && 'has-copy',
+                                        item.danger && 'is-danger',
+                                    )}
+                                    onClick={() => {
+                                        setOpen(false);
+                                        item.onSelect?.();
+                                    }}
+                                >
+                                    {item.icon}
+                                    {item.description ? (
+                                        <span className="ui-menu-item-copy">
+                                            <strong>{item.label}</strong>
+                                            <span>{item.description}</span>
+                                        </span>
+                                    ) : (
+                                        item.label
+                                    )}
+                                </button>
+                            ),
+                        )}
+                    </Blueprint>,
+                    document.body,
+                )}
         </div>
     );
 }

@@ -87,7 +87,8 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
                 form,
             );
             setItems((prev) => [res.data, ...prev]);
-            onSelect(res.data); // только что загруженное — сразу вставляем
+            onSelect(res.data);
+            onClose();
         } catch (e) {
             setError((e as Error).message);
         } finally {
@@ -162,8 +163,18 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
                         <span>
                             {search
                                 ? 'Ничего не найдено.'
-                                : 'В библиотеке пока нет изображений — загрузите первое.'}
+                                : 'В библиотеке пока нет изображений — загрузите файл, чтобы вставить его в текст.'}
                         </span>
+                        {!search && (
+                            <Button
+                                variant="secondary"
+                                icon={<Upload size={15} strokeWidth={1.75} />}
+                                loading={uploading}
+                                onClick={() => fileRef.current?.click()}
+                            >
+                                Загрузить файл
+                            </Button>
+                        )}
                     </div>
                 ) : (
                     <div className="media-picker-grid">
@@ -173,7 +184,10 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
                                     type="button"
                                     className="media-tile-main"
                                     title={item.name ?? item.file_name}
-                                    onClick={() => onSelect(item)}
+                                    onClick={() => {
+                                        onSelect(item);
+                                        onClose();
+                                    }}
                                 >
                                     <img src={item.url} alt={item.name ?? ''} />
                                     <span className="media-tile-name">

@@ -304,27 +304,50 @@ export function EditorialFormShell<T extends object>({
                 {canPublish ? (
                     <Dropdown
                         align="right"
-                        trigger={({ toggle }) => (
-                            <Button
-                                variant="primary"
-                                loading={processing}
-                                iconRight={
-                                    <ChevronDown size={15} strokeWidth={2} />
-                                }
-                                onClick={toggle}
-                            >
-                                Опубликовать
-                            </Button>
+                        placement="top"
+                        trigger={({ open, toggle }) => (
+                            <div className="ui-splitbtn">
+                                <Button
+                                    variant="primary"
+                                    loading={processing}
+                                    onClick={() => publish(onPublishNow)}
+                                >
+                                    Опубликовать
+                                </Button>
+                                <Button
+                                    variant="primary"
+                                    className="ui-splitbtn-chevron"
+                                    aria-label="Другие варианты публикации"
+                                    aria-haspopup="menu"
+                                    aria-expanded={open}
+                                    disabled={processing}
+                                    onClick={toggle}
+                                >
+                                    <ChevronDown
+                                        size={16}
+                                        strokeWidth={2}
+                                        style={{
+                                            transform: open
+                                                ? 'rotate(180deg)'
+                                                : undefined,
+                                            transition: 'transform 0.15s ease',
+                                        }}
+                                    />
+                                </Button>
+                            </div>
                         )}
                         items={[
                             {
                                 label: 'Опубликовать сейчас',
+                                description: 'Сразу появится на сайте',
                                 onSelect: () => publish(onPublishNow),
                             },
                             ...(onSchedule
                                 ? [
                                       {
-                                          label: 'Запланировать публикацию',
+                                          label: 'Запланировать',
+                                          description:
+                                              'Выйдет в дату из блока «Публикация»',
                                           onSelect: () => publish(onSchedule),
                                       },
                                   ]
@@ -332,6 +355,7 @@ export function EditorialFormShell<T extends object>({
                             { separator: true },
                             {
                                 label: 'Отправить на согласование',
+                                description: 'Сначала проверит руководитель',
                                 onSelect: () => submit(onSubmitReview),
                             },
                         ]}

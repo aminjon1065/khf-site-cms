@@ -33,13 +33,13 @@ return [
         ],
 
         // Rich-text article bodies (news, projects, instructions) produced by the
-        // Tiptap editor. Allowlist mirrors exactly the nodes/marks the editor can
-        // emit: only `text-align` and `color` CSS are permitted; iframes are
-        // restricted to YouTube/Vimeo embeds via URI.SafeIframeRegexp.
+        // Tiptap editor. Allowlist mirrors the nodes/marks the editor can emit:
+        // text colour, table cell fill, column widths; iframes are restricted
+        // to YouTube/Vimeo embeds via URI.SafeIframeRegexp.
         'news' => [
             'HTML.Doctype' => 'HTML 4.01 Transitional',
-            'HTML.Allowed' => 'p[style],br,strong,b,em,i,u,s,span[style],h2[style],h3[style],h4[style],ul,ol,li,blockquote,hr,a[href|title|target|rel],img[src|alt|title|width|height|class|srcset|sizes|data-media-id],figure[class],figcaption,table,thead,tbody,tr,th[colspan|rowspan],td[colspan|rowspan],div[data-youtube-video],iframe[src|width|height|frameborder|allowfullscreen]',
-            'CSS.AllowedProperties' => 'text-align,color',
+            'HTML.Allowed' => 'p[style],br,strong,b,em,i,u,s,span[style],h2[style],h3[style],h4[style],ul,ol,li,blockquote,hr,a[href|title|target|rel],img[src|alt|title|width|height|class|srcset|sizes|data-media-id],figure[class],figcaption,table[style],colgroup,col[span|style|width],thead,tbody,tr,th[colspan|rowspan|style|colwidth],td[colspan|rowspan|style|colwidth],div[data-youtube-video],iframe[src|width|height|frameborder|allowfullscreen]',
+            'CSS.AllowedProperties' => 'text-align,color,background-color,width,min-width',
             'AutoFormat.AutoParagraph' => false,
             'AutoFormat.RemoveEmpty' => true,
             'Attr.AllowedFrameTargets' => ['_blank'],
@@ -56,7 +56,7 @@ return [
         ],
         'custom_definition' => [
             'id' => 'html5-definitions',
-            'rev' => 3,
+            'rev' => 4,
             'debug' => false,
             'elements' => [
                 // http://developers.whatwg.org/sections.html
@@ -110,7 +110,9 @@ return [
                 ['img', 'data-media-id', 'Text'],
                 ['table', 'height', 'Text'],
                 ['td', 'border', 'Text'],
+                ['td', 'colwidth', 'Text'],
                 ['th', 'border', 'Text'],
+                ['th', 'colwidth', 'Text'],
                 ['tr', 'width', 'Text'],
                 ['tr', 'height', 'Text'],
                 ['tr', 'border', 'Text'],

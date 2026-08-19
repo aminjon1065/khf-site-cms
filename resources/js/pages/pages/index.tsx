@@ -254,6 +254,7 @@ export default function PagesIndex({
                 rows={pages}
                 rowKey={(r) => r.id}
                 sort={sort}
+                onRowClick={(r) => router.visit(PageController.edit.url(r.id))}
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
                 emptyTitle="Страниц не найдено"
                 emptyHint="Измените фильтры или создайте новую страницу."

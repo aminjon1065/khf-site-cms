@@ -107,9 +107,12 @@ const ru: Record<string, string> = {
 
     // sidebar groups
     'nav.group.overview': 'Обзор',
-    'nav.group.operational': 'Оперативная информация',
-    'nav.group.content': 'Контент сайта',
-    'nav.group.management': 'Управление контентом',
+    'nav.group.operational': 'Оперативная работа',
+    'nav.group.collections': 'Коллекции',
+    'nav.group.navigation': 'Навигация',
+    'nav.group.assets': 'Медиа',
+    'nav.group.content': 'Коллекции',
+    'nav.group.management': 'Навигация',
     'nav.group.system': 'Система',
 
     // sidebar items
@@ -268,9 +271,12 @@ const tg: Record<string, string> = {
     'common.contacts': 'Тамосҳо',
 
     'nav.group.overview': 'Шарҳи умумӣ',
-    'nav.group.operational': 'Маълумоти оперативӣ',
-    'nav.group.content': 'Мундариҷаи сайт',
-    'nav.group.management': 'Идораи мундариҷа',
+    'nav.group.operational': 'Кори оперативӣ',
+    'nav.group.collections': 'Коллексияҳо',
+    'nav.group.navigation': 'Навигатсия',
+    'nav.group.assets': 'Медиа',
+    'nav.group.content': 'Коллексияҳо',
+    'nav.group.management': 'Навигатсия',
     'nav.group.system': 'Система',
 
     'nav.dashboard': 'Дашборд',

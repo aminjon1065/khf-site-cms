@@ -25,45 +25,56 @@ function Shell({ children }: { children: ReactNode }) {
         <div className="ui-authbg">
             <div
                 style={{
-                    width: 'min(400px, 100%)',
+                    width: 'min(420px, 100%)',
                     display: 'flex',
                     flexDirection: 'column',
                     gap: 20,
                 }}
             >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                    }}
+                >
                     <Blueprint
                         corners={false}
                         style={{
-                            width: 52,
-                            height: 52,
-                            background: 'var(--color-accent-900)',
+                            width: 48,
+                            height: 48,
+                            background: 'var(--color-accent)',
                             display: 'grid',
                             placeItems: 'center',
                             color: '#fff',
                             flex: 'none',
+                            borderRadius: 12,
+                            boxShadow:
+                                '0 0 0 4px color-mix(in srgb, var(--color-accent) 18%, transparent)',
                         }}
                     >
-                        <ShieldAlert size={26} strokeWidth={1.6} />
+                        <ShieldAlert size={24} strokeWidth={1.8} />
                     </Blueprint>
                     <div>
                         <div
                             style={{
                                 fontFamily: 'var(--font-heading)',
-                                fontWeight: 600,
-                                fontSize: 19,
+                                fontWeight: 650,
+                                fontSize: 18,
+                                letterSpacing: '-0.03em',
                                 lineHeight: 1.15,
                             }}
                         >
-                            КЧС и ГО Республики Таджикистан
+                            Control Panel
                         </div>
                         <div
                             style={{
-                                fontSize: 12,
+                                fontSize: 13,
                                 color: 'var(--color-neutral-600)',
+                                marginTop: 2,
                             }}
                         >
-                            Система управления официальным сайтом
+                            КЧС и ГО Республики Таджикистан
                         </div>
                     </div>
                 </div>
@@ -75,6 +86,8 @@ function Shell({ children }: { children: ReactNode }) {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
                         fontSize: 12,
                         color: 'var(--color-neutral-600)',
                     }}

@@ -53,6 +53,9 @@ it('provides one accessible error language action and dirty-state experience', f
             "'beforeunload'",
             'useSaveShortcut',
             'Отправить на проверку',
+            'ui-splitbtn',
+            'Другие варианты публикации',
+            'placement="top"',
         )
         ->and($cancel)->toBeInt()
         ->and($save)->toBeInt()

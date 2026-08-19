@@ -9,7 +9,7 @@ import {
     Trash2,
     Type,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
 import { ImageEditor } from './ImageEditor';
 import { MediaPicker } from './MediaPicker';
@@ -52,7 +52,7 @@ export function RichImageView({
     };
     const [replacing, setReplacing] = useState(false);
     const [cropping, setCropping] = useState(false);
-    const [altOpen, setAltOpen] = useState(false);
+    const altRef = useRef<HTMLInputElement>(null);
 
     const select = () => {
         const pos = getPos();
@@ -179,12 +179,11 @@ export function RichImageView({
                             </button>
                             <button
                                 type="button"
-                                className={cn('re-btn', altOpen && 'is-active')}
+                                className="re-btn"
                                 title="Alt-текст"
                                 aria-label="Alt-текст"
-                                aria-pressed={altOpen}
                                 onMouseDown={(e) => e.preventDefault()}
-                                onClick={() => setAltOpen((open) => !open)}
+                                onClick={() => altRef.current?.focus()}
                             >
                                 <Type size={15} />
                             </button>
@@ -198,25 +197,26 @@ export function RichImageView({
                             >
                                 <Trash2 size={15} />
                             </button>
-                            {altOpen && (
-                                <label className="re-figure-alt">
-                                    <span>Alt</span>
-                                    <input
-                                        value={alt ?? ''}
-                                        onChange={(e) =>
-                                            updateAttributes({
-                                                alt: e.target.value,
-                                            })
-                                        }
-                                        placeholder="Описание для скринридеров"
-                                        onMouseDown={(e) => e.stopPropagation()}
-                                        onKeyDown={(e) => e.stopPropagation()}
-                                    />
-                                </label>
-                            )}
                         </div>
                     )}
                 </div>
+                {selected && (
+                    <label className="re-figure-alt">
+                        <span>Alt</span>
+                        <input
+                            ref={altRef}
+                            value={alt ?? ''}
+                            onChange={(e) =>
+                                updateAttributes({
+                                    alt: e.target.value,
+                                })
+                            }
+                            placeholder="Описание для скринридеров"
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                        />
+                    </label>
+                )}
                 {(selected || Boolean(caption)) && (
                     <input
                         className="re-figure-caption"
