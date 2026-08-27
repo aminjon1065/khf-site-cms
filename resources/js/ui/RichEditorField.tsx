@@ -45,7 +45,19 @@ export interface Props {
     variant?: 'default' | 'article';
 }
 
-function imageAttrsFromMedia(item: MediaItem): Record<string, unknown> {
+/**
+ * Атрибуты картинки для вставки в документ. `src` объявлен явно: setImage()
+ * требует его наличия, а Record<string, unknown> этого не гарантировал.
+ */
+function imageAttrsFromMedia(item: MediaItem): {
+    src: string;
+    alt: string;
+    caption: string;
+    srcset: string | null;
+    mediaId: number;
+    align: string;
+    size: string;
+} {
     return {
         src: item.url,
         alt: item.alt ?? item.name ?? '',

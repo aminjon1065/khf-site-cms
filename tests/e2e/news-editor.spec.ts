@@ -97,9 +97,10 @@ test('news editor inserts a library photo, a youtube video and can delete a tabl
         .fill('https://www.youtube.com/watch?v=dQw4w9WgXcQ');
     await video.getByRole('button', { name: 'Вставить', exact: true }).click();
     await expect(video).toBeHidden();
-    await expect(
-        page.locator('[data-youtube-video], .re-content iframe'),
-    ).toBeVisible();
+    // Именно iframe: обёртка [data-youtube-video] и вложенный в неё iframe
+    // подходят под прежний селектор оба, и проверка падала на неоднозначности.
+    // Видимый iframe — более сильное утверждение: обёртка есть и без него.
+    await expect(page.locator('.re-content iframe')).toBeVisible();
 
     await page.getByRole('button', { name: 'Вставить таблицу' }).click();
     await expect(page.locator('.re-content table')).toBeVisible();
@@ -121,6 +122,7 @@ test('news editor inserts a library photo, a youtube video and can delete a tabl
     );
 
     const edge = await cell.boundingBox();
+
     if (edge) {
         await page.mouse.move(edge.x + edge.width - 2, edge.y + 8);
         await expect(page.locator('.column-resize-handle').first()).toBeAttached();

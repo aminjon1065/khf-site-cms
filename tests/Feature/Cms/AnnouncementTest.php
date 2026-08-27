@@ -3,6 +3,7 @@
 use App\Enums\AnnouncementKind;
 use App\Enums\ContentStatus;
 use App\Models\Announcement;
+use App\Models\Project;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 
@@ -51,6 +52,45 @@ it('creates a draft announcement with its metadata', function () {
         ->and($announcement->org)->toBe('ЦУКС')
         ->and($announcement->slug)->toBe('vakansiya-operatora-112')
         ->and($announcement->application_url)->toBe('/contacts');
+});
+
+it('saves the project a tender belongs to', function () {
+    // Регрессия: поле было во всей цепочке — миграция, $fillable, правила
+    // AnnouncementRequest, payload формы и сам <select> в редакторе, — но
+    // fill() его не присваивал. Редактор выбирал проект, получал «сохранено»,
+    // а связь не записывалась: блок «Тендеры проекта» на публичной странице
+    // оставался пустым, и ввод исчезал без единого сообщения.
+    //
+    // Прежние тесты проверяли только чтение через API и проставляли связь
+    // фабрикой, поэтому путь сохранения из CMS был не покрыт вовсе.
+    $project = Project::factory()->published()->create();
+
+    actingAs(annUser('editor'))->post('/announcements', [
+        'title' => ['ru' => 'Закупка инструмента', 'tg' => '', 'en' => ''],
+        'kind' => 'tender',
+        'project_id' => $project->id,
+        'action' => 'draft',
+    ])->assertRedirect('/announcements');
+
+    expect(Announcement::query()->first()->project_id)->toBe($project->id);
+});
+
+it('clears the project when the editor picks «вне проекта»', function () {
+    // Пустая строка из <select> — это отсутствие связи, а не проект с id 0.
+    $project = Project::factory()->published()->create();
+    $announcement = Announcement::factory()->create([
+        'kind' => AnnouncementKind::Tender,
+        'project_id' => $project->id,
+    ]);
+
+    actingAs(annUser('editor'))->put("/announcements/{$announcement->id}", [
+        'title' => $announcement->getTranslations('title'),
+        'kind' => 'tender',
+        'project_id' => '',
+        'action' => 'draft',
+    ])->assertRedirect();
+
+    expect($announcement->fresh()->project_id)->toBeNull();
 });
 
 it('rejects unsafe application links and duplicate slugs', function () {

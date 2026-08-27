@@ -93,7 +93,7 @@ export default function SubmissionsIndex({
                     style={{
                         fontSize: 12.5,
                         fontWeight: 600,
-                        color: 'var(--color-accent-700)',
+                        color: 'var(--brand-700)',
                         textDecoration: 'none',
                     }}
                 >

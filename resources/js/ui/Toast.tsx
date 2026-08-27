@@ -94,7 +94,7 @@ function ToastIcon({ tone }: { tone: ToastTone }) {
               ? 'var(--danger)'
               : tone === 'warning'
                 ? 'var(--warn)'
-                : 'var(--color-accent)';
+                : 'var(--brand)';
     const props = {
         size: 17,
         strokeWidth: 1.5,

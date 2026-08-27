@@ -247,6 +247,22 @@ return [
     'image_driver' => env('IMAGE_DRIVER', 'gd'),
 
     /*
+     * Предел памяти на время одной конверсии.
+     *
+     * Наблюдалось на очереди из девяти конверсий 1600x900 одним воркером:
+     * `Allowed memory size of 134217728 bytes exhausted` в GdDriver::822.
+     * Это фатальная ошибка, а не исключение, поэтому `failed()` не
+     * вызывается, записи в `failed_jobs` не появляется и в логе воркера не
+     * остаётся следа — задача просто исчезает, а `conversion_status`
+     * навсегда остаётся `pending`. На пачке из шести пик держался около
+     * 50 МБ на задачу, то есть запас нужен именно под длинные очереди.
+     *
+     * Драйвер при этом менять нельзя: Imagick теряет альфа-канал прозрачных
+     * PNG (см. MediaConversionQueueTest).
+     */
+    'conversion_memory_limit' => env('MEDIA_CONVERSION_MEMORY_LIMIT', '512M'),
+
+    /*
      * FFMPEG & FFProbe binaries paths, only used if you try to generate video
      * thumbnails and have installed the php-ffmpeg/php-ffmpeg composer
      * dependency.

@@ -51,7 +51,17 @@ class Instruction extends Model implements HasMedia, Workflowable
     /**
      * @var list<string>
      */
-    public array $translatable = ['name', 'summary', 'body'];
+    public array $translatable = ['name', 'summary', 'key_point', 'body'];
+
+    /**
+     * «Главное за 10 секунд» — поле необязательное: без него страница просто
+     * не выводит блок. В полноту перевода оно не входит, иначе публикация
+     * инструкции была бы заблокирована, пока редактор не заполнит его на всех
+     * языках.
+     *
+     * @var list<string>
+     */
+    public array $completenessOptional = ['key_point'];
 
     /**
      * @var list<string>
@@ -59,6 +69,7 @@ class Instruction extends Model implements HasMedia, Workflowable
     protected $fillable = [
         'name',
         'summary',
+        'key_point',
         'body',
         'slug',
         'hazard_type',
@@ -159,6 +170,13 @@ class Instruction extends Model implements HasMedia, Workflowable
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('image')->useDisk($this->contentMediaDisk())->singleFile();
+
+        /**
+         * Вложения: памятки и материалы в PDF. Несколько файлов, порядок задаёт
+         * редактор. Диск тот же, что у обложки: у неопубликованного материала
+         * вложения тоже не должны быть доступны по прямой ссылке.
+         */
+        $this->addMediaCollection('attachments')->useDisk($this->contentMediaDisk());
     }
 
     /**

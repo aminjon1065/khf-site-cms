@@ -152,7 +152,7 @@ export default function TwoFactorChallenge() {
                     style={{
                         border: 0,
                         background: 'transparent',
-                        color: 'var(--color-accent-700)',
+                        color: 'var(--brand-700)',
                         fontSize: 13,
                         cursor: 'pointer',
                     }}

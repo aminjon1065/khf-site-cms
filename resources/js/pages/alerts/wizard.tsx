@@ -33,6 +33,8 @@ interface WizardAlert {
     summary: Localized;
     body: Localized;
     instructions: Localized;
+    /** История обновлений: метка времени и текст по локалям. */
+    updates: { at: string; text: Record<string, string> }[];
     contacts: Localized;
     regions: number[];
     districts: number[];
@@ -82,6 +84,7 @@ export default function AlertWizard({ alert, reference }: Props) {
         summary: { ...emptyLoc, ...alert?.summary },
         body: { ...emptyLoc, ...alert?.body },
         instructions: { ...emptyLoc, ...alert?.instructions },
+        updates: alert?.updates ?? [],
         contacts: { ...emptyLoc, ...alert?.contacts },
         regions: alert?.regions ?? [],
         districts: alert?.districts ?? [],

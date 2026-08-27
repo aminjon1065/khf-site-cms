@@ -34,6 +34,13 @@ class InstructionRequest extends FormRequest
             'summary.tg' => ['nullable', 'string', 'max:1000'],
             'summary.en' => ['nullable', 'string', 'max:1000'],
 
+            // Ограничение короче, чем у summary: это текст, который человек
+            // должен успеть прочитать за несколько секунд.
+            'key_point' => ['array'],
+            'key_point.ru' => ['nullable', 'string', 'max:300'],
+            'key_point.tg' => ['nullable', 'string', 'max:300'],
+            'key_point.en' => ['nullable', 'string', 'max:300'],
+
             'body' => ['array'],
             'body.ru' => ['nullable', 'string', 'max:20000'],
             'body.tg' => ['nullable', 'string', 'max:20000'],
@@ -57,6 +64,13 @@ class InstructionRequest extends FormRequest
             'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'image_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'image_remove' => ['boolean'],
+
+            // Памятка к инструкции: PDF, который человек скачивает и держит
+            // под рукой. Только документы — исполняемые файлы недопустимы.
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx', 'max:20480'],
+            'attachments_remove' => ['nullable', 'array'],
+            'attachments_remove.*' => ['integer'],
 
             'publish_mode' => ['nullable', 'in:now,review'],
             'action' => ['nullable', 'in:draft,submit'],

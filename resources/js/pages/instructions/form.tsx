@@ -5,6 +5,7 @@ import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { index, store, update } from '@/routes/instructions';
+import { AttachmentsField } from '@/ui/AttachmentsField';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
@@ -27,6 +28,8 @@ interface InstructionData {
     id: number;
     name: LocaleMap;
     summary: LocaleMap;
+    key_point: LocaleMap;
+    attachments?: { id: number; title: string; ext: string; size: string }[];
     body: LocaleMap;
     slug: string | null;
     status: ContentStatus;
@@ -71,6 +74,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
     const form = useForm({
         name: { ...EMPTY, ...instruction?.name } as LocaleMap,
         summary: { ...EMPTY, ...instruction?.summary } as LocaleMap,
+        key_point: { ...EMPTY, ...instruction?.key_point } as LocaleMap,
+        attachments: [] as File[],
+        attachments_remove: [] as number[],
         body: { ...EMPTY, ...instruction?.body } as LocaleMap,
         slug: instruction?.slug ?? '',
         hazard_type: (instruction?.hazard_type ?? '') as string,
@@ -117,7 +123,7 @@ export default function InstructionForm({ instruction, reference }: Props) {
     };
 
     const setLocaleField = (
-        field: 'name' | 'summary' | 'body',
+        field: 'name' | 'summary' | 'key_point' | 'body',
         value: string,
     ) => {
         setData(field, { ...data[field], [lang]: value });
@@ -309,6 +315,47 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                 maxLength={1000}
                             />
                         </Field>
+
+                        {/* Отдельно от краткого описания: описание отвечает
+                            «о чём инструкция», а это — «что делать прямо
+                            сейчас». Раньше на странице под заголовком
+                            «Главное за 10 секунд» стояло описание. */}
+                        <Field
+                            label="Главное за 10 секунд"
+                            hint="Первое действие в опасности. Без него блок на странице не выводится."
+                        >
+                            <Textarea
+                                value={data.key_point[lang]}
+                                onChange={(e) =>
+                                    setLocaleField('key_point', e.target.value)
+                                }
+                                style={{ minHeight: 60 }}
+                                maxLength={300}
+                            />
+                        </Field>
+
+                        <AttachmentsField
+                            existing={instruction?.attachments ?? []}
+                            added={data.attachments}
+                            removed={data.attachments_remove}
+                            error={fieldError('attachments')}
+                            onAdd={(files) =>
+                                setData('attachments', [
+                                    ...data.attachments,
+                                    ...files,
+                                ])
+                            }
+                            onToggleRemove={(id) =>
+                                setData(
+                                    'attachments_remove',
+                                    data.attachments_remove.includes(id)
+                                        ? data.attachments_remove.filter(
+                                              (x) => x !== id,
+                                          )
+                                        : [...data.attachments_remove, id],
+                                )
+                            }
+                        />
                     </Blueprint>
 
                     {/* ------------------------------------ sections editor */}

@@ -68,6 +68,15 @@ class AlertRequest extends FormRequest
             'body.ru' => ['nullable', 'string', 'max:100000'],
             'body.tg' => ['nullable', 'string', 'max:100000'],
             'body.en' => ['nullable', 'string', 'max:100000'],
+            // История обновлений: что изменилось и когда. Метка времени одна
+            // на запись, текст — по локалям, поэтому проверяем поэлементно.
+            'updates' => ['nullable', 'array', 'max:50'],
+            'updates.*.at' => ['required', 'date'],
+            'updates.*.text' => ['required', 'array'],
+            'updates.*.text.ru' => ['nullable', 'string', 'max:1000'],
+            'updates.*.text.tg' => ['nullable', 'string', 'max:1000'],
+            'updates.*.text.en' => ['nullable', 'string', 'max:1000'],
+
             'instructions' => ['array'],
             'instructions.ru' => ['nullable', 'string', 'max:20000'],
             'instructions.tg' => ['nullable', 'string', 'max:20000'],

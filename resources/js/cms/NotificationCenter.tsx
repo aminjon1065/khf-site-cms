@@ -76,6 +76,7 @@ export function NotificationCenter({
         >
             {loading && !notifications ? (
                 <div
+                    role="status"
                     aria-busy="true"
                     aria-label="Загрузка уведомлений"
                     style={{ display: 'grid', gap: 10 }}
@@ -134,7 +135,7 @@ export function NotificationCenter({
                                         '1px solid var(--color-divider)',
                                     background: n.read_at
                                         ? 'transparent'
-                                        : 'var(--color-accent-100)',
+                                        : 'var(--brand-100)',
                                     cursor: 'pointer',
                                 }}
                             >

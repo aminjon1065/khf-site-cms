@@ -480,7 +480,7 @@ export default function Dashboard({
                                     <span
                                         style={{
                                             fontSize: 12,
-                                            color: 'var(--color-accent-700)',
+                                            color: 'var(--brand-700)',
                                             width: 52,
                                             flex: 'none',
                                         }}
@@ -499,7 +499,7 @@ export default function Dashboard({
                                             width: 3,
                                             background:
                                                 toneColor[ev.tone as 'ok'] ??
-                                                'var(--color-accent-500)',
+                                                'var(--brand-500)',
                                             flex: 'none',
                                         }}
                                     />

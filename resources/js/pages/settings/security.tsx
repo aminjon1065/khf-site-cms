@@ -69,7 +69,7 @@ export default function Security({ passwordRules, twoFactor }: Props) {
                             <KeyRound
                                 size={22}
                                 strokeWidth={1.6}
-                                className="mt-0.5 text-[var(--color-accent-700)]"
+                                className="mt-0.5 text-[var(--brand-700)]"
                             />
                             <div>
                                 <h2 className="ui-card-title">Смена пароля</h2>
@@ -143,7 +143,7 @@ export default function Security({ passwordRules, twoFactor }: Props) {
                             <ShieldCheck
                                 size={22}
                                 strokeWidth={1.6}
-                                className="mt-0.5 text-[var(--color-accent-700)]"
+                                className="mt-0.5 text-[var(--brand-700)]"
                             />
                             <div>
                                 <h2 className="ui-card-title">

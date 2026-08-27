@@ -78,7 +78,7 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                                     cursor: 'pointer',
                                     border: '1px solid var(--color-divider)',
                                     borderLeft: selected
-                                        ? '3px solid var(--color-accent)'
+                                        ? '3px solid var(--brand)'
                                         : '3px solid transparent',
                                     background: selected
                                         ? 'var(--color-neutral-100)'
@@ -130,7 +130,7 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                                             gap: 4,
                                             marginTop: 6,
                                             fontSize: 11,
-                                            color: 'var(--color-accent-700)',
+                                            color: 'var(--brand-700)',
                                         }}
                                     >
                                         <MapPin size={12} strokeWidth={1.75} />{' '}

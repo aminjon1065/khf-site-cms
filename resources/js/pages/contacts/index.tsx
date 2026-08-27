@@ -159,7 +159,7 @@ export default function EmergencyContacts({
                             <Building2
                                 size={20}
                                 strokeWidth={1.4}
-                                className="mt-0.5 text-(--color-accent-700)"
+                                className="mt-0.5 text-(--brand-700)"
                             />
                             <span>
                                 <h2 className="m-0 text-base font-semibold">
@@ -241,7 +241,7 @@ function Contact({
                 {href && value ? (
                     <a
                         href={href}
-                        className="text-sm break-words text-(--color-accent-700)"
+                        className="text-sm break-words text-(--brand-700)"
                     >
                         {value}
                     </a>

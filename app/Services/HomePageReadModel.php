@@ -180,6 +180,7 @@ final class HomePageReadModel
             'documents' => PublicDocumentResource::collection($documents)->resolve(),
             'announcements' => PublicAnnouncementResource::collection($announcements)->resolve(),
             'projects' => PublicProjectResource::collection($projects)->resolve(),
+            'indicators' => $this->indicators($blocks, $locale),
             'emergency_contacts' => [
                 'emergency_number' => data_get($settings, 'org.emergency_number', '112'),
                 'trust_phone' => data_get($settings, 'org.trust_phone'),
@@ -188,6 +189,44 @@ final class HomePageReadModel
                 'services' => data_get($settings, 'emergency_services', []),
             ],
         ];
+    }
+
+    /**
+     * Показатели ведомства для главной: число и подпись на языке страницы.
+     *
+     * Считать их система не может — «спасательных операций» и «человек
+     * спасено» нет ни в одной таблице, эти цифры приходят из отчётности.
+     * Их вводит редактор в настройках блока.
+     *
+     * Запись без подписи на запрошенном языке пропускается: число без
+     * пояснения ничего не сообщает.
+     *
+     * @param  EloquentCollection<int, HomeBlock>  $blocks
+     * @return list<array{value: string, label: string}>
+     */
+    private function indicators(EloquentCollection $blocks, string $locale): array
+    {
+        $config = $blocks->firstWhere('type', 'indicators')?->config;
+        $items = is_array($config['items'] ?? null) ? $config['items'] : [];
+        $result = [];
+
+        foreach ($items as $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $value = is_string($item['value'] ?? null) ? trim($item['value']) : '';
+            $labels = is_array($item['label'] ?? null) ? $item['label'] : [];
+            $label = trim((string) ($labels[$locale] ?? ''));
+
+            if ($value === '' || $label === '') {
+                continue;
+            }
+
+            $result[] = ['value' => $value, 'label' => $label];
+        }
+
+        return $result;
     }
 
     /**

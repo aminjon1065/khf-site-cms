@@ -58,6 +58,16 @@ class PublicProjectResource extends JsonResource
             $data['goals'] = $this->localizedGoals($locale);
             $data['timeline'] = is_array($this->timeline) ? array_values($this->timeline) : [];
             $data['direction'] = $this->direction ?? ['address' => '', 'phone' => '', 'email' => ''];
+            // Тендеры проекта. Пустой массив, если связь не загружена, —
+            // ресурс не должен ходить в базу сам.
+            $data['tenders'] = $this->relationLoaded('announcements')
+                ? $this->announcements->map(fn ($tender): array => [
+                    'slug' => $tender->slug,
+                    'title' => (string) $tender->getTranslation('title', $locale, false),
+                    'deadline' => $tender->deadline?->format('d.m.Y'),
+                    'open' => $tender->isOpen(),
+                ])->values()->all()
+                : [];
         }
 
         return $data;

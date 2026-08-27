@@ -5,6 +5,7 @@ import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { index, store, update } from '@/routes/news';
+import { AttachmentsField } from '@/ui/AttachmentsField';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
 import {
@@ -39,6 +40,8 @@ interface NewsData {
     category_id: number | null;
     tags: number[];
     cover_alt: string | null;
+    attachments?: { id: number; title: string; ext: string; size: string }[];
+    cover_caption: string | null;
     cover_url: string | null;
     is_pinned: boolean;
     show_on_home: boolean;
@@ -88,7 +91,10 @@ export default function NewsForm({ news, reference }: Props) {
         cover: null as File | null,
         cover_media_id: null as number | null,
         cover_remove: false,
+        attachments: [] as File[],
+        attachments_remove: [] as number[],
         cover_alt: news?.cover_alt ?? '',
+        cover_caption: news?.cover_caption ?? '',
         is_pinned: news?.is_pinned ?? false,
         show_on_home: news?.show_on_home ?? true,
         seo: {
@@ -611,6 +617,47 @@ export default function NewsForm({ news, reference }: Props) {
                                 placeholder="Описание изображения"
                             />
                         </Field>
+                        {/* Подпись видна читателю под фотографией. Alt —
+                            описание для тех, кто снимок не видит; это разные
+                            тексты, и подменять один другим нельзя. */}
+                        <Field
+                            label="Подпись под фото"
+                            hint="Показывается читателю. Без неё подпись не выводится."
+                            className="mt-2"
+                        >
+                            <Input
+                                value={data.cover_caption}
+                                onChange={(e) =>
+                                    setData('cover_caption', e.target.value)
+                                }
+                                placeholder="Например: Фото пресс-службы КЧС"
+                                maxLength={500}
+                            />
+                        </Field>
+
+                        <AttachmentsField
+                            existing={news?.attachments ?? []}
+                            added={data.attachments}
+                            removed={data.attachments_remove}
+                            error={fieldError('attachments')}
+                            onAdd={(files) =>
+                                setData('attachments', [
+                                    ...data.attachments,
+                                    ...files,
+                                ])
+                            }
+                            onToggleRemove={(id) =>
+                                setData(
+                                    'attachments_remove',
+                                    data.attachments_remove.includes(id)
+                                        ? data.attachments_remove.filter(
+                                              (x) => x !== id,
+                                          )
+                                        : [...data.attachments_remove, id],
+                                )
+                            }
+                        />
+
 
                         <MediaPicker
                             open={coverPicker}

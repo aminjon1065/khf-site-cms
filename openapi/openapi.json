@@ -1154,6 +1154,39 @@
                 "type": "string"
               }
             }
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Вложения материала: памятки и документы. Отдаётся только на детальной странице.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "ext": {
+                  "type": "string",
+                  "description": "Тип файла заглавными: PDF, DOCX."
+                },
+                "size": {
+                  "type": "string",
+                  "description": "Человекочитаемый размер на языке запроса: «1,2 МБ» / «1.2 MB»."
+                },
+                "size_bytes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "title",
+                "url",
+                "ext",
+                "size",
+                "size_bytes"
+              ]
+            }
           }
         }
       },
@@ -1180,6 +1213,13 @@
           },
           "summary": {
             "type": "string"
+          },
+          "key_point": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Первое действие в опасности. Отдаётся только на детальной странице; null — редактор поле не заполнил, блок не выводится."
           },
           "hazard": {
             "type": [
@@ -1261,6 +1301,39 @@
           },
           "body": {
             "type": "string"
+          },
+          "attachments": {
+            "type": "array",
+            "description": "Вложения материала: памятки и документы. Отдаётся только на детальной странице.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string"
+                },
+                "url": {
+                  "type": "string"
+                },
+                "ext": {
+                  "type": "string",
+                  "description": "Тип файла заглавными: PDF, DOCX."
+                },
+                "size": {
+                  "type": "string",
+                  "description": "Человекочитаемый размер на языке запроса: «1,2 МБ» / «1.2 MB»."
+                },
+                "size_bytes": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "title",
+                "url",
+                "ext",
+                "size",
+                "size_bytes"
+              ]
+            }
           }
         }
       },
@@ -1510,6 +1583,36 @@
                 "type": "string"
               }
             }
+          },
+          "tenders": {
+            "type": "array",
+            "description": "Тендеры проекта. Отдаётся только на детальной странице.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "deadline": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "open": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "slug",
+                "title",
+                "deadline",
+                "open"
+              ]
+            }
           }
         }
       },
@@ -1549,6 +1652,25 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "project": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "Проект, к которому относится тендер. Отдаётся только на детальной странице; null — объявление вне проекта.",
+            "properties": {
+              "slug": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "slug",
+              "title"
             ]
           },
           "desc": {
@@ -1757,6 +1879,27 @@
             "items": {
               "$ref": "#/components/schemas/ApiAlertMeta"
             }
+          },
+          "updates": {
+            "type": "array",
+            "description": "История обновлений предупреждения, новые записи первыми. Отдаётся только на детальной странице; записи без текста на языке запроса пропускаются.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "at": {
+                  "type": "string",
+                  "description": "Метка времени записи (ISO 8601)."
+                },
+                "text": {
+                  "type": "string",
+                  "description": "Что изменилось, на языке запроса."
+                }
+              },
+              "required": [
+                "at",
+                "text"
+              ]
+            }
           }
         }
       },
@@ -1927,6 +2070,27 @@
           "emergency_contacts": {
             "type": "object",
             "additionalProperties": true
+          },
+          "indicators": {
+            "type": "array",
+            "description": "Ключевые показатели ведомства для главной. Значения вводит редактор: система их не считает — таких данных в CMS нет. Записи без подписи на языке запроса пропускаются.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "value": {
+                  "type": "string",
+                  "description": "Число как его ввёл редактор, с разделителями разрядов: «86 500»."
+                },
+                "label": {
+                  "type": "string",
+                  "description": "Подпись на языке запроса."
+                }
+              },
+              "required": [
+                "value",
+                "label"
+              ]
+            }
           }
         }
       },

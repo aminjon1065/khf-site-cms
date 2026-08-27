@@ -27,6 +27,7 @@ use Spatie\Translatable\HasTranslations;
  * @property array<string, string> $body
  * @property AnnouncementKind $kind
  * @property string|null $org
+ * @property int|null $project_id
  * @property Carbon|null $deadline
  * @property string|null $application_url
  * @property ContentStatus $status
@@ -48,7 +49,7 @@ class Announcement extends Model implements Workflowable
     /**
      * @var list<string>
      */
-    protected $fillable = ['title', 'body', 'slug', 'kind', 'org', 'deadline', 'application_url', 'status', 'published_at', 'author_id'];
+    protected $fillable = ['title', 'body', 'slug', 'kind', 'org', 'project_id', 'deadline', 'application_url', 'status', 'published_at', 'author_id'];
 
     /**
      * @return array<string, string>
@@ -106,6 +107,17 @@ class Announcement extends Model implements Workflowable
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    /**
+     * Проект, к которому относится тендер. Объявления вне проектов (вакансии,
+     * общие закупки) связи не имеют.
+     *
+     * @return BelongsTo<Project, $this>
+     */
+    public function project(): BelongsTo
+    {
+        return $this->belongsTo(Project::class);
     }
 
     /**

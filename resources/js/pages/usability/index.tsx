@@ -370,7 +370,7 @@ export default function UsabilityIndex({
                     <div className="mb-5 flex items-start gap-3">
                         <ClipboardList
                             aria-hidden="true"
-                            className="mt-0.5 text-(--color-accent-700)"
+                            className="mt-0.5 text-(--brand-700)"
                             size={24}
                         />
                         <div>

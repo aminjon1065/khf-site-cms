@@ -44,7 +44,7 @@ class InstructionController extends Controller
     public function show(string $slug): JsonResource
     {
         $query = Instruction::query()
-            ->select(['id', 'slug', 'name', 'summary', 'hazard_type', 'is_priority', 'sections', 'body'])
+            ->select(['id', 'slug', 'name', 'summary', 'key_point', 'hazard_type', 'is_priority', 'sections', 'body'])
             ->public()
             ->with('media')
             ->where('slug', $slug);

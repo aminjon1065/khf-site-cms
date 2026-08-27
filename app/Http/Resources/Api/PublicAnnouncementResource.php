@@ -38,6 +38,12 @@ class PublicAnnouncementResource extends JsonResource
             'deadline_state' => $this->deadline === null ? 'unlimited' : ($open ? 'open' : 'closed'),
             'open' => $open,
             'application_url' => $this->application_url,
+            // Тендер знает свой проект: из объявления есть путь обратно.
+            // `whenLoaded` — чтобы список объявлений не делал запрос на строку.
+            'project' => $this->whenLoaded('project', fn (): ?array => $this->project === null ? null : [
+                'slug' => $this->project->slug,
+                'title' => (string) $this->project->getTranslation('title', $locale, false),
+            ]),
         ];
     }
 

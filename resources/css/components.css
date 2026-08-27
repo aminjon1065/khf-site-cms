@@ -28,11 +28,11 @@ h6 {
     margin: 0;
 }
 :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--brand);
     outline-offset: 2px;
 }
 ::selection {
-    background: color-mix(in srgb, var(--color-accent) 28%, transparent);
+    background: color-mix(in srgb, var(--brand) 28%, transparent);
 }
 .ui-muted {
     color: color-mix(in srgb, var(--color-text) 55%, transparent);
@@ -177,17 +177,17 @@ h6 {
     flex: none;
 }
 .ui-btn-primary {
-    background: var(--color-accent);
+    background: var(--brand);
     color: #fff;
-    border-color: var(--color-accent);
+    border-color: var(--brand);
 }
 .ui-btn-primary:hover:not(:disabled) {
-    background: var(--color-accent-600);
-    border-color: var(--color-accent-600);
+    background: var(--brand-600);
+    border-color: var(--brand-600);
 }
 .ui-btn-primary:active:not(:disabled) {
-    background: var(--color-accent-700);
-    border-color: var(--color-accent-700);
+    background: var(--brand-700);
+    border-color: var(--brand-700);
 }
 .ui-btn-secondary:hover:not(:disabled) {
     background: color-mix(in srgb, var(--color-text) 6%, transparent);
@@ -200,11 +200,11 @@ h6 {
     color: var(--color-neutral-700);
 }
 .ui-btn-ghost:hover:not(:disabled) {
-    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
-    color: var(--color-accent-700);
+    background: color-mix(in srgb, var(--brand) 10%, transparent);
+    color: var(--brand-700);
 }
 .ui-btn-ghost:active:not(:disabled) {
-    background: color-mix(in srgb, var(--color-accent) 20%, transparent);
+    background: color-mix(in srgb, var(--brand) 20%, transparent);
 }
 .ui-btn-danger {
     background: var(--danger);
@@ -280,8 +280,8 @@ h6 {
     white-space: nowrap;
 }
 .ui-tag-accent {
-    background: var(--color-accent-100);
-    color: var(--color-accent-800);
+    background: var(--brand-100);
+    color: var(--brand-800);
 }
 .ui-tag-neutral {
     background: var(--color-neutral-200);
@@ -399,7 +399,7 @@ h6 {
     font-family: var(--font-body);
     font-size: 14px;
     color: var(--color-text);
-    caret-color: var(--color-accent);
+    caret-color: var(--brand);
     background: var(--color-surface);
     border: 1px solid var(--color-divider);
     border-radius: var(--radius-sm);
@@ -424,8 +424,8 @@ h6 {
 .ui-input:focus-visible,
 .ui-select:focus-visible,
 .ui-textarea:focus-visible {
-    border-color: var(--color-accent);
-    outline: 2px solid color-mix(in srgb, var(--color-accent) 28%, transparent);
+    border-color: var(--brand);
+    outline: 2px solid color-mix(in srgb, var(--brand) 28%, transparent);
     outline-offset: 1px;
 }
 .ui-input-title {
@@ -443,7 +443,7 @@ h6 {
     border-color: color-mix(in srgb, var(--color-text) 28%, transparent);
 }
 .ui-input-title:focus-visible {
-    border-color: var(--color-accent);
+    border-color: var(--brand);
     outline: none;
     box-shadow: none;
 }
@@ -536,20 +536,20 @@ h6 {
     opacity: 0;
 }
 .ui-check input:checked + .box {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
+    background: var(--brand);
+    border-color: var(--brand);
 }
 .ui-check input:checked + .box svg {
     opacity: 1;
 }
 .ui-check input:focus-visible + .box,
 .ui-radio input:focus-visible + .dot {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--brand);
     outline-offset: 2px;
 }
 .ui-check:hover .box,
 .ui-radio:hover .dot {
-    border-color: var(--color-accent);
+    border-color: var(--brand);
 }
 .ui-radio .dot {
     width: 17px;
@@ -560,8 +560,8 @@ h6 {
     background: var(--color-surface);
 }
 .ui-radio input:checked + .dot {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
+    border-color: var(--brand);
+    background: var(--brand);
     box-shadow: inset 0 0 0 4px var(--color-surface);
 }
 
@@ -591,7 +591,7 @@ h6 {
 }
 .ui-seg-opt[aria-pressed='true'],
 .ui-seg-opt.is-active {
-    background: var(--color-accent);
+    background: var(--brand);
     color: #fff;
 }
 .ui-seg-opt:not(.is-active):hover {
@@ -611,11 +611,11 @@ h6 {
     transition: border-color 0.12s;
 }
 .ui-radiocard:hover {
-    border-color: var(--color-accent-400);
+    border-color: var(--brand-400);
 }
 .ui-radiocard.is-active {
-    border-color: var(--color-accent);
-    box-shadow: inset 0 0 0 1px var(--color-accent);
+    border-color: var(--brand);
+    box-shadow: inset 0 0 0 1px var(--brand);
 }
 
 /* ---- tables ---- */
@@ -645,7 +645,7 @@ h6 {
     user-select: none;
 }
 .ui-table thead th.sortable:hover {
-    color: var(--color-accent-700);
+    color: var(--brand-700);
 }
 .ui-table td {
     padding: 12px 14px;
@@ -657,10 +657,10 @@ h6 {
     transition: background 0.1s;
 }
 .ui-table tbody tr:hover {
-    background: color-mix(in srgb, var(--color-accent) 6%, transparent);
+    background: color-mix(in srgb, var(--brand) 6%, transparent);
 }
 .ui-table tbody tr.is-selected {
-    background: var(--color-accent-100);
+    background: var(--brand-100);
 }
 .ui-table .cell-actions {
     text-align: right;
@@ -799,7 +799,7 @@ h6 {
 }
 .ui-menu-item:hover,
 .ui-menu-item.is-active {
-    background: color-mix(in srgb, var(--color-accent) 12%, transparent);
+    background: color-mix(in srgb, var(--brand) 12%, transparent);
 }
 .ui-menu-item.is-danger {
     color: var(--danger);
@@ -858,8 +858,8 @@ h6 {
     color: var(--color-text);
 }
 .ui-tab.is-active {
-    color: var(--color-accent-800);
-    border-bottom-color: var(--color-accent);
+    color: var(--brand-800);
+    border-bottom-color: var(--brand);
 }
 
 /* language tabs (with fill %) */
@@ -883,7 +883,7 @@ h6 {
 .ui-langtab.is-active {
     background: var(--color-surface);
     color: var(--color-text);
-    box-shadow: inset 0 2px 0 var(--color-accent);
+    box-shadow: inset 0 2px 0 var(--brand);
 }
 .ui-langtab .pct {
     font-size: 11px;
@@ -912,7 +912,7 @@ h6 {
 .ui-progress > span {
     display: block;
     height: 100%;
-    background: var(--color-accent);
+    background: var(--brand);
 }
 .ui-progress.full > span {
     background: var(--ok);
@@ -937,7 +937,7 @@ h6 {
     background: var(--color-surface);
     border: 1px solid var(--color-divider);
     border-radius: var(--radius-md);
-    border-left: 3px solid var(--color-accent);
+    border-left: 3px solid var(--brand);
     box-shadow: var(--shadow-md);
     font-size: 13.5px;
     animation: ui-slide-up 0.16s ease;
@@ -1000,12 +1000,16 @@ h6 {
 .ui-shell {
     display: flex;
     min-height: 100vh;
+    /* Серый холст Statamic: панели и таблицы — белые карточки поверх него.
+       Раньше холст был белым, поэтому белые панели на нём не читались как
+       карточки и вся страница выглядела одним сплошным листом. */
+    background: var(--color-bg);
 }
 .ui-sidebar {
     width: var(--sidebar-w);
     flex: none;
-    background: var(--color-sidebar);
-    color: var(--color-sidebar-text);
+    background: var(--chrome);
+    color: var(--chrome-text);
     display: flex;
     flex-direction: column;
     position: sticky;
@@ -1041,7 +1045,7 @@ h6 {
     display: block;
     margin-top: 2px;
     font-size: 11px;
-    color: var(--color-sidebar-muted);
+    color: var(--chrome-muted);
 }
 .ui-sidebar-brand .mark {
     width: 32px;
@@ -1050,12 +1054,12 @@ h6 {
     display: grid;
     place-items: center;
     border-radius: 9px;
-    background: var(--color-accent);
+    background: var(--brand);
     color: #fff;
     font-family: var(--font-heading);
     font-weight: 600;
     box-shadow: 0 0 0 3px
-        color-mix(in srgb, var(--color-accent) 22%, transparent);
+        color-mix(in srgb, var(--brand) 22%, transparent);
 }
 .ui-sidebar-search {
     display: flex;
@@ -1067,7 +1071,7 @@ h6 {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     background: rgba(255, 255, 255, 0.06);
-    color: var(--color-sidebar-muted);
+    color: var(--chrome-muted);
     cursor: pointer;
     font-size: 13px;
     font-family: var(--font-body);
@@ -1085,7 +1089,7 @@ h6 {
     border: 1px solid rgba(255, 255, 255, 0.14);
     padding: 1px 5px;
     border-radius: 4px;
-    color: var(--color-sidebar-muted);
+    color: var(--chrome-muted);
 }
 .ui-sidebar.is-collapsed .ui-sidebar-search {
     justify-content: center;
@@ -1108,14 +1112,14 @@ h6 {
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
-    color: var(--color-sidebar-muted);
+    color: var(--chrome-muted);
 }
 .ui-nav-item {
     display: flex;
     align-items: center;
     gap: 10px;
     padding: 7px 10px;
-    color: var(--color-sidebar-text);
+    color: var(--chrome-text);
     text-decoration: none;
     font-size: 13px;
     border: 0;
@@ -1130,7 +1134,7 @@ h6 {
     color: #fff;
 }
 .ui-nav-item.is-active {
-    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    background: color-mix(in srgb, var(--brand) 18%, transparent);
     color: #fff;
 }
 .ui-nav-item.is-active::before {
@@ -1141,7 +1145,7 @@ h6 {
     bottom: 7px;
     width: 3px;
     border-radius: 99px;
-    background: var(--color-accent);
+    background: var(--brand);
 }
 .ui-nav-item svg {
     flex: none;
@@ -1160,7 +1164,7 @@ h6 {
     align-items: center;
     justify-content: center;
     border-radius: 9px;
-    background: var(--color-accent);
+    background: var(--brand);
     color: #fff;
     font-variant-numeric: tabular-nums;
 }
@@ -1229,7 +1233,7 @@ h6 {
     text-decoration: none;
 }
 .ui-breadcrumb a:hover {
-    color: var(--color-accent-700);
+    color: var(--brand-700);
 }
 .ui-breadcrumb .sep {
     color: var(--color-neutral-400);
@@ -1237,7 +1241,7 @@ h6 {
 .ui-content {
     flex: 1;
     padding: 28px 32px 48px;
-    max-width: 1440px;
+    max-width: var(--max-page-w);
     width: 100%;
 }
 
@@ -1301,8 +1305,8 @@ h6 {
     color: var(--color-text);
 }
 .ui-savedview.is-active {
-    color: var(--color-accent);
-    border-bottom-color: var(--color-accent);
+    color: var(--brand);
+    border-bottom-color: var(--brand);
     font-family: var(--font-heading);
     font-weight: 600;
 }
@@ -1344,7 +1348,7 @@ a.ui-metric-link {
     border-radius: var(--radius-md);
 }
 a.ui-metric-link:focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--brand);
     outline-offset: 2px;
 }
 .ui-metric.is-link {
@@ -1354,7 +1358,7 @@ a.ui-metric-link:focus-visible {
 }
 a.ui-metric-link:hover .ui-metric.is-link,
 a.ui-metric-link[data-loading] .ui-metric.is-link {
-    border-color: var(--color-accent-400);
+    border-color: var(--brand-400);
     box-shadow: var(--shadow-md);
 }
 
@@ -1403,14 +1407,14 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     border-radius: 999px;
 }
 .ui-step.is-active .num {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
+    background: var(--brand);
+    border-color: var(--brand);
     color: #fff;
 }
 .ui-step.is-done .num {
-    background: var(--color-accent-100);
-    border-color: var(--color-accent);
-    color: var(--color-accent-800);
+    background: var(--brand-100);
+    border-color: var(--brand);
+    color: var(--brand-800);
 }
 .ui-step .step-label {
     font-size: 13px;
@@ -1470,13 +1474,13 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     height: 17px;
     flex: none;
     border-radius: 50%;
-    border: 2px solid var(--color-accent);
+    border: 2px solid var(--brand);
     background: var(--color-surface);
     z-index: 1;
     margin-top: 2px;
 }
 .ui-timeline-dot.is-done {
-    background: var(--color-accent);
+    background: var(--brand);
 }
 .ui-timeline-dot.is-danger {
     border-color: var(--danger);
@@ -1499,8 +1503,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     display: grid;
     place-items: center;
     border-radius: 50%;
-    background: var(--color-accent-100);
-    color: var(--color-accent-800);
+    background: var(--brand-100);
+    color: var(--brand-800);
     font-family: var(--font-heading);
     font-weight: 600;
     font-size: 12px;
@@ -1524,8 +1528,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
         background 0.12s;
 }
 .ui-dropzone.is-over {
-    border-color: var(--color-accent);
-    background: var(--color-accent-100);
+    border-color: var(--brand);
+    background: var(--brand-100);
 }
 
 /* generic grid helpers */
@@ -1541,12 +1545,12 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     background-image:
         radial-gradient(
             900px 480px at 8% -8%,
-            color-mix(in srgb, var(--color-accent) 16%, transparent),
+            color-mix(in srgb, var(--brand) 16%, transparent),
             transparent 55%
         ),
         radial-gradient(
             720px 420px at 108% 8%,
-            color-mix(in srgb, var(--color-accent-800) 22%, transparent),
+            color-mix(in srgb, var(--brand-800) 22%, transparent),
             transparent 50%
         );
     display: grid;
@@ -1571,8 +1575,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     color: var(--color-text);
 }
 .ui-otp input:focus-visible {
-    border-color: var(--color-accent);
-    outline: 2px solid color-mix(in srgb, var(--color-accent) 35%, transparent);
+    border-color: var(--brand);
+    outline: 2px solid color-mix(in srgb, var(--brand) 35%, transparent);
     outline-offset: -1px;
 }
 
@@ -1616,7 +1620,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     font-size: 14px;
     font-family: var(--font-body);
     color: var(--color-text);
-    caret-color: var(--color-accent);
+    caret-color: var(--brand);
 }
 .cms-cmd-input::placeholder {
     color: var(--color-neutral-500);
@@ -1647,7 +1651,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     color: var(--color-text);
 }
 .cms-cmd-item[data-selected='true'] {
-    background: color-mix(in srgb, var(--color-accent) 14%, transparent);
+    background: color-mix(in srgb, var(--brand) 14%, transparent);
     color: var(--color-text);
 }
 .cms-search-trigger {
@@ -1962,7 +1966,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     line-height: 1.08;
 }
 .editorial-preview-kicker {
-    color: var(--color-accent-700);
+    color: var(--brand-700);
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -2157,8 +2161,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
         box-shadow 0.15s ease;
 }
 .re-shell.is-focused {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-accent) 16%, transparent);
+    border-color: var(--brand);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent);
 }
 .re-shell.is-article {
     overflow: visible;
@@ -2284,7 +2288,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     cursor: pointer;
 }
 .re-image-view.is-selected .re-figure-frame {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--brand);
     outline-offset: 2px;
 }
 .re-figure-tools {
@@ -2371,8 +2375,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     background: var(--color-neutral-100);
 }
 .re-pill.is-active {
-    background: var(--color-accent-600);
-    border-color: var(--color-accent-600);
+    background: var(--brand-600);
+    border-color: var(--brand-600);
     color: #fff;
 }
 .re-btn {
@@ -2400,8 +2404,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     box-shadow: var(--shadow-sm);
 }
 .re-btn.is-active {
-    background: var(--color-accent-100);
-    color: var(--color-accent-800);
+    background: var(--brand-100);
+    color: var(--brand-800);
 }
 .re-btn:disabled {
     opacity: 0.4;
@@ -2490,13 +2494,13 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     margin: 0;
 }
 .re-content blockquote {
-    border-left: 3px solid var(--color-accent-400);
+    border-left: 3px solid var(--brand-400);
     padding: var(--space-1) 0 var(--space-1) var(--space-4);
     color: var(--color-neutral-700);
     font-style: italic;
 }
 .re-content a {
-    color: var(--color-accent-700);
+    color: var(--brand-700);
     text-decoration: underline;
 }
 .re-content hr {
@@ -2513,7 +2517,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
 .re-content img.ProseMirror-selectednode,
 .re-content figure.ProseMirror-selectednode,
 .re-content .re-image-view.ProseMirror-selectednode {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--brand);
     outline-offset: 2px;
 }
 
@@ -2595,7 +2599,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     font-weight: 600;
 }
 .re-content .selectedCell {
-    box-shadow: inset 0 0 0 2px var(--color-accent);
+    box-shadow: inset 0 0 0 2px var(--brand);
     background-image: linear-gradient(
         rgb(65 97 128 / 0.16),
         rgb(65 97 128 / 0.16)
@@ -2608,7 +2612,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     bottom: -2px;
     width: 4px;
     z-index: 2;
-    background: var(--color-accent);
+    background: var(--brand);
     pointer-events: none;
 }
 .re-content.resize-cursor {
@@ -2757,7 +2761,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     font-weight: 400;
 }
 .re-swatch.is-active {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--brand);
     outline-offset: 1px;
 }
 .re-status {
@@ -2781,10 +2785,10 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     z-index: 4;
     display: grid;
     place-items: center;
-    border: 1.5px dashed var(--color-accent);
+    border: 1.5px dashed var(--brand);
     border-radius: var(--radius-md);
-    background: color-mix(in srgb, var(--color-accent-100) 88%, transparent);
-    color: var(--color-accent-800);
+    background: color-mix(in srgb, var(--brand-100) 88%, transparent);
+    color: var(--brand-800);
     font-size: 14px;
     font-weight: 600;
     pointer-events: none;
@@ -2796,7 +2800,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     padding: 4px;
     border: 0;
     border-radius: 10px;
-    background: var(--color-sidebar);
+    background: var(--chrome);
     color: #fff;
     box-shadow: var(--shadow-lg);
     z-index: 100;
@@ -2809,7 +2813,7 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     color: #fff;
 }
 .re-bubble .re-btn.is-active {
-    background: var(--color-accent);
+    background: var(--brand);
     color: #fff;
 }
 
@@ -2830,8 +2834,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
         box-shadow 0.12s;
 }
 .media-tile:hover {
-    border-color: var(--color-accent-400);
-    box-shadow: 0 0 0 3px var(--color-accent-100);
+    border-color: var(--brand-400);
+    box-shadow: 0 0 0 3px var(--brand-100);
 }
 .media-tile-main {
     display: flex;
@@ -2874,8 +2878,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
 }
 .media-tile-edit:hover {
     background: var(--color-surface);
-    border-color: var(--color-accent-300);
-    color: var(--color-accent-800);
+    border-color: var(--brand-300);
+    color: var(--brand-800);
 }
 .media-tile-name {
     font-size: 11px;
@@ -2955,9 +2959,9 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     background: var(--color-neutral-100);
 }
 .ie-aspect.is-active {
-    background: var(--color-accent-100);
-    border-color: var(--color-accent-300);
-    color: var(--color-accent-800);
+    background: var(--brand-100);
+    border-color: var(--brand-300);
+    color: var(--brand-800);
 }
 .ie-stage {
     background: #12161a;

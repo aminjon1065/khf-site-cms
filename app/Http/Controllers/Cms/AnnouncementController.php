@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Announcement\AnnouncementRequest;
 use App\Http\Resources\AnnouncementResource;
 use App\Models\Announcement;
+use App\Models\Project;
 use App\Models\User;
 use App\Services\WorkflowService;
 use App\Support\EditorialContent;
@@ -241,6 +242,17 @@ class AnnouncementController extends Controller
     {
         return [
             'kinds' => AnnouncementKind::options(),
+            // Список проектов для привязки тендера. Только опубликованные:
+            // связывать объявление с черновиком проекта нечем — публичная
+            // страница проекта его не покажет.
+            'projects' => Project::query()
+                ->public()
+                ->ordered()
+                ->get()
+                ->map(fn (Project $project): array => [
+                    'value' => $project->id,
+                    'label' => (string) $project->getTranslation('title', 'ru', false),
+                ])->all(),
             'authors' => User::query()->role([
                 RoleName::Editor->value,
                 RoleName::ChiefEditor->value,
@@ -261,6 +273,7 @@ class AnnouncementController extends Controller
             'slug' => $announcement->slug,
             'kind' => $announcement->kind->value,
             'org' => $announcement->org,
+            'project_id' => $announcement->project_id,
             'deadline' => $announcement->deadline?->toDateString(),
             'application_url' => $announcement->application_url,
             'status' => $announcement->status->value,
@@ -277,6 +290,11 @@ class AnnouncementController extends Controller
         $announcement->fill([
             'kind' => $request->input('kind'),
             'org' => $request->input('org'),
+            // Пустая строка из <select> «Вне проекта» — это отсутствие связи,
+            // а не проект с id 0.
+            'project_id' => $request->filled('project_id')
+                ? $request->integer('project_id')
+                : null,
             'deadline' => $request->input('deadline'),
             'application_url' => $request->input('application_url'),
         ]);

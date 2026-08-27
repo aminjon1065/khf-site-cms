@@ -33,6 +33,7 @@ use Spatie\Translatable\HasTranslations;
  * @property int|null $category_id
  * @property ContentStatus $status
  * @property string|null $cover_alt
+ * @property string|null $cover_caption
  * @property bool $is_pinned
  * @property bool $show_on_home
  * @property int $views_count
@@ -69,6 +70,7 @@ class News extends Model implements HasMedia, Workflowable
         'category_id',
         'status',
         'cover_alt',
+        'cover_caption',
         'is_pinned',
         'show_on_home',
         'views_count',
@@ -145,6 +147,13 @@ class News extends Model implements HasMedia, Workflowable
     public function registerMediaCollections(): void
     {
         $this->addMediaCollection('cover')->useDisk($this->contentMediaDisk())->singleFile();
+
+        /**
+         * Вложения: памятки и материалы в PDF. Несколько файлов, порядок задаёт
+         * редактор. Диск тот же, что у обложки: у неопубликованного материала
+         * вложения тоже не должны быть доступны по прямой ссылке.
+         */
+        $this->addMediaCollection('attachments')->useDisk($this->contentMediaDisk());
     }
 
     /**

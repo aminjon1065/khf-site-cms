@@ -75,9 +75,48 @@ class PublicAlertResource extends JsonResource
                 ->map(fn ($r): array => ['code' => $r->code, 'name' => $r->getTranslation('name', $locale, false)])
                 ->all(), []);
             $data['meta'] = $this->metaItems($locale, $active);
+            $data['updates'] = $this->localizedUpdates($locale);
         }
 
         return $data;
+    }
+
+    /**
+     * История обновлений: что изменилось и когда. Новые записи первыми —
+     * читателю важно свежее состояние, а не начало событий.
+     *
+     * Запись без текста на языке страницы пропускается: показывать русскую
+     * строку на таджикской версии предупреждения нельзя, а пустая строка с
+     * датой не сообщает ничего.
+     *
+     * @return list<array{at: string, text: string}>
+     */
+    private function localizedUpdates(string $locale): array
+    {
+        $items = [];
+
+        // Значения внутри записи не типизированы намеренно: JSON пишет форма,
+        // и старые строки в базе могут не совпадать по форме с текущей.
+        foreach ($this->updates ?? [] as $entry) {
+            $at = $entry['at'] ?? null;
+            $texts = $entry['text'] ?? null;
+
+            if (! is_string($at) || ! is_array($texts)) {
+                continue;
+            }
+
+            $text = trim((string) ($texts[$locale] ?? ''));
+
+            if ($at === '' || $text === '') {
+                continue;
+            }
+
+            $items[] = ['at' => $at, 'text' => $text];
+        }
+
+        usort($items, static fn (array $a, array $b): int => strcmp($b['at'], $a['at']));
+
+        return $items;
     }
 
     /**

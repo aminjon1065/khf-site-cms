@@ -49,7 +49,16 @@ class NewsRequest extends FormRequest
             'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
             'cover_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'cover_remove' => ['boolean'],
+
+            // Вложения: памятки и материалы. Только документы — картинки для
+            // этого есть обложка и медиатека, а исполняемые файлы на портале
+            // ведомства недопустимы.
+            'attachments' => ['nullable', 'array', 'max:10'],
+            'attachments.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx', 'max:20480'],
+            'attachments_remove' => ['nullable', 'array'],
+            'attachments_remove.*' => ['integer'],
             'cover_alt' => ['nullable', 'string', 'max:255'],
+            'cover_caption' => ['nullable', 'string', 'max:500'],
 
             'is_pinned' => ['boolean'],
             'show_on_home' => ['boolean'],
@@ -90,6 +99,9 @@ class NewsRequest extends FormRequest
             'category_id.exists' => 'Выбрана несуществующая категория.',
             'cover.image' => 'Обложка должна быть изображением.',
             'cover.max' => 'Размер обложки не должен превышать 5 МБ.',
+            'attachments.max' => 'Не больше 10 вложений.',
+            'attachments.*.mimes' => 'Вложение должно быть документом: PDF, DOC, DOCX, XLS или XLSX.',
+            'attachments.*.max' => 'Размер вложения не должен превышать 20 МБ.',
             'scheduled_at.required' => 'Укажите дату плановой публикации.',
             'scheduled_at.after' => 'Дата плановой публикации должна быть в будущем.',
         ];

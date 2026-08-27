@@ -25,6 +25,7 @@ class HomeBlockController extends Controller
         'projects' => 'Проекты',
         'regions_map' => 'Карта регионов',
         'emergency_contacts' => 'Экстренные контакты',
+        'indicators' => 'Ключевые показатели',
     ];
 
     /**
@@ -50,6 +51,8 @@ class HomeBlockController extends Controller
                 'sort' => (int) $block->sort,
                 'supports_limit' => in_array($block->type, self::WITH_LIMIT, true),
                 'limit' => isset($config['limit']) ? (int) $config['limit'] : null,
+                'supports_items' => $block->type === 'indicators',
+                'items' => is_array($config['items'] ?? null) ? $config['items'] : [],
             ];
         })->all();
 
@@ -90,11 +93,56 @@ class HomeBlockController extends Controller
                     unset($config['limit']);
                 }
 
+                if ($block->type === 'indicators') {
+                    $config['items'] = $this->cleanIndicators($row['items'] ?? null);
+                }
+
                 $block->config = $config;
                 $block->save();
             }
         });
 
         return back()->with('success', 'Главная страница обновлена.');
+    }
+
+    /**
+     * Показатели ведомства: число и подпись к нему на трёх языках.
+     *
+     * Считать их CMS не может — «спасательных операций» и «человек спасено»
+     * нет ни в одной таблице, эти цифры приходят из отчётности. Поэтому их
+     * вводит редактор, а не вычисляет система.
+     *
+     * Запись без числа или без подписи хотя бы на одном языке отбрасывается:
+     * пустая плитка на главной хуже отсутствующей.
+     *
+     * @return list<array{value: string, label: array<string, string>}>
+     */
+    private function cleanIndicators(mixed $raw): array
+    {
+        $items = [];
+
+        foreach (is_array($raw) ? $raw : [] as $row) {
+            if (! is_array($row)) {
+                continue;
+            }
+
+            $value = is_string($row['value'] ?? null) ? trim($row['value']) : '';
+            $labels = is_array($row['label'] ?? null) ? $row['label'] : [];
+            $label = [];
+
+            foreach ($labels as $locale => $text) {
+                if (is_string($locale) && is_string($text) && trim($text) !== '') {
+                    $label[$locale] = trim($text);
+                }
+            }
+
+            if ($value === '' || $label === []) {
+                continue;
+            }
+
+            $items[] = ['value' => $value, 'label' => $label];
+        }
+
+        return $items;
     }
 }

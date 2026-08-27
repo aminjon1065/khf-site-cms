@@ -32,6 +32,7 @@ use Spatie\Translatable\HasTranslations;
  * @property array<string, string> $summary
  * @property array<string, string> $body
  * @property array<string, string> $instructions
+ * @property list<array<string, mixed>>|null $updates
  * @property array<string, string> $contacts
  * @property HazardType $hazard_type
  * @property Severity $severity
@@ -86,6 +87,7 @@ class Alert extends Model implements HasMedia, Workflowable
         'title',
         'summary',
         'body',
+        'updates',
         'instructions',
         'contacts',
         'hazard_type',
@@ -115,6 +117,7 @@ class Alert extends Model implements HasMedia, Workflowable
             'severity' => Severity::class,
             'status' => ContentStatus::class,
             'channels' => 'array',
+            'updates' => 'array',
             'starts_at' => 'datetime',
             'ends_at' => 'datetime',
             'scheduled_at' => 'datetime',

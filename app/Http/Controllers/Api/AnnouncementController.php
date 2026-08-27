@@ -36,8 +36,11 @@ class AnnouncementController extends Controller
     public function show(string $slug): JsonResource
     {
         $query = Announcement::query()
-            ->select(['id', 'slug', 'kind', 'title', 'body', 'org', 'deadline', 'application_url'])
+            ->select(['id', 'slug', 'kind', 'title', 'body', 'org', 'project_id', 'deadline', 'application_url'])
             ->public()
+            // Проект нужен только на детальной странице: в списке связь не
+            // выводится, и грузить её на каждую строку незачем.
+            ->with(['project:id,slug,title'])
             ->where('slug', $slug);
 
         PublicLocale::available($query, 'title');

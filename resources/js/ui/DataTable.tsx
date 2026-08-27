@@ -112,7 +112,7 @@ export function DataTable<T>({
                         alignItems: 'center',
                         gap: 12,
                         padding: '8px 12px',
-                        background: 'var(--color-accent-100)',
+                        background: 'var(--brand-100)',
                         borderBottom: '1px solid var(--color-divider)',
                         fontSize: 13,
                     }}
