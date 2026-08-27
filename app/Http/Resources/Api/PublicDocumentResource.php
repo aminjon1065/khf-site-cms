@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Document;
+use App\Support\FileSize;
 use App\Support\PublicApiLabels;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -72,7 +73,7 @@ class PublicDocumentResource extends JsonResource
                 'label' => self::LABELS[$locale],
                 'url' => $media->getFullUrl(),
                 'ext' => $ext,
-                'size' => $ext.' · '.$this->humanSize((int) $media->size, $requestedLocale),
+                'size' => $ext.' · '.FileSize::human((int) $media->size, $requestedLocale),
                 'size_bytes' => (int) $media->size,
             ];
         }
@@ -105,22 +106,5 @@ class PublicDocumentResource extends JsonResource
     private function localizedName(string $locale): string
     {
         return (string) $this->getTranslation('name', $locale, false);
-    }
-
-    private function humanSize(int $bytes, string $locale): string
-    {
-        $units = $locale === 'en'
-            ? ['mb' => 'MB', 'kb' => 'KB', 'b' => 'B']
-            : ['mb' => 'МБ', 'kb' => 'КБ', 'b' => 'Б'];
-
-        if ($bytes >= 1048576) {
-            return str_replace('.', $locale === 'en' ? '.' : ',', (string) round($bytes / 1048576, 1)).' '.$units['mb'];
-        }
-
-        if ($bytes >= 1024) {
-            return str_replace('.', $locale === 'en' ? '.' : ',', (string) round($bytes / 1024, 1)).' '.$units['kb'];
-        }
-
-        return $bytes.' '.$units['b'];
     }
 }

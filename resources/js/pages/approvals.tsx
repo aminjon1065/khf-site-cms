@@ -142,9 +142,9 @@ export default function Approvals({
                                         border: 0,
                                         borderBottom:
                                             '1px solid var(--color-divider)',
-                                        borderLeft: `2px solid ${active ? 'var(--color-accent-700)' : 'transparent'}`,
+                                        borderLeft: `2px solid ${active ? 'var(--brand-700)' : 'transparent'}`,
                                         background: active
-                                            ? 'var(--color-accent-100)'
+                                            ? 'var(--brand-100)'
                                             : 'transparent',
                                         cursor: 'pointer',
                                     }}

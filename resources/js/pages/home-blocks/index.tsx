@@ -1,5 +1,5 @@
 import { Head, useForm } from '@inertiajs/react';
-import { ArrowDown, ArrowUp, GripVertical, Save } from 'lucide-react';
+import { ArrowDown, ArrowUp, GripVertical, Save, Trash2 } from 'lucide-react';
 import HomeBlockController from '@/actions/App/Http/Controllers/Cms/HomeBlockController';
 import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
@@ -18,6 +18,14 @@ interface BlockRow {
     enabled: boolean;
     supports_limit: boolean;
     limit: number | null;
+    supports_items: boolean;
+    items: IndicatorItem[];
+}
+
+/** Показатель ведомства: число и подпись к нему по локалям. */
+interface IndicatorItem {
+    value: string;
+    label: LocaleMap;
 }
 
 interface Props {
@@ -41,9 +49,29 @@ export default function HomeBlocksIndex({ blocks }: Props) {
             enabled: b.enabled,
             supports_limit: b.supports_limit,
             limit: b.limit as number | null,
+            supports_items: b.supports_items,
+            items: (b.items ?? []).map((it) => ({
+                value: it.value ?? '',
+                label: {
+                    ru: it.label?.ru ?? '',
+                    tg: it.label?.tg ?? '',
+                    en: it.label?.en ?? '',
+                } as LocaleMap,
+            })),
         })),
     });
     const { data, setData, processing } = form;
+
+    const updateItem = (
+        blockIndex: number,
+        itemIndex: number,
+        patch: Partial<IndicatorItem>,
+    ) =>
+        update(blockIndex, {
+            items: data.blocks[blockIndex].items.map((item, k) =>
+                k === itemIndex ? { ...item, ...patch } : item,
+            ),
+        });
 
     const update = (i: number, patch: Partial<(typeof data.blocks)[number]>) =>
         setData(
@@ -277,6 +305,103 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                         >
                             №{i + 1}
                         </span>
+
+                        {/* Показатели ведомства. Считать их система не может:
+                            «спасательных операций» и «человек спасено» нет ни
+                            в одной таблице — цифры приходят из отчётности,
+                            поэтому их вводит редактор. */}
+                        {block.supports_items && (
+                            <div style={{ gridColumn: '1 / -1' }}>
+                                <div className="flex flex-col gap-2">
+                                    {block.items.map((item, k) => (
+                                        <div
+                                            key={k}
+                                            className="flex items-start gap-2"
+                                        >
+                                            <Input
+                                                value={item.value}
+                                                aria-label="Значение"
+                                                placeholder="86 500"
+                                                disabled={!editable}
+                                                style={{ maxWidth: 110 }}
+                                                onChange={(e) =>
+                                                    updateItem(i, k, {
+                                                        value: e.target.value,
+                                                    })
+                                                }
+                                            />
+                                            {(['ru', 'tg', 'en'] as const).map(
+                                                (loc) => (
+                                                    <Input
+                                                        key={loc}
+                                                        value={
+                                                            item.label[loc] ??
+                                                            ''
+                                                        }
+                                                        aria-label={`Подпись · ${loc.toUpperCase()}`}
+                                                        placeholder={`Подпись · ${loc.toUpperCase()}`}
+                                                        disabled={!editable}
+                                                        onChange={(e) =>
+                                                            updateItem(i, k, {
+                                                                label: {
+                                                                    ...item.label,
+                                                                    [loc]: e
+                                                                        .target
+                                                                        .value,
+                                                                },
+                                                            })
+                                                        }
+                                                    />
+                                                ),
+                                            )}
+                                            <button
+                                                type="button"
+                                                className="btn btn-icon"
+                                                aria-label="Удалить показатель"
+                                                disabled={!editable}
+                                                onClick={() =>
+                                                    update(i, {
+                                                        items: block.items.filter(
+                                                            (_, x) => x !== k,
+                                                        ),
+                                                    })
+                                                }
+                                            >
+                                                <Trash2
+                                                    size={15}
+                                                    strokeWidth={1.5}
+                                                />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {editable && (
+                                        <div>
+                                            <button
+                                                type="button"
+                                                className="btn"
+                                                onClick={() =>
+                                                    update(i, {
+                                                        items: [
+                                                            ...block.items,
+                                                            {
+                                                                value: '',
+                                                                label: {
+                                                                    ru: '',
+                                                                    tg: '',
+                                                                    en: '',
+                                                                } as LocaleMap,
+                                                            },
+                                                        ],
+                                                    })
+                                                }
+                                            >
+                                                Добавить показатель
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </Blueprint>
                 ))}
             </div>

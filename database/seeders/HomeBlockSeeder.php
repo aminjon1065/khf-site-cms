@@ -18,6 +18,9 @@ class HomeBlockSeeder extends Seeder
             ['type' => 'projects', 'title' => ['tg' => 'Лоиҳаҳо', 'ru' => 'Проекты', 'en' => 'Projects'], 'enabled' => true, 'config' => ['limit' => 2]],
             ['type' => 'regions_map', 'title' => ['tg' => 'Вазъият аз рӯи минтақаҳо', 'ru' => 'Обстановка по регионам', 'en' => 'Regional situation'], 'enabled' => true, 'config' => []],
             ['type' => 'emergency_contacts', 'title' => ['tg' => 'Тамосҳои фаврӣ', 'ru' => 'Экстренные контакты', 'en' => 'Emergency contacts'], 'enabled' => false, 'config' => []],
+            // Показатели ведомства. Выключен по умолчанию: пока редактор не
+            // внёс цифры, блок на главной показывать нечем.
+            ['type' => 'indicators', 'title' => ['tg' => 'Нишондиҳандаҳои калидӣ', 'ru' => 'Ключевые показатели', 'en' => 'Key indicators'], 'enabled' => false, 'config' => ['items' => []]],
         ];
 
         foreach ($blocks as $sort => $data) {

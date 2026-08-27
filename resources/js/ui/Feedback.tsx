@@ -103,7 +103,7 @@ export function MetricCard({
               : tone === 'ok'
                 ? 'var(--ok)'
                 : tone === 'accent'
-                  ? 'var(--color-accent-700)'
+                  ? 'var(--brand-700)'
                   : 'var(--color-text)';
 
     const card = (
@@ -151,9 +151,9 @@ export function WorkflowTimeline({ steps }: { steps: TimelineStep[] }) {
                         style={
                             s.state === 'active'
                                 ? {
-                                      borderColor: 'var(--color-accent)',
+                                      borderColor: 'var(--brand)',
                                       boxShadow:
-                                          '0 0 0 3px var(--color-accent-100)',
+                                          '0 0 0 3px var(--brand-100)',
                                   }
                                 : undefined
                         }
@@ -165,7 +165,7 @@ export function WorkflowTimeline({ steps }: { steps: TimelineStep[] }) {
                                 fontWeight: s.state === 'active' ? 600 : 500,
                                 color:
                                     s.state === 'active'
-                                        ? 'var(--color-accent-800)'
+                                        ? 'var(--brand-800)'
                                         : 'var(--color-text)',
                             }}
                         >

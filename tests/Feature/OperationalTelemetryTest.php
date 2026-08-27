@@ -47,14 +47,22 @@ it('says which period the samples cover', function () {
         ->from->toBeNull()
         ->to->toBeNull();
 
-    $this->travelTo('2026-08-01 10:00:00');
+    // Метки времени относительные, а не 2026-08-01: телеметрия кладётся в кэш
+    // с TTL семь дней, и TTL считается от «времени внутри путешествия». С
+    // фиксированной прошлой датой запись протухала раньше, чем тест успевал
+    // её прочитать, — тест начал падать сам собой, когда календарь ушёл
+    // дальше этой даты на неделю.
+    $start = now()->startOfHour();
+    $end = $start->copy()->addHours(2)->addMinutes(30);
+
+    $this->travelTo($start);
     $telemetry->recordApi('api.news.index', 200, 10);
-    $this->travelTo('2026-08-01 12:30:00');
+    $this->travelTo($end);
     $telemetry->recordApi('api.news.index', 200, 12);
     $this->travelBack();
 
     $window = $telemetry->summary()['api']['window'];
 
-    expect($window['from'])->toStartWith('2026-08-01T10:00:00')
-        ->and($window['to'])->toStartWith('2026-08-01T12:30:00');
+    expect($window['from'])->toStartWith($start->toIso8601String())
+        ->and($window['to'])->toStartWith($end->toIso8601String());
 });

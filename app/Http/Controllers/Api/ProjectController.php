@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\AnnouncementKind;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicProjectResource;
 use App\Models\Project;
@@ -63,7 +64,15 @@ class ProjectController extends Controller
                 'direction',
             ])
             ->public()
-            ->with('media')
+            // Тендеры проекта — только на детальной, в списке они не нужны.
+            // Ограничение и порядок задаются здесь, а не в ресурсе: иначе
+            // ресурс тянул бы связь запросом на каждую строку.
+            ->with(['media', 'announcements' => fn ($query) => $query
+                ->select(['id', 'project_id', 'slug', 'kind', 'title', 'deadline'])
+                ->where('kind', AnnouncementKind::Tender)
+                ->public()
+                ->ordered()
+                ->limit(5)])
             ->where('slug', $slug);
 
         PublicLocale::available($query, 'title');

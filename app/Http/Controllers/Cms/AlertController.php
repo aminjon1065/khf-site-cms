@@ -346,12 +346,51 @@ class AlertController extends Controller
             'summary' => $alert->getTranslations('summary'),
             'body' => $alert->getTranslations('body'),
             'instructions' => $alert->getTranslations('instructions'),
+            'updates' => $alert->updates ?? [],
             'contacts' => $alert->getTranslations('contacts'),
             'regions' => $alert->regions->pluck('id')->all(),
             'districts' => $alert->districts->pluck('id')->all(),
             'related_instructions' => $alert->relatedInstructions->pluck('id')->all(),
             'languages' => $alert->languageCompleteness(),
         ];
+    }
+
+    /**
+     * Нормализует историю обновлений: выбрасывает записи без времени и без
+     * текста хотя бы на одном языке, а из текстов — пустые переводы.
+     *
+     * Пустая запись в базе означала бы точку на таймлайне без содержания:
+     * читатель видел бы дату и ничего под ней.
+     *
+     * @return list<array{at: string, text: array<string, string>}>
+     */
+    private function cleanUpdates(mixed $raw): array
+    {
+        $items = [];
+
+        foreach (is_array($raw) ? $raw : [] as $entry) {
+            if (! is_array($entry)) {
+                continue;
+            }
+
+            $at = is_string($entry['at'] ?? null) ? trim($entry['at']) : '';
+            $texts = is_array($entry['text'] ?? null) ? $entry['text'] : [];
+            $text = [];
+
+            foreach ($texts as $locale => $value) {
+                if (is_string($locale) && is_string($value) && trim($value) !== '') {
+                    $text[$locale] = trim($value);
+                }
+            }
+
+            if ($at === '' || $text === []) {
+                continue;
+            }
+
+            $items[] = ['at' => $at, 'text' => $text];
+        }
+
+        return $items;
     }
 
     private function fill(Alert $alert, AlertRequest $request): void
@@ -369,6 +408,7 @@ class AlertController extends Controller
             'scheduled_at' => $request->input('scheduled_at'),
             'channels' => $request->input('channels', []),
             'approver_id' => $request->input('approver_id'),
+            'updates' => $this->cleanUpdates($request->input('updates')),
         ]);
 
         foreach (['title', 'summary', 'body', 'instructions', 'contacts'] as $field) {

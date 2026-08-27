@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\News;
+use App\Support\PublicAttachments;
 use App\Support\PublicImageData;
 use App\Support\RichTextMediaResolver;
 use Carbon\CarbonInterface;
@@ -55,6 +56,9 @@ class PublicNewsResource extends JsonResource
         ];
 
         if ($this->withBody) {
+            // Вложения — только на детальной: в списке блок «Материалы» не
+            // выводится, и тянуть медиа на каждую строку незачем.
+            $data['attachments'] = PublicAttachments::fromModel($this->resource, $locale);
             $data['body'] = app(RichTextMediaResolver::class)
                 ->resolve($this->tr('body', $locale));
             $data['views'] = (int) $this->views_count;
@@ -109,9 +113,14 @@ class PublicNewsResource extends JsonResource
 
         $alt = trim((string) $this->cover_alt);
 
+        $caption = trim((string) $this->cover_caption);
+
         return PublicImageData::fromMedia(
             $media,
             $alt !== '' ? $alt : $this->tr('title', $locale),
+            // Подпись — необязательна: без неё публичная часть просто не
+            // рисует <figcaption>, а не подставляет придуманный текст.
+            $caption !== '' ? $caption : null,
         );
     }
 }

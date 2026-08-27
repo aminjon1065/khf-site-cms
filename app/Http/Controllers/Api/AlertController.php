@@ -72,6 +72,7 @@ class AlertController extends Controller
                 'title',
                 'summary',
                 'body',
+                'updates',
                 'instructions',
                 'contacts',
                 'source',

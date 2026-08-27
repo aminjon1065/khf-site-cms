@@ -43,14 +43,14 @@ function Shell({ children }: { children: ReactNode }) {
                         style={{
                             width: 48,
                             height: 48,
-                            background: 'var(--color-accent)',
+                            background: 'var(--brand)',
                             display: 'grid',
                             placeItems: 'center',
                             color: '#fff',
                             flex: 'none',
                             borderRadius: 12,
                             boxShadow:
-                                '0 0 0 4px color-mix(in srgb, var(--color-accent) 18%, transparent)',
+                                '0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent)',
                         }}
                     >
                         <ShieldAlert size={24} strokeWidth={1.8} />
@@ -133,7 +133,7 @@ function langLink(active: boolean): React.CSSProperties {
         background: 'transparent',
         cursor: 'pointer',
         fontSize: 12,
-        color: active ? 'var(--color-accent-700)' : 'var(--color-neutral-600)',
+        color: active ? 'var(--brand-700)' : 'var(--color-neutral-600)',
         fontWeight: active ? 700 : 400,
     };
 }

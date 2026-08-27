@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api;
 
 use App\Models\Instruction;
 use App\Support\PublicApiLabels;
+use App\Support\PublicAttachments;
 use App\Support\PublicImageData;
 use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
@@ -56,6 +57,13 @@ class PublicInstructionResource extends JsonResource
         ];
 
         if ($this->withSections) {
+            // «Главное за 10 секунд» — только на детальной странице и только
+            // если редактор его заполнил. Пустое поле означает, что блок не
+            // выводится: раньше под этим заголовком стоял `summary`, то есть
+            // описание темы вместо действия.
+            $keyPoint = trim($this->tr('key_point', $locale));
+            $data['key_point'] = $keyPoint !== '' ? $keyPoint : null;
+            $data['attachments'] = PublicAttachments::fromModel($this->resource, $locale);
             $data['sections'] = $this->localizedSections($locale);
             $data['body'] = app(RichTextMediaResolver::class)
                 ->resolve($this->tr('body', $locale));

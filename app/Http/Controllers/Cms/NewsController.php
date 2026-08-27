@@ -13,14 +13,17 @@ use App\Models\Tag;
 use App\Models\User;
 use App\Services\WorkflowService;
 use App\Support\EditorialContent;
+use App\Support\FileSize;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class NewsController extends Controller
@@ -310,6 +313,8 @@ class NewsController extends Controller
             'category_id' => $news->category_id,
             'tags' => $news->tags->pluck('id')->all(),
             'cover_alt' => $news->cover_alt,
+            'cover_caption' => $news->cover_caption,
+            'attachments' => $this->attachmentsPayload($news),
             'cover_url' => $news->getFirstMediaUrl('cover') ?: null,
             'is_pinned' => (bool) $news->is_pinned,
             'show_on_home' => (bool) $news->show_on_home,
@@ -328,6 +333,7 @@ class NewsController extends Controller
         $news->fill([
             'category_id' => $request->input('category_id'),
             'cover_alt' => $request->input('cover_alt'),
+            'cover_caption' => $request->input('cover_caption'),
             'is_pinned' => $request->boolean('is_pinned'),
             'show_on_home' => $request->boolean('show_on_home'),
             'scheduled_at' => $request->input('scheduled_at'),
@@ -387,6 +393,8 @@ class NewsController extends Controller
 
     private function syncMedia(News $news, NewsRequest $request): void
     {
+        $this->syncAttachments($news, $request);
+
         if ($request->boolean('cover_remove')) {
             $news->clearMediaCollection('cover');
         }
@@ -405,6 +413,30 @@ class NewsController extends Controller
                     ->setCustomProperty('source_media_id', $source->getKey())
                     ->setCustomProperty('focal_point', $source->getCustomProperty('focal_point'))
                     ->saveQuietly();
+            }
+        }
+    }
+
+    /**
+     * Вложения материала. Удаление — по идентификаторам, чтобы правка одного
+     * файла не требовала перезагружать остальные.
+     */
+    private function syncAttachments(News $news, NewsRequest $request): void
+    {
+        /** @var list<int> $remove */
+        $remove = array_map('intval', (array) $request->input('attachments_remove', []));
+
+        if ($remove !== []) {
+            $news->getMedia('attachments')
+                ->whereIn('id', $remove)
+                ->each(fn (Media $media) => $media->delete());
+        }
+
+        foreach ((array) $request->file('attachments', []) as $file) {
+            if ($file instanceof UploadedFile) {
+                $news->addMedia($file)
+                    ->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
+                    ->toMediaCollection('attachments');
             }
         }
     }
@@ -471,5 +503,28 @@ class NewsController extends Controller
                 : 'Новость отправлена на согласование.',
             default => 'Новость отправлена на согласование.',
         };
+    }
+
+    /**
+     * Вложения для формы редактора: тип файла и человекочитаемый размер, как
+     * их увидит читатель на странице.
+     *
+     * @return list<array{id: int, title: string, ext: string, size: string}>
+     */
+    private function attachmentsPayload(HasMedia $model): array
+    {
+        return array_values(array_map(
+            static function (Media $media): array {
+                $title = trim((string) $media->name);
+
+                return [
+                    'id' => (int) $media->getKey(),
+                    'title' => $title !== '' ? $title : $media->file_name,
+                    'ext' => strtoupper(pathinfo($media->file_name, PATHINFO_EXTENSION) ?: 'FILE'),
+                    'size' => FileSize::human((int) $media->size, 'ru'),
+                ];
+            },
+            $model->getMedia('attachments')->all(),
+        ));
     }
 }

@@ -37,6 +37,9 @@ class AnnouncementRequest extends FormRequest
 
             'kind' => ['required', Rule::enum(AnnouncementKind::class)],
             'org' => ['nullable', 'string', 'max:255'],
+            // Тендер может относиться к проекту. `exists` защищает от привязки
+            // к удалённому проекту: связь в БД допускает null, но не мусор.
+            'project_id' => ['nullable', 'integer', Rule::exists('projects', 'id')->whereNull('deleted_at')],
             'deadline' => ['nullable', 'date'],
             'slug' => [
                 'nullable', 'string', 'max:255', 'alpha_dash',

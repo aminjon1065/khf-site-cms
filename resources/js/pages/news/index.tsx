@@ -129,7 +129,7 @@ export default function NewsIndex({
                                 size={13}
                                 strokeWidth={1.75}
                                 style={{
-                                    color: 'var(--color-accent-600)',
+                                    color: 'var(--brand-600)',
                                     flex: 'none',
                                 }}
                             />

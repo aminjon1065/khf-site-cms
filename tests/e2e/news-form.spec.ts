@@ -43,7 +43,9 @@ test('editor creates a news draft with a cover image via the form, then deletes 
         .getByRole('textbox', { name: 'Заголовок*', exact: true })
         .fill(DRAFT_TITLE);
     await page
-        .locator('input[type="file"]')
+        // Именно поле обложки: рядом появилось поле вложений, и локатор без
+        // уточнения стал неоднозначным.
+        .locator('input[type="file"][accept*="image/"]')
         .setInputFiles(path.join(DIRNAME, 'fixtures', 'cover.png'));
 
     // The cover preview <img> only appears once the file is picked up client-side.

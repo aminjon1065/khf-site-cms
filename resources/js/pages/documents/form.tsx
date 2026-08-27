@@ -270,7 +270,7 @@ export default function DocumentForm({ document, reference }: Props) {
                                                         size={15}
                                                         strokeWidth={1.5}
                                                         style={{
-                                                            color: 'var(--color-accent-600)',
+                                                            color: 'var(--brand-600)',
                                                         }}
                                                     />
                                                     <a
@@ -278,7 +278,7 @@ export default function DocumentForm({ document, reference }: Props) {
                                                         target="_blank"
                                                         rel="noreferrer"
                                                         style={{
-                                                            color: 'var(--color-accent-700)',
+                                                            color: 'var(--brand-700)',
                                                         }}
                                                     >
                                                         {existing.name}

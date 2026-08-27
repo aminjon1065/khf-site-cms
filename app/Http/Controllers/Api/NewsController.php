@@ -69,6 +69,7 @@ class NewsController extends Controller
                 'published_at',
                 'is_pinned',
                 'cover_alt',
+                'cover_caption',
                 'views_count',
                 'seo',
             ])

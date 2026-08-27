@@ -1,5 +1,12 @@
 import { TriangleAlert, X } from 'lucide-react';
-import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useId,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { useDialogFocus } from '@/hooks/use-dialog-focus';
@@ -252,7 +259,10 @@ export function Dropdown({
     const triggerRef = useRef<HTMLDivElement>(null);
     const menuRef = useRef<HTMLDivElement>(null);
 
-    const updatePosition = () => {
+    // useCallback, чтобы функцию можно было честно указать в зависимостях
+    // эффекта: без этого ссылка менялась каждый рендер и список зависимостей
+    // приходилось держать неполным.
+    const updatePosition = useCallback(() => {
         const triggerEl = triggerRef.current;
         const menuEl = menuRef.current;
 
@@ -275,15 +285,19 @@ export function Dropdown({
 
         setCoords({ top, left });
         setReady(true);
-    };
+    }, [align, placement]);
 
     useLayoutEffect(() => {
         if (!open) {
-            setReady(false);
-
             return;
         }
 
+        // Сброса `ready` при закрытии здесь нет намеренно. Меню
+        // размонтируется вместе с `open`, а при следующем открытии этот
+        // эффект пересчитывает позицию до того, как браузер нарисует кадр, —
+        // старые координаты на экран не попадают. Прежний `setReady(false)`
+        // был вызовом setState прямо в эффекте: лишний цикл рендера на каждое
+        // закрытие ради состояния, которое всё равно не видно.
         updatePosition();
         window.addEventListener('resize', updatePosition);
         window.addEventListener('scroll', updatePosition, true);
@@ -292,7 +306,7 @@ export function Dropdown({
             window.removeEventListener('resize', updatePosition);
             window.removeEventListener('scroll', updatePosition, true);
         };
-    }, [align, open, placement]);
+    }, [open, updatePosition]);
 
     useEffect(() => {
         if (!open) {

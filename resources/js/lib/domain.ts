@@ -54,7 +54,7 @@ export const toneColor: Record<StatusTone, string> = {
     neutral: 'var(--color-neutral-500)',
     warn: 'var(--warn)',
     ok: 'var(--ok)',
-    accent: 'var(--color-accent-600)',
+    accent: 'var(--brand-600)',
     danger: 'var(--danger)',
 };
 

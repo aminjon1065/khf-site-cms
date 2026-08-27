@@ -12,13 +12,16 @@ use App\Models\Instruction;
 use App\Models\User;
 use App\Services\WorkflowService;
 use App\Support\EditorialContent;
+use App\Support\FileSize;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Spatie\MediaLibrary\HasMedia;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class InstructionController extends Controller
@@ -284,6 +287,8 @@ class InstructionController extends Controller
             'id' => $instruction->id,
             'name' => $instruction->getTranslations('name'),
             'summary' => $instruction->getTranslations('summary'),
+            'key_point' => $instruction->getTranslations('key_point'),
+            'attachments' => $this->attachmentsPayload($instruction),
             'body' => $instruction->getTranslations('body'),
             'slug' => $instruction->slug,
             'status' => $instruction->status->value,
@@ -312,7 +317,7 @@ class InstructionController extends Controller
             $instruction->slug = $request->string('slug')->toString();
         }
 
-        foreach (['name', 'summary'] as $field) {
+        foreach (['name', 'summary', 'key_point'] as $field) {
             /** @var array<string, string|null> $values */
             $values = $request->input($field, []);
             $instruction->setTranslations($field, array_filter(
@@ -378,8 +383,34 @@ class InstructionController extends Controller
         return $result;
     }
 
+    /**
+     * Вложения инструкции. Удаление — по идентификаторам, чтобы правка одного
+     * файла не требовала перезагружать остальные.
+     */
+    private function syncAttachments(Instruction $instruction, InstructionRequest $request): void
+    {
+        /** @var list<int> $remove */
+        $remove = array_map('intval', (array) $request->input('attachments_remove', []));
+
+        if ($remove !== []) {
+            $instruction->getMedia('attachments')
+                ->whereIn('id', $remove)
+                ->each(fn (Media $media) => $media->delete());
+        }
+
+        foreach ((array) $request->file('attachments', []) as $file) {
+            if ($file instanceof UploadedFile) {
+                $instruction->addMedia($file)
+                    ->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
+                    ->toMediaCollection('attachments');
+            }
+        }
+    }
+
     private function syncMedia(Instruction $instruction, InstructionRequest $request): void
     {
+        $this->syncAttachments($instruction, $request);
+
         if ($request->boolean('image_remove')) {
             $instruction->clearMediaCollection('image');
         }
@@ -448,5 +479,28 @@ class InstructionController extends Controller
         return $request->input('publish_mode') === 'now'
             ? 'Инструкция опубликована.'
             : 'Инструкция отправлена на согласование.';
+    }
+
+    /**
+     * Вложения для формы редактора: тип файла и человекочитаемый размер, как
+     * их увидит читатель на странице.
+     *
+     * @return list<array{id: int, title: string, ext: string, size: string}>
+     */
+    private function attachmentsPayload(HasMedia $model): array
+    {
+        return array_values(array_map(
+            static function (Media $media): array {
+                $title = trim((string) $media->name);
+
+                return [
+                    'id' => (int) $media->getKey(),
+                    'title' => $title !== '' ? $title : $media->file_name,
+                    'ext' => strtoupper(pathinfo($media->file_name, PATHINFO_EXTENSION) ?: 'FILE'),
+                    'size' => FileSize::human((int) $media->size, 'ru'),
+                ];
+            },
+            $model->getMedia('attachments')->all(),
+        ));
     }
 }

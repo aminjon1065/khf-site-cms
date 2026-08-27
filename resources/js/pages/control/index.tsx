@@ -211,7 +211,7 @@ export default function ControlCenter({
                         <card.icon
                             size={22}
                             strokeWidth={1.4}
-                            className="text-(--color-accent-700)"
+                            className="text-(--brand-700)"
                         />
                         <span>
                             <strong className="block font-mono text-2xl font-semibold">
@@ -448,7 +448,7 @@ export default function ControlCenter({
                                 aria-hidden="true"
                                 size={22}
                                 strokeWidth={1.4}
-                                className="mt-1 text-(--color-accent-700)"
+                                className="mt-1 text-(--brand-700)"
                             />
                             <span className="min-w-0 flex-1">
                                 <span className="flex flex-wrap items-center justify-between gap-2">
@@ -548,7 +548,7 @@ export default function ControlCenter({
                                 aria-hidden="true"
                                 size={18}
                                 strokeWidth={1.4}
-                                className="text-(--color-accent-700)"
+                                className="text-(--brand-700)"
                             />
                             <h3 className="ui-card-title m-0">
                                 По устройствам

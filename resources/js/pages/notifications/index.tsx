@@ -92,7 +92,7 @@ export default function Notifications({ items, meta }: Props) {
                             style={{
                                 background: item.read_at
                                     ? 'transparent'
-                                    : 'var(--color-accent-100)',
+                                    : 'var(--brand-100)',
                             }}
                         >
                             <Bell

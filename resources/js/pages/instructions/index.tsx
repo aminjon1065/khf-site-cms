@@ -124,7 +124,7 @@ export default function InstructionsIndex({
                             <Pin
                                 size={13}
                                 strokeWidth={1.75}
-                                style={{ color: 'var(--color-accent-600)' }}
+                                style={{ color: 'var(--brand-600)' }}
                             />
                         )}
                         {r.name}

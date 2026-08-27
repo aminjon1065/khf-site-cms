@@ -1,11 +1,15 @@
 import { TableCell, TableHeader } from '@tiptap/extension-table';
+import type { Node as ProseMirrorNode } from '@tiptap/pm/model';
 import { TextSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { htmlHasTable, parseCssColor, stripLastTable } from './rich-editor';
 
-function isTableNode(node: {
-    type: { name: string; spec: { tableRole?: string } };
-}): boolean {
+/**
+ * Узел таблицы. Тип берём у самого ProseMirror, а не описываем структурой:
+ * самодельная форма `{ type: { spec: { tableRole } } }` несовместима с
+ * NodeSpec, и вызов descendants() не проходил проверку типов.
+ */
+function isTableNode(node: ProseMirrorNode): boolean {
     return node.type.spec.tableRole === 'table' || node.type.name === 'table';
 }
 

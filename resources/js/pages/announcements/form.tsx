@@ -22,6 +22,7 @@ interface AnnouncementData {
     slug: string;
     kind: string;
     org: string | null;
+    project_id: number | null;
     deadline: string | null;
     application_url: string | null;
     status: ContentStatus;
@@ -35,6 +36,7 @@ interface Props {
     reference: {
         kinds: Option[];
         authors: Option[];
+        projects: Option[];
     };
 }
 
@@ -51,6 +53,7 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
         slug: announcement?.slug ?? '',
         kind: (announcement?.kind ?? 'vacancy') as string,
         org: announcement?.org ?? '',
+        project_id: announcement?.project_id ?? '',
         deadline: announcement?.deadline ?? '',
         application_url: announcement?.application_url ?? '',
         publish_mode: 'review' as PublishMode,
@@ -279,6 +282,33 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                                 maxLength={255}
                             />
                         </Field>
+
+                        {/* Тендер принадлежит проекту: связь нужна, чтобы на
+                            странице проекта появился блок «Тендеры проекта», а
+                            из объявления был путь обратно к проекту. */}
+                        {data.kind === 'tender' && (
+                            <Field
+                                label="Проект"
+                                hint="Тендер появится в списке тендеров этого проекта."
+                                error={fieldError('project_id')}
+                            >
+                                <Select
+                                    value={String(data.project_id ?? '')}
+                                    options={[
+                                        { value: '', label: 'Вне проекта' },
+                                        ...reference.projects,
+                                    ]}
+                                    onChange={(e) =>
+                                        setData(
+                                            'project_id',
+                                            e.target.value === ''
+                                                ? ''
+                                                : Number(e.target.value),
+                                        )
+                                    }
+                                />
+                            </Field>
+                        )}
 
                         <Field
                             label="Срок подачи"

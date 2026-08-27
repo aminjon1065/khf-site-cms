@@ -57,6 +57,10 @@ class PerformMediaConversions extends PerformConversionsJob
         ?AvifDerivativeGenerator $avifDerivativeGenerator = null,
     ): bool {
         $this->setStatus('processing');
+        // Поднимаем предел на время задачи: расход GD накапливается в процессе
+        // воркера, и на исходных 128M конверсия падала фатально — молча, без
+        // записи в failed_jobs. См. config/media-library.php.
+        $this->raiseMemoryLimit();
 
         try {
             $avifDerivativeGenerator ??= app(AvifDerivativeGenerator::class);
@@ -96,6 +100,46 @@ class PerformMediaConversions extends PerformConversionsJob
             'media_id' => $this->media->getKey(),
             'error' => $message,
         ]);
+    }
+
+    /**
+     * Поднимает предел памяти процесса, если настроенный больше текущего.
+     * Понижать нельзя: воркер может быть запущен с осознанно большим лимитом.
+     */
+    private function raiseMemoryLimit(): void
+    {
+        $configured = (string) config('media-library.conversion_memory_limit');
+
+        if ($configured === '') {
+            return;
+        }
+
+        $current = (string) ini_get('memory_limit');
+
+        if ($current === '-1' || $this->toBytes($configured) <= $this->toBytes($current)) {
+            return;
+        }
+
+        ini_set('memory_limit', $configured);
+    }
+
+    /**
+     * Значение вида `512M` в байтах. `-1` (без предела) считаем бесконечностью.
+     */
+    private function toBytes(string $value): float
+    {
+        if ($value === '-1') {
+            return INF;
+        }
+
+        $number = (float) $value;
+
+        return match (strtolower(substr($value, -1))) {
+            'g' => $number * 1024 ** 3,
+            'm' => $number * 1024 ** 2,
+            'k' => $number * 1024,
+            default => $number,
+        };
     }
 
     private function setStatus(string $status, ?string $error = null): void

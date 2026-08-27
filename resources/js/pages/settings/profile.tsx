@@ -117,7 +117,7 @@ export default function Profile({ mustVerifyEmail, status }: Props) {
                             <KeyRound
                                 size={22}
                                 strokeWidth={1.6}
-                                className="mt-0.5 text-[var(--color-accent-700)]"
+                                className="mt-0.5 text-[var(--brand-700)]"
                             />
                             <div>
                                 <h2 className="ui-card-title">
@@ -146,7 +146,7 @@ export default function Profile({ mustVerifyEmail, status }: Props) {
                             <SwatchBook
                                 size={22}
                                 strokeWidth={1.6}
-                                className="mt-0.5 text-[var(--color-accent-700)]"
+                                className="mt-0.5 text-[var(--brand-700)]"
                             />
                             <div>
                                 <h2 className="ui-card-title">
