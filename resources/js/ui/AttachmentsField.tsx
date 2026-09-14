@@ -113,7 +113,11 @@ export function AttachmentsField({
                         className="btn"
                         onClick={() => fileRef.current?.click()}
                     >
-                        <Upload size={15} strokeWidth={1.5} aria-hidden="true" />
+                        <Upload
+                            size={15}
+                            strokeWidth={1.5}
+                            aria-hidden="true"
+                        />
                         Добавить файлы
                     </button>
                     <input

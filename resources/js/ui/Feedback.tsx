@@ -152,8 +152,7 @@ export function WorkflowTimeline({ steps }: { steps: TimelineStep[] }) {
                             s.state === 'active'
                                 ? {
                                       borderColor: 'var(--brand)',
-                                      boxShadow:
-                                          '0 0 0 3px var(--brand-100)',
+                                      boxShadow: '0 0 0 3px var(--brand-100)',
                                   }
                                 : undefined
                         }

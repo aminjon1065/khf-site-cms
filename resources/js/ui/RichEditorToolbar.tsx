@@ -48,7 +48,7 @@ export function Btn({
     return (
         <button
             type="button"
-            className={`re-btn${active ? ' is-active' : ''}`}
+            className={`re-btn${active ? 'is-active' : ''}`}
             title={label}
             aria-label={label}
             aria-pressed={active}
@@ -215,7 +215,7 @@ export function RichEditorToolbar({
                     <span className="re-color" ref={colorRef}>
                         <button
                             type="button"
-                            className={`re-btn${editor.isActive('textStyle') ? ' is-active' : ''}`}
+                            className={`re-btn${editor.isActive('textStyle') ? 'is-active' : ''}`}
                             title="Цвет текста"
                             aria-label="Цвет текста"
                             onMouseDown={(e) => e.preventDefault()}

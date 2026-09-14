@@ -183,8 +183,10 @@ export function Step3({
                                                 setData(
                                                     'updates',
                                                     (data.updates ?? []).filter(
-                                                        (_: AlertUpdate, i: number) =>
-                                                            i !== index,
+                                                        (
+                                                            _: AlertUpdate,
+                                                            i: number,
+                                                        ) => i !== index,
                                                     ),
                                                 )
                                             }

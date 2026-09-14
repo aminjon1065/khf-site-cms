@@ -139,6 +139,15 @@ looks like a permissions problem in a 02:15 cron log, so `ops:backup` detects
 the MariaDB client and says so explicitly; point `MYSQLDUMP_BINARY` and
 `MYSQL_BINARY` at the real MySQL client.
 
+## Logs
+
+`LOG_CHANNEL=daily` (see `.env.example`): one file per day, kept for
+`LOG_DAILY_DAYS` (default 14). Do not run production on the single-file
+channel: on a dev/staging box without rotation a repeated Redis connection
+error once filled `storage/logs/laravel.log` to over 1 GB. If the log grows
+fast, find the repeating entry (`grep -c 'local.ERROR:' storage/logs/laravel-*.log`)
+and fix the cause; disk fill takes down the whole service, not only logging.
+
 ## Dashboards and alert thresholds
 
 - Edge/Nginx owns full access logs.

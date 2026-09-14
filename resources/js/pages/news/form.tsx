@@ -658,7 +658,6 @@ export default function NewsForm({ news, reference }: Props) {
                             }
                         />
 
-
                         <MediaPicker
                             open={coverPicker}
                             onClose={() => setCoverPicker(false)}

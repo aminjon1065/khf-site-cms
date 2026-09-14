@@ -35,6 +35,7 @@ final class FrontendRevalidation
     /** @var list<string> */
     private const SITEMAP_TYPES = [
         'alert',
+        'announcement',
         'instruction',
         'news',
         'page',

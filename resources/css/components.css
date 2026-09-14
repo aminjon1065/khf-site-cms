@@ -1058,8 +1058,7 @@ h6 {
     color: #fff;
     font-family: var(--font-heading);
     font-weight: 600;
-    box-shadow: 0 0 0 3px
-        color-mix(in srgb, var(--brand) 22%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
 }
 .ui-sidebar-search {
     display: flex;
