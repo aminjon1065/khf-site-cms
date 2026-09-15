@@ -31,9 +31,12 @@ use App\Http\Controllers\Cms\TaxonomyController;
 use App\Http\Controllers\Cms\TranslationQueueController;
 use App\Http\Controllers\Cms\UsabilityController;
 use App\Http\Controllers\Cms\UserController;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', fn () => redirect('/dashboard'))->name('home');
+Route::get('/', fn () => Auth::check()
+    ? redirect('/dashboard')
+    : redirect()->route('login'))->name('home');
 
 // Interface language toggle (available to guests on the login screen).
 Route::post('locale', LocaleController::class)->name('locale');
@@ -50,6 +53,8 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
         ->name('editorial.autosave');
     Route::get('editorial/{contentType}/{contentId}/revisions', [EditorialAutosaveController::class, 'index'])
         ->name('editorial.revisions');
+    Route::get('editorial/revisions/{revision}', [EditorialAutosaveController::class, 'show'])
+        ->name('editorial.revisions.show');
     Route::post('editorial/revisions/{revision}/restore', [EditorialAutosaveController::class, 'restore'])
         ->name('editorial.revisions.restore');
     Route::get('editorial/{contentType}/{contentId}/preview', EditorialPreviewController::class)

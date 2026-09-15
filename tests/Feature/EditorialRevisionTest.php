@@ -204,3 +204,41 @@ it('wires recovery, locking and revision history into every editorial form', fun
     'announcements',
     'documents',
 ]);
+
+it('shows a revision with the current snapshot for comparison', function () {
+    $editor = editorialUser('editor');
+    $news = News::factory()->create([
+        'title' => ['ru' => 'Текущая версия', 'tg' => '', 'en' => ''],
+    ]);
+    $revision = EditorialRevision::factory()->create([
+        'content_type' => 'news',
+        'content_id' => $news->id,
+        'user_id' => $editor->id,
+        'data' => [
+            'title' => ['ru' => 'Старая версия', 'tg' => '', 'en' => ''],
+        ],
+        'source' => 'manual',
+    ]);
+
+    actingAs($editor)
+        ->getJson("/editorial/revisions/{$revision->id}")
+        ->assertOk()
+        ->assertJsonPath('revision.id', $revision->id)
+        ->assertJsonPath('revision_data.title.ru', 'Старая версия')
+        ->assertJsonPath('current_data.title.ru', 'Текущая версия');
+});
+
+it('forbids comparison by users without edit access', function () {
+    $viewer = editorialUser('viewer');
+    $news = News::factory()->create();
+    $revision = EditorialRevision::factory()->create([
+        'content_type' => 'news',
+        'content_id' => $news->id,
+        'data' => ['title' => ['ru' => 'X', 'tg' => '', 'en' => '']],
+        'source' => 'manual',
+    ]);
+
+    actingAs($viewer)
+        ->getJson("/editorial/revisions/{$revision->id}")
+        ->assertForbidden();
+});

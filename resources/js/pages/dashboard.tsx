@@ -1,11 +1,12 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowRight, CheckCircle2, TriangleAlert } from 'lucide-react';
+import { ArrowRight, CheckCircle2, Plus, TriangleAlert } from 'lucide-react';
 import ActivityController from '@/actions/App/Http/Controllers/Cms/ActivityController';
 import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
-import { useAuth } from '@/lib/auth';
+import { useAuth, useCan } from '@/lib/auth';
 import { toneColor } from '@/lib/domain';
 import type { Severity } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
+import { CREATE_ITEMS, navItemAllowed } from '@/lib/navigation';
 import { SeverityBadge, Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { LinkButton } from '@/ui/Button';
@@ -104,6 +105,10 @@ export default function Dashboard({
 }: Props) {
     const { t } = useT();
     const user = useAuth();
+    const can = useCan();
+    const quickCreate = CREATE_ITEMS.filter((i) =>
+        navItemAllowed(i, can),
+    ).slice(0, 5);
 
     return (
         <>
@@ -117,6 +122,28 @@ export default function Dashboard({
                         : 'Обстановка штатная. Все материалы в работе.'
                 }
             />
+            {quickCreate.length > 0 && (
+                <div
+                    style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 10,
+                        marginBottom: 20,
+                    }}
+                >
+                    {quickCreate.map((i) => (
+                        <LinkButton
+                            key={i.key}
+                            href={i.href}
+                            variant="secondary"
+                            size="sm"
+                            icon={<Plus size={14} strokeWidth={2} />}
+                        >
+                            {t('action.create')}: {t(i.labelKey)}
+                        </LinkButton>
+                    ))}
+                </div>
+            )}
 
             {/* Operational status */}
             <div

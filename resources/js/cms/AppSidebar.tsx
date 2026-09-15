@@ -2,7 +2,7 @@ import { Link, usePage } from '@inertiajs/react';
 import { ChevronsLeft, Search, ShieldAlert } from 'lucide-react';
 import { useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
-import { NAV } from '@/lib/navigation';
+import { NAV, navItemAllowed } from '@/lib/navigation';
 import type { NavItem } from '@/lib/navigation';
 import { cn } from '@/lib/utils';
 import type { NavBadges } from '@/types/cms';
@@ -73,8 +73,8 @@ export function AppSidebar({
 
                 <nav className="ui-sidebar-nav ui-scroll">
                     {NAV.map((group) => {
-                        const items = group.items.filter(
-                            (i) => !i.permission || can(i.permission),
+                        const items = group.items.filter((i) =>
+                            navItemAllowed(i, can),
                         );
 
                         if (items.length === 0) {

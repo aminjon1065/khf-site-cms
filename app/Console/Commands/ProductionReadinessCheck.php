@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Support\PendingMigrations;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -89,6 +90,11 @@ class ProductionReadinessCheck extends Command
 
         if ((int) ini_get('opcache.max_accelerated_files') < $expectedFiles) {
             $failures[] = "opcache.max_accelerated_files must be at least {$expectedFiles}.";
+        }
+
+        $pendingMigrations = app(PendingMigrations::class)->names();
+        if ($pendingMigrations !== []) {
+            $failures[] = 'Database schema is behind the codebase; run php artisan migrate --force (pending: '.implode(', ', $pendingMigrations).').';
         }
 
         return $failures;

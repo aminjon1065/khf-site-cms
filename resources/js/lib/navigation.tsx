@@ -60,13 +60,31 @@ export interface NavItem {
     href: string;
     icon: LucideIcon;
     badge?: 'approval' | 'alerts';
-    permission?: string;
+    /** Single ability, or a list where ANY one grants visibility. */
+    permission?: string | string[];
 }
 
 export interface NavGroup {
     labelKey: string;
     items: NavItem[];
 }
+
+/**
+ * Content modules whose permissions gate shared editorial screens
+ * (approval center, translation queue, trash). Mirrors
+ * App\Support\ContentTypes::META module names.
+ */
+const CONTENT_MODULES = [
+    'alerts',
+    'news',
+    'instructions',
+    'documents',
+    'projects',
+    'announcements',
+    'pages',
+] as const;
+
+export { navItemAllowed } from '@/lib/permissions';
 
 export const NAV: NavGroup[] = [
     {
@@ -91,6 +109,7 @@ export const NAV: NavGroup[] = [
                 href: ApprovalController.index.url(),
                 icon: ClipboardCheck,
                 badge: 'approval',
+                permission: CONTENT_MODULES.map((m) => `${m}.approve`),
             },
         ],
     },
@@ -176,14 +195,14 @@ export const NAV: NavGroup[] = [
                 labelKey: 'Очередь переводов',
                 href: TranslationQueueController.index.url(),
                 icon: Languages,
-                permission: 'news.edit',
+                permission: CONTENT_MODULES.map((m) => `${m}.edit`),
             },
             {
                 key: 'editorial-trash',
                 labelKey: 'Корзина материалов',
                 href: EditorialTrashController.index.url(),
                 icon: Trash2,
-                permission: 'news.view',
+                permission: CONTENT_MODULES.map((m) => `${m}.view`),
             },
         ],
     },

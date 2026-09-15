@@ -74,3 +74,24 @@ it('counts every translatable field of a model without exclusions', function () 
     expect($announcement->languageCompleteness()['tg'])->toBeLessThan(100)
         ->and($announcement->languageCompleteness()['ru'])->toBe(100);
 });
+
+it('rounds per-locale percentages over required fields', function () {
+    $instruction = Instruction::factory()->make([
+        'name' => ['ru' => 'Заголовок', 'tg' => 'Сарлавҳа', 'en' => ''],
+        'summary' => ['ru' => 'Анонс', 'tg' => 'Мухтасар', 'en' => ''],
+        'body' => ['ru' => '<p>Текст</p>', 'tg' => '', 'en' => ''],
+    ]);
+
+    expect($instruction->languageCompleteness())
+        ->toMatchArray(['ru' => 100, 'tg' => 67, 'en' => 0]);
+});
+
+it('does not count whitespace-only translations as filled', function () {
+    $instruction = Instruction::factory()->make([
+        'name' => ['ru' => '   ', 'tg' => '', 'en' => ''],
+        'summary' => ['ru' => "\t\n", 'tg' => '', 'en' => ''],
+        'body' => ['ru' => ' ', 'tg' => '', 'en' => ''],
+    ]);
+
+    expect($instruction->languageCompleteness()['ru'])->toBe(0);
+});

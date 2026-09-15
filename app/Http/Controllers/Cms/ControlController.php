@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\AlertMapService;
 use App\Services\OperationalTelemetry;
 use App\Services\WebVitalsReportService;
+use App\Support\PendingMigrations;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -18,6 +19,7 @@ class ControlController extends Controller
         private readonly AlertMapService $map,
         private readonly WebVitalsReportService $webVitals,
         private readonly OperationalTelemetry $telemetry,
+        private readonly PendingMigrations $pendingMigrations,
     ) {}
 
     public function index(Request $request): Response
@@ -54,6 +56,7 @@ class ControlController extends Controller
             ])->values()->all(),
             'web_vitals' => $this->webVitals->summary(),
             'operations' => $this->telemetry->summary(),
+            'pending_migrations' => $this->pendingMigrations->names(),
         ]);
     }
 }

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
+import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
@@ -100,6 +101,10 @@ export default function NewsIndex({
             { preserveState: true, preserveScroll: true, replace: true },
         );
     };
+
+    const changeView = useRememberedView('news', filters.view, (view) =>
+        reload({ view }),
+    );
 
     const sort: SortState | null = filters.sort
         ? { key: filters.sort, dir: filters.dir === 'asc' ? 'asc' : 'desc' }
@@ -313,7 +318,7 @@ export default function NewsIndex({
             <SavedViews
                 views={savedViews}
                 active={filters.view}
-                onChange={(view) => reload({ view })}
+                onChange={changeView}
             />
 
             <FilterBar>

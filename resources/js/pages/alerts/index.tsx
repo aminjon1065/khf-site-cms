@@ -10,6 +10,7 @@ import {
 import { useState } from 'react';
 import ActivityController from '@/actions/App/Http/Controllers/Cms/ActivityController';
 import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
+import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus, Severity } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
@@ -112,6 +113,10 @@ export default function AlertsIndex({
             { preserveState: true, preserveScroll: true, replace: true },
         );
     };
+
+    const changeView = useRememberedView('alerts', filters.view, (view) =>
+        reload({ view }),
+    );
 
     const sort: SortState | null = filters.sort
         ? { key: filters.sort, dir: filters.dir === 'asc' ? 'asc' : 'desc' }
@@ -311,7 +316,7 @@ export default function AlertsIndex({
                     count: v.count,
                 }))}
                 active={filters.view}
-                onChange={(view) => reload({ view })}
+                onChange={changeView}
             />
 
             <FilterBar>

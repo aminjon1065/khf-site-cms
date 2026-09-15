@@ -6,6 +6,7 @@ import {
     MonitorSmartphone,
     Radio,
     Siren,
+    TriangleAlert,
 } from 'lucide-react';
 import type { Severity } from '@/lib/domain';
 import { SeverityBadge, Tag } from '@/ui/Badge';
@@ -43,6 +44,7 @@ interface Props {
     alerts: ActiveAlert[];
     web_vitals: WebVitalsReport;
     operations: OperationalReport;
+    pending_migrations: string[];
 }
 
 type VitalRating = 'good' | 'needs-improvement' | 'poor' | 'no-data';
@@ -167,6 +169,7 @@ export default function ControlCenter({
     alerts,
     web_vitals: webVitals,
     operations,
+    pending_migrations: pendingMigrations,
 }: Props) {
     const cards = [
         {
@@ -201,6 +204,37 @@ export default function ControlCenter({
                     </Tag>
                 }
             />
+
+            {pendingMigrations.length > 0 && (
+                <div
+                    role="alert"
+                    className="mb-5"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '10px 14px',
+                        border: '1px solid var(--danger)',
+                        borderRadius: 'var(--radius-md)',
+                        background:
+                            'color-mix(in srgb, var(--danger) 8%, transparent)',
+                        fontSize: 13,
+                    }}
+                >
+                    <TriangleAlert
+                        size={16}
+                        strokeWidth={1.75}
+                        style={{ color: 'var(--danger)', flex: 'none' }}
+                    />
+                    <span>
+                        Схема БД отстаёт от кода: не применено миграций —{' '}
+                        {pendingMigrations.length} (например «
+                        {pendingMigrations[0]}»). Выполните{' '}
+                        <code>php artisan migrate</code>, иначе часть функций
+                        может падать с ошибкой 500.
+                    </span>
+                </div>
+            )}
 
             <div className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 {cards.map((card) => (

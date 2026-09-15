@@ -14,7 +14,7 @@ import type { Appearance } from '@/hooks/use-appearance';
 import { useAppearance } from '@/hooks/use-appearance';
 import { useAuth, useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
-import { CREATE_ITEMS, NAV } from '@/lib/navigation';
+import { CREATE_ITEMS, NAV, navItemAllowed } from '@/lib/navigation';
 import { locale as localeRoute } from '@/routes';
 import { Button, IconButton } from '@/ui/Button';
 import { Avatar } from '@/ui/Feedback';
@@ -38,12 +38,12 @@ export function TopBar({
 
     const { appearance, updateAppearance } = useAppearance();
     const crumb = resolveCrumb(url, t);
-    const createItems = CREATE_ITEMS.filter(
-        (i) => !i.permission || can(i.permission),
-    ).map((i) => ({
-        label: t(i.labelKey),
-        onSelect: () => router.visit(i.href),
-    }));
+    const createItems = CREATE_ITEMS.filter((i) => navItemAllowed(i, can)).map(
+        (i) => ({
+            label: t(i.labelKey),
+            onSelect: () => router.visit(i.href),
+        }),
+    );
 
     const switchLocale = (next: 'ru' | 'tg') => {
         if (next !== locale) {

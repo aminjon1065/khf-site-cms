@@ -428,25 +428,6 @@ h6 {
     outline: 2px solid color-mix(in srgb, var(--brand) 28%, transparent);
     outline-offset: 1px;
 }
-.ui-input-title {
-    font-size: 22px;
-    font-weight: 650;
-    letter-spacing: -0.03em;
-    min-height: 48px;
-    padding: 8px 0;
-    border: 0;
-    border-bottom: 1px solid var(--color-divider);
-    border-radius: 0;
-    background: transparent;
-}
-.ui-input-title:hover {
-    border-color: color-mix(in srgb, var(--color-text) 28%, transparent);
-}
-.ui-input-title:focus-visible {
-    border-color: var(--brand);
-    outline: none;
-    box-shadow: none;
-}
 .ui-input:disabled,
 .ui-select:disabled,
 .ui-textarea:disabled {
@@ -2276,12 +2257,19 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
 .re-figure-frame {
     position: relative;
     border-radius: var(--radius-md);
-    overflow: hidden;
     background: var(--color-neutral-100);
+    /* overflow намеренно не hidden: абсолютный тулбар .re-figure-tools
+       живёт внутри рамки и при коротком/битом изображении обрезался бы
+       до нечитаемой полоски. Скругление даёт сам img. */
 }
 .re-figure-frame img {
     width: 100%;
     height: auto;
+    /* Резервирует место, когда картинка не загрузилась: иначе рамка
+       схлопывается и контролы нельзя использовать. */
+    min-height: 96px;
+    object-fit: contain;
+    border-radius: var(--radius-md);
     display: block;
     margin: 0;
     cursor: pointer;

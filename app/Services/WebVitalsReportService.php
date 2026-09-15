@@ -92,11 +92,19 @@ final class WebVitalsReportService
 
         $queryRows = DB::query()
             ->fromSub($ranked, 'ranked_vitals')
-            ->whereRaw('sample_rank = CEIL(sample_count * 0.75)')
             ->get();
+
+        // Nearest-rank p75 (ceil(0.75 * N)) is filtered in PHP: SQL CEIL
+        // is missing on SQLite and MySQL CAST types differ, so no
+        // engine-portable expression exists. The report is cached for
+        // five minutes, so the extra rows are cheap.
         $rows = [];
 
         foreach ($queryRows as $row) {
+            if ((int) $row->sample_rank !== (int) ceil($row->sample_count * 0.75)) {
+                continue;
+            }
+
             $mapped = [
                 'metric' => (string) $row->metric,
                 'value' => (float) $row->value,

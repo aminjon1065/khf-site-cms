@@ -98,6 +98,33 @@ class EditorialAutosaveController extends Controller
         return response()->json(['data' => $revisions]);
     }
 
+    /**
+     * Ревизия и текущий снимок материала для экрана сравнения: фронт
+     * считает построчный diff на клиенте, сервер только отдаёт обе
+     * версии под той же авторизацией, что и редактирование.
+     */
+    public function show(Request $request, EditorialRevision $revision): JsonResponse
+    {
+        abort_if($revision->content_id === null, 422, 'У несвязанного черновика нет материала для сравнения.');
+
+        $model = $this->authorizedModel(
+            $request,
+            $revision->content_type,
+            (int) $revision->content_id,
+        );
+
+        return response()->json([
+            'revision' => [
+                'id' => $revision->id,
+                'source' => $revision->source,
+                'saved_by' => $revision->user?->name,
+                'saved_at' => $revision->created_at->toIso8601String(),
+            ],
+            'revision_data' => $revision->data,
+            'current_data' => $model ? $this->content->snapshot($model) : [],
+        ]);
+    }
+
     public function restore(Request $request, EditorialRevision $revision): JsonResponse
     {
         abort_if($revision->content_id === null, 422, 'Нельзя восстановить несвязанный черновик.');

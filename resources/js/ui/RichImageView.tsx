@@ -64,7 +64,8 @@ export function RichImageView({
 
     const applyMedia = (item: MediaItem) => {
         updateAttributes({
-            src: item.url,
+            // Путь, а не абсолютный URL: контент не должен зависеть от хоста.
+            src: item.path ?? item.url,
             srcset: item.srcset,
             mediaId: item.id,
             alt: item.alt ?? item.name ?? alt,

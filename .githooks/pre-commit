@@ -1,0 +1,26 @@
+#!/bin/sh
+#
+# Локальная проверка перед коммитом — тот же набор, что в CI
+# (composer ci:check), но только по staged-файлам, чтобы проходил за
+# секунды. Прехук экономит цикл «запушил — CI покраснел».
+# Подключение: composer install / composer run hooks:install
+# (composer-скрипты выставляют git config core.hooksPath .githooks).
+
+set -e
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR)
+
+PHP_FILES=$(printf '%s\n' "$STAGED" | grep '\.php$' || true)
+FRONT_FILES=$(printf '%s\n' "$STAGED" | grep -E '\.(ts|tsx|css)$' || true)
+
+if [ -n "$PHP_FILES" ]; then
+    echo "pint: проверка staged PHP-файлов"
+    printf '%s\n' "$PHP_FILES" | xargs vendor/bin/pint
+fi
+
+if [ -n "$FRONT_FILES" ]; then
+    echo "prettier: проверка staged ts/tsx/css-файлов"
+    printf '%s\n' "$FRONT_FILES" | xargs npx --no-install prettier --check
+fi
+
+exit 0

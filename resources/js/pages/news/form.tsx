@@ -310,7 +310,6 @@ export default function NewsForm({ news, reference }: Props) {
                         >
                             <Input
                                 id={`news-title-${lang}`}
-                                className="ui-input-title"
                                 value={data.title[lang]}
                                 onChange={(e) =>
                                     setLocaleField('title', e.target.value)
@@ -320,7 +319,7 @@ export default function NewsForm({ news, reference }: Props) {
                                 }
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Название записи'
+                                        ? 'Например: Итоги учений в Хатлонской области'
                                         : 'Перевод заголовка'
                                 }
                                 maxLength={255}

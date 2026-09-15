@@ -59,7 +59,9 @@ function imageAttrsFromMedia(item: MediaItem): {
     size: string;
 } {
     return {
-        src: item.url,
+        // Относительный путь, если есть: абсолютный URL в сохранённом
+        // HTML ломается при смене хоста/порта окружения.
+        src: item.path ?? item.url,
         alt: item.alt ?? item.name ?? '',
         caption: item.caption ?? '',
         srcset: item.srcset,

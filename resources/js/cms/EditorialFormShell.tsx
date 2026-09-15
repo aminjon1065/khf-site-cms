@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { EditorialPreview } from '@/cms/EditorialPreview';
 import type { EditorialPreviewConfig } from '@/cms/EditorialPreview';
+import { RevisionDiff } from '@/cms/RevisionDiff';
 import { useEditorialAutosave } from '@/hooks/use-editorial-autosave';
 import type { EditorialAutosaveConfig } from '@/hooks/use-editorial-autosave';
 import { useSaveShortcut } from '@/hooks/use-save-shortcut';
@@ -67,6 +68,7 @@ export function EditorialFormShell<T extends object>({
     const errorSummaryRef = useRef<HTMLDivElement>(null);
     const allowNextVisit = useRef(false);
     const [previewOpen, setPreviewOpen] = useState(false);
+    const [diffRevisionId, setDiffRevisionId] = useState<number | null>(null);
     const autosaveState = useEditorialAutosave(autosave, isDirty);
 
     useUnsavedChangesGuard(isDirty && !processing, allowNextVisit);
@@ -265,11 +267,27 @@ export function EditorialFormShell<T extends object>({
                                     >
                                         Восстановить
                                     </Button>
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() =>
+                                            setDiffRevisionId(revision.id)
+                                        }
+                                    >
+                                        Сравнить
+                                    </Button>
                                 </li>
                             ))}
                         </ol>
                     )}
                 </section>
+            )}
+
+            {diffRevisionId !== null && (
+                <RevisionDiff
+                    revisionId={diffRevisionId}
+                    onClose={() => setDiffRevisionId(null)}
+                />
             )}
 
             <div className="editorial-form-actions">

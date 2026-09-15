@@ -40,6 +40,18 @@ it('renders security settings after password confirmation', function () {
             ->where('twoFactor.pending', false));
 });
 
+it('shows human-readable password rules on the security page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->withSession(['auth.password_confirmed_at' => time()])
+        ->get('/profile/security')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('settings/security')
+            ->where('passwordRules', 'Не менее 8 символов.'));
+});
+
 it('updates the password with the current password', function () {
     $user = User::factory()->create();
 

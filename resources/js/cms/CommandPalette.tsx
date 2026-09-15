@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useDialogFocus } from '@/hooks/use-dialog-focus';
 import { useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
-import { CREATE_ITEMS, NAV } from '@/lib/navigation';
+import { CREATE_ITEMS, NAV, navItemAllowed } from '@/lib/navigation';
 import { Blueprint } from '@/ui/Blueprint';
 
 export function CommandPalette({
@@ -28,12 +28,10 @@ export function CommandPalette({
         router.visit(href);
     };
 
-    const createItems = CREATE_ITEMS.filter(
-        (i) => !i.permission || can(i.permission),
-    );
+    const createItems = CREATE_ITEMS.filter((i) => navItemAllowed(i, can));
     const navItems = NAV.flatMap((g) =>
         g.items
-            .filter((i) => !i.permission || can(i.permission))
+            .filter((i) => navItemAllowed(i, can))
             .map((i) => ({ ...i, group: t(g.labelKey) })),
     );
 

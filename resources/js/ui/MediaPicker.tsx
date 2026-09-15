@@ -11,6 +11,8 @@ import { Modal } from './Overlay';
 export interface MediaItem {
     id: number;
     url: string;
+    /** Корневой путь ("/storage/…") — для сохранения в rich-text. */
+    path?: string | null;
     name: string | null;
     file_name: string;
     ext: string;

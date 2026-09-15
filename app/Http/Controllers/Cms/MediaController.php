@@ -11,6 +11,7 @@ use App\Models\MediaAsset;
 use App\Models\News;
 use App\Models\Project;
 use App\Services\MediaUsageService;
+use App\Support\MediaUrl;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -342,6 +343,9 @@ class MediaController extends Controller
         return [
             'id' => $m->id,
             'url' => $m->getUrl(),
+            // Root-relative variant for rich-text storage: absolute URLs
+            // break whenever the host or port changes.
+            'path' => MediaUrl::toRelative($m->getUrl()),
             'name' => $m->name,
             'file_name' => $m->file_name,
             'ext' => strtoupper(pathinfo($m->file_name, PATHINFO_EXTENSION) ?: 'FILE'),
