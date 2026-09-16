@@ -191,19 +191,19 @@ class MediaController extends Controller
         abort_unless((bool) $request->user()?->can('media.view'), 403);
 
         $search = $request->string('search')->toString();
+        $sort = $request->string('sort', 'newest')->toString();
         $perPage = max(1, min((int) $request->integer('per_page', 24), 60));
 
         $query = Media::query()
             ->with('model')
             ->where('model_type', MediaAsset::class)
             ->whereIn('model_id', MediaAsset::query()->select('id'))
-            ->where('mime_type', 'like', 'image/%')
-            ->latest('id');
+            ->where('mime_type', 'like', 'image/%');
+
+        $this->applyLibrarySort($query, $sort);
+
         if ($search !== '') {
-            $query->where(function (Builder $q) use ($search): void {
-                $q->where('file_name', 'like', "%{$search}%")
-                    ->orWhere('name', 'like', "%{$search}%");
-            });
+            $this->applyLibrarySearch($query, $search);
         }
 
         $media = $query->paginate($perPage);
@@ -213,6 +213,7 @@ class MediaController extends Controller
             'meta' => [
                 'current_page' => $media->currentPage(),
                 'last_page' => $media->lastPage(),
+                'per_page' => $media->perPage(),
                 'total' => $media->total(),
             ],
         ]);
@@ -322,6 +323,47 @@ class MediaController extends Controller
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /**
+     * Ordering for the picker. Unknown values fall back to newest first, so a
+     * stale query string can never leave the grid in an undefined order.
+     *
+     * @param  Builder<Media>  $query
+     */
+    private function applyLibrarySort(Builder $query, string $sort): void
+    {
+        match ($sort) {
+            'oldest' => $query->oldest('id'),
+            'name' => $query->orderBy('file_name')->orderBy('id'),
+            default => $query->latest('id'),
+        };
+    }
+
+    /**
+     * Search for the picker, matching what the library page looks at: the file
+     * itself plus the editorial metadata on its asset. Files uploaded with a
+     * machine-generated name are only findable by their title, alt or caption.
+     *
+     * @param  Builder<Media>  $query
+     */
+    private function applyLibrarySearch(Builder $query, string $search): void
+    {
+        $query->where(function (Builder $q) use ($search): void {
+            $q->where('file_name', 'like', "%{$search}%")
+                ->orWhere('name', 'like', "%{$search}%")
+                ->orWhereIn(
+                    'model_id',
+                    MediaAsset::query()
+                        ->where(function (Builder $metadata) use ($search): void {
+                            $metadata
+                                ->where('title', 'like', "%{$search}%")
+                                ->orWhere('alt', 'like', "%{$search}%")
+                                ->orWhere('caption', 'like', "%{$search}%");
+                        })
+                        ->select('id'),
+                );
+        });
+    }
 
     /**
      * @return array<string, mixed>

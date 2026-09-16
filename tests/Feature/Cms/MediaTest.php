@@ -5,6 +5,7 @@ use App\Models\News;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
@@ -224,4 +225,90 @@ it('exposes alt and caption in the picker JSON', function () {
         ->assertOk()
         ->assertJsonPath('data.0.alt', 'Описание')
         ->assertJsonPath('data.0.caption', 'Подпись');
+});
+
+it('pages through the picker instead of cutting the library off at the first screen', function () {
+    // Конверсии тут ни при чём: тест про выдачу эндпоинта, а их обработка
+    // требует внешнего кодировщика.
+    Queue::fake();
+    $editor = mediaUser('editor');
+
+    foreach (range(1, 27) as $index) {
+        MediaAsset::factory()
+            ->create(['title' => "Файл {$index}"])
+            ->addMedia(UploadedFile::fake()->image("asset-{$index}.jpg"))
+            ->toMediaCollection('asset');
+    }
+
+    $first = actingAs($editor)->getJson('/media/library')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 27)
+        ->assertJsonPath('meta.current_page', 1)
+        ->assertJsonPath('meta.per_page', 24)
+        ->assertJsonPath('meta.last_page', 2)
+        ->assertJsonCount(24, 'data');
+
+    $second = actingAs($editor)->getJson('/media/library?page=2')
+        ->assertOk()
+        ->assertJsonPath('meta.current_page', 2)
+        ->assertJsonCount(3, 'data');
+
+    // Вторая страница должна догружать остаток, а не повторять первую.
+    expect(array_intersect(
+        array_column($first->json('data'), 'id'),
+        array_column($second->json('data'), 'id'),
+    ))->toBeEmpty();
+});
+
+it('finds a picker image by its description, not only by file name', function () {
+    Queue::fake();
+    $editor = mediaUser('editor');
+
+    $described = MediaAsset::factory()->create([
+        'title' => 'Учения в Хатлоне',
+        'alt' => 'Спасатели на берегу реки',
+        'caption' => 'Совместная тренировка подразделений',
+    ]);
+    $described->addMedia(UploadedFile::fake()->image('a1b2c3d4e5.jpg'))->toMediaCollection('asset');
+
+    $other = MediaAsset::factory()->create(['title' => 'Другое', 'alt' => null]);
+    $other->addMedia(UploadedFile::fake()->image('f6g7h8.jpg'))->toMediaCollection('asset');
+
+    foreach (['Хатлоне', 'Спасатели', 'тренировка', 'a1b2c3'] as $term) {
+        actingAs($editor)->getJson('/media/library?search='.urlencode($term))
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.id', $described->getFirstMedia('asset')?->id);
+    }
+});
+
+it('orders picker images by the requested sort', function () {
+    Queue::fake();
+    $editor = mediaUser('editor');
+
+    $first = MediaAsset::factory()->create(['title' => 'Первый']);
+    $first->addMedia(UploadedFile::fake()->image('b-second-by-name.jpg'))->toMediaCollection('asset');
+
+    $second = MediaAsset::factory()->create(['title' => 'Второй']);
+    $second->addMedia(UploadedFile::fake()->image('a-first-by-name.jpg'))->toMediaCollection('asset');
+
+    $oldestId = $first->getFirstMedia('asset')?->id;
+    $newestId = $second->getFirstMedia('asset')?->id;
+
+    actingAs($editor)->getJson('/media/library')
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $newestId);
+
+    actingAs($editor)->getJson('/media/library?sort=oldest')
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $oldestId);
+
+    actingAs($editor)->getJson('/media/library?sort=name')
+        ->assertOk()
+        ->assertJsonPath('data.0.file_name', 'a-first-by-name.jpg');
+
+    // Незнакомое значение не должно оставлять сетку в произвольном порядке.
+    actingAs($editor)->getJson('/media/library?sort=whatever')
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $newestId);
 });
