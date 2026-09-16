@@ -68,9 +68,12 @@ it('orders deputies by their configured sort after the chairman', function () {
     $deputies = array_slice($data, 1);
 
     expect($deputies)->toHaveCount(3)
-        ->and($deputies[0]['name'])->toBe('Первый заместитель')
-        ->and($deputies[1]['name'])->toBe('Заместитель по гражданской обороне')
-        ->and($deputies[2]['name'])->toBe('Заместитель по предупреждению ЧС');
+        ->and($deputies[0]['role'])->toBe('Первый заместитель Председателя')
+        ->and(array_column($deputies, 'name'))->toBe(
+            Leader::query()->where('is_chairman', false)->orderBy('sort')->get()
+                ->map(fn (Leader $leader): string => $leader->getTranslation('name', 'ru'))
+                ->all(),
+        );
 });
 
 it('reports a null photo_url until a photo is uploaded', function () {

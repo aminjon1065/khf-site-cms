@@ -31,6 +31,8 @@
         <env name="INERTIA_SSR_ENABLED" value="false" force="true"/>
         <env name="MAIL_MAILER" value="array"/>
         <env name="QUEUE_CONNECTION" value="sync"/>
+        <!-- Seeding must never reach the network: source covers and PDFs are skipped. -->
+        <env name="SEED_SOURCE_MEDIA" value="false" force="true"/>
         <!-- P0-1: тесты не должны зависеть от FRONTEND_REVALIDATION_* в
              локальном .env разработчика — иначе RevalidateFrontend бьёт по
              реальной сети под QUEUE_CONNECTION=sync. -->

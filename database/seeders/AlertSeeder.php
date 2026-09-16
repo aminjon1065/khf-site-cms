@@ -22,9 +22,12 @@ class AlertSeeder extends Seeder
         /** @var array<string, int> $regions */
         $regions = Region::query()->pluck('id', 'code')->all();
 
+        // Предгорные районы Хатлона, по которым идёт селевое предупреждение.
+        // Отбор по названию, а не по `sort`: порядок районов в справочнике
+        // меняется при его пополнении, а привязка тревоги — нет.
         $khatlonDistricts = District::query()
             ->where('region_id', $regions['khatlon'] ?? 0)
-            ->whereIn('sort', [2, 3, 4, 5, 6, 7]) // Дангара, Фархор, Восе, Муминабад, Ховалинг, Норак
+            ->whereIn('name->ru', ['Дангара', 'Фархор', 'Восе', 'Муминабад', 'Ховалинг', 'Нурек'])
             ->pluck('id')
             ->all();
 

@@ -1,0 +1,40 @@
+{
+    "source": "https:\/\/kchs.tj",
+    "locale": "ru",
+    "scraped_at": "2026-09-01T00:00:00+05:00",
+    "items": [
+        {
+            "source_id": 4163,
+            "source_url": "https:\/\/kchs.tj\/node\/4163",
+            "title": "КЧС Хатлон: Спасатели спасли от утопления трёх граждан",
+            "published_at": "2026-06-14T08:51:58+05:00",
+            "summary": "Трое граждан оказались отрезанными водой на камне посреди русла реки Вахш.",
+            "body_html": "<p><strong>Трое граждан оказались отрезанными водой.<\/strong><\/p>\n<p>Спасатели эвакуировали их из водной ловушки.<\/p>",
+            "cover": "https:\/\/kchs.tj\/sites\/default\/files\/field\/image\/IMG_1138_600x400.jpg",
+            "gallery": [
+                "https:\/\/kchs.tj\/sites\/default\/files\/dop_photo\/IMG_1135.jpg"
+            ],
+            "tags": [
+                "Новости",
+                "УКЧС по Хатлону"
+            ],
+            "attachments": [],
+            "views": 1779
+        },
+        {
+            "source_id": 4164,
+            "source_url": "https:\/\/kchs.tj\/node\/4164",
+            "title": "КЧС: В Душанбе состоялась встреча министров стран Центральной Азии",
+            "published_at": "2026-06-19T22:29:16+05:00",
+            "summary": "Обсуждены совместные меры по снижению риска бедствий.",
+            "body_html": "<p>Обсуждены совместные меры по снижению риска бедствий.<\/p>",
+            "cover": "https:\/\/kchs.tj\/sites\/default\/files\/field\/image\/IMG_1222.jpeg",
+            "gallery": [],
+            "tags": [
+                "Новости"
+            ],
+            "attachments": [],
+            "views": 940
+        }
+    ]
+}

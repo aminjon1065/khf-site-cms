@@ -16,14 +16,14 @@ it('changes the directory response on the next request after a region is saved',
 
     $this->getJson('/api/v1/regions/directory?locale=ru')
         ->assertOk()
-        ->assertJsonFragment(['email' => 'sughd@khf.tj']);
+        ->assertJsonFragment(['email' => 'mchssughd@rs.tj']);
 
-    $sughd->email = 'new-sughd@khf.tj';
+    $sughd->email = 'new-sughd@rs.tj';
     $sughd->save();
 
     $this->getJson('/api/v1/regions/directory?locale=ru')
         ->assertOk()
-        ->assertJsonFragment(['email' => 'new-sughd@khf.tj']);
+        ->assertJsonFragment(['email' => 'new-sughd@rs.tj']);
 });
 
 it('serves the second identical request from cache without hitting the database', function () {
@@ -56,14 +56,14 @@ it('resolves directory fields to the requested locale', function () {
     $sughd = collect($ru)->firstWhere('code', 'sughd');
 
     expect($sughd['name'])->toBe('Согдийская область')
-        ->and($sughd['head'])->toBe('Управление по Согдийской области')
-        ->and($sughd['email'])->toBe('sughd@khf.tj')
-        ->and($sughd['phone_href'])->toBe('+992342264471');
+        ->and($sughd['head'])->toBe('Штаб КЧС по Согдийской области')
+        ->and($sughd['email'])->toBe('mchssughd@rs.tj')
+        ->and($sughd['phone_href'])->toBe('+992342265872');
 
     // РРП uses the compact map/contacts label; the full designation is `head`.
     $rrp = collect($ru)->firstWhere('code', 'rrp');
     expect($rrp['name'])->toBe('РРП')
-        ->and($rrp['head'])->toBe('Управление по районам республиканского подчинения');
+        ->and($rrp['head'])->toBe('Штаб КЧС города Гиссара — районы республиканского подчинения');
 });
 
 it('localizes the region type and exposes its stable code', function () {

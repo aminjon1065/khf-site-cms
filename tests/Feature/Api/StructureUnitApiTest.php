@@ -12,21 +12,27 @@ beforeEach(function () {
 
 it('returns the structure units in configured order', function () {
     $data = $this->getJson('/api/v1/structure?locale=ru')->assertOk()->json('data');
+    // Состав подразделений меняется вслед за структурой Комитета, поэтому
+    // проверяем сам порядок выдачи, а не конкретную длину списка.
+    $expected = StructureUnit::query()->ordered()->pluck('num')->all();
 
-    expect($data)->toBeArray()->toHaveCount(6)
+    expect($data)->toBeArray()->toHaveCount(count($expected))
         ->and($data[0])->toHaveKeys(['num', 'name', 'desc'])
         ->and($data[0]['num'])->toBe('01')
-        ->and($data[5]['num'])->toBe('06');
+        ->and(array_column($data, 'num'))->toBe($expected);
 });
 
 it('resolves unit fields to the requested locale', function () {
+    $unit = StructureUnit::query()->ordered()->firstOrFail();
+
     $ru = $this->getJson('/api/v1/structure?locale=ru')->json('data');
-    $first = collect($ru)->firstWhere('num', '01');
-    expect($first['name'])->toBe('Центр управления в кризисных ситуациях');
+    $first = collect($ru)->firstWhere('num', $unit->num);
+    expect($first['name'])->toBe($unit->getTranslation('name', 'ru'));
 
     $en = $this->getJson('/api/v1/structure?locale=en')->json('data');
-    $firstEn = collect($en)->firstWhere('num', '01');
-    expect($firstEn['name'])->toBe('Crisis Management Centre');
+    $firstEn = collect($en)->firstWhere('num', $unit->num);
+    expect($firstEn['name'])->toBe($unit->getTranslation('name', 'en'))
+        ->and($firstEn['name'])->not->toBe($first['name']);
 });
 
 it('changes the response on the next request after a unit is saved', function () {

@@ -1,0 +1,37 @@
+{
+    "source": "https:\/\/khf.tj",
+    "locale": "tg",
+    "scraped_at": "2026-09-01T00:00:00+05:00",
+    "items": [
+        {
+            "source_id": 6100,
+            "source_url": "https:\/\/khf.tj\/node\/6100",
+            "title": "КҲФ-Хатлон: Наҷотдиҳандагон 3 шаҳрвандро аз ғарқшавӣ наҷот доданд",
+            "published_at": "2026-06-14T09:10:00+05:00",
+            "summary": "Се шаҳрванд дар маҷрои дарёи Вахш бо об иҳота шуда буданд.",
+            "body_html": "<p>Наҷотдиҳандагон онҳоро аз доми об раҳо карданд.<\/p>",
+            "cover": "https:\/\/khf.tj\/sites\/default\/files\/field\/image\/img_1138.jpg",
+            "gallery": [],
+            "tags": [
+                "Ахбори рӯз"
+            ],
+            "attachments": [],
+            "views": 810
+        },
+        {
+            "source_id": 6101,
+            "source_url": "https:\/\/khf.tj\/node\/6101",
+            "title": "КҲФ: Огоҳӣ оид ба вазъи номусоиди обу ҳаво",
+            "published_at": "2026-06-20T10:00:00+05:00",
+            "summary": "Дар як қатор минтақаҳо боришоти шадид интизор аст.",
+            "body_html": "<p>Дар як қатор минтақаҳо боришоти шадид интизор аст.<\/p>",
+            "cover": "https:\/\/khf.tj\/sites\/default\/files\/field\/image\/ogohi_2026.jpg",
+            "gallery": [],
+            "tags": [
+                "Ахбори рӯз"
+            ],
+            "attachments": [],
+            "views": 120
+        }
+    ]
+}
