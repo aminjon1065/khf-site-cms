@@ -71,11 +71,28 @@ it('generates a unique slug when titles collide', function () {
         ->and($slugs->unique())->toHaveCount(2);
 });
 
-it('requires a russian title', function () {
+it('requires a title in at least one language', function () {
     actingAs(newsUser('editor'))->post('/news', [
-        'title' => ['ru' => '', 'tg' => 'Ягон чиз'],
+        'title' => ['ru' => '', 'tg' => '', 'en' => ''],
         'action' => 'draft',
-    ])->assertSessionHasErrors('title.ru');
+    ])->assertSessionHasErrors(['title' => 'Укажите заголовок новости хотя бы на одном языке.']);
+});
+
+it('saves news written in a single language and derives the slug from that title', function () {
+    actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => '', 'tg' => '', 'en' => 'Rescue drill in Khatlon'],
+        'action' => 'draft',
+    ])->assertSessionHasNoErrors();
+
+    expect(News::query()->sole()->slug)->toBe('rescue-drill-in-khatlon');
+});
+
+it('lists a single-language news item under the title it has', function () {
+    News::factory()->create(['title' => ['ru' => '', 'tg' => 'Танҳо бо забони тоҷикӣ', 'en' => '']]);
+
+    actingAs(newsUser('editor'))->get('/news')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('news.0.title', 'Танҳо бо забони тоҷикӣ'));
 });
 
 it('sends news to review when an editor submits for approval', function () {
@@ -130,6 +147,23 @@ it('lets a chief editor publish immediately', function () {
 
     expect($news->status)->toBe(ContentStatus::Published)
         ->and($news->published_at)->not->toBeNull();
+});
+
+it('lets a chief editor publish news written only in Tajik', function () {
+    actingAs(newsUser('chief_editor'))->post('/news', [
+        'title' => ['ru' => '', 'tg' => 'Нашри фаврӣ', 'en' => ''],
+        'summary' => ['ru' => '', 'tg' => 'Тавсифи кӯтоҳ.', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '<p>Матни нашр.</p>', 'en' => ''],
+        'seo' => [
+            'ru' => ['title' => '', 'description' => ''],
+            'tg' => ['title' => 'Нашри фаврӣ', 'description' => 'Тавсифи кӯтоҳ.'],
+            'en' => ['title' => '', 'description' => ''],
+        ],
+        'action' => 'submit',
+        'publish_mode' => 'now',
+    ])->assertRedirect('/news')->assertSessionHasNoErrors();
+
+    expect(News::query()->sole()->status)->toBe(ContentStatus::Published);
 });
 
 it('publishes news even when cover conversions are still queued', function () {

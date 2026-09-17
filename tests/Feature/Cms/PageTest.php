@@ -134,10 +134,16 @@ it('soft-deletes a page', function () {
         ->and(Page::withTrashed()->find($page->id))->not->toBeNull();
 });
 
-it('rejects a page without a Russian title', function () {
+it('rejects a page without a title in any language', function () {
+    actingAs(pageUser('admin'))->post('/pages', [
+        'title' => ['ru' => '', 'tg' => ''],
+    ])->assertSessionHasErrors('title');
+});
+
+it('accepts a page titled only in Tajik', function () {
     actingAs(pageUser('admin'))->post('/pages', [
         'title' => ['tg' => 'Танҳо тоҷикӣ'],
-    ])->assertSessionHasErrors('title.ru');
+    ])->assertSessionDoesntHaveErrors('title');
 });
 
 it('rejects a parent that would create a page tree cycle', function () {

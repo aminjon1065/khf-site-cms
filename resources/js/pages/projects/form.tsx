@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
 import { index, store, update } from '@/routes/projects';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
@@ -249,16 +250,7 @@ export default function ProjectForm({ project, reference }: Props) {
                 imageUrl: coverSrc,
                 signedUrl: project?.preview_url,
                 checklist: [
-                    {
-                        label: 'Русская версия заполнена',
-                        ok: compAll.ru === 100,
-                        blocking: true,
-                    },
-                    {
-                        label: 'Таджикская версия заполнена',
-                        ok: compAll.tg === 100,
-                        blocking: true,
-                    },
+                    ...languageChecks(compAll, data.title),
                     {
                         label: 'Период проекта указан',
                         ok: data.years.trim() !== '',
@@ -301,11 +293,10 @@ export default function ProjectForm({ project, reference }: Props) {
 
                         <Field
                             label="Название проекта"
-                            required={lang === 'ru'}
+                            required={!hasAnyTranslation(data.title)}
                             error={
-                                lang === 'ru'
-                                    ? fieldError('title.ru')
-                                    : undefined
+                                fieldError('title') ??
+                                fieldError(`title.${lang}`)
                             }
                         >
                             <Input
@@ -314,7 +305,10 @@ export default function ProjectForm({ project, reference }: Props) {
                                     setLocaleField('title', e.target.value)
                                 }
                                 hasError={
-                                    lang === 'ru' && !!fieldError('title.ru')
+                                    !!(
+                                        fieldError('title') ??
+                                        fieldError(`title.${lang}`)
+                                    )
                                 }
                                 placeholder={
                                     lang === 'ru'

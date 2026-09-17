@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\News;
+use App\Support\ContentTitle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +22,7 @@ class NewsResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'title' => $this->getTranslation('title', 'ru', false) ?: '— без заголовка —',
+            'title' => ContentTitle::of($this->resource) ?: '— без заголовка —',
             'slug' => $this->slug,
             'status' => $this->status->value,
             'category' => $this->whenLoaded('category', fn () => $this->category?->getTranslation('name', 'ru')),

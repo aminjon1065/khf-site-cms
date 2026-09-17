@@ -1,12 +1,11 @@
 import { router } from '@inertiajs/react';
-import { ShieldAlert, ShieldCheck } from 'lucide-react';
+import { ShieldCheck } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { initializeTheme } from '@/hooks/use-appearance';
 import { I18nProvider, useT } from '@/lib/i18n';
 
 initializeTheme();
 import { locale as localeRoute } from '@/routes';
-import { Blueprint } from '@/ui/Blueprint';
 
 function Shell({ children }: { children: ReactNode }) {
     const { locale } = useT();
@@ -38,23 +37,13 @@ function Shell({ children }: { children: ReactNode }) {
                         gap: 14,
                     }}
                 >
-                    <Blueprint
-                        corners={false}
-                        style={{
-                            width: 48,
-                            height: 48,
-                            background: 'var(--brand)',
-                            display: 'grid',
-                            placeItems: 'center',
-                            color: '#fff',
-                            flex: 'none',
-                            borderRadius: 12,
-                            boxShadow:
-                                '0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent)',
-                        }}
-                    >
-                        <ShieldAlert size={24} strokeWidth={1.8} />
-                    </Blueprint>
+                    <img
+                        src="/logo.webp"
+                        alt=""
+                        width={56}
+                        height={56}
+                        style={{ flex: 'none', objectFit: 'contain' }}
+                    />
                     <div>
                         <div
                             style={{

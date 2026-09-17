@@ -111,11 +111,12 @@ it('lets an alert operator publish a critical alert and stamps published_at', fu
     expect($fresh->published_at)->not->toBeNull();
 });
 
-it('blocks publication while a required translation is incomplete', function () {
+it('blocks publication until at least one language version is complete', function () {
     $operator = makeUser('alert_operator');
     $alert = Alert::factory()->create([
         'status' => ContentStatus::Approved,
-        'title' => ['ru' => 'Готово', 'tg' => '', 'en' => ''],
+        'title' => ['ru' => 'Готово', 'tg' => 'Тайёр', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
     ]);
 
     expect(fn () => $this->workflow->transition($alert, ContentStatus::Published, $operator))
@@ -124,11 +125,27 @@ it('blocks publication while a required translation is incomplete', function () 
     expect($alert->fresh()->status)->toBe(ContentStatus::Approved);
 });
 
+it('publishes an alert written in a single language', function () {
+    $operator = makeUser('alert_operator');
+    $alert = Alert::factory()->create([
+        'status' => ContentStatus::Approved,
+        'title' => ['ru' => '', 'tg' => 'Хатари тарма', 'en' => ''],
+        'summary' => ['ru' => '', 'tg' => 'Дар кӯҳҳо хатари тарма баланд аст.', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => 'Аз роҳҳои кӯҳӣ истифода набаред.', 'en' => ''],
+        'instructions' => ['ru' => '', 'tg' => 'Дар хона монед.', 'en' => ''],
+    ]);
+
+    $this->workflow->transition($alert, ContentStatus::Published, $operator);
+
+    expect($alert->fresh()->status)->toBe(ContentStatus::Published);
+});
+
 it('allows an audited force publish as an emergency translation override', function () {
     $operator = makeUser('alert_operator');
     $alert = Alert::factory()->create([
         'status' => ContentStatus::Approved,
         'title' => ['ru' => 'Срочное сообщение', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
     ]);
 
     $this->workflow->transition(

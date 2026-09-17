@@ -63,13 +63,14 @@ class Page extends Model implements Workflowable
 
     protected static function booted(): void
     {
-        // Generate a stable, unique slug once from the Russian title on first
-        // save; existing slugs are never silently rewritten (published URLs
-        // must stay stable).
+        // Generate a stable, unique slug once on first save from the first
+        // filled title (ru, tg, en); existing slugs are never silently
+        // rewritten (published URLs must stay stable).
         static::saving(function (Page $page): void {
             if (blank($page->slug)) {
                 $source = $page->getTranslation('title', 'ru', false)
-                    ?: $page->getTranslation('title', 'tg', false);
+                    ?: $page->getTranslation('title', 'tg', false)
+                    ?: $page->getTranslation('title', 'en', false);
                 $page->slug = self::uniqueSlug($source, $page->getKey());
             }
         });

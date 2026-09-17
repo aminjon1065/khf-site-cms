@@ -11,6 +11,7 @@ use App\Models\Alert;
 use App\Models\User;
 use App\Models\WorkflowTransition;
 use App\Notifications\WorkflowNotification;
+use App\Support\ContentTitle;
 use App\Support\ContentTypes;
 use App\Support\FrontendRevalidation;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
@@ -274,16 +275,12 @@ class WorkflowService
 
     private function subjectTitle(Model&Workflowable $subject): string
     {
+        $title = ContentTitle::of($subject);
+
         if ($subject instanceof Alert) {
-            return $subject->getTranslation('title', 'ru', false) ?: $subject->internal_title;
+            return $title ?: $subject->internal_title;
         }
 
-        $name = $subject->getAttribute('title') ?? $subject->getAttribute('name');
-
-        if (is_array($name)) {
-            return (string) ($name['ru'] ?? reset($name) ?: '—');
-        }
-
-        return (string) ($name ?? '—');
+        return $title ?: '—';
     }
 }

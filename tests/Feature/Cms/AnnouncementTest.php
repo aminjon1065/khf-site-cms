@@ -105,11 +105,11 @@ it('rejects unsafe application links and duplicate slugs', function () {
     ])->assertSessionHasErrors(['slug', 'application_url']);
 });
 
-it('requires a russian title and a kind', function () {
+it('requires a title in at least one language and a kind', function () {
     actingAs(annUser('editor'))->post('/announcements', [
         'title' => ['ru' => ''],
         'action' => 'draft',
-    ])->assertSessionHasErrors(['title.ru', 'kind']);
+    ])->assertSessionHasErrors(['title', 'kind']);
 });
 
 it('sends an announcement to review when an editor submits', function () {

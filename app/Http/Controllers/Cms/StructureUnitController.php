@@ -5,14 +5,18 @@ namespace App\Http\Controllers\Cms;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StructureUnit\StructureUnitRequest;
 use App\Models\StructureUnit;
+use App\Support\StructureTree;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * Admin CRUD for the structure-units roster (C-1b): the specialised
- * departments shown on the public "Structure" page. No workflow — a saved
- * row is immediately live, the same as `Region`/`Leader`.
+ * Admin CRUD for the Committee's structure (C-1b): the units shown on the
+ * public "Structure" page, nested to any depth — a main directorate, its
+ * directorates, their departments. No workflow — a saved row is immediately
+ * live, the same as `Region`/`Leader`.
  */
 class StructureUnitController extends Controller
 {
@@ -20,28 +24,41 @@ class StructureUnitController extends Controller
     {
         $this->authorize('viewAny', StructureUnit::class);
 
-        $units = StructureUnit::query()->ordered()->get()->map(fn (StructureUnit $unit): array => [
-            'id' => $unit->id,
-            'num' => $unit->num,
-            'name' => $unit->getTranslation('name', 'ru'),
-            'sort' => $unit->sort,
-        ]);
+        $units = array_map(fn (array $row): array => [
+            'id' => $row['unit']->id,
+            'parent_id' => $row['unit']->parent_id,
+            'depth' => $row['depth'],
+            'num' => $row['unit']->num,
+            'name' => $row['unit']->getTranslation('name', 'ru'),
+            'sort' => $row['unit']->sort,
+            'children_count' => $row['unit']->getRelation('children')->count(),
+        ], StructureTree::flatten($this->tree()));
 
-        return Inertia::render('structure/index', ['units' => $units->all()]);
+        return Inertia::render('structure/index', ['units' => $units]);
     }
 
-    public function create(): Response
+    public function create(Request $request): Response
     {
         $this->authorize('create', StructureUnit::class);
 
-        return Inertia::render('structure/form', ['unit' => null]);
+        $parentId = $request->integer('parent');
+
+        return Inertia::render('structure/form', [
+            'unit' => null,
+            'defaultParentId' => StructureUnit::query()->whereKey($parentId)->exists() ? $parentId : null,
+            'parents' => $this->parentOptions(null),
+        ]);
     }
 
     public function edit(StructureUnit $structureUnit): Response
     {
         $this->authorize('update', $structureUnit);
 
-        return Inertia::render('structure/form', ['unit' => $this->payload($structureUnit)]);
+        return Inertia::render('structure/form', [
+            'unit' => $this->payload($structureUnit),
+            'defaultParentId' => null,
+            'parents' => $this->parentOptions($structureUnit),
+        ]);
     }
 
     public function store(StructureUnitRequest $request): RedirectResponse
@@ -68,6 +85,11 @@ class StructureUnitController extends Controller
     public function destroy(StructureUnit $structureUnit): RedirectResponse
     {
         $this->authorize('delete', $structureUnit);
+
+        if ($structureUnit->children()->exists()) {
+            return redirect('/structure')->with('error', 'Сначала перенесите или удалите вложенные подразделения.');
+        }
+
         $structureUnit->delete();
 
         return redirect('/structure')->with('success', 'Подразделение удалено.');
@@ -78,6 +100,7 @@ class StructureUnitController extends Controller
     private function fill(StructureUnit $unit, StructureUnitRequest $request): void
     {
         $unit->fill([
+            'parent_id' => $request->integer('parent_id') ?: null,
             'num' => $request->input('num'),
             'sort' => (int) $request->integer('sort'),
         ]);
@@ -93,12 +116,54 @@ class StructureUnitController extends Controller
     }
 
     /**
+     * @return Collection<int, StructureUnit>
+     */
+    private function tree(): Collection
+    {
+        return StructureTree::build(StructureUnit::query()->ordered()->get());
+    }
+
+    /**
+     * Units the given one may be placed under: every unit except itself and
+     * its own subunits, in tree order and indented by depth.
+     *
+     * @return list<array{value: int, label: string}>
+     */
+    private function parentOptions(?StructureUnit $current): array
+    {
+        $options = [];
+        $subtreeDepth = null;
+
+        foreach (StructureTree::flatten($this->tree()) as ['unit' => $unit, 'depth' => $depth]) {
+            if ($subtreeDepth !== null && $depth > $subtreeDepth) {
+                continue;
+            }
+
+            $subtreeDepth = null;
+
+            if ($current !== null && $unit->is($current)) {
+                $subtreeDepth = $depth;
+
+                continue;
+            }
+
+            $options[] = [
+                'value' => $unit->id,
+                'label' => str_repeat('— ', $depth).trim($unit->num.' '.$unit->getTranslation('name', 'ru')),
+            ];
+        }
+
+        return $options;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function payload(StructureUnit $unit): array
     {
         return [
             'id' => $unit->id,
+            'parent_id' => $unit->parent_id,
             'num' => $unit->num,
             'name' => $unit->getTranslations('name'),
             'desc' => $unit->getTranslations('desc'),

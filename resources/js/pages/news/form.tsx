@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
 import { index, store, update } from '@/routes/news';
 import { AttachmentsField } from '@/ui/AttachmentsField';
 import { Blueprint } from '@/ui/Blueprint';
@@ -256,16 +257,7 @@ export default function NewsForm({ news, reference }: Props) {
                 imageAlt: data.cover_alt,
                 signedUrl: news?.preview_url,
                 checklist: [
-                    {
-                        label: 'Русская версия заполнена',
-                        ok: compAll.ru === 100,
-                        blocking: true,
-                    },
-                    {
-                        label: 'Таджикская версия заполнена',
-                        ok: compAll.tg === 100,
-                        blocking: true,
-                    },
+                    ...languageChecks(compAll, data.title),
                     {
                         label: 'Alt-текст обложки',
                         ok: !coverSrc || data.cover_alt.trim() !== '',
@@ -273,9 +265,11 @@ export default function NewsForm({ news, reference }: Props) {
                     },
                     {
                         label: 'SEO preview заполнен',
-                        ok:
-                            data.seo.ru.title.trim() !== '' &&
-                            data.seo.ru.description.trim() !== '',
+                        ok: Object.values(data.seo).some(
+                            (seo) =>
+                                seo.title.trim() !== '' &&
+                                seo.description.trim() !== '',
+                        ),
                     },
                 ],
             }}
@@ -301,11 +295,10 @@ export default function NewsForm({ news, reference }: Props) {
                         <Field
                             label="Заголовок"
                             htmlFor={`news-title-${lang}`}
-                            required={lang === 'ru'}
+                            required={!hasAnyTranslation(data.title)}
                             error={
-                                lang === 'ru'
-                                    ? fieldError('title.ru')
-                                    : undefined
+                                fieldError('title') ??
+                                fieldError(`title.${lang}`)
                             }
                         >
                             <Input
@@ -315,7 +308,10 @@ export default function NewsForm({ news, reference }: Props) {
                                     setLocaleField('title', e.target.value)
                                 }
                                 hasError={
-                                    lang === 'ru' && !!fieldError('title.ru')
+                                    !!(
+                                        fieldError('title') ??
+                                        fieldError(`title.${lang}`)
+                                    )
                                 }
                                 placeholder={
                                     lang === 'ru'

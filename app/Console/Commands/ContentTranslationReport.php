@@ -26,11 +26,11 @@ use Illuminate\Database\Eloquent\Model;
 
 /**
  * C-3: aggregate tg/ru/en translation-gap report for editors preparing for
- * launch. Complements WorkflowService::guardRequiredTranslations() (which
- * blocks one record from publishing if a *required* locale is incomplete —
- * `en` is not required by default, see Setting languages.require_translation)
- * with a bird's-eye view across everything already live, so an editor can
- * see every gap at once instead of one record at a time.
+ * launch. Complements the publication checklist (which reports one record's
+ * missing language versions but no longer requires any particular locale — a
+ * material may be published in a single language) with a bird's-eye view
+ * across everything already live, so an editor can see every gap at once
+ * instead of one record at a time.
  */
 class ContentTranslationReport extends Command
 {
@@ -77,7 +77,7 @@ class ContentTranslationReport extends Command
 
     /**
      * Model labels the plan (PROJECT_PLAN.md, C-3) names as required before
-     * launch regardless of the `require_translation` setting.
+     * launch, even though publication itself accepts a single language.
      *
      * @var list<string>
      */

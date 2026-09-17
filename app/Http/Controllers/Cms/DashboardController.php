@@ -15,6 +15,7 @@ use App\Models\Page;
 use App\Models\Project;
 use App\Models\Region;
 use App\Models\User;
+use App\Support\ContentTitle;
 use App\Support\ContentTypes;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -276,7 +277,7 @@ class DashboardController extends Controller
                     'priority' => 20,
                     'kind' => 'urgent',
                     'kind_label' => 'Согласовать',
-                    'title' => $this->typeTitle($model, $type),
+                    'title' => $this->typeTitle($model),
                     'meta' => ContentTypes::label($type).' · автор '.$authorName.' · ожидает согласования',
                     'due' => 'сегодня',
                     'due_tone' => 'danger',
@@ -311,7 +312,7 @@ class DashboardController extends Controller
                     'priority' => $isReturned ? 10 : 50,
                     'kind' => $isReturned ? 'returned' : 'draft',
                     'kind_label' => $isReturned ? 'Исправить' : 'Черновик',
-                    'title' => $this->typeTitle($model, $type),
+                    'title' => $this->typeTitle($model),
                     'meta' => ContentTypes::label($type).($isReturned
                         ? ' · возвращено с проверки'
                         : ' · ваш незавершённый материал'),
@@ -343,8 +344,8 @@ class DashboardController extends Controller
                     'priority' => 30,
                     'kind' => 'translation',
                     'kind_label' => 'Перевести',
-                    'title' => $this->typeTitle($model, $type),
-                    'meta' => ContentTypes::label($type).' · не завершены обязательные локали',
+                    'title' => $this->typeTitle($model),
+                    'meta' => ContentTypes::label($type).' · не завершены переводы',
                     'due' => $model->updated_at?->diffForHumans(['parts' => 1]) ?? '',
                     'due_tone' => 'warn',
                     'action' => 'Перевести',
@@ -447,7 +448,7 @@ class DashboardController extends Controller
             $events[] = [
                 'date' => $when?->toDateString(),
                 'time' => $when?->format('H:i'),
-                'label' => 'Новость: '.Str::limit($news->getTranslation('title', 'ru'), 48),
+                'label' => 'Новость: '.Str::limit(ContentTitle::of($news), 48),
                 'tone' => $news->status === ContentStatus::Published ? 'ok' : 'accent',
             ];
         }
@@ -456,7 +457,7 @@ class DashboardController extends Controller
             $events[] = [
                 'date' => $alert->ends_at?->toDateString(),
                 'time' => $alert->ends_at?->format('H:i'),
-                'label' => 'Завершение: '.Str::limit($alert->getTranslation('title', 'ru', false) ?: $alert->internal_title, 44),
+                'label' => 'Завершение: '.Str::limit(ContentTitle::of($alert) ?: $alert->internal_title, 44),
                 'tone' => 'warn',
             ];
         }
@@ -479,7 +480,7 @@ class DashboardController extends Controller
                 $events[] = [
                     'date' => $model->published_at?->toDateString(),
                     'time' => $model->published_at?->format('H:i'),
-                    'label' => ContentTypes::label($type).': '.Str::limit($this->typeTitle($model, $type), 44),
+                    'label' => ContentTypes::label($type).': '.Str::limit($this->typeTitle($model), 44),
                     'tone' => 'ok',
                 ];
             }
@@ -491,20 +492,18 @@ class DashboardController extends Controller
     }
 
     /**
-     * Localized display title for any workflow content type, keyed the
-     * same way as ApprovalController's own (separate, not shared, to avoid
-     * coupling the two controllers) title resolution.
+     * Display title for any workflow content type, in the first language the
+     * material is filled in.
      */
-    private function typeTitle(Model $model, string $type): string
+    private function typeTitle(Model $model): string
     {
+        $title = ContentTitle::of($model);
+
         if ($model instanceof Alert) {
-            return $model->getTranslation('title', 'ru', false) ?: $model->internal_title;
+            return $title ?: $model->internal_title;
         }
 
-        $field = in_array($type, ['instruction', 'document'], true) ? 'name' : 'title';
-
-        /** @var Alert|News|Instruction|Document|Project|Announcement|Page $model */
-        return $model->getTranslation($field, 'ru', false) ?: '—';
+        return $title ?: '—';
     }
 
     /**

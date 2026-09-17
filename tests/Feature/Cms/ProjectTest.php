@@ -63,11 +63,11 @@ it('creates a draft project with cleaned goals, timeline and direction', functio
         ->and($project->direction['email'])->toBe('x@khf.tj');
 });
 
-it('requires a russian title and a lifecycle status', function () {
+it('requires a title in at least one language and a lifecycle status', function () {
     actingAs(projUser('editor'))->post('/projects', [
         'title' => ['ru' => ''],
         'action' => 'draft',
-    ])->assertSessionHasErrors(['title.ru', 'lifecycle_status']);
+    ])->assertSessionHasErrors(['title', 'lifecycle_status']);
 });
 
 it('sends a project to review when an editor submits', function () {

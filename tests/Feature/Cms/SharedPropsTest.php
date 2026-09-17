@@ -1,7 +1,9 @@
 <?php
 
+use App\Enums\ContentStatus;
 use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\News;
+use App\Models\Project;
 use App\Models\User;
 use App\Support\NavBadges;
 use Database\Seeders\RolePermissionSeeder;
@@ -111,6 +113,35 @@ it('does not recompute once props already held by the inertia client', function 
         ->assertJsonMissingPath('props.notifications')
         ->assertJsonPath('onceProps.auth.prop', 'auth')
         ->assertJsonPath('onceProps.nav_badges.prop', 'nav_badges');
+});
+
+it('re-reads nav badges held by the inertia client on the page after a change', function () {
+    $user = sharedPropsUser('chief_editor');
+    $approved = Project::factory()->create(['status' => ContentStatus::Review]);
+    Project::factory()->create(['status' => ContentStatus::Review]);
+    $clientHoldingOnceProps = [
+        'X-Inertia' => 'true',
+        'X-Inertia-Version' => app(HandleInertiaRequests::class)->version(request()) ?? '',
+        'X-Inertia-Except-Once-Props' => 'auth,nav_badges',
+    ];
+
+    actingAs($user)
+        ->withHeaders($clientHoldingOnceProps)
+        ->post('/approvals/approve', ['type' => 'project', 'id' => $approved->id])
+        ->assertRedirect('/approvals');
+
+    actingAs($user)
+        ->withHeaders($clientHoldingOnceProps)
+        ->get('/approvals')
+        ->assertOk()
+        ->assertJsonPath('props.nav_badges.approval', 1)
+        ->assertJsonMissingPath('props.auth');
+
+    actingAs($user)
+        ->withHeaders($clientHoldingOnceProps)
+        ->get('/approvals')
+        ->assertOk()
+        ->assertJsonMissingPath('props.nav_badges');
 });
 
 it('counts approval badges in SQL without hydrating review models', function () {

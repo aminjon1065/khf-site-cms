@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Document;
+use App\Support\ContentTitle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +22,7 @@ class DocumentResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->getTranslation('name', 'ru', false) ?: '— без названия —',
+            'name' => ContentTitle::of($this->resource) ?: '— без названия —',
             'doc_type' => $this->doc_type->value,
             'doc_type_label' => $this->doc_type->label(),
             'number' => $this->number,

@@ -100,7 +100,8 @@ class Instruction extends Model implements HasMedia, Workflowable
         static::saving(function (Instruction $instruction): void {
             if (blank($instruction->slug)) {
                 $source = $instruction->getTranslation('name', 'ru', false)
-                    ?: $instruction->getTranslation('name', 'tg', false);
+                    ?: $instruction->getTranslation('name', 'tg', false)
+                    ?: $instruction->getTranslation('name', 'en', false);
                 $instruction->slug = self::uniqueSlug($source, $instruction->getKey());
             }
         });

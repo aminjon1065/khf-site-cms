@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Project;
+use App\Support\ContentTitle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +22,7 @@ class ProjectResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'title' => $this->getTranslation('title', 'ru', false) ?: '— без названия —',
+            'title' => ContentTitle::of($this->resource) ?: '— без названия —',
             'slug' => $this->slug,
             'status' => $this->status->value,
             'lifecycle_status' => $this->lifecycle_status->value,

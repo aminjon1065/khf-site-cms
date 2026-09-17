@@ -198,6 +198,7 @@ class DocumentController extends Controller
             $query->where(function (Builder $q) use ($search): void {
                 $q->where('name->ru', 'like', "%{$search}%")
                     ->orWhere('name->tg', 'like', "%{$search}%")
+                    ->orWhere('name->en', 'like', "%{$search}%")
                     ->orWhere('number', 'like', "%{$search}%");
             });
         }

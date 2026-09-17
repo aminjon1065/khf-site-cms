@@ -5,7 +5,7 @@ import StructureUnitController from '@/actions/App/Http/Controllers/Cms/Structur
 import type { ContentLocale } from '@/lib/domain';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
-import { Field, Input, Textarea } from '@/ui/Field';
+import { Field, Input, Select, Textarea } from '@/ui/Field';
 import { LanguageTabs } from '@/ui/Nav';
 import { PageHeader } from '@/ui/PageHeader';
 
@@ -13,14 +13,24 @@ type LocaleMap = { ru: string; tg: string; en: string };
 
 interface StructureUnitData {
     id: number;
+    parent_id: number | null;
     num: string;
     name: LocaleMap;
     desc: LocaleMap;
     sort: number;
 }
 
+interface ParentOption {
+    value: number;
+    label: string;
+}
+
 interface Props {
     unit: StructureUnitData | null;
+    /** Units this one may be placed under — never itself or its own subunits. */
+    parents: ParentOption[];
+    /** Set when a subunit is added from its parent's row in the list. */
+    defaultParentId: number | null;
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
@@ -29,11 +39,16 @@ function toLocaleMap(value?: Partial<LocaleMap> | null): LocaleMap {
     return { ...EMPTY, ...(value ?? {}) };
 }
 
-export default function StructureForm({ unit }: Props) {
+export default function StructureForm({
+    unit,
+    parents,
+    defaultParentId,
+}: Props) {
     const isEdit = !!unit;
     const [lang, setLang] = useState<ContentLocale>('ru');
 
     const form = useForm({
+        parent_id: (unit?.parent_id ?? defaultParentId ?? '') as number | '',
         num: unit?.num ?? '',
         name: toLocaleMap(unit?.name),
         desc: toLocaleMap(unit?.desc),
@@ -95,7 +110,7 @@ export default function StructureForm({ unit }: Props) {
                         ? unit!.name.ru || 'Подразделение'
                         : 'Новое подразделение'
                 }
-                subtitle="Номер, название и описание для страницы «Структура»."
+                subtitle="Место в структуре, номер, название и описание для страницы «Структура»."
                 actions={
                     <Button
                         variant="primary"
@@ -120,6 +135,28 @@ export default function StructureForm({ unit }: Props) {
                 <h3 className="ui-card-title" style={{ marginTop: 0 }}>
                     Основные данные
                 </h3>
+                <Field
+                    label="Вышестоящее подразделение"
+                    htmlFor="structure-parent"
+                    hint="Оставьте пустым для подразделения верхнего уровня."
+                    error={fieldError('parent_id')}
+                >
+                    <Select
+                        id="structure-parent"
+                        value={String(data.parent_id)}
+                        onChange={(e) =>
+                            setData(
+                                'parent_id',
+                                e.target.value === ''
+                                    ? ''
+                                    : Number(e.target.value),
+                            )
+                        }
+                        hasError={!!fieldError('parent_id')}
+                        placeholder="— Верхний уровень —"
+                        options={parents}
+                    />
+                </Field>
                 <div
                     style={{
                         display: 'grid',

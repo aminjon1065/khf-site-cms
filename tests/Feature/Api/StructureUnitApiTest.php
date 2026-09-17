@@ -59,3 +59,22 @@ it('serves the second identical request from cache without hitting the database'
 
     expect($queries)->toBe(0);
 });
+
+it('nests subunits under their parent at any depth', function () {
+    $directorate = StructureUnit::query()->where('num', '01')->firstOrFail();
+    $second = StructureUnit::factory()->childOf($directorate)->create(['num' => '01.2', 'sort' => 2]);
+    $first = StructureUnit::factory()->childOf($directorate)->create(['num' => '01.1', 'sort' => 1]);
+    StructureUnit::factory()->childOf($first)->create(['num' => '01.1.1']);
+    $topLevel = StructureUnit::query()->whereNull('parent_id')->count();
+
+    $data = $this->getJson('/api/v1/structure?locale=ru')->assertOk()->json('data');
+    $unit = collect($data)->firstWhere('num', '01');
+
+    expect($data)->toHaveCount($topLevel)
+        ->and(array_column($data, 'num'))->not->toContain('01.1')
+        ->and(array_column($unit['children'], 'num'))->toBe(['01.1', '01.2'])
+        ->and($unit['children'][0]['name'])->toBe($first->getTranslation('name', 'ru'))
+        ->and(array_column($unit['children'][0]['children'], 'num'))->toBe(['01.1.1'])
+        ->and($unit['children'][1]['children'])->toBe([])
+        ->and($second->parent_id)->toBe($directorate->id);
+});

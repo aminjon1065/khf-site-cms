@@ -5,19 +5,44 @@ namespace App\Http\Middleware;
 use App\Enums\RoleName;
 use App\Models\User;
 use App\Support\NavBadges;
+use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 use Inertia\Inertia;
 use Inertia\Middleware;
+use Symfony\Component\HttpFoundation\Response;
 
 class HandleInertiaRequests extends Middleware
 {
+    /**
+     * Session flag that makes the next page re-read the sidebar badges.
+     */
+    private const REFRESH_NAV_BADGES = 'refresh_nav_badges';
+
     /**
      * The root template that's loaded on the first page visit.
      *
      * @var string
      */
     protected $rootView = 'app';
+
+    /**
+     * Handle the incoming request.
+     *
+     * The client remembers `nav_badges` and reports it as already loaded, so
+     * the redirect after approving, returning or publishing a material would
+     * keep the old counts until the TTL runs out. Any change made by the user
+     * flags the next page to re-read them; plain navigation still reuses the
+     * remembered value.
+     */
+    public function handle(Request $request, Closure $next): Response
+    {
+        if (! $request->isMethodSafe() && $request->user() !== null) {
+            $request->session()->flash(self::REFRESH_NAV_BADGES, true);
+        }
+
+        return parent::handle($request, $next);
+    }
 
     public function version(Request $request): ?string
     {
@@ -51,6 +76,7 @@ class HandleInertiaRequests extends Middleware
             'nav_badges' => $user
                 ? Inertia::once(fn (): array => NavBadges::for($user))
                     ->until(now()->addSeconds(30))
+                    ->fresh($request->session()->has(self::REFRESH_NAV_BADGES))
                 : [],
             'notification_unread' => fn (): int => $this->unreadNotifications($user),
             'notifications' => Inertia::optional(fn (): array => $this->notifications($user)),

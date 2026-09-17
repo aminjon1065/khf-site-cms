@@ -1,19 +1,31 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react';
+import {
+    CornerDownRight,
+    MoreVertical,
+    Pencil,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 import { useState } from 'react';
 import StructureUnitController from '@/actions/App/Http/Controllers/Cms/StructureUnitController';
 import { useCan } from '@/lib/auth';
+import { Tag } from '@/ui/Badge';
 import { IconButton, LinkButton } from '@/ui/Button';
 import { DataTable } from '@/ui/DataTable';
 import type { Column } from '@/ui/DataTable';
 import { ConfirmDialog, Dropdown } from '@/ui/Overlay';
+import type { MenuItem } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
+/** A unit in tree order: each subunit follows its parent, one `depth` deeper. */
 interface StructureUnitRow {
     id: number;
+    parent_id: number | null;
+    depth: number;
     num: string;
     name: string;
     sort: number;
+    children_count: number;
 }
 
 interface Props {
@@ -28,31 +40,93 @@ export default function StructureIndex({ units }: Props) {
     );
     const [processing, setProcessing] = useState(false);
 
+    const actionsFor = (u: StructureUnitRow): MenuItem[] => [
+        ...(can('structure.create')
+            ? [
+                  {
+                      label: 'Добавить вложенное',
+                      icon: <Plus size={15} strokeWidth={1.5} />,
+                      onSelect: () =>
+                          router.visit(
+                              StructureUnitController.create.url({
+                                  query: { parent: u.id },
+                              }),
+                          ),
+                  },
+              ]
+            : []),
+        {
+            label: 'Редактировать',
+            icon: <Pencil size={15} strokeWidth={1.5} />,
+            onSelect: () =>
+                router.visit(StructureUnitController.edit.url(u.id)),
+        },
+        // A unit with subunits cannot be deleted until they are moved or
+        // deleted — the server refuses it too.
+        ...(can('structure.delete') && u.children_count === 0
+            ? [
+                  { separator: true },
+                  {
+                      label: 'Удалить…',
+                      icon: <Trash2 size={15} strokeWidth={1.5} />,
+                      danger: true,
+                      onSelect: () => setDeleteTarget(u),
+                  },
+              ]
+            : []),
+    ];
+
     const columns: Column<StructureUnitRow>[] = [
         {
             key: 'num',
             header: '№',
-            width: 60,
+            width: 90,
             render: (u) => <span className="ui-mono">{u.num}</span>,
         },
         {
             key: 'name',
             header: 'Подразделение',
-            render: (u) =>
-                editable ? (
-                    <Link
-                        href={StructureUnitController.edit.url(u.id)}
-                        style={{
-                            fontWeight: 600,
-                            color: 'var(--color-text)',
-                            textDecoration: 'none',
-                        }}
-                    >
-                        {u.name}
-                    </Link>
-                ) : (
-                    <span style={{ fontWeight: 600 }}>{u.name}</span>
-                ),
+            render: (u) => (
+                <span
+                    style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        paddingLeft: u.depth * 22,
+                    }}
+                >
+                    {u.depth > 0 && (
+                        <CornerDownRight
+                            size={14}
+                            strokeWidth={1.5}
+                            aria-hidden="true"
+                            style={{
+                                flex: 'none',
+                                color: 'var(--color-neutral-400)',
+                            }}
+                        />
+                    )}
+                    {editable ? (
+                        <Link
+                            href={StructureUnitController.edit.url(u.id)}
+                            style={{
+                                fontWeight: u.depth === 0 ? 600 : 500,
+                                color: 'var(--color-text)',
+                                textDecoration: 'none',
+                            }}
+                        >
+                            {u.name}
+                        </Link>
+                    ) : (
+                        <span style={{ fontWeight: u.depth === 0 ? 600 : 500 }}>
+                            {u.name}
+                        </span>
+                    )}
+                    {u.children_count > 0 && (
+                        <Tag>в составе: {u.children_count}</Tag>
+                    )}
+                </span>
+            ),
         },
         {
             key: 'sort',
@@ -87,32 +161,7 @@ export default function StructureIndex({ units }: Props) {
                                 <MoreVertical size={17} strokeWidth={1.5} />
                             </IconButton>
                         )}
-                        items={[
-                            {
-                                label: 'Редактировать',
-                                icon: <Pencil size={15} strokeWidth={1.5} />,
-                                onSelect: () =>
-                                    router.visit(
-                                        StructureUnitController.edit.url(u.id),
-                                    ),
-                            },
-                            ...(can('structure.delete')
-                                ? [
-                                      { separator: true },
-                                      {
-                                          label: 'Удалить…',
-                                          icon: (
-                                              <Trash2
-                                                  size={15}
-                                                  strokeWidth={1.5}
-                                              />
-                                          ),
-                                          danger: true,
-                                          onSelect: () => setDeleteTarget(u),
-                                      },
-                                  ]
-                                : []),
-                        ]}
+                        items={actionsFor(u)}
                     />
                 ) : null,
         },
@@ -123,7 +172,7 @@ export default function StructureIndex({ units }: Props) {
             <Head title="Структура" />
             <PageHeader
                 title="Структура"
-                subtitle="Специализированные подразделения — состав страницы «Структура» на сайте"
+                subtitle="Подразделения Комитета с вложенными подразделениями — состав страницы «Структура» на сайте. Порядок задаётся среди подразделений одного уровня."
                 actions={
                     can('structure.create') && (
                         <LinkButton

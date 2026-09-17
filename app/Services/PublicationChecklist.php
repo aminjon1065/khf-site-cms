@@ -4,13 +4,25 @@ namespace App\Services;
 
 use App\Contracts\Workflowable;
 use App\Models\News;
-use App\Models\Setting;
+use App\Support\ContentTitle;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\HasMedia;
 
 class PublicationChecklist
 {
+    /**
+     * Checklist label of a language version and the form used in
+     * «на … версии сайта».
+     *
+     * @var array<string, array{0: string, 1: string}>
+     */
+    private const LANGUAGE_VERSIONS = [
+        'tg' => ['Таджикская', 'таджикской'],
+        'ru' => ['Русская', 'русской'],
+        'en' => ['Английская', 'английской'],
+    ];
+
     /**
      * @return list<array{key: string, label: string, ok: bool, blocking: bool, detail: string|null}>
      */
@@ -19,18 +31,7 @@ class PublicationChecklist
         $items = [];
 
         if (method_exists($subject, 'languageCompleteness')) {
-            $completeness = $subject->languageCompleteness();
-
-            foreach ($this->requiredLocales() as $locale) {
-                $percent = (int) ($completeness[$locale] ?? 0);
-                $items[] = [
-                    'key' => "translation_{$locale}",
-                    'label' => "Обязательный перевод {$locale}",
-                    'ok' => $percent === 100,
-                    'blocking' => true,
-                    'detail' => $percent === 100 ? null : "Готовность {$percent}%",
-                ];
-            }
+            array_push($items, ...$this->languageItems($subject, $subject->languageCompleteness()));
         }
 
         if ($subject instanceof News && $subject->hasMedia('cover')) {
@@ -112,18 +113,44 @@ class PublicationChecklist
     }
 
     /**
-     * @return list<string>
+     * A material may be published in a single language: the public site lists
+     * it only on the language versions where its title exists (PublicLocale),
+     * so a missing translation is reported, not enforced. Publication needs at
+     * least one version filled completely.
+     *
+     * @param  array<string, int>  $completeness
+     * @return list<array{key: string, label: string, ok: bool, blocking: bool, detail: string|null}>
      */
-    private function requiredLocales(): array
+    private function languageItems(Model $subject, array $completeness): array
     {
-        $configured = Setting::query()
-            ->where('group', 'languages')
-            ->where('key', 'require_translation')
-            ->first()?->value;
+        $anyComplete = in_array(100, array_map('intval', $completeness), true);
+        $missingTitle = ContentTitle::field($subject) === 'name' ? 'Нет названия' : 'Нет заголовка';
 
-        return is_array($configured)
-            ? array_values(array_filter($configured, 'is_string'))
-            : ['tg', 'ru'];
+        $items = [[
+            'key' => 'translation_any',
+            'label' => 'Хотя бы одна языковая версия заполнена',
+            'ok' => $anyComplete,
+            'blocking' => true,
+            'detail' => $anyComplete ? null : 'Заполните все поля материала хотя бы на одном языке.',
+        ]];
+
+        foreach (self::LANGUAGE_VERSIONS as $locale => [$version, $siteVersion]) {
+            $percent = (int) ($completeness[$locale] ?? 0);
+
+            $items[] = [
+                'key' => "translation_{$locale}",
+                'label' => "{$version} версия заполнена",
+                'ok' => $percent === 100,
+                'blocking' => false,
+                'detail' => match (true) {
+                    $percent === 100 => null,
+                    ContentTitle::in($subject, $locale) === '' => "{$missingTitle} — на {$siteVersion} версии сайта материал не появится.",
+                    default => "Заполнена на {$percent}%.",
+                },
+            ];
+        }
+
+        return $items;
     }
 
     /**

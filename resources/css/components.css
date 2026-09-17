@@ -1028,18 +1028,12 @@ h6 {
     font-size: 11px;
     color: var(--chrome-muted);
 }
+/* Эмблема Комитета — круглая и уже с каймой, поэтому без подложки. */
 .ui-sidebar-brand .mark {
     width: 32px;
     height: 32px;
     flex: none;
-    display: grid;
-    place-items: center;
-    border-radius: 9px;
-    background: var(--brand);
-    color: #fff;
-    font-family: var(--font-heading);
-    font-weight: 600;
-    box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 22%, transparent);
+    object-fit: contain;
 }
 .ui-sidebar-search {
     display: flex;
@@ -1221,7 +1215,6 @@ h6 {
 .ui-content {
     flex: 1;
     padding: 28px 32px 48px;
-    max-width: var(--max-page-w);
     width: 100%;
 }
 
@@ -2077,8 +2070,11 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     .cms-ops-grid {
         grid-template-columns: 1fr 1fr !important;
     }
+    /* minmax(0, …) как в десктопной сетке: у голого 1fr минимум — ширина
+       содержимого, и длинный заголовок задачи в одну строку распирал
+       колонку шире экрана. */
     .cms-dash-grid {
-        grid-template-columns: 1fr !important;
+        grid-template-columns: minmax(0, 1fr) !important;
     }
 }
 @media (max-width: 860px) {

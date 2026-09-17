@@ -51,11 +51,11 @@ it('creates a draft with cleaned sections and an auto slug', function () {
         ->and($instruction->sections['during']['ru'])->toBe(['Укройтесь под столом']);
 });
 
-it('requires a russian name', function () {
+it('requires a name in at least one language', function () {
     actingAs(instrUser('editor'))->post('/instructions', [
-        'name' => ['ru' => '', 'tg' => 'Ягон чиз'],
+        'name' => ['ru' => '', 'tg' => '', 'en' => ''],
         'action' => 'draft',
-    ])->assertSessionHasErrors('name.ru');
+    ])->assertSessionHasErrors('name');
 });
 
 it('sends an instruction to review when an editor submits', function () {

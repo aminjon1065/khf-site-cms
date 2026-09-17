@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Page;
 
 use App\Models\Page;
+use App\Rules\FilledInAnyLocale;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -24,8 +25,8 @@ class PageRequest extends FormRequest
         $page = $this->route('page');
 
         return [
-            'title' => ['array'],
-            'title.ru' => ['required', 'string', 'max:255'],
+            'title' => ['array', new FilledInAnyLocale('Укажите заголовок страницы хотя бы на одном языке.')],
+            'title.ru' => ['nullable', 'string', 'max:255'],
             'title.tg' => ['nullable', 'string', 'max:255'],
             'title.en' => ['nullable', 'string', 'max:255'],
 
@@ -96,7 +97,6 @@ class PageRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.ru.required' => 'Укажите заголовок страницы на русском языке.',
             'slug.unique' => 'Такой адрес (slug) уже используется другой страницей.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',
             'parent_id.exists' => 'Выбранная родительская страница не найдена.',

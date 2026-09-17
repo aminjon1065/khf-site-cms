@@ -4,6 +4,7 @@ use App\Models\Activity;
 use App\Models\StructureUnit;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -95,4 +96,86 @@ it('forbids a view-only role from deleting a structure unit', function () {
     actingAs(structureUser('chief_editor'))->delete("/structure/{$unit->id}")->assertForbidden();
 
     expect(StructureUnit::query()->find($unit->id))->not->toBeNull();
+});
+
+it('creates a subunit under its parent', function () {
+    $directorate = StructureUnit::factory()->create(['num' => '02']);
+
+    actingAs(structureUser('admin'))->post('/structure', [
+        'parent_id' => $directorate->id,
+        'num' => '02.1',
+        'name' => ['ru' => 'Отдел планирования'],
+        'desc' => ['ru' => 'Планы гражданской обороны.'],
+    ])->assertRedirect('/structure');
+
+    expect(StructureUnit::query()->where('num', '02.1')->sole()->parent_id)->toBe($directorate->id)
+        ->and($directorate->children()->pluck('num')->all())->toBe(['02.1']);
+});
+
+it('lists units as a tree, each subunit right under its parent', function () {
+    $second = StructureUnit::factory()->create(['num' => '02', 'sort' => 2]);
+    $first = StructureUnit::factory()->create(['num' => '01', 'sort' => 1]);
+    $department = StructureUnit::factory()->childOf($first)->create(['num' => '01.1', 'sort' => 1]);
+    StructureUnit::factory()->childOf($department)->create(['num' => '01.1.1', 'sort' => 1]);
+
+    actingAs(structureUser('admin'))->get('/structure')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('structure/index')
+            ->where('units', fn ($units): bool => collect($units)
+                ->map(fn (array $unit): array => [$unit['num'], $unit['depth'], $unit['children_count']])
+                ->all() === [['01', 0, 1], ['01.1', 1, 1], ['01.1.1', 2, 0], ['02', 0, 0]])
+            ->where('units.3.id', $second->id));
+});
+
+it('refuses to place a unit under itself or under one of its own subunits', function () {
+    $directorate = StructureUnit::factory()->create();
+    $department = StructureUnit::factory()->childOf($directorate)->create();
+    $sector = StructureUnit::factory()->childOf($department)->create();
+    $admin = structureUser('admin');
+    $payload = fn (int $parentId): array => [
+        'parent_id' => $parentId,
+        'num' => $directorate->num,
+        'name' => $directorate->getTranslations('name'),
+        'desc' => $directorate->getTranslations('desc'),
+    ];
+
+    actingAs($admin)->put("/structure/{$directorate->id}", $payload($directorate->id))
+        ->assertSessionHasErrors('parent_id');
+    actingAs($admin)->put("/structure/{$directorate->id}", $payload($sector->id))
+        ->assertSessionHasErrors(['parent_id' => 'Подразделение нельзя подчинить его собственному вложенному подразделению.']);
+
+    expect($directorate->refresh()->parent_id)->toBeNull();
+});
+
+it('refuses to delete a unit that still has subunits', function () {
+    $directorate = StructureUnit::factory()->create();
+    StructureUnit::factory()->childOf($directorate)->create();
+
+    actingAs(structureUser('admin'))->delete("/structure/{$directorate->id}")
+        ->assertRedirect('/structure')
+        ->assertSessionHas('error');
+
+    expect(StructureUnit::query()->find($directorate->id))->not->toBeNull();
+});
+
+it('offers every unit except the edited one and its subunits as a parent', function () {
+    $directorate = StructureUnit::factory()->create(['num' => '01', 'sort' => 1]);
+    StructureUnit::factory()->childOf($directorate)->create(['num' => '01.1']);
+    $other = StructureUnit::factory()->create(['num' => '02', 'sort' => 2]);
+    $otherDepartment = StructureUnit::factory()->childOf($other)->create(['num' => '02.1']);
+
+    actingAs(structureUser('admin'))->get("/structure/{$directorate->id}/edit")
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('parents', fn ($parents): bool => collect($parents)->pluck('value')->all() === [$other->id, $otherDepartment->id])
+            ->where('parents.1.label', '— 02.1 '.$otherDepartment->getTranslation('name', 'ru')));
+});
+
+it('preselects the parent when a subunit is added from the list', function () {
+    $directorate = StructureUnit::factory()->create();
+
+    actingAs(structureUser('admin'))->get("/structure/create?parent={$directorate->id}")
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where('defaultParentId', $directorate->id));
 });

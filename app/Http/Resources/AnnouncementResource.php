@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Announcement;
+use App\Support\ContentTitle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +22,7 @@ class AnnouncementResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'title' => $this->getTranslation('title', 'ru', false) ?: '— без заголовка —',
+            'title' => ContentTitle::of($this->resource) ?: '— без заголовка —',
             'kind' => $this->kind->value,
             'kind_label' => $this->kind->label(),
             'org' => $this->org,

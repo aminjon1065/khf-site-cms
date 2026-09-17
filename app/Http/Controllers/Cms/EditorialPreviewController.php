@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Cms;
 use App\Contracts\Workflowable;
 use App\Http\Controllers\Controller;
 use App\Services\PublicationChecklist;
+use App\Support\ContentTitle;
 use App\Support\EditorialContent;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -18,6 +19,11 @@ class EditorialPreviewController extends Controller
         private readonly PublicationChecklist $checklist,
     ) {}
 
+    /**
+     * Shows one language version exactly as the public site would: without a
+     * title in that language the material is not published there, so nothing
+     * from another language is substituted.
+     */
     public function __invoke(
         Request $request,
         string $contentType,
@@ -27,14 +33,13 @@ class EditorialPreviewController extends Controller
         abort_unless($model instanceof Workflowable, 404);
         $this->authorize('view', $model);
 
-        $locale = in_array($request->string('locale')->toString(), ['tg', 'ru', 'en'], true)
-            ? $request->string('locale')->toString()
-            : 'ru';
+        $requested = $request->string('locale')->toString();
+        $locale = in_array($requested, ['tg', 'ru', 'en'], true)
+            ? $requested
+            : ContentTitle::firstLocale($model) ?? 'ru';
+        $title = ContentTitle::in($model, $locale);
         $snapshot = $this->content->snapshot($model);
-        $titleMap = $snapshot['title'] ?? $snapshot['name'] ?? [];
         $bodyMap = $snapshot['body'] ?? $snapshot['summary'] ?? [];
-        $title = $this->localizedValue($titleMap, $locale);
-        $body = $this->localizedValue($bodyMap, $locale);
         $image = null;
 
         if ($model instanceof HasMedia) {
@@ -44,10 +49,11 @@ class EditorialPreviewController extends Controller
         $response = Inertia::render('editorial/preview', [
             'preview' => [
                 'locale' => $locale,
-                'title' => $title['value'],
-                'body' => $body['value'],
+                'title' => $title,
+                'body' => $title === '' ? '' : $this->localizedValue($bodyMap, $locale),
                 'image' => $image,
-                'fallback' => $title['fallback'] || $body['fallback'],
+                'available' => $title !== '',
+                'title_word' => ContentTitle::field($model) === 'name' ? 'названия' : 'заголовка',
                 'checklist' => $this->checklist->inspect($model),
             ],
         ])->toResponse($request);
@@ -57,24 +63,8 @@ class EditorialPreviewController extends Controller
         return $response;
     }
 
-    /**
-     * @return array{value: string, fallback: bool}
-     */
-    private function localizedValue(mixed $values, string $locale): array
+    private function localizedValue(mixed $values, string $locale): string
     {
-        if (! is_array($values)) {
-            return ['value' => '', 'fallback' => false];
-        }
-
-        $localized = trim((string) ($values[$locale] ?? ''));
-
-        if ($localized !== '') {
-            return ['value' => $localized, 'fallback' => false];
-        }
-
-        return [
-            'value' => (string) ($values['ru'] ?? collect($values)->first() ?? ''),
-            'fallback' => true,
-        ];
+        return is_array($values) ? trim((string) ($values[$locale] ?? '')) : '';
     }
 }

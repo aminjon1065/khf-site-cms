@@ -32,6 +32,19 @@ it('shows pending items in the approval queue', function () {
         ->assertInertia(fn (Assert $page) => $page->component('approvals')->has('queue', 1)->has('detail'));
 });
 
+it('shows a single-language material under the title it has', function () {
+    Project::factory()->create([
+        'status' => ContentStatus::Review,
+        'title' => ['ru' => '', 'tg' => 'Лоиҳаи обтаъминкунӣ', 'en' => ''],
+    ]);
+
+    actingAs(approver())->get('/approvals')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('queue.0.title', 'Лоиҳаи обтаъминкунӣ')
+            ->where('detail.title', 'Лоиҳаи обтаъминкунӣ'));
+});
+
 it('includes every workflow content module in the approval queue', function () {
     Project::factory()->create(['status' => ContentStatus::Review]);
     Announcement::factory()->create(['status' => ContentStatus::TranslationCheck]);

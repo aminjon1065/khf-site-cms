@@ -6,22 +6,24 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicStructureUnitResource;
 use App\Models\StructureUnit;
 use App\Services\PublicReadModelCache;
+use App\Support\StructureTree;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
- * Public structure-units endpoint for the Next.js site: the specialised
- * departments, in display order.
+ * Public structure endpoint for the Next.js site: the top-level units in
+ * display order, each carrying its subunits in `children`, to any depth.
  */
 class StructureUnitController extends Controller
 {
     /**
-     * Полный (небольшой и редко меняющийся) список подразделений кэшируется целиком и
-     * постранично режется в памяти: вариантов page/per_page слишком мало,
-     * чтобы кэшировать каждый. Кэш — общий `PublicReadModelCache`: те же
-     * версионные ключи и та же инвалидация по наблюдателю, что у остальных
-     * публичных read-моделей, вместо собственного TTL.
+     * Полное (небольшое и редко меняющееся) дерево подразделений кэшируется
+     * целиком и постранично режется в памяти по верхнему уровню: вариантов
+     * page/per_page слишком мало, чтобы кэшировать каждый. Кэш — общий
+     * `PublicReadModelCache`: те же версионные ключи и та же инвалидация по
+     * наблюдателю, что у остальных публичных read-моделей, вместо
+     * собственного TTL.
      */
     public function __construct(private readonly PublicReadModelCache $cache) {}
 
@@ -34,10 +36,12 @@ class StructureUnitController extends Controller
             PublicReadModelCache::STRUCTURE,
             $locale,
             fn (): array => PublicStructureUnitResource::collection(
-                StructureUnit::query()
-                    ->select(['id', 'num', 'name', 'desc'])
-                    ->ordered()
-                    ->get(),
+                StructureTree::build(
+                    StructureUnit::query()
+                        ->select(['id', 'parent_id', 'num', 'name', 'desc'])
+                        ->ordered()
+                        ->get(),
+                ),
             )->resolve(),
         );
 

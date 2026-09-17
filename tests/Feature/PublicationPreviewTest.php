@@ -61,10 +61,10 @@ it('rejects unsigned and anonymous preview requests', function () {
     $this->get($url)->assertRedirect('/login');
 });
 
-it('reports fallback for an unavailable signed preview locale', function () {
+it('does not substitute another language when the preview locale has no title', function () {
     $editor = previewUser();
     $news = News::factory()->create([
-        'title' => ['ru' => 'Fallback title', 'tg' => 'Сарлавҳа', 'en' => ''],
+        'title' => ['ru' => 'Русский заголовок', 'tg' => 'Сарлавҳа', 'en' => ''],
     ]);
     $url = URL::temporarySignedRoute('editorial.preview', now()->addMinute(), [
         'contentType' => 'news',
@@ -77,8 +77,67 @@ it('reports fallback for an unavailable signed preview locale', function () {
         ->assertOk()
         ->assertInertia(fn (Assert $page) => $page
             ->where('preview.locale', 'en')
-            ->where('preview.title', 'Fallback title')
-            ->where('preview.fallback', true));
+            ->where('preview.title', '')
+            ->where('preview.body', '')
+            ->where('preview.available', false)
+            ->where('preview.title_word', 'заголовка'));
+});
+
+it('opens the signed preview in the language a material is written in', function () {
+    $editor = previewUser();
+    $news = News::factory()->create([
+        'title' => ['ru' => '', 'tg' => 'Танҳо тоҷикӣ', 'en' => ''],
+    ]);
+
+    actingAs($editor)
+        ->get(app(EditorialContent::class)->previewUrl($news))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('preview.locale', 'tg')
+            ->where('preview.title', 'Танҳо тоҷикӣ')
+            ->where('preview.available', true));
+});
+
+it('lets a single-language material pass the checklist and reports the missing versions', function () {
+    $news = News::factory()->create([
+        'title' => ['ru' => '', 'tg' => 'Сарлавҳа', 'en' => ''],
+        'summary' => ['ru' => '', 'tg' => 'Хулоса', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '<p>Матн</p>', 'en' => ''],
+        'seo' => ['tg' => ['title' => 'Сарлавҳа', 'description' => 'Тавсиф']],
+    ]);
+
+    $items = collect(app(PublicationChecklist::class)->inspect($news));
+
+    expect($items->firstWhere('key', 'translation_any'))
+        ->toMatchArray(['ok' => true, 'blocking' => true])
+        ->and($items->firstWhere('key', 'translation_tg'))
+        ->toMatchArray(['ok' => true, 'blocking' => false])
+        ->and($items->firstWhere('key', 'translation_ru'))
+        ->toMatchArray([
+            'ok' => false,
+            'blocking' => false,
+            'detail' => 'Нет заголовка — на русской версии сайта материал не появится.',
+        ]);
+
+    expect(fn () => app(PublicationChecklist::class)->ensurePublishable($news))
+        ->not->toThrow(ValidationException::class);
+});
+
+it('blocks publication while no language version is complete', function () {
+    $news = News::factory()->create([
+        'title' => ['ru' => 'Заголовок', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+    ]);
+
+    $items = collect(app(PublicationChecklist::class)->inspect($news));
+
+    expect($items->firstWhere('key', 'translation_any'))
+        ->toMatchArray(['ok' => false, 'blocking' => true])
+        ->and($items->firstWhere('key', 'translation_ru')['detail'])
+        ->toBe('Заполнена на 80%.');
+
+    expect(fn () => app(PublicationChecklist::class)->ensurePublishable($news))
+        ->toThrow(ValidationException::class);
 });
 
 it('blocks publication when a cover has no alt text', function () {

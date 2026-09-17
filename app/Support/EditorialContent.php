@@ -165,7 +165,6 @@ class EditorialContent
             [
                 'contentType' => $type,
                 'contentId' => $model->getKey(),
-                'locale' => 'ru',
             ],
         );
     }

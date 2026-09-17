@@ -4,6 +4,7 @@ namespace App\Http\Requests\Announcement;
 
 use App\Enums\AnnouncementKind;
 use App\Models\Announcement;
+use App\Rules\FilledInAnyLocale;
 use App\Rules\SafePublicUrl;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -25,8 +26,8 @@ class AnnouncementRequest extends FormRequest
         $announcement = $this->route('announcement');
 
         return [
-            'title' => ['array'],
-            'title.ru' => ['required', 'string', 'max:255'],
+            'title' => ['array', new FilledInAnyLocale('Укажите заголовок объявления хотя бы на одном языке.')],
+            'title.ru' => ['nullable', 'string', 'max:255'],
             'title.tg' => ['nullable', 'string', 'max:255'],
             'title.en' => ['nullable', 'string', 'max:255'],
 
@@ -58,7 +59,6 @@ class AnnouncementRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.ru.required' => 'Укажите заголовок объявления на русском языке.',
             'kind.required' => 'Выберите тип объявления.',
             'slug.unique' => 'Такой адрес объявления уже используется.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',

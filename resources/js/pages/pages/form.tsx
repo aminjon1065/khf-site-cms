@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
 import { index, store, update } from '@/routes/pages';
 import { Blueprint } from '@/ui/Blueprint';
 import { Field, Input, Select, Textarea } from '@/ui/Field';
@@ -158,21 +159,14 @@ export default function PageForm({ page, reference }: Props) {
                 },
                 signedUrl: page?.preview_url,
                 checklist: [
-                    {
-                        label: 'Русская версия заполнена',
-                        ok: compAll.ru === 100,
-                        blocking: true,
-                    },
-                    {
-                        label: 'Таджикская версия заполнена',
-                        ok: compAll.tg === 100,
-                        blocking: true,
-                    },
+                    ...languageChecks(compAll, data.title),
                     {
                         label: 'SEO preview заполнен',
-                        ok:
-                            data.seo_title.ru.trim() !== '' &&
-                            data.seo_description.ru.trim() !== '',
+                        ok: (['tg', 'ru', 'en'] as ContentLocale[]).some(
+                            (locale) =>
+                                data.seo_title[locale].trim() !== '' &&
+                                data.seo_description[locale].trim() !== '',
+                        ),
                     },
                 ],
             }}
@@ -212,11 +206,10 @@ export default function PageForm({ page, reference }: Props) {
 
                         <Field
                             label="Заголовок"
-                            required={lang === 'ru'}
+                            required={!hasAnyTranslation(data.title)}
                             error={
-                                lang === 'ru'
-                                    ? fieldError('title.ru')
-                                    : undefined
+                                fieldError('title') ??
+                                fieldError(`title.${lang}`)
                             }
                         >
                             <Input
@@ -225,7 +218,10 @@ export default function PageForm({ page, reference }: Props) {
                                     setLocaleField('title', e.target.value)
                                 }
                                 hasError={
-                                    lang === 'ru' && !!fieldError('title.ru')
+                                    !!(
+                                        fieldError('title') ??
+                                        fieldError(`title.${lang}`)
+                                    )
                                 }
                                 placeholder={
                                     lang === 'ru'

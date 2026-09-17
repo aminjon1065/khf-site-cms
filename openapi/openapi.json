@@ -691,7 +691,7 @@
         ],
         "responses": {
           "200": {
-            "description": "Public structure units",
+            "description": "Top-level structure units, each with its subunits nested in children",
             "content": {
               "application/json": {
                 "schema": {
@@ -3066,7 +3066,8 @@
         "required": [
           "num",
           "name",
-          "desc"
+          "desc",
+          "children"
         ],
         "properties": {
           "num": {
@@ -3077,6 +3078,13 @@
           },
           "desc": {
             "type": "string"
+          },
+          "children": {
+            "type": "array",
+            "description": "Subunits of this unit, in display order, nested to any depth.",
+            "items": {
+              "$ref": "#/components/schemas/ApiStructureUnit"
+            }
           }
         }
       },

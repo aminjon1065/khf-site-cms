@@ -48,11 +48,11 @@ it('creates a draft document with its metadata', function () {
         ->and($document->section)->toBe('Приказы');
 });
 
-it('requires a russian name and a document type', function () {
+it('requires a name in at least one language and a document type', function () {
     actingAs(docUser('editor'))->post('/documents', [
         'name' => ['ru' => ''],
         'action' => 'draft',
-    ])->assertSessionHasErrors(['name.ru', 'doc_type']);
+    ])->assertSessionHasErrors(['name', 'doc_type']);
 });
 
 it('uploads a per-language file to the right collection', function () {

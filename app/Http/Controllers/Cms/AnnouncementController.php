@@ -12,6 +12,7 @@ use App\Models\Announcement;
 use App\Models\Project;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\ContentTitle;
 use App\Support\EditorialContent;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -187,6 +188,7 @@ class AnnouncementController extends Controller
             $query->where(function (Builder $q) use ($search): void {
                 $q->where('title->ru', 'like', "%{$search}%")
                     ->orWhere('title->tg', 'like', "%{$search}%")
+                    ->orWhere('title->en', 'like', "%{$search}%")
                     ->orWhere('org', 'like', "%{$search}%");
             });
         }
@@ -251,7 +253,7 @@ class AnnouncementController extends Controller
                 ->get()
                 ->map(fn (Project $project): array => [
                     'value' => $project->id,
-                    'label' => (string) $project->getTranslation('title', 'ru', false),
+                    'label' => ContentTitle::of($project),
                 ])->all(),
             'authors' => User::query()->role([
                 RoleName::Editor->value,

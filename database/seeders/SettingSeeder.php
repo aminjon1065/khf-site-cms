@@ -79,7 +79,6 @@ class SettingSeeder extends Seeder
             'languages' => [
                 'enabled' => ['tg', 'ru', 'en'],
                 'default' => 'tg',
-                'require_translation' => ['tg', 'ru'],
             ],
             'seo' => [
                 'meta_title' => 'КЧС и ГО Республики Таджикистан',

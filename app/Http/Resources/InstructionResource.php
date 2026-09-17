@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Instruction;
+use App\Support\ContentTitle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -21,7 +22,7 @@ class InstructionResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'name' => $this->getTranslation('name', 'ru', false) ?: '— без названия —',
+            'name' => ContentTitle::of($this->resource) ?: '— без названия —',
             'slug' => $this->slug,
             'status' => $this->status->value,
             'hazard_type' => $this->hazard_type?->value,

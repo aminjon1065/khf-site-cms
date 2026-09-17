@@ -111,7 +111,8 @@ class Project extends Model implements HasMedia, Workflowable
         static::saving(function (Project $project): void {
             if (blank($project->slug)) {
                 $source = $project->getTranslation('title', 'ru', false)
-                    ?: $project->getTranslation('title', 'tg', false);
+                    ?: $project->getTranslation('title', 'tg', false)
+                    ?: $project->getTranslation('title', 'en', false);
                 $project->slug = self::uniqueSlug($source, $project->getKey());
             }
         });

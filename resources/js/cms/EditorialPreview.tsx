@@ -1,7 +1,19 @@
-import { CheckCircle2, Monitor, Smartphone, TriangleAlert } from 'lucide-react';
+import {
+    CheckCircle2,
+    Languages,
+    Monitor,
+    Smartphone,
+    TriangleAlert,
+} from 'lucide-react';
 import { useState } from 'react';
 import type { ContentLocale } from '@/lib/domain';
+import {
+    missingVersionNotice,
+    previewLocale,
+} from '@/lib/publication-languages';
+import type { TitleWord } from '@/lib/publication-languages';
 import { Button } from '@/ui/Button';
+import { EmptyState } from '@/ui/Feedback';
 import { Modal } from '@/ui/Overlay';
 
 export interface PublicationCheck {
@@ -21,6 +33,8 @@ interface LocalePreview {
 
 export interface EditorialPreviewConfig {
     locales: Record<ContentLocale, LocalePreview>;
+    /** How the notice names a missing title; documents and instructions have a name. */
+    titleWord?: TitleWord;
     imageUrl?: string | null;
     imageAlt?: string | null;
     signedUrl?: string | null;
@@ -38,16 +52,27 @@ export function EditorialPreview({
     preview: EditorialPreviewConfig;
     initialLocale: ContentLocale;
 }) {
-    const [locale, setLocale] = useState(initialLocale);
+    // The modal stays mounted with the form, so the language is derived on
+    // every open from the tab being edited; a language picked inside the modal
+    // only lasts until it is closed.
+    const [chosenLocale, setChosenLocale] = useState<ContentLocale | null>(
+        null,
+    );
     const [mode, setMode] = useState<'desktop' | 'mobile' | 'og'>('desktop');
+    const locale =
+        chosenLocale ?? previewLocale(preview.locales, initialLocale);
     const selected = preview.locales[locale];
-    const fallback = selected.title.trim() === '';
-    const visible = fallback ? preview.locales.ru : selected;
+    const available = selected.title.trim() !== '';
+
+    const close = () => {
+        setChosenLocale(null);
+        onClose();
+    };
 
     return (
         <Modal
             open={open}
-            onClose={onClose}
+            onClose={close}
             width={1040}
             title="Предпросмотр публикации"
         >
@@ -58,7 +83,7 @@ export function EditorialPreview({
                             key={item}
                             size="sm"
                             variant={locale === item ? 'primary' : 'ghost'}
-                            onClick={() => setLocale(item)}
+                            onClick={() => setChosenLocale(item)}
                         >
                             {item.toUpperCase()}
                         </Button>
@@ -101,10 +126,9 @@ export function EditorialPreview({
                 )}
             </div>
 
-            {fallback && (
+            {!available && (
                 <div className="editorial-preview-fallback" role="status">
-                    Для {locale.toUpperCase()} нет заголовка — показана русская
-                    fallback-версия.
+                    {missingVersionNotice(locale, preview.titleWord)}
                 </div>
             )}
 
@@ -113,7 +137,13 @@ export function EditorialPreview({
                     className={`editorial-preview-canvas is-${mode}`}
                     aria-label={`${mode} preview`}
                 >
-                    {mode === 'og' ? (
+                    {!available ? (
+                        <EmptyState
+                            icon={<Languages size={28} strokeWidth={1.25} />}
+                            title="Этой языковой версии нет"
+                            hint="Выберите язык, на котором материал заполнен."
+                        />
+                    ) : mode === 'og' ? (
                         <div className="editorial-og-card">
                             {preview.imageUrl && (
                                 <img
@@ -124,11 +154,11 @@ export function EditorialPreview({
                             <div>
                                 <span>khf.tj</span>
                                 <strong>
-                                    {visible.seoTitle || visible.title}
+                                    {selected.seoTitle || selected.title}
                                 </strong>
                                 <p>
-                                    {visible.seoDescription ||
-                                        visible.summary ||
+                                    {selected.seoDescription ||
+                                        selected.summary ||
                                         'Описание будет сформировано из текста публикации.'}
                                 </p>
                             </div>
@@ -138,8 +168,8 @@ export function EditorialPreview({
                             <span className="editorial-preview-kicker">
                                 КЧС Республики Таджикистан
                             </span>
-                            <h1>{visible.title || 'Заголовок публикации'}</h1>
-                            {visible.summary && <p>{visible.summary}</p>}
+                            <h1>{selected.title}</h1>
+                            {selected.summary && <p>{selected.summary}</p>}
                             {preview.imageUrl && (
                                 <img
                                     src={preview.imageUrl}
@@ -150,7 +180,7 @@ export function EditorialPreview({
                                 className="editorial-preview-body"
                                 dangerouslySetInnerHTML={{
                                     __html: sanitizePreviewHtml(
-                                        visible.body ?? '',
+                                        selected.body ?? '',
                                     ),
                                 }}
                             />

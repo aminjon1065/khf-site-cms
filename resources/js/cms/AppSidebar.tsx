@@ -1,5 +1,5 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ChevronsLeft, Search, ShieldAlert } from 'lucide-react';
+import { ChevronsLeft, Search } from 'lucide-react';
 import { useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { NAV, navItemAllowed } from '@/lib/navigation';
@@ -50,9 +50,13 @@ export function AppSidebar({
                 )}
             >
                 <div className="ui-sidebar-brand">
-                    <span className="mark">
-                        <ShieldAlert size={18} strokeWidth={1.75} />
-                    </span>
+                    <img
+                        className="mark"
+                        src="/logo.webp"
+                        alt=""
+                        width={32}
+                        height={32}
+                    />
                     <span className="brand-text">
                         <span className="brand-name">КЧС</span>
                         <span className="brand-sub">Control Panel</span>

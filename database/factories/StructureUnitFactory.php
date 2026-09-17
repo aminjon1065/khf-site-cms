@@ -26,4 +26,12 @@ class StructureUnitFactory extends Factory
             'sort' => fake()->numberBetween(0, 100),
         ];
     }
+
+    /**
+     * A subunit placed under the given unit.
+     */
+    public function childOf(StructureUnit $parent): static
+    {
+        return $this->state(fn (): array => ['parent_id' => $parent->id]);
+    }
 }

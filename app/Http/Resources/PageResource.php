@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Page;
+use App\Support\ContentTitle;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -20,10 +21,10 @@ class PageResource extends JsonResource
     {
         return [
             'id' => $this->id,
-            'title' => $this->getTranslation('title', 'ru', false) ?: '— без заголовка —',
+            'title' => ContentTitle::of($this->resource) ?: '— без заголовка —',
             'slug' => $this->slug,
             'status' => $this->status->value,
-            'parent' => $this->whenLoaded('parent', fn () => $this->parent?->getTranslation('title', 'ru', false)),
+            'parent' => $this->whenLoaded('parent', fn () => $this->parent ? ContentTitle::of($this->parent) : null),
             'languages' => $this->languageCompleteness(),
             'author' => $this->whenLoaded('author', fn () => $this->author?->name),
             'published_at' => $this->published_at?->toIso8601String(),

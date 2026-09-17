@@ -6,7 +6,7 @@
    Statamic 6 (statamic/cms), а не подобраны на глаз:
      — `.storybook/theme.css` — значения `--theme-color-*`, которые CP
        печатает в <head>; это Tailwind `zinc` (hue ~286);
-     — `resources/css/ui.css` — шкала теней `--shadow-ui-*` и `--max-width-page`.
+     — `resources/css/ui.css` — шкала теней `--shadow-ui-*`.
    Отклонения от Statamic помечены комментарием «отклонение:».
    ========================================================================== */
 
@@ -104,11 +104,13 @@
     --shadow-lg:
         0px 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 
-    /* Chrome dimensions. --max-page-w = Statamic --max-width-page (85rem) */
+    /* Chrome dimensions.
+       отклонение: Statamic ограничивает страницу --max-width-page (85rem),
+       здесь контент занимает всю ширину рядом с сайдбаром — с ограничением
+       на широком мониторе справа оставалась пустая полоса. */
     --sidebar-w: 240px;
     --sidebar-w-collapsed: 64px;
     --topbar-h: 56px;
-    --max-page-w: 85rem;
 }
 
 .dark {

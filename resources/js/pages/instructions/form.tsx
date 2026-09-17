@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
 import { index, store, update } from '@/routes/instructions';
 import { AttachmentsField } from '@/ui/AttachmentsField';
 import { Blueprint } from '@/ui/Blueprint';
@@ -223,19 +224,11 @@ export default function InstructionForm({ instruction, reference }: Props) {
                         body: data.body.en,
                     },
                 },
+                titleWord: 'названия',
                 imageUrl: imageSrc,
                 signedUrl: instruction?.preview_url,
                 checklist: [
-                    {
-                        label: 'Русская версия заполнена',
-                        ok: compAll.ru === 100,
-                        blocking: true,
-                    },
-                    {
-                        label: 'Таджикская версия заполнена',
-                        ok: compAll.tg === 100,
-                        blocking: true,
-                    },
+                    ...languageChecks(compAll, data.name, 'названия'),
                     {
                         label: 'Тип опасности выбран',
                         ok: data.hazard_type !== '',
@@ -278,11 +271,9 @@ export default function InstructionForm({ instruction, reference }: Props) {
 
                         <Field
                             label="Название"
-                            required={lang === 'ru'}
+                            required={!hasAnyTranslation(data.name)}
                             error={
-                                lang === 'ru'
-                                    ? fieldError('name.ru')
-                                    : undefined
+                                fieldError('name') ?? fieldError(`name.${lang}`)
                             }
                         >
                             <Input
@@ -291,7 +282,10 @@ export default function InstructionForm({ instruction, reference }: Props) {
                                     setLocaleField('name', e.target.value)
                                 }
                                 hasError={
-                                    lang === 'ru' && !!fieldError('name.ru')
+                                    !!(
+                                        fieldError('name') ??
+                                        fieldError(`name.${lang}`)
+                                    )
                                 }
                                 placeholder={
                                     lang === 'ru'

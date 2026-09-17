@@ -38,7 +38,13 @@ final class PublicReadModelCache
 
     public const SLUGS = 'slugs';
 
-    public const STRUCTURE = 'structure';
+    /**
+     * Имя сменилось вместе с форматом ответа: подразделения стали деревом
+     * (`children`). Окно кэша — до часа, а выкладка кэш не сбрасывает, поэтому
+     * под старым именем после релиза отдавался бы плоский список без
+     * `children`, на котором новая страница сайта падает.
+     */
+    public const STRUCTURE = 'structure-tree';
 
     /**
      * Lookups served from cache and lookups that had to build the value, for

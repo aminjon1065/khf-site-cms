@@ -16,6 +16,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\WorkflowTransition;
 use App\Services\WorkflowService;
+use App\Support\ContentTitle;
 use App\Support\ContentTypes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
@@ -148,7 +149,7 @@ class ApprovalController extends Controller
         return [
             'type' => $type,
             'id' => $model->getKey(),
-            'title' => $this->title($model, $type),
+            'title' => $this->title($model),
             'kind' => ContentTypes::label($type),
             'subkind' => $this->subkind($model),
             'severity' => $model instanceof Alert ? $model->severity->value : null,
@@ -167,7 +168,7 @@ class ApprovalController extends Controller
         return [
             'type' => $type,
             'id' => $model->getKey(),
-            'title' => $this->title($model, $type),
+            'title' => $this->title($model),
             'kind' => ContentTypes::label($type),
             'subkind' => $this->subkind($model),
             'severity' => $model instanceof Alert ? $model->severity->value : null,
@@ -182,16 +183,15 @@ class ApprovalController extends Controller
         ];
     }
 
-    private function title(Model $model, string $type): string
+    private function title(Model $model): string
     {
+        $title = ContentTitle::of($model);
+
         if ($model instanceof Alert) {
-            return $model->getTranslation('title', 'ru', false) ?: $model->internal_title;
+            return $title ?: $model->internal_title;
         }
 
-        $field = in_array($type, ['instruction', 'document'], true) ? 'name' : 'title';
-
-        /** @var Alert|News|Instruction|Document|Project|Announcement|Page $model */
-        return $model->getTranslation($field, 'ru', false) ?: '—';
+        return $title ?: '—';
     }
 
     private function subkind(Model $model): string

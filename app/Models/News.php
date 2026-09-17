@@ -132,13 +132,15 @@ class News extends Model implements HasMedia, Workflowable
 
     protected static function booted(): void
     {
-        // Guarantee a stable, unique slug. Generated once from the Russian
-        // title on first save; existing slugs are never silently rewritten
-        // (published URLs must stay stable — see redirects for renames).
+        // Guarantee a stable, unique slug. Generated once on first save from the
+        // first filled title (ru, tg, en — a news item may exist in a single
+        // language); existing slugs are never silently rewritten (published
+        // URLs must stay stable — see redirects for renames).
         static::saving(function (News $news): void {
             if (blank($news->slug)) {
                 $source = $news->getTranslation('title', 'ru', false)
-                    ?: $news->getTranslation('title', 'tg', false);
+                    ?: $news->getTranslation('title', 'tg', false)
+                    ?: $news->getTranslation('title', 'en', false);
                 $news->slug = self::uniqueSlug($source, $news->getKey());
             }
         });

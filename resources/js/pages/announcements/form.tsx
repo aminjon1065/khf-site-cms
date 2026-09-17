@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
 import { index, store, update } from '@/routes/announcements';
 import { Blueprint } from '@/ui/Blueprint';
 import { DatePicker, Field, Input, Select, Textarea } from '@/ui/Field';
@@ -133,16 +134,7 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                 },
                 signedUrl: announcement?.preview_url,
                 checklist: [
-                    {
-                        label: 'Русская версия заполнена',
-                        ok: compAll.ru === 100,
-                        blocking: true,
-                    },
-                    {
-                        label: 'Таджикская версия заполнена',
-                        ok: compAll.tg === 100,
-                        blocking: true,
-                    },
+                    ...languageChecks(compAll, data.title),
                     {
                         label: 'Срок указан',
                         ok: data.deadline !== '',
@@ -185,11 +177,10 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
 
                         <Field
                             label="Заголовок"
-                            required={lang === 'ru'}
+                            required={!hasAnyTranslation(data.title)}
                             error={
-                                lang === 'ru'
-                                    ? fieldError('title.ru')
-                                    : undefined
+                                fieldError('title') ??
+                                fieldError(`title.${lang}`)
                             }
                         >
                             <Input
@@ -198,7 +189,10 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
                                     setLocaleField('title', e.target.value)
                                 }
                                 hasError={
-                                    lang === 'ru' && !!fieldError('title.ru')
+                                    !!(
+                                        fieldError('title') ??
+                                        fieldError(`title.${lang}`)
+                                    )
                                 }
                                 placeholder={
                                     lang === 'ru'

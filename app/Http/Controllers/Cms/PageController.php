@@ -185,6 +185,7 @@ class PageController extends Controller
             $query->where(function (Builder $q) use ($search): void {
                 $q->where('title->ru', 'like', "%{$search}%")
                     ->orWhere('title->tg', 'like', "%{$search}%")
+                    ->orWhere('title->en', 'like', "%{$search}%")
                     ->orWhere('slug', 'like', "%{$search}%");
             });
         }

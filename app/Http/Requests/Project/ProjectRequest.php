@@ -4,6 +4,7 @@ namespace App\Http\Requests\Project;
 
 use App\Enums\ProjectStatus;
 use App\Models\Project;
+use App\Rules\FilledInAnyLocale;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,8 +25,8 @@ class ProjectRequest extends FormRequest
         $project = $this->route('project');
 
         return [
-            'title' => ['array'],
-            'title.ru' => ['required', 'string', 'max:255'],
+            'title' => ['array', new FilledInAnyLocale('Укажите название проекта хотя бы на одном языке.')],
+            'title.ru' => ['nullable', 'string', 'max:255'],
             'title.tg' => ['nullable', 'string', 'max:255'],
             'title.en' => ['nullable', 'string', 'max:255'],
 
@@ -83,7 +84,6 @@ class ProjectRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.ru.required' => 'Укажите название проекта на русском языке.',
             'lifecycle_status.required' => 'Выберите статус проекта.',
             'slug.unique' => 'Такой адрес (slug) уже используется другим проектом.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',

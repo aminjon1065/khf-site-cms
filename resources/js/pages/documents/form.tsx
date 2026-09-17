@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
 import { index, store, update } from '@/routes/documents';
 import { Blueprint } from '@/ui/Blueprint';
 import { Checkbox, DatePicker, Field, Input, Select } from '@/ui/Field';
@@ -135,18 +136,10 @@ export default function DocumentForm({ document, reference }: Props) {
                     ru: { title: data.name.ru },
                     en: { title: data.name.en },
                 },
+                titleWord: 'названия',
                 signedUrl: document?.preview_url,
                 checklist: [
-                    {
-                        label: 'Русское название заполнено',
-                        ok: compAll.ru === 100,
-                        blocking: true,
-                    },
-                    {
-                        label: 'Таджикское название заполнено',
-                        ok: compAll.tg === 100,
-                        blocking: true,
-                    },
+                    ...languageChecks(compAll, data.name, 'названия'),
                     {
                         label: 'Реквизиты документа указаны',
                         ok:
@@ -192,11 +185,9 @@ export default function DocumentForm({ document, reference }: Props) {
 
                         <Field
                             label="Название документа"
-                            required={lang === 'ru'}
+                            required={!hasAnyTranslation(data.name)}
                             error={
-                                lang === 'ru'
-                                    ? fieldError('name.ru')
-                                    : undefined
+                                fieldError('name') ?? fieldError(`name.${lang}`)
                             }
                         >
                             <Input
@@ -208,7 +199,10 @@ export default function DocumentForm({ document, reference }: Props) {
                                     })
                                 }
                                 hasError={
-                                    lang === 'ru' && !!fieldError('name.ru')
+                                    !!(
+                                        fieldError('name') ??
+                                        fieldError(`name.${lang}`)
+                                    )
                                 }
                                 placeholder={
                                     lang === 'ru'

@@ -3,6 +3,7 @@
 namespace App\Http\Requests\News;
 
 use App\Models\News;
+use App\Rules\FilledInAnyLocale;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -23,8 +24,8 @@ class NewsRequest extends FormRequest
         $news = $this->route('news');
 
         return [
-            'title' => ['array'],
-            'title.ru' => ['required', 'string', 'max:255'],
+            'title' => ['array', new FilledInAnyLocale('Укажите заголовок новости хотя бы на одном языке.')],
+            'title.ru' => ['nullable', 'string', 'max:255'],
             'title.tg' => ['nullable', 'string', 'max:255'],
             'title.en' => ['nullable', 'string', 'max:255'],
 
@@ -93,7 +94,6 @@ class NewsRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'title.ru.required' => 'Укажите заголовок новости на русском языке.',
             'slug.unique' => 'Такой адрес (slug) уже используется другой новостью.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',
             'category_id.exists' => 'Выбрана несуществующая категория.',

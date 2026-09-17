@@ -4,6 +4,7 @@ namespace App\Http\Requests\Instruction;
 
 use App\Enums\HazardType;
 use App\Models\Instruction;
+use App\Rules\FilledInAnyLocale;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -24,8 +25,8 @@ class InstructionRequest extends FormRequest
         $instruction = $this->route('instruction');
 
         return [
-            'name' => ['array'],
-            'name.ru' => ['required', 'string', 'max:255'],
+            'name' => ['array', new FilledInAnyLocale('Укажите название инструкции хотя бы на одном языке.')],
+            'name.ru' => ['nullable', 'string', 'max:255'],
             'name.tg' => ['nullable', 'string', 'max:255'],
             'name.en' => ['nullable', 'string', 'max:255'],
 
@@ -84,7 +85,6 @@ class InstructionRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.ru.required' => 'Укажите название инструкции на русском языке.',
             'slug.unique' => 'Такой адрес (slug) уже используется другой инструкцией.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',
             'hazard_type.enum' => 'Выбран несуществующий тип события.',

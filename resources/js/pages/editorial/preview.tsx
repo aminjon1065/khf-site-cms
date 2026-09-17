@@ -1,12 +1,16 @@
 import { Head } from '@inertiajs/react';
 import { CheckCircle2, TriangleAlert } from 'lucide-react';
+import type { ContentLocale } from '@/lib/domain';
+import { missingVersionNotice } from '@/lib/publication-languages';
+import type { TitleWord } from '@/lib/publication-languages';
 
 interface PreviewData {
-    locale: string;
+    locale: ContentLocale;
     title: string;
     body: string;
     image: string | null;
-    fallback: boolean;
+    available: boolean;
+    title_word: TitleWord;
     checklist: {
         key: string;
         label: string;
@@ -23,13 +27,23 @@ export default function SignedEditorialPreview({
 }) {
     return (
         <main className="signed-editorial-preview">
-            <Head title={`Предпросмотр: ${preview.title}`} />
+            <Head
+                title={
+                    preview.available
+                        ? `Предпросмотр: ${preview.title}`
+                        : 'Предпросмотр'
+                }
+            />
             <header>
                 <span>Приватный предпросмотр · {preview.locale}</span>
-                <h1>{preview.title}</h1>
-                {preview.fallback && (
+                {preview.available ? (
+                    <h1>{preview.title}</h1>
+                ) : (
                     <p role="status">
-                        Часть полей показана из русской fallback-версии.
+                        {missingVersionNotice(
+                            preview.locale,
+                            preview.title_word,
+                        )}
                     </p>
                 )}
             </header>

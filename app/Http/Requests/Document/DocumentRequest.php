@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Document;
 
 use App\Enums\DocType;
+use App\Rules\FilledInAnyLocale;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -22,8 +23,8 @@ class DocumentRequest extends FormRequest
         $file = ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx', 'max:20480'];
 
         return [
-            'name' => ['array'],
-            'name.ru' => ['required', 'string', 'max:255'],
+            'name' => ['array', new FilledInAnyLocale('Укажите название документа хотя бы на одном языке.')],
+            'name.ru' => ['nullable', 'string', 'max:255'],
             'name.tg' => ['nullable', 'string', 'max:255'],
             'name.en' => ['nullable', 'string', 'max:255'],
 
@@ -50,7 +51,6 @@ class DocumentRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.ru.required' => 'Укажите название документа на русском языке.',
             'doc_type.required' => 'Выберите тип документа.',
             'file_tg.mimes' => 'Недопустимый формат файла (тадж.). Разрешены PDF, DOC(X), XLS(X), PPT(X).',
             'file_ru.mimes' => 'Недопустимый формат файла (рус.). Разрешены PDF, DOC(X), XLS(X), PPT(X).',
