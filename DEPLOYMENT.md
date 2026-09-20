@@ -104,6 +104,14 @@ MEDIA_ORPHAN_GRACE_HOURS=24
 # CORS: перечислите ТОЧНЫЕ origin публичного сайта (через запятую)
 CORS_ALLOWED_ORIGINS=https://khf.tj,https://www.khf.tj
 
+# Прокси, которым доверяются заголовки X-Forwarded-* (audit I-1). nginx
+# терминирует TLS и дописывает клиентский IP в X-Forwarded-For; без этой
+# настройки per-IP лимиты (включая submissions 10/мин) считаются по IP
+# nginx/SSR-сервера, то есть на всех посетителей суммарно.
+# REMOTE_ADDR = доверять прямому хопу; прод-вариант со списком подсетей —
+# см. config/trustedproxy.php и deploy/nginx/cms.conf.
+TRUSTED_PROXIES=REMOTE_ADDR
+
 # Ревалидация публичного сайта при публикации/изменении контента.
 # FRONTEND_REVALIDATION_SECRET должен побайтово совпадать с
 # REVALIDATION_SECRET в .env.local публичного сайта (сгенерируйте один
@@ -212,11 +220,13 @@ php artisan queue:work database --queue=media --sleep=3 --tries=3 --timeout=150 
 ```
 
 Каждая команда должна управляться Supervisor/systemd с автоматическим
-перезапуском и `stopwaitsecs` больше 180 секунд. После каждого deploy выполните
-`php artisan queue:restart`, чтобы воркеры загрузили новый код. Scheduler каждую
-минуту ставит heartbeat в `critical` и запускает `queue:monitor` для Redis и
-database fallback; `/api/v1/ready` возвращает 503, если worker heartbeat старше
-пяти минут.
+перезапуском и `stopwaitsecs` больше 180 секунд. Готовый supervisor-конфиг —
+`deploy/supervisor/khf-cms-workers.conf`; cron-строка планировщика —
+`deploy/cron.d/khf-cms`; nginx-vhost'ы — `deploy/nginx/`. После каждого deploy
+выполните `php artisan queue:restart`, чтобы воркеры загрузили новый код
+(deploy-cms.sh делает это сам). Scheduler каждую минуту ставит heartbeat в
+`critical` и запускает `queue:monitor` для Redis и database fallback;
+`/api/v1/ready` возвращает 503, если worker heartbeat старше пяти минут.
 
 ### 2.9. Политика 2FA
 
@@ -273,9 +283,16 @@ server {
     }
 
     location ~ \.php$ {
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
+        fastcgi_pass unix:/run/php/php8.5-fpm.sock;
         fastcgi_param SCRIPT_FILENAME $realpath_root$fastcgi_script_name;
         include fastcgi_params;
+
+        # Цепочка клиентского IP для Laravel (audit I-1): nginx — внешний
+        # доверенный хоп, дописывает реальный адрес в конец X-Forwarded-For;
+        # приложение с настроенным TRUSTED_PROXIES берёт последний недоверенный
+        # элемент, подделанный префикс игнорируется.
+        fastcgi_param HTTP_X_FORWARDED_FOR $proxy_add_x_forwarded_for;
+        fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
     }
 
     client_max_body_size 20M;   # загрузка медиа (лимит 15 МБ + запас)
@@ -359,7 +376,9 @@ cd /var/www/khf-site-front
 npm ci
 ```
 
-Создайте `.env.local`:
+Создайте `.env.production` (файл живёт в `shared/`, релизы ссылаются на него
+симлинком — см. §4; при ручных экспериментах на стенде Next дочитает и
+`.env.local` поверх него):
 
 ```dotenv
 # База API CMS для серверных вызовов Next.js (SSR/ISR)
@@ -480,6 +499,11 @@ gzip хотя бы делал сам Next.
 
 ## 4. Обновление (redeploy)
 
+> Исполняемые версии этого раздела — `deploy/deploy-cms.sh`,
+> `deploy/deploy-front.sh` и `deploy/rollback.sh` в репозитории CMS (audit
+> J-3): те же шаги с dry-run, чисткой старых релизов и проверками
+> `ops:capacity`/`ops:production-check`. Ниже — объяснение каждого шага.
+
 Развёртывание — переключение символической ссылки на готовый каталог релиза, а
 не сборка поверх работающего кода. Прежний способ (`php artisan down`, `git
 pull` в рабочем каталоге, сборка на месте) означал заведомый простой и не
@@ -523,7 +547,8 @@ systemctl reload php8.5-fpm && php artisan queue:restart
 > удалить). Иначе «мгновенный откат» существует только на бумаге.
 
 **Публичный сайт:** та же схема — сборка в новом каталоге релиза, затем
-переключение ссылки и `systemctl reload khf-front`. `next build` обязан
+переключение ссылки и `systemctl restart khf-front` (не reload: у Node нет
+SIGHUP-обработчика, а ExecReload у юнита нет). `next build` обязан
 завершиться до переключения: сборка проверяет доступность CMS и падает, если
 та не отвечает (fail-fast против пустого релиза).
 
@@ -533,7 +558,7 @@ git clone --depth 1 --branch main git@github.com:…/khf-site-front.git "$RELEAS
 ln -s /var/www/khf-site-front/shared/.env.production "$RELEASE/.env.production"
 cd "$RELEASE" && npm ci && npm run build
 ln -sfn "$RELEASE" /var/www/khf-site-front/current
-systemctl reload khf-front
+systemctl restart khf-front
 ```
 
 ---

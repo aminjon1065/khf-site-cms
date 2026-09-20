@@ -1,0 +1,40 @@
+# Публичный сайт Next.js (DEPLOYMENT.md §3.3, audit J-3).
+# Установка: cp deploy/systemd/khf-front.service /etc/systemd/system/
+#            systemctl daemon-reload && systemctl enable --now khf-front
+#
+# Примечания:
+#  - npm-обёртка порождает дочерний next-процесс: KillMode=mixed +
+#    stopasgroup-семантика обеспечивают честный рестарт всего дерева.
+#    npm теряет SIGTERM по пути к next start — без этого рестарт
+#    оставляет осиротевший процесс на занятом порту.
+#  - reload у юнита отсутствует сознательно: Node не обрабатывает SIGHUP;
+#    деплой-скрипт делает restart (в старой версии доки было «reload»,
+#    который на этом юните просто падал бы).
+
+[Unit]
+Description=KHF public site (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/var/www/khf-site-front/current
+ExecStart=/usr/bin/npm run start -- -p 3000
+Environment=NODE_ENV=production
+User=www-data
+Group=www-data
+Restart=always
+RestartSec=3
+KillMode=mixed
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+
+# Минимальная изоляция процесса (best effort; NoNewPrivileges безопасен
+# для Node, остальное включайте после проверки на стенде).
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ReadWritePaths=/var/www/khf-site-front/current
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,5 @@
+# Планировщик Laravel (DEPLOYMENT.md §2.7): ровно одна строка на хосте.
+# Установка: cp deploy/cron.d/khf-cms /etc/cron.d/khf-cms && chmod 0644 /etc/cron.d/khf-cms
+# Планировщик сам следит за heartbeat (каждую минуту) и queue:monitor;
+# /api/v1/ready отвечает 503, если он не тикает дольше 15 минут.
+* * * * * www-data cd /var/www/khf-site-cms/current && /usr/bin/php8.5 artisan schedule:run >> /var/log/khf-cms/schedule.log 2>&1
