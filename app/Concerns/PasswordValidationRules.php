@@ -35,11 +35,9 @@ trait PasswordValidationRules
      */
     protected function passwordRulesHint(): string
     {
+        // Password::default() по сигнатуре всегда возвращает Password —
+        // защитная ветка «не Password» была недостижима (phpstan).
         $rule = Password::default();
-
-        if (! $rule instanceof Password) {
-            return 'Не менее 8 символов.';
-        }
 
         $min = (new \ReflectionProperty($rule, 'min'))->getValue($rule) ?? 8;
         $parts = ["не менее {$min} символов"];

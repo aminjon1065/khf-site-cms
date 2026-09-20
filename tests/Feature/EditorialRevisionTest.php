@@ -52,12 +52,15 @@ it('stores a durable autosave without mutating the published model', function ()
         'title' => ['ru' => 'Опубликованный заголовок', 'tg' => '', 'en' => ''],
     ]);
 
-    actingAs($editor)
+    $response = actingAs($editor)
         ->postJson('/editorial/autosave', autosavePayload($news, (string) Str::uuid()))
-        ->assertCreated()
-        ->assertJsonPath('revision_id', 1);
+        ->assertCreated();
 
     $revision = EditorialRevision::query()->firstOrFail();
+
+    // Идентификатор не обязан быть 1: на MySQL auto-increment не
+    // сбрасывается между тестами, счётчик зависит от порядка прогона.
+    expect($response->json('revision_id'))->toBe($revision->id);
 
     expect(data_get($revision->data, 'title.ru'))->toBe('Автосохранённый заголовок')
         ->and($revision->source)->toBe('autosave')
