@@ -60,6 +60,12 @@ jobs:
       - name: Setup Application
         run: composer setup
 
+      - name: Install AVIF encoder (media derivative tests)
+        # AvifDerivativeGenerator ищет avifenc в PATH (AVIFENC_BINARY);
+        # на macOS он из homebrew, на ubuntu-раннере — пакет libavif-bin.
+        # Нужен обеим ногам матрицы: полный suite гоняет и ci:check (sqlite).
+        run: sudo apt-get update -q && sudo apt-get install -y -q libavif-bin
+
       - name: Run CI Checks (sqlite)
         if: matrix.db == 'sqlite'
         run: composer ci:check
@@ -89,12 +95,6 @@ jobs:
           name: cms-bundle-report
           path: bundle-reports/
           retention-days: 14
-
-      - name: Install AVIF encoder (media derivative tests)
-        # AvifDerivativeGenerator ищет avifenc в PATH (AVIFENC_BINARY);
-        # на macOS он из homebrew, на ubuntu-раннере — пакет libavif-bin.
-        # Нужен обеим ногам матрицы: полный suite гоняет и ci:check (sqlite).
-        run: sudo apt-get update -q && sudo apt-get install -y -q libavif-bin
 
       - name: Run tests against MySQL
         if: matrix.db == 'mysql'
