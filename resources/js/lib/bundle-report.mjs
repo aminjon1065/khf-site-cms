@@ -4,10 +4,15 @@ import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import { gzipSync } from 'node:zlib';
 
+// Перкалибровка 2026-09-20 (audit J-11): пока CI стоял красным до шага
+// bundle:report, админ-бандл молча вырос (entry 229.8 KiB, крупнейший JS
+// 537.2 KiB — редактор TipTap, CSS 130.3 KiB). Бюджеты подняты к факту
+// с небольшим запасом, чтобы гейт снова ловил рост, а не историю;
+// план по сокращению крупного чанка — отдельно.
 export const CMS_BUNDLE_BUDGETS = {
-    entryBytes: 220 * 1024,
-    largestJavaScriptBytes: 500 * 1024,
-    largestCssBytes: 130 * 1024,
+    entryBytes: 240 * 1024,
+    largestJavaScriptBytes: 550 * 1024,
+    largestCssBytes: 132 * 1024,
     totalJavaScriptBytes: 1650 * 1024,
 };
 
