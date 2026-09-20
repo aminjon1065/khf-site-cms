@@ -12,9 +12,8 @@
 /resources/js/wayfinder
 /vendor
 .DS_Store
-.env
-.env.backup
-.env.production
+.env*
+!.env.example
 .phpactor.json
 .phpunit.result.cache
 Homestead.json
@@ -27,9 +26,10 @@ yarn-error.log
 /.nova
 /.vscode
 /.zed
-.env.before_lerd
 /test-results
 /playwright-report
 /playwright/.cache
 /bundle-reports
 /tests/e2e/.auth
+pnpm-lock.yaml
+pnpm-workspace.yaml
