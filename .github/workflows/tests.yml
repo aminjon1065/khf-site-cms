@@ -90,6 +90,12 @@ jobs:
           path: bundle-reports/
           retention-days: 14
 
+      - name: Install AVIF encoder (media derivative tests)
+        if: matrix.db == 'mysql'
+        # AvifDerivativeGenerator ищет avifenc в PATH (AVIFENC_BINARY);
+        # на macOS он из homebrew, на ubuntu-раннере — пакет libavif-bin.
+        run: sudo apt-get update -q && sudo apt-get install -y -q libavif-bin
+
       - name: Run tests against MySQL
         if: matrix.db == 'mysql'
         env:

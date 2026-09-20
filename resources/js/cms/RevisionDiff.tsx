@@ -1,8 +1,8 @@
+import { useEffect, useState } from 'react';
 import { show as showRevision } from '@/actions/App/Http/Controllers/Cms/EditorialAutosaveController';
 import { diffLines, fieldChanged, normalizeField } from '@/lib/text-diff';
 import { Blueprint } from '@/ui/Blueprint';
 import { Modal } from '@/ui/Overlay';
-import { useEffect, useState } from 'react';
 
 interface Props {
     revisionId: number;

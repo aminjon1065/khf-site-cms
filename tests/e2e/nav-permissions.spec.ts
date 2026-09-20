@@ -43,8 +43,10 @@ test('каждый видимый пункт сайдбара открывает
         expect(count, `${role.label}: сайдбар пуст`).toBeGreaterThan(0);
 
         const hrefs = new Set<string>();
+
         for (let i = 0; i < count; i += 1) {
             const href = await links.nth(i).getAttribute('href');
+
             if (href) {
                 hrefs.add(href.split('?')[0]);
             }
