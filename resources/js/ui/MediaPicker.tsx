@@ -1,4 +1,4 @@
-import { ImageOff, Pencil, Upload } from 'lucide-react';
+import { Check, ImageOff, Pencil, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { getJson, postForm } from '@/lib/http';
@@ -35,7 +35,15 @@ interface LibraryResponse {
 interface Props {
     open: boolean;
     onClose: () => void;
-    onSelect: (item: MediaItem) => void;
+    /** Одиночный выбор (без multiple): клик по снимку сразу отдаёт его и закрывает окно. */
+    onSelect?: (item: MediaItem) => void;
+    /**
+     * Режим мультивыбора (например, для фотогалереи): клик по снимку не
+     * закрывает окно, а отмечает его; выбранные отдаются разом через
+     * onSelectMany в порядке отметки.
+     */
+    multiple?: boolean;
+    onSelectMany?: (items: MediaItem[]) => void;
 }
 
 const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
@@ -50,7 +58,13 @@ const SORT_OPTIONS = [
  * Модальный выбор изображения из медиабиблиотеки: поиск, сетка миниатюр и
  * загрузка нового файла прямо из окна. Возвращает выбранный элемент в onSelect.
  */
-export function MediaPicker({ open, onClose, onSelect }: Props) {
+export function MediaPicker({
+    open,
+    onClose,
+    onSelect,
+    multiple = false,
+    onSelectMany,
+}: Props) {
     const [items, setItems] = useState<MediaItem[]>([]);
     const [search, setSearch] = useState('');
     const [sort, setSort] = useState('newest');
@@ -62,7 +76,26 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [editing, setEditing] = useState<MediaItem | null>(null);
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const fileRef = useRef<HTMLInputElement>(null);
+
+    // Каждое закрытие окна начинает выбор заново: забытая отметка с
+    // прошлого раза попала бы в галерею без ведома редактора. Сброс — в
+    // обработчике закрытия, а не в эффекте (каскадные ре-рендеры).
+    const handleClose = () => {
+        setSelectedIds([]);
+        onClose();
+    };
+
+    const selectedItems = selectedIds
+        .map((id) => items.find((item) => item.id === id))
+        .filter((item): item is MediaItem => item !== undefined);
+
+    const toggleSelected = (id: number) => {
+        setSelectedIds((prev) =>
+            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+        );
+    };
 
     /**
      * Загружает страницу библиотеки. Первая заменяет сетку, последующие
@@ -130,8 +163,15 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
             );
             setItems((prev) => [res.data, ...prev]);
             setTotal((prev) => prev + 1);
-            onSelect(res.data);
-            onClose();
+
+            if (multiple) {
+                // Загруженный файл сразу отмечается: окно не закрывается,
+                // редактор видит его в сетке и добавляет вместе с остальными.
+                setSelectedIds((prev) => [...prev, res.data.id]);
+            } else {
+                onSelect?.(res.data);
+                onClose();
+            }
         } catch (e) {
             setError((e as Error).message);
         } finally {
@@ -143,7 +183,7 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
         <>
             <Modal
                 open={open}
-                onClose={onClose}
+                onClose={handleClose}
                 title="Медиабиблиотека"
                 width={720}
                 footer={
@@ -172,6 +212,17 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
                             Загрузить файл
                         </Button>
                         <div style={{ flex: 1 }} />
+                        {multiple && (
+                            <Button
+                                disabled={selectedItems.length === 0}
+                                onClick={() => {
+                                    onSelectMany?.(selectedItems);
+                                    handleClose();
+                                }}
+                            >
+                                Добавить выбранные ({selectedItems.length})
+                            </Button>
+                        )}
                         <Button variant="ghost" onClick={onClose}>
                             Закрыть
                         </Button>
@@ -237,36 +288,80 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
                 ) : (
                     <>
                         <div className="media-picker-grid">
-                            {items.map((item) => (
-                                <div key={item.id} className="media-tile">
-                                    <button
-                                        type="button"
-                                        className="media-tile-main"
-                                        title={item.name ?? item.file_name}
-                                        onClick={() => {
-                                            onSelect(item);
-                                            onClose();
-                                        }}
+                            {items.map((item) => {
+                                const isSelected = selectedIds.includes(
+                                    item.id,
+                                );
+
+                                return (
+                                    <div
+                                        key={item.id}
+                                        className="media-tile"
+                                        style={
+                                            multiple && isSelected
+                                                ? {
+                                                      outline:
+                                                          '2px solid var(--color-accent-solid)',
+                                                      outlineOffset: -2,
+                                                  }
+                                                : undefined
+                                        }
                                     >
-                                        <img
-                                            src={item.url}
-                                            alt={item.name ?? ''}
-                                        />
-                                        <span className="media-tile-name">
-                                            {item.name ?? item.file_name}
-                                        </span>
-                                    </button>
-                                    <button
-                                        type="button"
-                                        className="media-tile-edit"
-                                        title="Редактировать"
-                                        aria-label="Редактировать изображение"
-                                        onClick={() => setEditing(item)}
-                                    >
-                                        <Pencil size={13} />
-                                    </button>
-                                </div>
-                            ))}
+                                        <button
+                                            type="button"
+                                            className="media-tile-main"
+                                            title={item.name ?? item.file_name}
+                                            onClick={() => {
+                                                if (multiple) {
+                                                    toggleSelected(item.id);
+                                                } else {
+                                                    onSelect?.(item);
+                                                    onClose();
+                                                }
+                                            }}
+                                        >
+                                            <img
+                                                src={item.url}
+                                                alt={item.name ?? ''}
+                                            />
+                                            <span className="media-tile-name">
+                                                {item.name ?? item.file_name}
+                                            </span>
+                                            {multiple && isSelected && (
+                                                <span
+                                                    style={{
+                                                        position: 'absolute',
+                                                        top: 6,
+                                                        right: 6,
+                                                        display: 'grid',
+                                                        placeItems: 'center',
+                                                        width: 22,
+                                                        height: 22,
+                                                        borderRadius: '50%',
+                                                        background:
+                                                            'var(--color-accent-solid)',
+                                                        color: '#fff',
+                                                    }}
+                                                >
+                                                    <Check
+                                                        size={14}
+                                                        strokeWidth={2.25}
+                                                    />
+                                                </span>
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="media-tile-edit"
+                                            title="Редактировать"
+                                            aria-label="Редактировать изображение"
+                                            onClick={() => setEditing(item)}
+                                        >
+                                            <Pencil size={13} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
                         </div>
 
                         <div className="media-picker-more">
@@ -296,7 +391,14 @@ export function MediaPicker({ open, onClose, onSelect }: Props) {
                 onSaved={(item) => {
                     setItems((prev) => [item, ...prev]);
                     setEditing(null);
-                    onSelect(item);
+
+                    if (multiple) {
+                        // Отредактированный снимок — как загруженный: отметить,
+                        // а не закрывать окно с недосмотренной подборкой.
+                        setSelectedIds((prev) => [...prev, item.id]);
+                    } else {
+                        onSelect?.(item);
+                    }
                 }}
             />
         </>

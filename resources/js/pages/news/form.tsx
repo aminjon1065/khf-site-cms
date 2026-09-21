@@ -17,6 +17,7 @@ import {
     Select,
     Textarea,
 } from '@/ui/Field';
+import { GalleryField } from '@/ui/GalleryField';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
 import { RichEditor } from '@/ui/RichEditor';
@@ -44,6 +45,7 @@ interface NewsData {
     attachments?: { id: number; title: string; ext: string; size: string }[];
     cover_caption: string | null;
     cover_url: string | null;
+    gallery?: { id: number; title: string; preview_url: string }[];
     is_pinned: boolean;
     show_on_home: boolean;
     seo: SeoLocaleMap;
@@ -77,6 +79,12 @@ export default function NewsForm({ news, reference }: Props) {
     const isEdit = !!news;
     const [lang, setLang] = useState<ContentLocale>('ru');
     const [coverPicker, setCoverPicker] = useState(false);
+    const [galleryPicker, setGalleryPicker] = useState(false);
+    // Снимки галереи, добавленные из медиатеки, но ещё не отправленные:
+    // для них нужен локальный превью-список — File[] их не представляет.
+    const [galleryPending, setGalleryPending] = useState<
+        { id: number; title: string; url: string }[]
+    >([]);
     // Превью обложки: для загрузки файла строим из File, для выбора из медиатеки
     // берём URL ассета; иначе показываем существующую news.cover_url.
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
@@ -94,6 +102,9 @@ export default function NewsForm({ news, reference }: Props) {
         cover_remove: false,
         attachments: [] as File[],
         attachments_remove: [] as number[],
+        gallery: [] as File[],
+        gallery_media_ids: [] as number[],
+        gallery_remove: [] as number[],
         cover_alt: news?.cover_alt ?? '',
         cover_caption: news?.cover_caption ?? '',
         is_pinned: news?.is_pinned ?? false,
@@ -124,6 +135,23 @@ export default function NewsForm({ news, reference }: Props) {
         }
 
         setCoverPicker(false);
+    };
+
+    // Мультивыбор из медиатеки: отмеченные снимки дописываются в конец
+    // галереи в порядке отметки — он же порядок кадров в карусели.
+    const addGalleryFromLibrary = (picked: MediaItem[]) => {
+        setData('gallery_media_ids', [
+            ...data.gallery_media_ids,
+            ...picked.map((item) => item.id),
+        ]);
+        setGalleryPending((pending) => [
+            ...pending,
+            ...picked.map((item) => ({
+                id: item.id,
+                title: item.alt || item.name || '',
+                url: item.url,
+            })),
+        ]);
     };
 
     // Что показать в превью обложки: свежий выбор (файл/медиатека) приоритетнее
@@ -342,6 +370,8 @@ export default function NewsForm({ news, reference }: Props) {
                             <RichEditor
                                 key={lang}
                                 variant="article"
+                                gallery
+                                onGalleryClick={() => setGalleryPicker(true)}
                                 value={data.body[lang]}
                                 onChange={(html) =>
                                     setLocaleField('body', html)
@@ -349,6 +379,42 @@ export default function NewsForm({ news, reference }: Props) {
                                 placeholder="Начните писать текст новости…"
                             />
                         </Field>
+                    </Blueprint>
+
+                    {/* Фотогалерея — часть редактируемого материала, а не
+                        настройка сбоку: снимки события редактор подбирает
+                        сразу после текста, в основном потоке формы. */}
+                    <Blueprint style={{ padding: 20 }}>
+                        <h3
+                            className="ui-card-title"
+                            style={{ margin: '0 0 14px' }}
+                        >
+                            Фотогалерея
+                        </h3>
+                        <GalleryField
+                            existing={news?.gallery ?? []}
+                            addedFiles={data.gallery}
+                            addedLibrary={galleryPending}
+                            removed={data.gallery_remove}
+                            error={
+                                fieldError('gallery') ??
+                                fieldError('gallery_media_ids')
+                            }
+                            onAddFiles={(files) =>
+                                setData('gallery', [...data.gallery, ...files])
+                            }
+                            onToggleRemove={(id) =>
+                                setData(
+                                    'gallery_remove',
+                                    data.gallery_remove.includes(id)
+                                        ? data.gallery_remove.filter(
+                                              (x) => x !== id,
+                                          )
+                                        : [...data.gallery_remove, id],
+                                )
+                            }
+                            onOpenPicker={() => setGalleryPicker(true)}
+                        />
                     </Blueprint>
 
                     <Blueprint style={{ padding: 20 }}>
@@ -657,6 +723,13 @@ export default function NewsForm({ news, reference }: Props) {
                             open={coverPicker}
                             onClose={() => setCoverPicker(false)}
                             onSelect={pickCoverFromLibrary}
+                        />
+
+                        <MediaPicker
+                            open={galleryPicker}
+                            onClose={() => setGalleryPicker(false)}
+                            multiple
+                            onSelectMany={addGalleryFromLibrary}
                         />
                     </Blueprint>
                 </div>

@@ -51,6 +51,16 @@ class NewsRequest extends FormRequest
             'cover_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'cover_remove' => ['boolean'],
 
+            // Фотогалерея материала: те же форматы, что у обложки. Добавление —
+            // файлами или копией из медиатеки, удаление — по идентификаторам,
+            // чтобы правка одного снимка не трогала остальные.
+            'gallery' => ['nullable', 'array', 'max:20'],
+            'gallery.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'gallery_media_ids' => ['nullable', 'array', 'max:20'],
+            'gallery_media_ids.*' => ['integer', 'exists:media,id'],
+            'gallery_remove' => ['nullable', 'array'],
+            'gallery_remove.*' => ['integer'],
+
             // Вложения: памятки и материалы. Только документы — картинки для
             // этого есть обложка и медиатека, а исполняемые файлы на портале
             // ведомства недопустимы.
@@ -99,6 +109,10 @@ class NewsRequest extends FormRequest
             'category_id.exists' => 'Выбрана несуществующая категория.',
             'cover.image' => 'Обложка должна быть изображением.',
             'cover.max' => 'Размер обложки не должен превышать 5 МБ.',
+            'gallery.max' => 'Не больше 20 снимков в галерее.',
+            'gallery.*.image' => 'Снимок галереи должен быть изображением.',
+            'gallery.*.mimes' => 'Снимок галереи: JPG, PNG или WebP.',
+            'gallery.*.max' => 'Размер снимка галереи не должен превышать 5 МБ.',
             'attachments.max' => 'Не больше 10 вложений.',
             'attachments.*.mimes' => 'Вложение должно быть документом: PDF, DOC, DOCX, XLS или XLSX.',
             'attachments.*.max' => 'Размер вложения не должен превышать 20 МБ.',

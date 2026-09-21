@@ -22,6 +22,7 @@ import {
     htmlHasYoutube,
     readingMinutes,
 } from './rich-editor';
+import { RichGallery, registerGalleryPickerHandler } from './rich-gallery';
 import { RichImage } from './rich-image';
 import {
     deleteLastTable,
@@ -43,6 +44,10 @@ export interface Props {
     placeholder?: string;
     /** Высокое полотно без внутренней прокрутки — для новостей. */
     variant?: 'default' | 'article';
+    /** Показать кнопку «Фотогалерея»: вставка маркера карусели в текст. */
+    gallery?: boolean;
+    /** Клик по чипу галереи в тексте: открыть выбор кадров (медиатека). */
+    onGalleryClick?: () => void;
 }
 
 /**
@@ -226,6 +231,8 @@ export function RichEditorField({
     onChange,
     placeholder,
     variant = 'default',
+    gallery = false,
+    onGalleryClick,
 }: Props) {
     const toast = useToast();
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -238,6 +245,15 @@ export function RichEditorField({
     const [focused, setFocused] = useState(false);
     const [tableBarOpen, setTableBarOpen] = useState(false);
     const [videoBarOpen, setVideoBarOpen] = useState(false);
+
+    // Колбэк чипа галереи — через модульный сеттер, не через опции
+    // расширения: колбэк в configure() ломал сравнение опций useEditor
+    // (React #185, краш редактора по клику в текст).
+    useEffect(() => {
+        registerGalleryPickerHandler(onGalleryClick ?? null);
+
+        return () => registerGalleryPickerHandler(null);
+    }, [onGalleryClick]);
 
     const editor = useEditor({
         immediatelyRender: false,
@@ -255,6 +271,7 @@ export function RichEditorField({
                 },
             }),
             RichImage.configure({ inline: false }),
+            RichGallery,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             TableKit.configure({
                 table: {
@@ -509,6 +526,15 @@ export function RichEditorField({
                 editor={editor}
                 setLink={() => setLinkOpen(true)}
                 insertVideo={() => setVideoOpen(true)}
+                insertGallery={
+                    gallery
+                        ? () => {
+                              if (!editor.chain().insertGalleryMarker().run()) {
+                                  toast('Не удалось вставить галерею', 'error');
+                              }
+                          }
+                        : undefined
+                }
                 setPickerOpen={setPickerOpen}
                 focusMode={focusMode}
                 onToggleFocus={() => setFocusMode((open) => !open)}

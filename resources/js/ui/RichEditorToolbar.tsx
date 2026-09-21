@@ -11,6 +11,7 @@ import {
     Heading3,
     Heading4,
     Image as ImageIcon,
+    Images,
     Italic,
     Link2,
     Link2Off,
@@ -74,6 +75,8 @@ interface Props {
     editor: Editor;
     setLink: () => void;
     insertVideo: () => void;
+    /** Вставка маркера фотогалереи в позицию курсора; undefined — материал без галереи. */
+    insertGallery?: () => void;
     setPickerOpen: Dispatch<SetStateAction<boolean>>;
     focusMode: boolean;
     onToggleFocus: () => void;
@@ -93,6 +96,7 @@ export function RichEditorToolbar({
     editor,
     setLink,
     insertVideo,
+    insertGallery,
     setPickerOpen,
     focusMode,
     onToggleFocus,
@@ -354,6 +358,13 @@ export function RichEditorToolbar({
                         label="Изображение из медиатеки"
                         onClick={() => setPickerOpen(true)}
                     />
+                    {insertGallery && (
+                        <Btn
+                            icon={<Images size={16} />}
+                            label="Фотогалерея в этом месте"
+                            onClick={insertGallery}
+                        />
+                    )}
                     <Btn
                         icon={<Video size={16} />}
                         label="Видео с YouTube"

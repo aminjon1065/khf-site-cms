@@ -316,6 +316,7 @@ class NewsController extends Controller
             'cover_alt' => $news->cover_alt,
             'cover_caption' => $news->cover_caption,
             'attachments' => $this->attachmentsPayload($news),
+            'gallery' => $this->galleryPayload($news),
             'cover_url' => $news->getFirstMediaUrl('cover') ?: null,
             'is_pinned' => (bool) $news->is_pinned,
             'show_on_home' => (bool) $news->show_on_home,
@@ -395,6 +396,7 @@ class NewsController extends Controller
     private function syncMedia(News $news, NewsRequest $request): void
     {
         $this->syncAttachments($news, $request);
+        $this->syncGallery($news, $request);
 
         if ($request->boolean('cover_remove')) {
             $news->clearMediaCollection('cover');
@@ -410,6 +412,42 @@ class NewsController extends Controller
             if ($source !== null) {
                 $news->clearMediaCollection('cover');
                 $copy = $source->copy($news, 'cover');
+                $copy
+                    ->setCustomProperty('source_media_id', $source->getKey())
+                    ->setCustomProperty('focal_point', $source->getCustomProperty('focal_point'))
+                    ->saveQuietly();
+            }
+        }
+    }
+
+    /**
+     * Фотогалерея. Удаление — по идентификаторам (как у вложений), добавление —
+     * файлами или копиями из медиатеки; порядок определяется порядком добавления.
+     */
+    private function syncGallery(News $news, NewsRequest $request): void
+    {
+        /** @var list<int> $remove */
+        $remove = array_map('intval', (array) $request->input('gallery_remove', []));
+
+        if ($remove !== []) {
+            $news->getMedia('gallery')
+                ->whereIn('id', $remove)
+                ->each(fn (Media $media) => $media->delete());
+        }
+
+        foreach ((array) $request->file('gallery', []) as $file) {
+            if ($file instanceof UploadedFile) {
+                $news->addMedia($file)
+                    ->usingName(pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME))
+                    ->toMediaCollection('gallery');
+            }
+        }
+
+        foreach ((array) $request->input('gallery_media_ids', []) as $mediaId) {
+            $source = Media::find((int) $mediaId);
+
+            if ($source !== null) {
+                $copy = $source->copy($news, 'gallery');
                 $copy
                     ->setCustomProperty('source_media_id', $source->getKey())
                     ->setCustomProperty('focal_point', $source->getCustomProperty('focal_point'))
@@ -526,6 +564,28 @@ class NewsController extends Controller
                 ];
             },
             $model->getMedia('attachments')->all(),
+        ));
+    }
+
+    /**
+     * Снимки галереи для формы редактора: маленькое превью (cms-320, есть у
+     * каждой картинки этого проекта) и имя — его же фронт берёт как alt.
+     *
+     * @return list<array{id: int, title: string, preview_url: string}>
+     */
+    private function galleryPayload(News $news): array
+    {
+        return array_values(array_map(
+            static function (Media $media): array {
+                $title = trim((string) ($media->getCustomProperty('alt') !== '' ? $media->getCustomProperty('alt') : $media->name));
+
+                return [
+                    'id' => (int) $media->getKey(),
+                    'title' => $title !== '' ? $title : $media->file_name,
+                    'preview_url' => $media->getUrl('cms-320'),
+                ];
+            },
+            $news->getMedia('gallery')->all(),
         ));
     }
 }

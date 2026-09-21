@@ -56,9 +56,10 @@ class PublicNewsResource extends JsonResource
         ];
 
         if ($this->withBody) {
-            // Вложения — только на детальной: в списке блок «Материалы» не
-            // выводится, и тянуть медиа на каждую строку незачем.
+            // Вложения и галерея — только на детальной: в списке они не
+            // выводятся, и тянуть медиа на каждую строку незачем.
             $data['attachments'] = PublicAttachments::fromModel($this->resource, $locale);
+            $data['gallery_data'] = $this->galleryData();
             $data['body'] = app(RichTextMediaResolver::class)
                 ->resolve($this->tr('body', $locale));
             $data['views'] = (int) $this->views_count;
@@ -98,6 +99,27 @@ class PublicNewsResource extends JsonResource
         $url = $this->getFirstMediaUrl('cover');
 
         return $url !== '' ? $url : null;
+    }
+
+    /**
+     * Фотогалерея материала. Alt каждого снимка — его имя в медиатеке
+     * (редактор задаёт при загрузке/импорте); пустых alt карусель не отдаёт.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function galleryData(): array
+    {
+        return array_values(array_map(
+            static function (Media $media): array {
+                $alt = trim((string) $media->name);
+
+                return PublicImageData::fromMedia(
+                    $media,
+                    $alt !== '' ? $alt : $media->file_name,
+                );
+            },
+            $this->getMedia('gallery')->all(),
+        ));
     }
 
     /**

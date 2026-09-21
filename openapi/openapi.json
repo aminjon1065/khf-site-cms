@@ -1187,6 +1187,13 @@
                 "size_bytes"
               ]
             }
+          },
+          "gallery_data": {
+            "type": "array",
+            "description": "Photogallery of the article (detail view only): ordered shots rendered as a carousel. Empty when the editor added none.",
+            "items": {
+              "$ref": "#/components/schemas/CmsImageDto"
+            }
           }
         }
       },
