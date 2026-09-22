@@ -1,6 +1,4 @@
 import { lazy, Suspense } from 'react';
-import type { Editor } from './RichEditorField';
-import type { Props } from './RichEditorField';
 import type { ActiveBlockInfo, Editor, Props } from './RichEditorField';
 
 const LazyRichEditorField = lazy(() =>
@@ -42,5 +40,4 @@ export function RichEditor(props: Props) {
     );
 }
 
-export type { Editor };
 export type { ActiveBlockInfo, Editor };

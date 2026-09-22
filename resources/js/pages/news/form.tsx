@@ -1,24 +1,12 @@
 import { useForm } from '@inertiajs/react';
-import { Images, Upload } from 'lucide-react';
 import { Sliders } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
+import { languageChecks } from '@/lib/publication-languages';
 import { index, store, update } from '@/routes/news';
-import { AttachmentsField } from '@/ui/AttachmentsField';
-import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
-import {
-    Checkbox,
-    DatePicker,
-    Field,
-    Input,
-    Select,
-    Textarea,
-} from '@/ui/Field';
-import { GalleryField } from '@/ui/GalleryField';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
 import { RichEditor } from '@/ui/RichEditor';
@@ -83,7 +71,9 @@ export default function NewsForm({ news, reference }: Props) {
     const [lang, setLang] = useState<ContentLocale>('ru');
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [sidebarTab, setSidebarTab] = useState<'post' | 'block'>('post');
-    const [activeBlock, setActiveBlock] = useState<ActiveBlockInfo | null>(null);
+    const [activeBlock, setActiveBlock] = useState<ActiveBlockInfo | null>(
+        null,
+    );
     const [coverPicker, setCoverPicker] = useState(false);
     const [galleryPicker, setGalleryPicker] = useState(false);
     // Снимки галереи, добавленные из медиатеки, но ещё не отправленные:
@@ -98,7 +88,12 @@ export default function NewsForm({ news, reference }: Props) {
 
     const handleActiveBlockChange = (block: ActiveBlockInfo | null) => {
         setActiveBlock(block);
-        if (block && block.type !== 'paragraph' && block.type !== 'blockquote') {
+
+        if (
+            block &&
+            block.type !== 'paragraph' &&
+            block.type !== 'blockquote'
+        ) {
             setSidebarTab('block');
         }
     };
@@ -330,34 +325,8 @@ export default function NewsForm({ news, reference }: Props) {
             }
         >
             <div
-                className="cms-two-col"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.7fr 1fr',
-                    gap: 16,
-                    alignItems: 'start',
-                }}
                 className={`wp-editor-layout ${sidebarOpen ? 'has-sidebar' : 'no-sidebar'}`}
             >
-                {/* ------------------------------------------------ main */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <Field
-                            label="Заголовок"
-                            htmlFor={`news-title-${lang}`}
-                            required={!hasAnyTranslation(data.title)}
-                            error={
-                                fieldError('title') ??
-                                fieldError(`title.${lang}`)
-                            }
-                        >
-                            <Input
                 {/* ------------------------------------------- Document Canvas */}
                 <main className="wp-editor-canvas-container" role="main">
                     <div className="wp-editor-canvas">
@@ -366,15 +335,6 @@ export default function NewsForm({ news, reference }: Props) {
                             <textarea
                                 id={`news-title-${lang}`}
                                 value={data.title[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('title', e.target.value)
-                                }
-                                hasError={
-                                    !!(
-                                        fieldError('title') ??
-                                        fieldError(`title.${lang}`)
-                                    )
-                                }
                                 onChange={(e) => {
                                     setLocaleField('title', e.target.value);
                                     e.target.style.height = 'auto';
@@ -382,8 +342,6 @@ export default function NewsForm({ news, reference }: Props) {
                                 }}
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Например: Итоги учений в Хатлонской области'
-                                        : 'Перевод заголовка'
                                         ? 'Добавьте заголовок...'
                                         : lang === 'tg'
                                           ? 'Сарлавҳа илова кунед...'
@@ -394,7 +352,6 @@ export default function NewsForm({ news, reference }: Props) {
                                 maxLength={255}
                                 aria-label="Заголовок новости"
                             />
-                        </Field>
                             {(fieldError('title') ??
                                 fieldError(`title.${lang}`)) && (
                                 <div className="wp-field-error">
@@ -404,19 +361,11 @@ export default function NewsForm({ news, reference }: Props) {
                             )}
                         </div>
 
-                        <Field
-                            label="Краткое описание"
-                            htmlFor={`news-summary-${lang}`}
-                            hint="Показывается в списке новостей и в предпросмотре ссылки."
-                        >
-                            <Textarea
                         {/* Lead / Summary field */}
                         <div className="wp-lead-wrapper">
                             <textarea
                                 id={`news-summary-${lang}`}
                                 value={data.summary[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('summary', e.target.value)
                                 onChange={(e) => {
                                     setLocaleField('summary', e.target.value);
                                     e.target.style.height = 'auto';
@@ -435,7 +384,6 @@ export default function NewsForm({ news, reference }: Props) {
                                 maxLength={1000}
                                 aria-label="Лид / Краткое описание"
                             />
-                        </Field>
                             {(fieldError('summary') ??
                                 fieldError(`summary.${lang}`)) && (
                                 <div className="wp-field-error">
@@ -445,7 +393,6 @@ export default function NewsForm({ news, reference }: Props) {
                             )}
                         </div>
 
-                        <Field label="Текст новости">
                         {/* Rich Editor body */}
                         <div className="wp-body-wrapper">
                             <RichEditor
@@ -457,246 +404,20 @@ export default function NewsForm({ news, reference }: Props) {
                                 onChange={(html) =>
                                     setLocaleField('body', html)
                                 }
-                                placeholder="Начните писать текст новости…"
                                 onActiveBlockChange={handleActiveBlockChange}
                                 placeholder="Нажмите «/» для выбора блока или начните писать..."
                             />
-                        </Field>
-                    </Blueprint>
-
-                    {/* Фотогалерея — часть редактируемого материала, а не
-                        настройка сбоку: снимки события редактор подбирает
-                        сразу после текста, в основном потоке формы. */}
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ margin: '0 0 14px' }}
-                        >
-                            Фотогалерея
-                        </h3>
-                        <GalleryField
-                            existing={news?.gallery ?? []}
-                            addedFiles={data.gallery}
-                            addedLibrary={galleryPending}
-                            removed={data.gallery_remove}
-                            error={
-                                fieldError('gallery') ??
-                                fieldError('gallery_media_ids')
-                            }
-                            onAddFiles={(files) =>
-                                setData('gallery', [...data.gallery, ...files])
-                            }
-                            onToggleRemove={(id) =>
-                                setData(
-                                    'gallery_remove',
-                                    data.gallery_remove.includes(id)
-                                        ? data.gallery_remove.filter(
-                                              (x) => x !== id,
-                                          )
-                                        : [...data.gallery_remove, id],
-                                )
-                            }
-                            onOpenPicker={() => setGalleryPicker(true)}
-                        />
-                    </Blueprint>
-
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 14,
-                                flexWrap: 'wrap',
-                                gap: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                SEO
-                            </h3>
-                        </div>
-                        <Field
-                            label="SEO-заголовок"
-                            htmlFor={`news-seo-title-${lang}`}
-                            error={fieldError(`seo.${lang}.title`)}
-                        >
-                            <Input
-                                id={`news-seo-title-${lang}`}
-                                value={data.seo[lang].title}
-                                onChange={(e) =>
-                                    setSeoField('title', e.target.value)
-                                }
-                                maxLength={255}
-                            />
-                        </Field>
-                        <Field
-                            label="SEO-описание"
-                            htmlFor={`news-seo-description-${lang}`}
-                            error={fieldError(`seo.${lang}.description`)}
-                        >
-                            <Textarea
-                                id={`news-seo-description-${lang}`}
-                                value={data.seo[lang].description}
-                                onChange={(e) =>
-                                    setSeoField('description', e.target.value)
-                                }
-                                style={{ minHeight: 60 }}
-                                maxLength={500}
-                            />
-                        </Field>
-                    </Blueprint>
-                </div>
-
-                {/* --------------------------------------------- sidebar */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Публикация
-                        </h3>
-
-                        <Field
-                            label="Адрес (slug)"
-                            htmlFor="news-slug"
-                            hint="Пустое значение сгенерируется из заголовка."
-                            error={fieldError('slug')}
-                        >
-                            <Input
-                                id="news-slug"
-                                value={data.slug}
-                                onChange={(e) =>
-                                    setData('slug', e.target.value)
-                                }
-                                hasError={!!fieldError('slug')}
-                                placeholder="naprimer-ucheniya-2026"
-                            />
-                        </Field>
-
-                        <Field
-                            label="Категория"
-                            htmlFor="news-category"
-                            error={fieldError('category_id')}
-                        >
-                            <Select
-                                id="news-category"
-                                value={
-                                    data.category_id === ''
-                                        ? ''
-                                        : String(data.category_id)
-                                }
-                                onChange={(e) =>
-                                    setData(
-                                        'category_id',
-                                        e.target.value === ''
-                                            ? ''
-                                            : Number(e.target.value),
-                                    )
-                                }
-                                placeholder="Без категории"
-                                options={reference.categories.map((c) => ({
-                                    value: c.value,
-                                    label: c.label,
-                                }))}
-                            />
-                        </Field>
-
-                        {reference.tags.length > 0 && (
-                            <Field label="Теги">
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        flexWrap: 'wrap',
-                                        gap: 8,
-                                    }}
-                                >
-                                    {reference.tags.map((t) => (
-                                        <Checkbox
-                                            key={t.value}
-                                            label={t.label}
-                                            checked={data.tags.includes(
-                                                t.value,
-                                            )}
-                                            onChange={() => toggleTag(t.value)}
-                                        />
-                                    ))}
                             {(fieldError('body') ??
                                 fieldError(`body.${lang}`)) && (
                                 <div className="wp-field-error">
                                     {fieldError('body') ??
                                         fieldError(`body.${lang}`)}
                                 </div>
-                            </Field>
-                        )}
-
-                        <Field
-                            label="Дата запланированной публикации"
-                            htmlFor="news-scheduled-at"
-                        >
-                            <DatePicker
-                                id="news-scheduled-at"
-                                withTime
-                                value={data.scheduled_at}
-                                onChange={(e) =>
-                                    setData('scheduled_at', e.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <div
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: 10,
-                                marginTop: 4,
-                            }}
-                        >
-                            <Checkbox
-                                label="Закрепить материал"
-                                checked={data.is_pinned}
-                                onChange={(e) =>
-                                    setData('is_pinned', e.target.checked)
-                                }
-                            />
-                            <Checkbox
-                                label="Показывать на главной"
-                                checked={data.show_on_home}
-                                onChange={(e) =>
-                                    setData('show_on_home', e.target.checked)
-                                }
-                            />
                             )}
                         </div>
-                    </Blueprint>
                     </div>
                 </main>
 
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Обложка
-                        </h3>
-                        {coverSrc && (
-                            <img
-                                src={coverSrc}
-                                alt={data.cover_alt}
-                                style={{
-                                    width: '100%',
-                                    borderRadius: 6,
-                                    marginBottom: 10,
-                                    border: '1px solid var(--color-divider)',
-                                }}
-                            />
-                        )}
                 {/* --------------------------------- Inspector Sidebar */}
                 <NewsInspectorSidebar
                     isOpen={sidebarOpen}
@@ -720,138 +441,12 @@ export default function NewsForm({ news, reference }: Props) {
                 />
             </div>
 
-                        <input
-                            ref={coverFileRef}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            hidden
-                            onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
             <MediaPicker
                 open={coverPicker}
                 onClose={() => setCoverPicker(false)}
                 onSelect={pickCoverFromLibrary}
             />
 
-                                if (file) {
-                                    setData('cover', file);
-                                    setData('cover_media_id', null);
-                                    setData('cover_remove', false);
-                                    setCoverPreview(URL.createObjectURL(file));
-                                }
-
-                                e.target.value = '';
-                            }}
-                        />
-                        <div
-                            style={{
-                                display: 'flex',
-                                gap: 8,
-                                flexWrap: 'wrap',
-                            }}
-                        >
-                            <Button
-                                variant="secondary"
-                                icon={<Upload size={15} strokeWidth={1.75} />}
-                                onClick={() => coverFileRef.current?.click()}
-                            >
-                                Загрузить
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                icon={<Images size={15} strokeWidth={1.75} />}
-                                onClick={() => setCoverPicker(true)}
-                            >
-                                Из медиатеки
-                            </Button>
-                        </div>
-
-                        {fieldError('cover') && (
-                            <div
-                                style={{
-                                    color: 'var(--danger)',
-                                    fontSize: 12,
-                                    marginTop: 6,
-                                }}
-                            >
-                                {fieldError('cover')}
-                            </div>
-                        )}
-                        {news?.cover_url && (
-                            <Checkbox
-                                className="mt-2"
-                                label="Удалить текущую обложку"
-                                checked={data.cover_remove}
-                                onChange={(e) =>
-                                    setData('cover_remove', e.target.checked)
-                                }
-                            />
-                        )}
-                        <Field label="Alt-текст обложки" className="mt-2">
-                            <Input
-                                value={data.cover_alt}
-                                onChange={(e) =>
-                                    setData('cover_alt', e.target.value)
-                                }
-                                placeholder="Описание изображения"
-                            />
-                        </Field>
-                        {/* Подпись видна читателю под фотографией. Alt —
-                            описание для тех, кто снимок не видит; это разные
-                            тексты, и подменять один другим нельзя. */}
-                        <Field
-                            label="Подпись под фото"
-                            hint="Показывается читателю. Без неё подпись не выводится."
-                            className="mt-2"
-                        >
-                            <Input
-                                value={data.cover_caption}
-                                onChange={(e) =>
-                                    setData('cover_caption', e.target.value)
-                                }
-                                placeholder="Например: Фото пресс-службы КЧС"
-                                maxLength={500}
-                            />
-                        </Field>
-
-                        <AttachmentsField
-                            existing={news?.attachments ?? []}
-                            added={data.attachments}
-                            removed={data.attachments_remove}
-                            error={fieldError('attachments')}
-                            onAdd={(files) =>
-                                setData('attachments', [
-                                    ...data.attachments,
-                                    ...files,
-                                ])
-                            }
-                            onToggleRemove={(id) =>
-                                setData(
-                                    'attachments_remove',
-                                    data.attachments_remove.includes(id)
-                                        ? data.attachments_remove.filter(
-                                              (x) => x !== id,
-                                          )
-                                        : [...data.attachments_remove, id],
-                                )
-                            }
-                        />
-
-                        <MediaPicker
-                            open={coverPicker}
-                            onClose={() => setCoverPicker(false)}
-                            onSelect={pickCoverFromLibrary}
-                        />
-
-                        <MediaPicker
-                            open={galleryPicker}
-                            onClose={() => setGalleryPicker(false)}
-                            multiple
-                            onSelectMany={addGalleryFromLibrary}
-                        />
-                    </Blueprint>
-                </div>
-            </div>
             <MediaPicker
                 open={galleryPicker}
                 onClose={() => setGalleryPicker(false)}

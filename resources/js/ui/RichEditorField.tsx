@@ -12,6 +12,15 @@ import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Bold, Heading2, Heading3, Italic, Link2, Trash2 } from 'lucide-react';
 import { Bold, Heading2, Heading3, Italic, Link2, Plus, Trash2 } from 'lucide-react';
+import {
+    Bold,
+    Heading2,
+    Heading3,
+    Italic,
+    Link2,
+    Plus,
+    Trash2,
+} from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { postForm } from '@/lib/http';
@@ -44,6 +53,14 @@ import { useToast } from './Toast';
 
 export interface ActiveBlockInfo {
     type: 'image' | 'callout' | 'table' | 'youtube' | 'heading' | 'blockquote' | 'paragraph';
+    type:
+        | 'image'
+        | 'callout'
+        | 'table'
+        | 'youtube'
+        | 'heading'
+        | 'blockquote'
+        | 'paragraph';
     attrs?: Record<string, unknown>;
 }
 
@@ -736,6 +753,7 @@ export function RichEditorField({
                     shouldShow={({ state }) => {
                         const { selection } = state;
                         const { $from, empty } = selection;
+
                         return (
                             empty &&
                             $from.parent.type.name === 'paragraph' &&

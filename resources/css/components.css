@@ -3297,7 +3297,9 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     text-align: center;
     cursor: pointer;
     background: var(--color-neutral-50);
-    transition: border-color 0.15s, background 0.15s;
+    transition:
+        border-color 0.15s,
+        background 0.15s;
 }
 
 .wp-cover-placeholder:hover {
@@ -3402,7 +3404,11 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     color: var(--color-neutral-600);
     cursor: pointer;
     box-shadow: var(--shadow-sm);
-    transition: transform 0.15s ease, background 0.12s, color 0.12s, border-color 0.12s;
+    transition:
+        transform 0.15s ease,
+        background 0.12s,
+        color 0.12s,
+        border-color 0.12s;
 }
 
 .re-quick-inserter-btn:hover {
@@ -3598,7 +3604,9 @@ aside.re-callout.re-callout-quote {
     background: transparent;
     color: var(--color-neutral-500);
     cursor: pointer;
-    transition: background 0.12s, color 0.12s;
+    transition:
+        background 0.12s,
+        color 0.12s;
 }
 
 .re-callout-del-btn:hover {

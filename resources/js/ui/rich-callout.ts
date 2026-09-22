@@ -40,6 +40,7 @@ export const RichCallout = Node.create({
                 tag: 'aside.re-callout',
                 getAttrs: (element) => {
                     const el = element as HTMLElement;
+
                     return {
                         type: el.getAttribute('data-callout-type') || 'warning',
                     };
@@ -71,4 +72,3 @@ export const RichCallout = Node.create({
         };
     },
 });
-

@@ -15,6 +15,7 @@ import {
     Video,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface CommandItem {
     id: string;
@@ -50,6 +51,13 @@ export function SlashCommandMenu({
     onInsertTable,
 }: Props) {
     const [selectedIndex, setSelectedIndex] = useState(0);
+    const [prevQuery, setPrevQuery] = useState(query);
+
+    if (prevQuery !== query) {
+        setPrevQuery(query);
+        setSelectedIndex(0);
+    }
+
     const menuRef = useRef<HTMLDivElement>(null);
 
     const commands: CommandItem[] = useMemo(
@@ -105,6 +113,7 @@ export function SlashCommandMenu({
                         .focus()
                         .setCallout({ type: 'warning' })
                         .run(),
+                    ed.chain().focus().setCallout({ type: 'warning' }).run(),
             },
             {
                 id: 'quote',
@@ -122,6 +131,14 @@ export function SlashCommandMenu({
                 category: 'media',
                 icon: ImageIcon,
                 keywords: ['фото', 'картинка', 'снимок', 'изображение', 'image', 'photo'],
+                keywords: [
+                    'фото',
+                    'картинка',
+                    'снимок',
+                    'изображение',
+                    'image',
+                    'photo',
+                ],
                 action: () => onOpenImagePicker(),
             },
             {
@@ -131,6 +148,13 @@ export function SlashCommandMenu({
                 category: 'media',
                 icon: Images,
                 keywords: ['галерея', 'карусель', 'снимки', 'альбом', 'gallery'],
+                keywords: [
+                    'галерея',
+                    'карусель',
+                    'снимки',
+                    'альбом',
+                    'gallery',
+                ],
                 action: () => onInsertGallery(),
             },
             {
@@ -184,6 +208,7 @@ export function SlashCommandMenu({
 
     const filtered = useMemo(() => {
         const clean = query.toLowerCase().trim();
+
         if (!clean) {
             return commands;
         }
@@ -199,6 +224,34 @@ export function SlashCommandMenu({
     useEffect(() => {
         setSelectedIndex(0);
     }, [query]);
+    const executeCommand = useCallback(
+        (item: CommandItem) => {
+            // Удаляем слеш или введенный текст запроса перед выполнением команды
+            const { state } = editor;
+            const { from } = state.selection;
+            const $from = state.doc.resolve(from);
+            const textBefore = $from.parent.textBetween(
+                0,
+                $from.parentOffset,
+                undefined,
+                ' ',
+            );
+
+            if (textBefore.startsWith('/')) {
+                const deleteFrom = from - textBefore.length;
+
+                editor
+                    .chain()
+                    .focus()
+                    .deleteRange({ from: deleteFrom, to: from })
+                    .run();
+            }
+
+            item.action(editor);
+            onClose();
+        },
+        [editor, onClose],
+    );
 
     useEffect(() => {
         if (!isOpen) {
@@ -209,14 +262,21 @@ export function SlashCommandMenu({
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
                 setSelectedIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
+                setSelectedIndex(
+                    (prev) => (prev + 1) % Math.max(1, filtered.length),
+                );
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 setSelectedIndex(
                     (prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length),
+                    (prev) =>
+                        (prev - 1 + filtered.length) %
+                        Math.max(1, filtered.length),
                 );
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 const item = filtered[selectedIndex];
+
                 if (item) {
                     executeCommand(item);
                 }
@@ -227,8 +287,10 @@ export function SlashCommandMenu({
         };
 
         window.addEventListener('keydown', handleKeyDown, true);
+
         return () => window.removeEventListener('keydown', handleKeyDown, true);
     }, [isOpen, filtered, selectedIndex]);
+    }, [executeCommand, filtered, isOpen, onClose, selectedIndex]);
 
     const executeCommand = (item: CommandItem) => {
         // Удаляем слеш или введенный текст запроса перед выполнением команды
@@ -265,6 +327,9 @@ export function SlashCommandMenu({
                 <Search size={14} className="re-slash-search-icon" />
                 <span className="re-slash-menu-hint">
                     {query ? `Поиск: «${query}»` : 'Выберите блок или нажмите Esc'}
+                    {query
+                        ? `Поиск: «${query}»`
+                        : 'Выберите блок или нажмите Esc'}
                 </span>
             </div>
             <div className="re-slash-menu-list">

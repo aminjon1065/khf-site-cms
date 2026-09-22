@@ -37,7 +37,11 @@ export function RichCalloutView({
         >
             <div className="re-callout-header" contentEditable={false}>
                 <div className="re-callout-type-pill">
-                    <Icon size={16} strokeWidth={2} className="re-callout-icon" />
+                    <Icon
+                        size={16}
+                        strokeWidth={2}
+                        className="re-callout-icon"
+                    />
                     <select
                         value={type}
                         onChange={(e) =>
@@ -69,4 +73,3 @@ export function RichCalloutView({
         </NodeViewWrapper>
     );
 }
-
