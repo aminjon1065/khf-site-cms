@@ -1,12 +1,15 @@
 import { useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import { ExternalLink, Sliders, Sparkles, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
+import { languageChecks } from '@/lib/publication-languages';
+import { slugify } from '@/lib/slugify';
 import { index, store, update } from '@/routes/pages';
-import { Blueprint } from '@/ui/Blueprint';
+import { Button } from '@/ui/Button';
 import { Field, Input, Select, Textarea } from '@/ui/Field';
+import { ReadinessWidget } from '@/ui/ReadinessWidget';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
@@ -42,6 +45,9 @@ export default function PageForm({ page, reference }: Props) {
     const can = useCan();
     const isEdit = !!page;
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarTab, setSidebarTab] = useState<'document' | 'seo'>('document');
+    const titleRef = useRef<HTMLTextAreaElement>(null);
 
     const form = useForm({
         title: { ...EMPTY, ...page?.title } as LocaleMap,
@@ -58,6 +64,14 @@ export default function PageForm({ page, reference }: Props) {
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
+
+    // Auto-resize title input
+    useEffect(() => {
+        if (titleRef.current) {
+            titleRef.current.style.height = 'auto';
+            titleRef.current.style.height = `${titleRef.current.scrollHeight}px`;
+        }
+    }, [data.title, lang]);
 
     const compAll = {
         tg:
@@ -82,13 +96,106 @@ export default function PageForm({ page, reference }: Props) {
         value: string,
     ) => setData(field, { ...data[field], [lang]: value });
 
+    // 1-Click Copy across languages (WordPress Gutenberg UX)
+    const handleCopyLocale = (from: ContentLocale, to: ContentLocale) => {
+        setData((prev) => ({
+            ...prev,
+            title: { ...prev.title, [to]: prev.title[from] },
+            body: { ...prev.body, [to]: prev.body[from] },
+            seo_title: { ...prev.seo_title, [to]: prev.seo_title[from] },
+            seo_description: {
+                ...prev.seo_description,
+                [to]: prev.seo_description[from],
+            },
+        }));
+    };
+
+    // Auto-slug generator
+    const handleAutoSlug = () => {
+        const source =
+            data.title.ru?.trim() ||
+            data.title.tg?.trim() ||
+            data.title.en?.trim() ||
+            '';
+
+        if (source) {
+            setData('slug', slugify(source));
+        }
+    };
+
     const parentOptions: Option[] = [
-        { value: '', label: '— Верхний уровень —' },
+        { value: '', label: '— Верхний уровень (без родителя) —' },
         ...reference.parents.map((p) => ({
             value: String(p.value),
             label: p.label,
         })),
     ];
+
+    // Readiness score calculation
+    const hasTitle = data.title[lang]?.trim().length > 0;
+    const hasBody = data.body[lang]?.trim().length > 30;
+    const hasSlug = Boolean(data.slug?.trim());
+    const hasSeoTitle = Boolean(data.seo_title[lang]?.trim());
+    const hasSeoDesc = Boolean(data.seo_description[lang]?.trim());
+    const hasBilingual = Boolean(
+        data.title.tg?.trim() && data.title.ru?.trim(),
+    );
+
+    let readinessScore = 0;
+
+    if (hasTitle) {
+readinessScore += 30;
+}
+
+    if (hasBody) {
+readinessScore += 25;
+}
+
+    if (hasSlug) {
+readinessScore += 15;
+}
+
+    if (hasSeoTitle) {
+readinessScore += 10;
+}
+
+    if (hasSeoDesc) {
+readinessScore += 10;
+}
+
+    if (hasBilingual) {
+        readinessScore += 10;
+    }
+
+    const readinessItems = [
+        {
+            id: 'title',
+            label: `Заголовок (${lang.toUpperCase()})`,
+            done: hasTitle,
+        },
+        {
+            id: 'body',
+            label: 'Текст страницы',
+            done: hasBody,
+        },
+        {
+            id: 'slug',
+            label: 'Адрес (Slug)',
+            done: hasSlug,
+        },
+        {
+            id: 'seo',
+            label: 'Метатеги SEO',
+            done: hasSeoTitle && hasSeoDesc,
+        },
+        {
+            id: 'bilingual',
+            label: 'Двуязычие (TG + RU)',
+            done: hasBilingual,
+        },
+    ];
+
+    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
 
     const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
         form.transform((d) => ({
@@ -111,8 +218,10 @@ export default function PageForm({ page, reference }: Props) {
 
     return (
         <EditorialFormShell
+            variant="gutenberg"
+            onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
-            subtitle="Редакционная страница портала с локализованным rich text и SEO."
+            subtitle="Редакционная страница портала КЧС с чистым оформлением и SEO."
             backLabel="Страницы сайта"
             backHref={index.url()}
             status={page?.status}
@@ -128,6 +237,20 @@ export default function PageForm({ page, reference }: Props) {
             onSaveDraft={() => submit('draft')}
             onSubmitReview={() => submit('submit', 'review')}
             onPublishNow={() => submit('submit', 'now')}
+            extraActions={
+                <Button
+                    variant={sidebarOpen ? 'primary' : 'secondary'}
+                    icon={<Sliders size={15} />}
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    title={
+                        sidebarOpen
+                            ? 'Скрыть панель настроек'
+                            : 'Показать панель настроек'
+                    }
+                >
+                    Панель настроек
+                </Button>
+            }
             autosave={{
                 contentType: 'pages',
                 contentId: page?.id ?? null,
@@ -161,7 +284,7 @@ export default function PageForm({ page, reference }: Props) {
                 checklist: [
                     ...languageChecks(compAll, data.title),
                     {
-                        label: 'SEO preview заполнен',
+                        label: 'SEO snippet заполнен',
                         ok: (['tg', 'ru', 'en'] as ContentLocale[]).some(
                             (locale) =>
                                 data.seo_title[locale].trim() !== '' &&
@@ -172,177 +295,329 @@ export default function PageForm({ page, reference }: Props) {
             }}
         >
             <div
-                className="cms-two-col"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.7fr 1fr',
-                    gap: 16,
-                    alignItems: 'start',
-                }}
+                className={`wp-editor-layout ${sidebarOpen ? 'has-sidebar' : 'no-sidebar'}`}
             >
-                {/* ------------------------------------------------ main */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 14,
-                                flexWrap: 'wrap',
-                                gap: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Содержание
-                            </h3>
-                        </div>
-
-                        <Field
-                            label="Заголовок"
-                            required={!hasAnyTranslation(data.title)}
-                            error={
-                                fieldError('title') ??
-                                fieldError(`title.${lang}`)
-                            }
-                        >
-                            <Input
+                {/* ------------------------------------------- Document Canvas */}
+                <main className="wp-editor-canvas-container" role="main">
+                    <div className="wp-editor-canvas">
+                        {/* Title field */}
+                        <div className="wp-title-wrapper">
+                            <textarea
+                                ref={titleRef}
+                                id={`page-title-${lang}`}
                                 value={data.title[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('title', e.target.value)
-                                }
-                                hasError={
-                                    !!(
-                                        fieldError('title') ??
-                                        fieldError(`title.${lang}`)
-                                    )
-                                }
+                                onChange={(e) => {
+                                    setLocaleField('title', e.target.value);
+
+                                    if (!data.slug && lang === 'ru') {
+                                        setData((prev) => ({
+                                            ...prev,
+                                            slug: slugify(e.target.value),
+                                        }));
+                                    }
+                                }}
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Например: О Комитете'
-                                        : 'Перевод заголовка'
+                                        ? 'Заголовок страницы…'
+                                        : lang === 'tg'
+                                          ? 'Сарлавҳаи саҳифа…'
+                                          : 'Page title…'
                                 }
+                                rows={1}
+                                className="wp-title-input"
                                 maxLength={255}
                             />
-                        </Field>
+                            {(fieldError('title') ||
+                                fieldError(`title.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('title') ||
+                                        fieldError(`title.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
-                        <Field
-                            label="Текст страницы"
-                            hint="Форматирование очищается на сервере перед публикацией."
-                        >
+                        {/* Rich Editor Body */}
+                        <div className="wp-body-wrapper">
                             <RichEditor
+                                key={lang}
                                 value={data.body[lang]}
                                 onChange={(value) =>
                                     setLocaleField('body', value)
                                 }
-                                placeholder="Текст страницы"
+                                placeholder="Основной текст страницы…"
                             />
-                        </Field>
+                            {(fieldError('body') ||
+                                fieldError(`body.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('body') ||
+                                        fieldError(`body.${lang}`)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </main>
 
-                        <Field
-                            label="SEO title"
-                            error={fieldError(`seo_title.${lang}`)}
-                        >
-                            <Input
-                                value={data.seo_title[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('seo_title', e.target.value)
-                                }
-                                maxLength={70}
-                            />
-                        </Field>
+                {/* ------------------------------------------- Inspector Sidebar */}
+                {sidebarOpen && (
+                    <aside
+                        className="wp-inspector"
+                        aria-label="Параметры страницы"
+                    >
+                        {/* Header */}
+                        <div className="wp-inspector-header">
+                            <span className="wp-inspector-title">
+                                Инспектор страницы
+                            </span>
+                            <button
+                                type="button"
+                                className="wp-inspector-close"
+                                onClick={() => setSidebarOpen(false)}
+                                title="Закрыть панель"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
 
-                        <Field
-                            label="SEO description"
-                            error={fieldError(`seo_description.${lang}`)}
-                        >
-                            <Textarea
-                                value={data.seo_description[lang]}
-                                onChange={(e) =>
-                                    setLocaleField(
-                                        'seo_description',
-                                        e.target.value,
-                                    )
-                                }
-                                maxLength={180}
-                                style={{ minHeight: 96 }}
-                            />
-                        </Field>
-                    </Blueprint>
-                </div>
+                        {/* Tabs */}
+                        <div className="wp-inspector-tabs" role="tablist">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={sidebarTab === 'document'}
+                                className={`wp-inspector-tab ${sidebarTab === 'document' ? 'is-active' : ''}`}
+                                onClick={() => setSidebarTab('document')}
+                            >
+                                Свойства
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={sidebarTab === 'seo'}
+                                className={`wp-inspector-tab ${sidebarTab === 'seo' ? 'is-active' : ''}`}
+                                onClick={() => setSidebarTab('seo')}
+                            >
+                                SEO & Snippet
+                            </button>
+                        </div>
 
-                {/* --------------------------------------------- sidebar */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Параметры
-                        </h3>
+                        {/* Inspector Body */}
+                        <div className="wp-inspector-body">
+                            {sidebarTab === 'document' && (
+                                <>
+                                    {/* Traffic-light Readiness Score Widget */}
+                                    <div className="wp-inspector-section">
+                                        <ReadinessWidget
+                                            title="Готовность страницы"
+                                            score={readinessScore}
+                                            items={readinessItems}
+                                        />
+                                    </div>
 
-                        <Field
-                            label="Адрес (slug)"
-                            hint="Оставьте пустым — сгенерируется из заголовка."
-                            error={fieldError('slug')}
-                        >
-                            <Input
-                                value={data.slug}
-                                onChange={(e) =>
-                                    setData('slug', e.target.value)
-                                }
-                                placeholder="about"
-                                className="ui-mono"
-                                maxLength={255}
-                            />
-                        </Field>
+                                    {/* Permalink & Slug with Auto-generate */}
+                                    <div className="wp-inspector-section">
+                                        <div className="wp-inspector-section-title">
+                                            Адрес страницы (URL)
+                                        </div>
+                                        <div className="wp-permalink-preview">
+                                            <div className="wp-permalink-label">
+                                                Ссылка на сайте:
+                                            </div>
+                                            <a
+                                                href={`https://khf.tj/${localeUrlSegment}/${data.slug || '...'}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="wp-permalink-link"
+                                            >
+                                                <span>
+                                                    khf.tj/{localeUrlSegment}/
+                                                    {data.slug || '...'}
+                                                </span>
+                                                <ExternalLink
+                                                    size={12}
+                                                    style={{ flex: 'none' }}
+                                                />
+                                            </a>
+                                        </div>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                gap: 6,
+                                                marginTop: 8,
+                                            }}
+                                        >
+                                            <Input
+                                                value={data.slug}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'slug',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="about"
+                                                className="ui-mono"
+                                                style={{ fontSize: 12.5 }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="wp-quick-slug-btn"
+                                                onClick={handleAutoSlug}
+                                                title="Сгенерировать slug из заголовка"
+                                            >
+                                                <Sparkles size={14} />
+                                                <span>Авто</span>
+                                            </button>
+                                        </div>
+                                        {fieldError('slug') && (
+                                            <div className="wp-field-error">
+                                                {fieldError('slug')}
+                                            </div>
+                                        )}
+                                    </div>
 
-                        <Field
-                            label="Родительская страница"
-                            error={fieldError('parent_id')}
-                        >
-                            <Select
-                                value={
-                                    data.parent_id === ''
-                                        ? ''
-                                        : String(data.parent_id)
-                                }
-                                options={parentOptions}
-                                onChange={(e) =>
-                                    setData(
-                                        'parent_id',
-                                        e.target.value === ''
-                                            ? ''
-                                            : Number(e.target.value),
-                                    )
-                                }
-                            />
-                        </Field>
+                                    {/* Hierarchy & Order Attributes */}
+                                    <div className="wp-inspector-section">
+                                        <div className="wp-inspector-section-title">
+                                            Атрибуты страницы
+                                        </div>
+                                        <div className="wp-inspector-field">
+                                            <Field
+                                                label="Родительская страница"
+                                                error={fieldError('parent_id')}
+                                            >
+                                                <Select
+                                                    value={
+                                                        data.parent_id === ''
+                                                            ? ''
+                                                            : String(
+                                                                  data.parent_id,
+                                                              )
+                                                    }
+                                                    options={parentOptions}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            'parent_id',
+                                                            e.target.value === ''
+                                                                ? ''
+                                                                : Number(
+                                                                      e.target
+                                                                          .value,
+                                                                  ),
+                                                        )
+                                                    }
+                                                />
+                                            </Field>
+                                        </div>
 
-                        <Field label="Порядок" error={fieldError('sort')}>
-                            <Input
-                                type="number"
-                                min={0}
-                                value={String(data.sort)}
-                                onChange={(e) =>
-                                    setData('sort', Number(e.target.value) || 0)
-                                }
-                            />
-                        </Field>
-                    </Blueprint>
-                </div>
+                                        <div
+                                            className="wp-inspector-field"
+                                            style={{ marginTop: 12 }}
+                                        >
+                                            <Field
+                                                label="Порядок сортировки"
+                                                hint="Меньше — выше в меню"
+                                                error={fieldError('sort')}
+                                            >
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    value={String(data.sort)}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            'sort',
+                                                            Number(
+                                                                e.target.value,
+                                                            ) || 0,
+                                                        )
+                                                    }
+                                                />
+                                            </Field>
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {sidebarTab === 'seo' && (
+                                <div className="wp-inspector-section">
+                                    <div className="wp-inspector-section-title">
+                                        Поисковая выдача (Google / Yandex)
+                                    </div>
+
+                                    {/* Google SERP Snippet Preview */}
+                                    <div className="wp-seo-preview-card">
+                                        <div className="wp-seo-preview-url">
+                                            khf.tj &gt; {localeUrlSegment} &gt;{' '}
+                                            {data.slug || 'page'}
+                                        </div>
+                                        <div className="wp-seo-preview-title">
+                                            {data.seo_title[lang]?.trim() ||
+                                                data.title[lang]?.trim() ||
+                                                'Заголовок страницы — КЧС Таджикистан'}
+                                        </div>
+                                        <div className="wp-seo-preview-desc">
+                                            {data.seo_description[
+                                                lang
+                                            ]?.trim() ||
+                                                'Официальная страница Комитета по чрезвычайным ситуациям и гражданской обороне при Правительстве Республики Таджикистан.'}
+                                        </div>
+                                    </div>
+
+                                    <div className="wp-inspector-field">
+                                        <Field
+                                            label={`SEO Title (${lang.toUpperCase()})`}
+                                            hint={`${data.seo_title[lang]?.length || 0} / 70 знаков`}
+                                            error={fieldError(
+                                                `seo_title.${lang}`,
+                                            )}
+                                        >
+                                            <Input
+                                                value={data.seo_title[lang]}
+                                                onChange={(e) =>
+                                                    setLocaleField(
+                                                        'seo_title',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                maxLength={70}
+                                                placeholder={
+                                                    data.title[lang] ||
+                                                    'Заголовок для поисковиков'
+                                                }
+                                            />
+                                        </Field>
+                                    </div>
+
+                                    <div
+                                        className="wp-inspector-field"
+                                        style={{ marginTop: 12 }}
+                                    >
+                                        <Field
+                                            label={`SEO Description (${lang.toUpperCase()})`}
+                                            hint={`${data.seo_description[lang]?.length || 0} / 180 знаков`}
+                                            error={fieldError(
+                                                `seo_description.${lang}`,
+                                            )}
+                                        >
+                                            <Textarea
+                                                value={
+                                                    data.seo_description[lang]
+                                                }
+                                                onChange={(e) =>
+                                                    setLocaleField(
+                                                        'seo_description',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                maxLength={180}
+                                                style={{ minHeight: 84 }}
+                                                placeholder="Краткое описание страницы в поисковой выдаче…"
+                                            />
+                                        </Field>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </aside>
+                )}
             </div>
         </EditorialFormShell>
     );

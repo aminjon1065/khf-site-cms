@@ -76,25 +76,34 @@ export function MediaPicker({
     const [uploading, setUploading] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [editing, setEditing] = useState<MediaItem | null>(null);
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [selectedMap, setSelectedMap] = useState<Map<number, MediaItem>>(
+        new Map(),
+    );
     const fileRef = useRef<HTMLInputElement>(null);
 
     // Каждое закрытие окна начинает выбор заново: забытая отметка с
     // прошлого раза попала бы в галерею без ведома редактора. Сброс — в
     // обработчике закрытия, а не в эффекте (каскадные ре-рендеры).
     const handleClose = () => {
-        setSelectedIds([]);
+        setSelectedMap(new Map());
         onClose();
     };
 
-    const selectedItems = selectedIds
-        .map((id) => items.find((item) => item.id === id))
-        .filter((item): item is MediaItem => item !== undefined);
+    const selectedItems = Array.from(selectedMap.values());
+    const selectedIds = Array.from(selectedMap.keys());
 
-    const toggleSelected = (id: number) => {
-        setSelectedIds((prev) =>
-            prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
-        );
+    const toggleSelected = (item: MediaItem) => {
+        setSelectedMap((prev) => {
+            const next = new Map(prev);
+
+            if (next.has(item.id)) {
+                next.delete(item.id);
+            } else {
+                next.set(item.id, item);
+            }
+
+            return next;
+        });
     };
 
     /**
@@ -167,7 +176,9 @@ export function MediaPicker({
             if (multiple) {
                 // Загруженный файл сразу отмечается: окно не закрывается,
                 // редактор видит его в сетке и добавляет вместе с остальными.
-                setSelectedIds((prev) => [...prev, res.data.id]);
+                setSelectedMap((prev) =>
+                    new Map(prev).set(res.data.id, res.data),
+                );
             } else {
                 onSelect?.(res.data);
                 onClose();
@@ -214,6 +225,7 @@ export function MediaPicker({
                         <div style={{ flex: 1 }} />
                         {multiple && (
                             <Button
+                                variant="primary"
                                 disabled={selectedItems.length === 0}
                                 onClick={() => {
                                     onSelectMany?.(selectedItems);
@@ -313,7 +325,7 @@ export function MediaPicker({
                                             title={item.name ?? item.file_name}
                                             onClick={() => {
                                                 if (multiple) {
-                                                    toggleSelected(item.id);
+                                                    toggleSelected(item);
                                                 } else {
                                                     onSelect?.(item);
                                                     onClose();
@@ -395,7 +407,9 @@ export function MediaPicker({
                     if (multiple) {
                         // Отредактированный снимок — как загруженный: отметить,
                         // а не закрывать окно с недосмотренной подборкой.
-                        setSelectedIds((prev) => [...prev, item.id]);
+                        setSelectedMap((prev) =>
+                            new Map(prev).set(item.id, item),
+                        );
                     } else {
                         onSelect?.(item);
                     }

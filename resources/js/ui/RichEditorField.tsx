@@ -7,11 +7,8 @@ import { Youtube } from '@tiptap/extension-youtube';
 import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
-import { BubbleMenu } from '@tiptap/react/menus';
 import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
-import { Bold, Heading2, Heading3, Italic, Link2, Trash2 } from 'lucide-react';
-import { Bold, Heading2, Heading3, Italic, Link2, Plus, Trash2 } from 'lucide-react';
 import {
     Bold,
     Heading2,
@@ -35,6 +32,8 @@ import {
     readingMinutes,
 } from './rich-editor';
 import { RichGallery, registerGalleryPickerHandler } from './rich-gallery';
+import { RichGalleryContext } from './rich-gallery-context';
+import type { RichGalleryContextValue } from './rich-gallery-context';
 import { RichImage } from './rich-image';
 import {
     deleteLastTable,
@@ -52,7 +51,6 @@ import { SlashCommandMenu } from './SlashCommandMenu';
 import { useToast } from './Toast';
 
 export interface ActiveBlockInfo {
-    type: 'image' | 'callout' | 'table' | 'youtube' | 'heading' | 'blockquote' | 'paragraph';
     type:
         | 'image'
         | 'callout'
@@ -74,6 +72,8 @@ export interface Props {
     gallery?: boolean;
     /** Клик по чипу галереи в тексте: открыть выбор кадров (медиатека). */
     onGalleryClick?: () => void;
+    /** Данные и обработчики фотогалереи материала для интерактивного блока в тексте */
+    galleryContext?: RichGalleryContextValue;
     /** Уведомление об активном блоке для инспектора сайдбара */
     onActiveBlockChange?: (block: ActiveBlockInfo | null) => void;
 }
@@ -261,6 +261,7 @@ export function RichEditorField({
     variant = 'default',
     gallery = false,
     onGalleryClick,
+    galleryContext,
     onActiveBlockChange,
 }: Props) {
     const toast = useToast();
@@ -285,10 +286,12 @@ export function RichEditorField({
     // расширения: колбэк в configure() ломал сравнение опций useEditor
     // (React #185, краш редактора по клику в текст).
     useEffect(() => {
-        registerGalleryPickerHandler(onGalleryClick ?? null);
+        registerGalleryPickerHandler(
+            onGalleryClick ?? galleryContext?.onOpenPicker ?? null,
+        );
 
         return () => registerGalleryPickerHandler(null);
-    }, [onGalleryClick]);
+    }, [onGalleryClick, galleryContext?.onOpenPicker]);
 
     const editor = useEditor({
         immediatelyRender: false,
@@ -384,7 +387,6 @@ export function RichEditorField({
                 return true;
             },
         },
-        onUpdate: ({ editor: instance }) => onChange(instance.getHTML()),
         onSelectionUpdate: ({ editor: instance }) => {
             if (!onActiveBlockChange) {
                 return;
@@ -445,7 +447,7 @@ export function RichEditorField({
                 try {
                     const coords = instance.view.coordsAtPos(from);
                     setSlashPosition({
-                        top: coords.bottom + window.scrollY + 8,
+                        top: coords.bottom + window.scrollY + 6,
                         left: coords.left + window.scrollX,
                     });
                     setSlashQuery(textBefore.slice(1));
@@ -684,7 +686,9 @@ export function RichEditorField({
                     spellCheck={false}
                 />
             ) : (
-                <EditorContent editor={editor} className="re-content-wrap" />
+                <RichGalleryContext.Provider value={galleryContext ?? null}>
+                    <EditorContent editor={editor} className="re-content-wrap" />
+                </RichGalleryContext.Provider>
             )}
 
             {!sourceMode && (
@@ -767,13 +771,21 @@ export function RichEditorField({
                         className="re-quick-inserter-btn"
                         title="Добавить блок (/)"
                         aria-label="Добавить блок"
-                        onClick={() => {
-                            const coords = editor.view.coordsAtPos(
-                                editor.state.selection.from,
-                            );
+                        onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            if (slashOpen) {
+                                setSlashOpen(false);
+
+                                return;
+                            }
+
+                            const btnRect =
+                                e.currentTarget.getBoundingClientRect();
                             setSlashPosition({
-                                top: coords.bottom + window.scrollY + 8,
-                                left: coords.left + window.scrollX,
+                                top: btnRect.bottom + window.scrollY + 6,
+                                left: btnRect.left + window.scrollX,
                             });
                             setSlashQuery('');
                             setSlashOpen(true);

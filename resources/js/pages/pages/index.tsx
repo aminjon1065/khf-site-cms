@@ -109,6 +109,23 @@ export default function PagesIndex({
                         <span className="ui-mono">/{r.slug}</span>
                         {r.parent ? ` · ${r.parent}` : ''}
                     </div>
+                    <div className="wp-row-actions">
+                        <Link
+                            href={PageController.edit.url(r.id)}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            Изменить
+                        </Link>
+                        <span className="wp-row-action-sep">|</span>
+                        <a
+                            href={`https://khf.tj/ru/${r.slug}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            На сайте
+                        </a>
+                    </div>
                 </div>
             ),
         },

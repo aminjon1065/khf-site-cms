@@ -1,17 +1,26 @@
 import { useForm } from '@inertiajs/react';
-import { Images, Plus, Upload, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import {
+    ExternalLink,
+    Images,
+    Plus,
+    Sliders,
+    Sparkles,
+    Upload,
+    X,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
+import { languageChecks } from '@/lib/publication-languages';
+import { slugify } from '@/lib/slugify';
 import { index, store, update } from '@/routes/instructions';
 import { AttachmentsField } from '@/ui/AttachmentsField';
-import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
+import { ReadinessWidget } from '@/ui/ReadinessWidget';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
@@ -68,9 +77,13 @@ export default function InstructionForm({ instruction, reference }: Props) {
     const can = useCan();
     const isEdit = !!instruction;
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarTab, setSidebarTab] = useState<'document' | 'media'>('document');
     const [imagePicker, setImagePicker] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const imageFileRef = useRef<HTMLInputElement>(null);
+    const nameRef = useRef<HTMLTextAreaElement>(null);
+    const summaryRef = useRef<HTMLTextAreaElement>(null);
 
     const form = useForm({
         name: { ...EMPTY, ...instruction?.name } as LocaleMap,
@@ -94,6 +107,21 @@ export default function InstructionForm({ instruction, reference }: Props) {
 
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
+
+    // Auto-resize textareas
+    useEffect(() => {
+        if (nameRef.current) {
+            nameRef.current.style.height = 'auto';
+            nameRef.current.style.height = `${nameRef.current.scrollHeight}px`;
+        }
+    }, [data.name, lang]);
+
+    useEffect(() => {
+        if (summaryRef.current) {
+            summaryRef.current.style.height = 'auto';
+            summaryRef.current.style.height = `${summaryRef.current.scrollHeight}px`;
+        }
+    }, [data.summary, lang]);
 
     const pickImageFromLibrary = (item: MediaItem) => {
         setData('image', null);
@@ -130,6 +158,42 @@ export default function InstructionForm({ instruction, reference }: Props) {
         setData(field, { ...data[field], [lang]: value });
     };
 
+    // 1-Click Copy across languages (WordPress Gutenberg UX)
+    const handleCopyLocale = (from: ContentLocale, to: ContentLocale) => {
+        setData((prev) => {
+            const nextSections = { ...prev.sections };
+
+            for (const { key } of reference.sectionKeys) {
+                nextSections[key] = {
+                    ...nextSections[key],
+                    [to]: [...(prev.sections[key]?.[from] ?? [])],
+                };
+            }
+
+            return {
+                ...prev,
+                name: { ...prev.name, [to]: prev.name[from] },
+                summary: { ...prev.summary, [to]: prev.summary[from] },
+                key_point: { ...prev.key_point, [to]: prev.key_point[from] },
+                body: { ...prev.body, [to]: prev.body[from] },
+                sections: nextSections,
+            };
+        });
+    };
+
+    // Auto-slugify
+    const handleAutoSlug = () => {
+        const source =
+            data.name.ru?.trim() ||
+            data.name.tg?.trim() ||
+            data.name.en?.trim() ||
+            '';
+
+        if (source) {
+            setData('slug', slugify(source));
+        }
+    };
+
     // Immutably update the step list of one section for the active language.
     const mutateSteps = (
         section: SectionKey,
@@ -152,6 +216,84 @@ export default function InstructionForm({ instruction, reference }: Props) {
         );
     const removeStep = (section: SectionKey, i: number) =>
         mutateSteps(section, (steps) => steps.filter((_, idx) => idx !== i));
+
+    // Readiness score calculation
+    const hasName = data.name[lang]?.trim().length > 0;
+    const hasSummary = data.summary[lang]?.trim().length > 0;
+    const hasKeyPoint = data.key_point[lang]?.trim().length > 0;
+    const totalSteps = reference.sectionKeys.reduce(
+        (acc, { key }) =>
+            acc +
+            (data.sections[key]?.[lang]?.filter((s) => s.trim().length > 0)
+                .length || 0),
+        0,
+    );
+    const hasSteps = totalSteps > 0;
+    const hasHazard = Boolean(data.hazard_type);
+    const hasBilingual = Boolean(
+        data.name.tg?.trim() && data.name.ru?.trim(),
+    );
+
+    let readinessScore = 0;
+
+    if (hasName) {
+readinessScore += 25;
+}
+
+    if (hasSummary) {
+readinessScore += 15;
+}
+
+    if (hasKeyPoint) {
+readinessScore += 15;
+}
+
+    if (hasSteps) {
+readinessScore += 20;
+}
+
+    if (hasHazard) {
+readinessScore += 15;
+}
+
+    if (hasBilingual) {
+        readinessScore += 10;
+    }
+
+    const readinessItems = [
+        {
+            id: 'name',
+            label: `Название (${lang.toUpperCase()})`,
+            done: hasName,
+        },
+        {
+            id: 'summary',
+            label: 'Краткое описание',
+            done: hasSummary,
+        },
+        {
+            id: 'keypoint',
+            label: 'Главное за 10 сек',
+            done: hasKeyPoint,
+        },
+        {
+            id: 'steps',
+            label: `Шаги безопасности (${totalSteps})`,
+            done: hasSteps,
+        },
+        {
+            id: 'hazard',
+            label: 'Тип ЧС / опасности',
+            done: hasHazard,
+        },
+        {
+            id: 'bilingual',
+            label: 'Двуязычие (TG + RU)',
+            done: hasBilingual,
+        },
+    ];
+
+    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
 
     const submit = (
         action: 'draft' | 'submit',
@@ -180,8 +322,10 @@ export default function InstructionForm({ instruction, reference }: Props) {
 
     return (
         <EditorialFormShell
+            variant="gutenberg"
+            onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование инструкции' : 'Новая инструкция'}
-            subtitle="Заполните название, краткое описание и шаги по блокам «До / Во время / После / Нельзя»."
+            subtitle="Правила безопасности гражданам при ЧС: блоки «До / Во время / После / Нельзя»."
             backLabel="Инструкции"
             backHref={index.url()}
             status={instruction?.status}
@@ -198,6 +342,20 @@ export default function InstructionForm({ instruction, reference }: Props) {
             onSaveShortcut={() => submit('draft', undefined, true)}
             onSubmitReview={() => submit('submit', 'review')}
             onPublishNow={() => submit('submit', 'now')}
+            extraActions={
+                <Button
+                    variant={sidebarOpen ? 'primary' : 'secondary'}
+                    icon={<Sliders size={15} />}
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    title={
+                        sidebarOpen
+                            ? 'Скрыть панель настроек'
+                            : 'Показать панель настроек'
+                    }
+                >
+                    Панель настроек
+                </Button>
+            }
             autosave={{
                 contentType: 'instructions',
                 contentId: instruction?.id ?? null,
@@ -233,439 +391,729 @@ export default function InstructionForm({ instruction, reference }: Props) {
                         label: 'Тип опасности выбран',
                         ok: data.hazard_type !== '',
                     },
+                    {
+                        label: 'Добавлены шаги безопасности',
+                        ok: hasSteps,
+                    },
                 ],
             }}
         >
             <div
-                className="cms-two-col"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.7fr 1fr',
-                    gap: 16,
-                    alignItems: 'start',
-                }}
+                className={`wp-editor-layout ${sidebarOpen ? 'has-sidebar' : 'no-sidebar'}`}
             >
-                {/* ------------------------------------------------ main */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 14,
-                                flexWrap: 'wrap',
-                                gap: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Основное
-                            </h3>
-                        </div>
-
-                        <Field
-                            label="Название"
-                            required={!hasAnyTranslation(data.name)}
-                            error={
-                                fieldError('name') ?? fieldError(`name.${lang}`)
-                            }
-                        >
-                            <Input
+                {/* ------------------------------------------- Document Canvas */}
+                <main className="wp-editor-canvas-container" role="main">
+                    <div className="wp-editor-canvas">
+                        {/* Title field */}
+                        <div className="wp-title-wrapper">
+                            <textarea
+                                ref={nameRef}
+                                id={`instruction-name-${lang}`}
                                 value={data.name[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('name', e.target.value)
-                                }
-                                hasError={
-                                    !!(
-                                        fieldError('name') ??
-                                        fieldError(`name.${lang}`)
-                                    )
-                                }
+                                onChange={(e) => {
+                                    setLocaleField('name', e.target.value);
+
+                                    if (!data.slug && lang === 'ru') {
+                                        setData((prev) => ({
+                                            ...prev,
+                                            slug: slugify(e.target.value),
+                                        }));
+                                    }
+                                }}
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Например: Действия при землетрясении'
-                                        : 'Перевод названия'
+                                        ? 'Название инструкции по безопасности…'
+                                        : lang === 'tg'
+                                          ? 'Номи дастурамали бехатарӣ…'
+                                          : 'Safety instruction title…'
                                 }
+                                rows={1}
+                                className="wp-title-input"
                                 maxLength={255}
                             />
-                        </Field>
+                            {(fieldError('name') ||
+                                fieldError(`name.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('name') ||
+                                        fieldError(`name.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
-                        <Field
-                            label="Краткое описание"
-                            hint="Короткая подпись в каталоге инструкций."
-                        >
-                            <Textarea
+                        {/* Summary field */}
+                        <div className="wp-lead-wrapper">
+                            <textarea
+                                ref={summaryRef}
+                                id={`instruction-summary-${lang}`}
                                 value={data.summary[lang]}
                                 onChange={(e) =>
                                     setLocaleField('summary', e.target.value)
                                 }
-                                style={{ minHeight: 70 }}
+                                placeholder={
+                                    lang === 'ru'
+                                        ? 'Краткое описание ситуации и правил для каталога…'
+                                        : lang === 'tg'
+                                          ? 'Тавсифи мухтасари вазъият барои феҳрист…'
+                                          : 'Brief situation overview for catalog…'
+                                }
+                                rows={2}
+                                className="wp-lead-input"
                                 maxLength={1000}
                             />
-                        </Field>
+                            {(fieldError('summary') ||
+                                fieldError(`summary.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('summary') ||
+                                        fieldError(`summary.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
-                        {/* Отдельно от краткого описания: описание отвечает
-                            «о чём инструкция», а это — «что делать прямо
-                            сейчас». Раньше на странице под заголовком
-                            «Главное за 10 секунд» стояло описание. */}
-                        <Field
-                            label="Главное за 10 секунд"
-                            hint="Первое действие в опасности. Без него блок на странице не выводится."
+                        {/* ⚡ Emergency 10-Second Key Point */}
+                        <div
+                            style={{
+                                background:
+                                    'color-mix(in srgb, var(--brand) 6%, transparent)',
+                                border: '1px solid color-mix(in srgb, var(--brand) 25%, transparent)',
+                                borderRadius: 'var(--radius-md)',
+                                padding: '14px 18px',
+                                marginBottom: 28,
+                            }}
                         >
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: 8,
+                                    marginBottom: 8,
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        display: 'inline-flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        width: 22,
+                                        height: 22,
+                                        borderRadius: '50%',
+                                        background: 'var(--brand)',
+                                        color: '#fff',
+                                        fontSize: 12,
+                                        fontWeight: 700,
+                                    }}
+                                >
+                                    ⚡
+                                </span>
+                                <strong
+                                    style={{
+                                        fontSize: 13.5,
+                                        color: 'var(--brand-800)',
+                                    }}
+                                >
+                                    Главное за 10 секунд
+                                </strong>
+                                <span
+                                    style={{
+                                        fontSize: 12,
+                                        color: 'var(--color-neutral-500)',
+                                        marginLeft: 'auto',
+                                    }}
+                                >
+                                    Первое действие при ЧС (выделяется на карточке)
+                                </span>
+                            </div>
                             <Textarea
                                 value={data.key_point[lang]}
                                 onChange={(e) =>
                                     setLocaleField('key_point', e.target.value)
                                 }
-                                style={{ minHeight: 60 }}
+                                placeholder="Что делать прямо сейчас в первые секунды (не паниковать, лечь, перекрыть газ…)"
+                                style={{ minHeight: 56 }}
                                 maxLength={300}
                             />
-                        </Field>
-
-                        <AttachmentsField
-                            existing={instruction?.attachments ?? []}
-                            added={data.attachments}
-                            removed={data.attachments_remove}
-                            error={fieldError('attachments')}
-                            onAdd={(files) =>
-                                setData('attachments', [
-                                    ...data.attachments,
-                                    ...files,
-                                ])
-                            }
-                            onToggleRemove={(id) =>
-                                setData(
-                                    'attachments_remove',
-                                    data.attachments_remove.includes(id)
-                                        ? data.attachments_remove.filter(
-                                              (x) => x !== id,
-                                          )
-                                        : [...data.attachments_remove, id],
-                                )
-                            }
-                        />
-                    </Blueprint>
-
-                    {/* ------------------------------------ sections editor */}
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 4 }}
-                        >
-                            Шаги инструкции
-                        </h3>
-                        <p
-                            style={{
-                                margin: '0 0 12px',
-                                fontSize: 12.5,
-                                color: 'var(--color-neutral-600)',
-                            }}
-                        >
-                            Язык блоков переключается вкладками выше (сейчас:{' '}
-                            <b>{lang.toUpperCase()}</b>).
-                        </p>
-
-                        {reference.sectionKeys.map(({ key, label }) => (
-                            <div key={key} style={{ marginBottom: 18 }}>
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'space-between',
-                                        marginBottom: 8,
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            fontFamily: 'var(--font-heading)',
-                                            fontWeight: 600,
-                                            fontSize: 13.5,
-                                        }}
-                                    >
-                                        {label}
-                                    </span>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        icon={
-                                            <Plus size={14} strokeWidth={2} />
-                                        }
-                                        onClick={() => addStep(key)}
-                                    >
-                                        Шаг
-                                    </Button>
+                            {(fieldError('key_point') ||
+                                fieldError(`key_point.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('key_point') ||
+                                        fieldError(`key_point.${lang}`)}
                                 </div>
+                            )}
+                        </div>
 
-                                {data.sections[key][lang].length === 0 ? (
-                                    <p
+                        {/* Step sections */}
+                        <div style={{ marginBottom: 32 }}>
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    marginBottom: 16,
+                                    borderBottom:
+                                        '1px solid var(--color-divider)',
+                                    paddingBottom: 10,
+                                }}
+                            >
+                                <div>
+                                    <h3
                                         style={{
                                             margin: 0,
-                                            fontSize: 12.5,
-                                            color: 'var(--color-neutral-400)',
+                                            fontSize: 16,
+                                            fontWeight: 700,
                                         }}
                                     >
-                                        Шаги не добавлены.
+                                        Шаги инструкции
+                                    </h3>
+                                    <p
+                                        style={{
+                                            margin: '2px 0 0',
+                                            fontSize: 12.5,
+                                            color: 'var(--color-neutral-600)',
+                                        }}
+                                    >
+                                        Язык блоков:{' '}
+                                        <b>{lang.toUpperCase()}</b>. Заполните
+                                        рекомендации по ключевым фазам ЧС.
                                     </p>
-                                ) : (
+                                </div>
+                            </div>
+
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    flexDirection: 'column',
+                                    gap: 20,
+                                }}
+                            >
+                                {reference.sectionKeys.map(
+                                    ({ key, label }) => (
+                                        <div
+                                            key={key}
+                                            style={{
+                                                background:
+                                                    'var(--color-neutral-50)',
+                                                border: '1px solid var(--color-divider)',
+                                                borderRadius:
+                                                    'var(--radius-md)',
+                                                padding: '16px 18px',
+                                            }}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent:
+                                                        'space-between',
+                                                    marginBottom: 10,
+                                                }}
+                                            >
+                                                <span
+                                                    style={{
+                                                        fontFamily:
+                                                            'var(--font-heading)',
+                                                        fontWeight: 600,
+                                                        fontSize: 14,
+                                                        color:
+                                                            key === 'prohibited'
+                                                                ? 'var(--danger)'
+                                                                : 'var(--color-text)',
+                                                    }}
+                                                >
+                                                    {label}
+                                                </span>
+                                                <Button
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    icon={
+                                                        <Plus
+                                                            size={14}
+                                                            strokeWidth={2}
+                                                        />
+                                                    }
+                                                    onClick={() => addStep(key)}
+                                                >
+                                                    Добавить шаг
+                                                </Button>
+                                            </div>
+
+                                            {data.sections[key][lang].length ===
+                                            0 ? (
+                                                <p
+                                                    style={{
+                                                        margin: 0,
+                                                        fontSize: 12.5,
+                                                        color: 'var(--color-neutral-400)',
+                                                        fontStyle: 'italic',
+                                                    }}
+                                                >
+                                                    Шаги не добавлены. Нажмите
+                                                    «Добавить шаг», чтобы внести
+                                                    рекомендацию.
+                                                </p>
+                                            ) : (
+                                                <div
+                                                    style={{
+                                                        display: 'flex',
+                                                        flexDirection: 'column',
+                                                        gap: 8,
+                                                    }}
+                                                >
+                                                    {data.sections[key][
+                                                        lang
+                                                    ].map((step, i) => (
+                                                        <div
+                                                            key={i}
+                                                            style={{
+                                                                display: 'flex',
+                                                                gap: 8,
+                                                                alignItems:
+                                                                    'flex-start',
+                                                            }}
+                                                        >
+                                                            <span
+                                                                className="ui-mono"
+                                                                style={{
+                                                                    width: 24,
+                                                                    paddingTop: 8,
+                                                                    fontSize: 12.5,
+                                                                    fontWeight: 600,
+                                                                    color: 'var(--color-neutral-500)',
+                                                                }}
+                                                            >
+                                                                {String(
+                                                                    i + 1,
+                                                                ).padStart(
+                                                                    2,
+                                                                    '0',
+                                                                )}
+                                                            </span>
+                                                            <Textarea
+                                                                value={step}
+                                                                onChange={(e) =>
+                                                                    updateStep(
+                                                                        key,
+                                                                        i,
+                                                                        e.target
+                                                                            .value,
+                                                                    )
+                                                                }
+                                                                style={{
+                                                                    minHeight: 44,
+                                                                    flex: 1,
+                                                                }}
+                                                                maxLength={1000}
+                                                                placeholder={`Описание шага ${i + 1}…`}
+                                                            />
+                                                            <IconButton
+                                                                label="Удалить шаг"
+                                                                variant="ghost"
+                                                                onClick={() =>
+                                                                    removeStep(
+                                                                        key,
+                                                                        i,
+                                                                    )
+                                                                }
+                                                            >
+                                                                <X
+                                                                    size={15}
+                                                                    strokeWidth={
+                                                                        1.5
+                                                                    }
+                                                                />
+                                                            </IconButton>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ),
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Detailed text (RichEditor) */}
+                        <div className="wp-body-wrapper">
+                            <div
+                                style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    marginBottom: 10,
+                                }}
+                            >
+                                <span
+                                    style={{
+                                        fontWeight: 600,
+                                        fontSize: 14,
+                                    }}
+                                >
+                                    Подробное описание
+                                </span>
+                                <span
+                                    style={{
+                                        fontSize: 12,
+                                        color: 'var(--color-neutral-500)',
+                                    }}
+                                >
+                                    Язык: <b>{lang.toUpperCase()}</b>
+                                </span>
+                            </div>
+                            <RichEditor
+                                key={lang}
+                                value={data.body[lang]}
+                                onChange={(html) =>
+                                    setLocaleField('body', html)
+                                }
+                                placeholder="Развёрнутое описание, контекст, ссылки на документы и спасательные службы…"
+                            />
+                            {(fieldError('body') ||
+                                fieldError(`body.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('body') ||
+                                        fieldError(`body.${lang}`)}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Attachments */}
+                        <div
+                            style={{
+                                marginTop: 28,
+                                borderTop: '1px dashed var(--color-divider)',
+                                paddingTop: 20,
+                            }}
+                        >
+                            <AttachmentsField
+                                existing={instruction?.attachments ?? []}
+                                added={data.attachments}
+                                removed={data.attachments_remove}
+                                error={fieldError('attachments')}
+                                onAdd={(files) =>
+                                    setData('attachments', [
+                                        ...data.attachments,
+                                        ...files,
+                                    ])
+                                }
+                                onToggleRemove={(id) =>
+                                    setData(
+                                        'attachments_remove',
+                                        data.attachments_remove.includes(id)
+                                            ? data.attachments_remove.filter(
+                                                  (x) => x !== id,
+                                              )
+                                            : [...data.attachments_remove, id],
+                                    )
+                                }
+                            />
+                        </div>
+                    </div>
+                </main>
+
+                {/* ------------------------------------------- Inspector Sidebar */}
+                {sidebarOpen && (
+                    <aside
+                        className="wp-inspector"
+                        aria-label="Параметры инструкции"
+                    >
+                        {/* Header */}
+                        <div className="wp-inspector-header">
+                            <span className="wp-inspector-title">
+                                Инспектор инструкции
+                            </span>
+                            <button
+                                type="button"
+                                className="wp-inspector-close"
+                                onClick={() => setSidebarOpen(false)}
+                                title="Закрыть панель"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        {/* Tabs */}
+                        <div className="wp-inspector-tabs" role="tablist">
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={sidebarTab === 'document'}
+                                className={`wp-inspector-tab ${sidebarTab === 'document' ? 'is-active' : ''}`}
+                                onClick={() => setSidebarTab('document')}
+                            >
+                                Параметры
+                            </button>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={sidebarTab === 'media'}
+                                className={`wp-inspector-tab ${sidebarTab === 'media' ? 'is-active' : ''}`}
+                                onClick={() => setSidebarTab('media')}
+                            >
+                                Иллюстрация
+                            </button>
+                        </div>
+
+                        {/* Inspector Body */}
+                        <div className="wp-inspector-body">
+                            {sidebarTab === 'document' && (
+                                <>
+                                    {/* Traffic-light Readiness Score Widget */}
+                                    <div className="wp-inspector-section">
+                                        <ReadinessWidget
+                                            score={readinessScore}
+                                            items={readinessItems}
+                                        />
+                                    </div>
+
+                                    {/* Permalink & Slug with Auto-generate */}
+                                    <div className="wp-inspector-section">
+                                        <div className="wp-inspector-section-title">
+                                            Адрес инструкции (Slug)
+                                        </div>
+                                        <div className="wp-permalink-preview">
+                                            <div className="wp-permalink-label">
+                                                Ссылка на сайте:
+                                            </div>
+                                            <a
+                                                href={`https://khf.tj/${localeUrlSegment}/instructions/${data.slug || '...'}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="wp-permalink-link"
+                                            >
+                                                <span>
+                                                    khf.tj/{localeUrlSegment}
+                                                    /instructions/
+                                                    {data.slug || '...'}
+                                                </span>
+                                                <ExternalLink
+                                                    size={12}
+                                                    style={{ flex: 'none' }}
+                                                />
+                                            </a>
+                                        </div>
+                                        <div
+                                            style={{
+                                                display: 'flex',
+                                                gap: 6,
+                                                marginTop: 8,
+                                            }}
+                                        >
+                                            <Input
+                                                value={data.slug}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'slug',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="deystviya-pri-zemletryasenii"
+                                                className="ui-mono"
+                                                style={{ fontSize: 12.5 }}
+                                            />
+                                            <button
+                                                type="button"
+                                                className="wp-quick-slug-btn"
+                                                onClick={handleAutoSlug}
+                                                title="Сгенерировать slug из названия"
+                                            >
+                                                <Sparkles size={14} />
+                                                <span>Авто</span>
+                                            </button>
+                                        </div>
+                                        {fieldError('slug') && (
+                                            <div className="wp-field-error">
+                                                {fieldError('slug')}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Hazard Type & Display Settings */}
+                                    <div className="wp-inspector-section">
+                                        <div className="wp-inspector-section-title">
+                                            Классификация и показ
+                                        </div>
+                                        <div className="wp-inspector-field">
+                                            <Field
+                                                label="Тип опасности"
+                                                error={fieldError('hazard_type')}
+                                            >
+                                                <Select
+                                                    value={data.hazard_type}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            'hazard_type',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    placeholder="Выберите тип опасности"
+                                                    options={reference.hazards}
+                                                />
+                                            </Field>
+                                        </div>
+
+                                        <div
+                                            className="wp-inspector-field"
+                                            style={{ marginTop: 12 }}
+                                        >
+                                            <Field
+                                                label="Порядок сортировки"
+                                                hint="Меньше — выше в каталоге"
+                                            >
+                                                <Input
+                                                    type="number"
+                                                    min={0}
+                                                    value={String(data.sort)}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            'sort',
+                                                            Number(
+                                                                e.target.value,
+                                                            ) || 0,
+                                                        )
+                                                    }
+                                                />
+                                            </Field>
+                                        </div>
+
+                                        <div style={{ marginTop: 14 }}>
+                                            <Checkbox
+                                                label="Закрепить (приоритетная карточка в каталоге)"
+                                                checked={data.is_priority}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'is_priority',
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                    </div>
+                                </>
+                            )}
+
+                            {sidebarTab === 'media' && (
+                                <div className="wp-inspector-section">
+                                    <div className="wp-inspector-section-title">
+                                        Иллюстрация инструкции
+                                    </div>
+                                    {imageSrc ? (
+                                        <div style={{ marginBottom: 12 }}>
+                                            <img
+                                                src={imageSrc}
+                                                alt="Иллюстрация"
+                                                style={{
+                                                    width: '100%',
+                                                    height: 180,
+                                                    objectFit: 'cover',
+                                                    borderRadius:
+                                                        'var(--radius-md)',
+                                                    border: '1px solid var(--color-divider)',
+                                                }}
+                                            />
+                                        </div>
+                                    ) : (
+                                        <div
+                                            style={{
+                                                padding: '24px 16px',
+                                                background:
+                                                    'var(--color-neutral-100)',
+                                                borderRadius:
+                                                    'var(--radius-md)',
+                                                border: '1px dashed var(--color-divider)',
+                                                textAlign: 'center',
+                                                fontSize: 12.5,
+                                                color: 'var(--color-neutral-500)',
+                                                marginBottom: 12,
+                                            }}
+                                        >
+                                            Иллюстрация не выбрана
+                                        </div>
+                                    )}
+
+                                    <input
+                                        ref={imageFileRef}
+                                        type="file"
+                                        accept="image/png,image/jpeg,image/webp"
+                                        hidden
+                                        onChange={(e) => {
+                                            const file =
+                                                e.target.files?.[0] ?? null;
+
+                                            if (file) {
+                                                setData('image', file);
+                                                setData(
+                                                    'image_media_id',
+                                                    null,
+                                                );
+                                                setData(
+                                                    'image_remove',
+                                                    false,
+                                                );
+                                                setImagePreview(
+                                                    URL.createObjectURL(file),
+                                                );
+                                            }
+
+                                            e.target.value = '';
+                                        }}
+                                    />
+
                                     <div
                                         style={{
                                             display: 'flex',
-                                            flexDirection: 'column',
-                                            gap: 6,
+                                            gap: 8,
+                                            flexWrap: 'wrap',
                                         }}
                                     >
-                                        {data.sections[key][lang].map(
-                                            (step, i) => (
-                                                <div
-                                                    key={i}
-                                                    style={{
-                                                        display: 'flex',
-                                                        gap: 6,
-                                                        alignItems:
-                                                            'flex-start',
-                                                    }}
-                                                >
-                                                    <span
-                                                        className="ui-mono"
-                                                        style={{
-                                                            width: 22,
-                                                            paddingTop: 8,
-                                                            fontSize: 12.5,
-                                                            color: 'var(--color-neutral-500)',
-                                                        }}
-                                                    >
-                                                        {String(i + 1).padStart(
-                                                            2,
-                                                            '0',
-                                                        )}
-                                                    </span>
-                                                    <Textarea
-                                                        value={step}
-                                                        onChange={(e) =>
-                                                            updateStep(
-                                                                key,
-                                                                i,
-                                                                e.target.value,
-                                                            )
-                                                        }
-                                                        style={{
-                                                            minHeight: 40,
-                                                            flex: 1,
-                                                        }}
-                                                        maxLength={1000}
-                                                    />
-                                                    <IconButton
-                                                        label="Удалить шаг"
-                                                        variant="ghost"
-                                                        onClick={() =>
-                                                            removeStep(key, i)
-                                                        }
-                                                    >
-                                                        <X
-                                                            size={15}
-                                                            strokeWidth={1.5}
-                                                        />
-                                                    </IconButton>
-                                                </div>
-                                            ),
-                                        )}
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            icon={<Upload size={14} />}
+                                            onClick={() =>
+                                                imageFileRef.current?.click()
+                                            }
+                                        >
+                                            Загрузить файл
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            size="sm"
+                                            icon={<Images size={14} />}
+                                            onClick={() => setImagePicker(true)}
+                                        >
+                                            Из медиатеки
+                                        </Button>
                                     </div>
-                                )}
-                            </div>
-                        ))}
-                    </Blueprint>
 
-                    {/* ------------------------------------ detail body */}
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 4 }}
-                        >
-                            Подробное описание
-                        </h3>
-                        <p
-                            style={{
-                                margin: '0 0 12px',
-                                fontSize: 12.5,
-                                color: 'var(--color-neutral-600)',
-                            }}
-                        >
-                            Необязательный развёрнутый текст под шагами (язык:{' '}
-                            <b>{lang.toUpperCase()}</b>).
-                        </p>
-                        <RichEditor
-                            key={lang}
-                            value={data.body[lang]}
-                            onChange={(html) => setLocaleField('body', html)}
-                            placeholder="Развёрнутое описание, контекст, ссылки на документы…"
-                        />
-                    </Blueprint>
-                </div>
+                                    {fieldError('image') && (
+                                        <div className="wp-field-error">
+                                            {fieldError('image')}
+                                        </div>
+                                    )}
 
-                {/* --------------------------------------------- sidebar */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Параметры
-                        </h3>
+                                    {instruction?.image_url && (
+                                        <div style={{ marginTop: 12 }}>
+                                            <Checkbox
+                                                label="Удалить текущее изображение"
+                                                checked={data.image_remove}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'image_remove',
+                                                        e.target.checked,
+                                                    )
+                                                }
+                                            />
+                                        </div>
+                                    )}
 
-                        <Field
-                            label="Тип события"
-                            error={fieldError('hazard_type')}
-                        >
-                            <Select
-                                value={data.hazard_type}
-                                onChange={(e) =>
-                                    setData('hazard_type', e.target.value)
-                                }
-                                placeholder="Не выбран"
-                                options={reference.hazards}
-                            />
-                        </Field>
-
-                        <Field
-                            label="Порядок сортировки"
-                            hint="Меньше — выше в каталоге."
-                        >
-                            <Input
-                                type="number"
-                                min={0}
-                                value={String(data.sort)}
-                                onChange={(e) =>
-                                    setData('sort', Number(e.target.value) || 0)
-                                }
-                            />
-                        </Field>
-
-                        <Field
-                            label="Адрес (slug)"
-                            hint="Пусто — сгенерируется из названия."
-                            error={fieldError('slug')}
-                        >
-                            <Input
-                                value={data.slug}
-                                onChange={(e) =>
-                                    setData('slug', e.target.value)
-                                }
-                                hasError={!!fieldError('slug')}
-                                placeholder="deystviya-pri-zemletryasenii"
-                            />
-                        </Field>
-
-                        <Checkbox
-                            label="Закрепить (приоритетная плитка на сайте)"
-                            checked={data.is_priority}
-                            onChange={(e) =>
-                                setData('is_priority', e.target.checked)
-                            }
-                        />
-                    </Blueprint>
-
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Иллюстрация
-                        </h3>
-                        {imageSrc && (
-                            <img
-                                src={imageSrc}
-                                alt=""
-                                style={{
-                                    width: '100%',
-                                    borderRadius: 6,
-                                    marginBottom: 10,
-                                    border: '1px solid var(--color-divider)',
-                                }}
-                            />
-                        )}
-
-                        <input
-                            ref={imageFileRef}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            hidden
-                            onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
-
-                                if (file) {
-                                    setData('image', file);
-                                    setData('image_media_id', null);
-                                    setData('image_remove', false);
-                                    setImagePreview(URL.createObjectURL(file));
-                                }
-
-                                e.target.value = '';
-                            }}
-                        />
-                        <div
-                            style={{
-                                display: 'flex',
-                                gap: 8,
-                                flexWrap: 'wrap',
-                            }}
-                        >
-                            <Button
-                                variant="secondary"
-                                icon={<Upload size={15} strokeWidth={1.75} />}
-                                onClick={() => imageFileRef.current?.click()}
-                            >
-                                Загрузить
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                icon={<Images size={15} strokeWidth={1.75} />}
-                                onClick={() => setImagePicker(true)}
-                            >
-                                Из медиатеки
-                            </Button>
+                                    <MediaPicker
+                                        open={imagePicker}
+                                        onClose={() => setImagePicker(false)}
+                                        onSelect={pickImageFromLibrary}
+                                    />
+                                </div>
+                            )}
                         </div>
-
-                        {fieldError('image') && (
-                            <div
-                                style={{
-                                    color: 'var(--danger)',
-                                    fontSize: 12,
-                                    marginTop: 6,
-                                }}
-                            >
-                                {fieldError('image')}
-                            </div>
-                        )}
-                        {instruction?.image_url && (
-                            <Checkbox
-                                className="mt-2"
-                                label="Удалить текущее изображение"
-                                checked={data.image_remove}
-                                onChange={(e) =>
-                                    setData('image_remove', e.target.checked)
-                                }
-                            />
-                        )}
-
-                        <MediaPicker
-                            open={imagePicker}
-                            onClose={() => setImagePicker(false)}
-                            onSelect={pickImageFromLibrary}
-                        />
-                    </Blueprint>
-                </div>
+                    </aside>
+                )}
             </div>
         </EditorialFormShell>
     );

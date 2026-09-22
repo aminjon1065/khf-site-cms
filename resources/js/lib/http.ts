@@ -52,3 +52,44 @@ export async function postForm<T>(url: string, form: FormData): Promise<T> {
 
     return res.json() as Promise<T>;
 }
+
+/** JSON POST к внутреннему API CMS с CSRF-заголовком. */
+export async function postJson<T>(url: string, data: unknown): Promise<T> {
+    const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        throw new Error(await errorMessage(res));
+    }
+
+    return res.json() as Promise<T>;
+}
+
+/** JSON PATCH к внутреннему API CMS с CSRF-заголовком. */
+export async function patchJson<T>(url: string, data: unknown): Promise<T> {
+    const res = await fetch(url, {
+        method: 'PATCH',
+        headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': xsrfToken(),
+        },
+        credentials: 'same-origin',
+        body: JSON.stringify(data),
+    });
+
+    if (!res.ok) {
+        throw new Error(await errorMessage(res));
+    }
+
+    return res.json() as Promise<T>;
+}
+

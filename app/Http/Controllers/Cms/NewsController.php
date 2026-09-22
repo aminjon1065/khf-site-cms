@@ -16,10 +16,13 @@ use App\Support\EditorialContent;
 use App\Support\FileSize;
 use App\Support\RichText;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -131,6 +134,70 @@ class NewsController extends Controller
         $this->runPublishAction($news, $request);
 
         return $this->redirectAfterSave($news, $request);
+    }
+
+    public function quickUpdate(Request $request, News $news): JsonResponse|RedirectResponse
+    {
+        $this->authorize('update', $news);
+
+        $validated = $request->validate([
+            'title' => ['required', 'string', 'max:255'],
+            'slug' => [
+                'nullable', 'string', 'max:255', 'alpha_dash',
+                Rule::unique('news', 'slug')->ignore($news->id),
+            ],
+            'category_id' => ['nullable', 'integer', 'exists:categories,id'],
+            'status' => ['nullable', Rule::enum(ContentStatus::class)],
+            'is_pinned' => ['nullable', 'boolean'],
+            'show_on_home' => ['nullable', 'boolean'],
+            'published_at' => ['nullable', 'date'],
+        ]);
+
+        $locale = app()->getLocale();
+        $news->setTranslation('title', $locale, $validated['title']);
+        if (! $news->hasTranslation('title', 'ru')) {
+            $news->setTranslation('title', 'ru', $validated['title']);
+        }
+
+        if (! empty($validated['slug'])) {
+            $news->slug = $validated['slug'];
+        }
+        if (array_key_exists('category_id', $validated)) {
+            $news->category_id = $validated['category_id'] ?: null;
+        }
+        if (array_key_exists('is_pinned', $validated)) {
+            $news->is_pinned = (bool) $validated['is_pinned'];
+        }
+        if (array_key_exists('show_on_home', $validated)) {
+            $news->show_on_home = (bool) $validated['show_on_home'];
+        }
+        if (! empty($validated['status'])) {
+            $news->status = ContentStatus::from($validated['status']);
+        }
+        if (array_key_exists('published_at', $validated)) {
+            $news->published_at = $validated['published_at'] ? Carbon::parse($validated['published_at']) : null;
+        }
+        $news->save();
+        $news->load('category');
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'news' => [
+                    'id' => $news->id,
+                    'title' => $news->getTranslation('title', 'ru'),
+                    'slug' => $news->slug,
+                    'status' => $news->status->value,
+                    'category' => $news->category?->getTranslation('name', 'ru'),
+                    'category_id' => $news->category_id,
+                    'is_pinned' => (bool) $news->is_pinned,
+                    'show_on_home' => (bool) $news->show_on_home,
+                    'published_at' => $news->published_at?->toIso8601String(),
+                ],
+            ]);
+        }
+
+        return back()->with('success', 'Новость успешно обновлена.');
     }
 
     public function destroy(News $news): RedirectResponse

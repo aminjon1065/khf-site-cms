@@ -41,6 +41,8 @@ interface EditorialFormShellProps<T extends object> {
     preview: EditorialPreviewConfig;
     extraActions?: ReactNode;
     children: ReactNode;
+    variant?: 'default' | 'gutenberg';
+    onCopyLocale?: (from: ContentLocale, to: ContentLocale) => void;
 }
 
 export function EditorialFormShell<T extends object>({
@@ -62,6 +64,8 @@ export function EditorialFormShell<T extends object>({
     autosave,
     preview,
     extraActions,
+    variant = 'default',
+    onCopyLocale,
     children,
 }: EditorialFormShellProps<T>) {
     const errorEntries = Object.entries(errors).filter(
@@ -97,44 +101,215 @@ export function EditorialFormShell<T extends object>({
 
     useSaveShortcut(() => submit(onSaveShortcut ?? onSaveDraft), !processing);
 
+    const languageTabsNode = (
+        <LanguageTabs
+            active={language.active}
+            onChange={language.onChange}
+            completeness={language.completeness}
+        />
+    );
+
     return (
         <>
             <Head title={title} />
 
-            <PageHeader
-                eyebrow={
-                    <Link href={backHref} className="editorial-form-back">
-                        <ArrowLeft size={14} strokeWidth={1.75} />
-                        {backLabel}
-                    </Link>
-                }
-                title={title}
-                subtitle={subtitle}
-                actions={
-                    <div className="editorial-form-save-state">
+            {variant === 'gutenberg' ? (
+                <header className="wp-topbar" role="banner">
+                    <div className="wp-topbar-left">
+                        <Link
+                            href={backHref}
+                            className="wp-topbar-back"
+                            title={backLabel}
+                        >
+                            <ArrowLeft size={16} strokeWidth={2} />
+                            <span className="wp-topbar-back-label">
+                                {backLabel}
+                            </span>
+                        </Link>
+                        <span className="wp-topbar-divider" />
                         {status && <StatusBadge status={status} />}
-                        <span aria-live="polite">
+                        <span className="wp-topbar-autosave" aria-live="polite">
                             {autosaveLabel(
                                 autosaveState.state,
                                 autosaveState.savedAt,
                             )}
                         </span>
+                    </div>
+
+                    <div className="wp-topbar-center">
+                        {languageTabsNode}
+                        {onCopyLocale && (
+                            <button
+                                type="button"
+                                className="wp-copy-locale-btn"
+                                title="Скопировать заголовок, лид и текст из русской версии в текущую"
+                                onClick={() =>
+                                    onCopyLocale('ru', language.active)
+                                }
+                            >
+                                Копировать из RU
+                            </button>
+                        )}
+                    </div>
+
+                    <div className="wp-topbar-right">
+                        {autosave.contentId !== null && (
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                icon={<History size={15} strokeWidth={1.75} />}
+                                onClick={() => void autosaveState.loadHistory()}
+                                title="История версий"
+                            >
+                                История
+                            </Button>
+                        )}
+                        <LinkButton
+                            href={backHref}
+                            variant="ghost"
+                            size="sm"
+                            title="Отмена"
+                        >
+                            Отмена
+                        </LinkButton>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            icon={<Eye size={15} strokeWidth={1.75} />}
+                            onClick={() => setPreviewOpen(true)}
+                            title="Предпросмотр материала"
+                        >
+                            Предпросмотр
+                        </Button>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={<Save size={15} strokeWidth={1.75} />}
+                            loading={processing}
+                            onClick={() => submit(onSaveDraft)}
+                            title="Сохранить черновик (Ctrl+S)"
+                        >
+                            Сохранить черновик
+                        </Button>
+
+                        {canPublish ? (
+                            <Dropdown
+                                align="right"
+                                placement="bottom"
+                                trigger={({ open, toggle }) => (
+                                    <div className="ui-splitbtn">
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            loading={processing}
+                                            onClick={() => publish(onPublishNow)}
+                                        >
+                                            Опубликовать
+                                        </Button>
+                                        <Button
+                                            variant="primary"
+                                            size="sm"
+                                            className="ui-splitbtn-chevron"
+                                            aria-label="Другие варианты публикации"
+                                            aria-haspopup="menu"
+                                            aria-expanded={open}
+                                            disabled={processing}
+                                            onClick={toggle}
+                                        >
+                                            <ChevronDown
+                                                size={15}
+                                                strokeWidth={2}
+                                                style={{
+                                                    transform: open
+                                                        ? 'rotate(180deg)'
+                                                        : undefined,
+                                                    transition:
+                                                        'transform 0.15s ease',
+                                                }}
+                                            />
+                                        </Button>
+                                    </div>
+                                )}
+                                items={[
+                                    {
+                                        label: 'Опубликовать сейчас',
+                                        description: 'Сразу появится на сайте',
+                                        onSelect: () => publish(onPublishNow),
+                                    },
+                                    ...(onSchedule
+                                        ? [
+                                              {
+                                                  label: 'Запланировать',
+                                                  description:
+                                                      'Выйдет в дату из блока «Публикация»',
+                                                  onSelect: () =>
+                                                      publish(onSchedule),
+                                              },
+                                          ]
+                                        : []),
+                                    { separator: true },
+                                    {
+                                        label: 'Отправить на согласование',
+                                        description:
+                                            'Сначала проверит руководитель',
+                                        onSelect: () => submit(onSubmitReview),
+                                    },
+                                ]}
+                            />
+                        ) : (
+                            <Button
+                                variant="primary"
+                                size="sm"
+                                icon={<Send size={15} strokeWidth={1.75} />}
+                                loading={processing}
+                                onClick={() => submit(onSubmitReview)}
+                            >
+                                На проверку
+                            </Button>
+                        )}
+
                         {extraActions}
                     </div>
-                }
-            />
+                </header>
+            ) : (
+                <>
+                    <PageHeader
+                        eyebrow={
+                            <Link
+                                href={backHref}
+                                className="editorial-form-back"
+                            >
+                                <ArrowLeft size={14} strokeWidth={1.75} />
+                                {backLabel}
+                            </Link>
+                        }
+                        title={title}
+                        subtitle={subtitle}
+                        actions={
+                            <div className="editorial-form-save-state">
+                                {status && <StatusBadge status={status} />}
+                                <span aria-live="polite">
+                                    {autosaveLabel(
+                                        autosaveState.state,
+                                        autosaveState.savedAt,
+                                    )}
+                                </span>
+                                {extraActions}
+                            </div>
+                        }
+                    />
 
-            <div className="editorial-form-language">
-                <div>
-                    <strong>Язык материала</strong>
-                    <span>Поля ниже редактируются для выбранной локали.</span>
-                </div>
-                <LanguageTabs
-                    active={language.active}
-                    onChange={language.onChange}
-                    completeness={language.completeness}
-                />
-            </div>
+                    <div className="editorial-form-language">
+                        <div>
+                            <strong>Язык материала</strong>
+                            <span>
+                                Поля ниже редактируются для выбранной локали.
+                            </span>
+                        </div>
+                        {languageTabsNode}
+                    </div>
+                </>
+            )}
 
             {errorEntries.length > 0 && (
                 <div
@@ -293,105 +468,110 @@ export function EditorialFormShell<T extends object>({
                 />
             )}
 
-            <div className="editorial-form-actions">
-                <LinkButton href={backHref} variant="ghost">
-                    Отмена
-                </LinkButton>
-                <Button
-                    variant="ghost"
-                    icon={<Eye size={15} strokeWidth={1.75} />}
-                    onClick={() => setPreviewOpen(true)}
-                >
-                    Предпросмотр
-                </Button>
-                {autosave.contentId !== null && (
+            {variant !== 'gutenberg' && (
+                <div className="editorial-form-actions">
+                    <LinkButton href={backHref} variant="ghost">
+                        Отмена
+                    </LinkButton>
                     <Button
                         variant="ghost"
-                        icon={<History size={15} strokeWidth={1.75} />}
-                        onClick={() => void autosaveState.loadHistory()}
+                        icon={<Eye size={15} strokeWidth={1.75} />}
+                        onClick={() => setPreviewOpen(true)}
                     >
-                        История версий
+                        Предпросмотр
                     </Button>
-                )}
-                <div className="editorial-form-actions-spacer" />
-                <Button
-                    variant="secondary"
-                    icon={<Save size={15} strokeWidth={1.75} />}
-                    loading={processing}
-                    onClick={() => submit(onSaveDraft)}
-                >
-                    Сохранить черновик
-                </Button>
-                {canPublish ? (
-                    <Dropdown
-                        align="right"
-                        placement="top"
-                        trigger={({ open, toggle }) => (
-                            <div className="ui-splitbtn">
-                                <Button
-                                    variant="primary"
-                                    loading={processing}
-                                    onClick={() => publish(onPublishNow)}
-                                >
-                                    Опубликовать
-                                </Button>
-                                <Button
-                                    variant="primary"
-                                    className="ui-splitbtn-chevron"
-                                    aria-label="Другие варианты публикации"
-                                    aria-haspopup="menu"
-                                    aria-expanded={open}
-                                    disabled={processing}
-                                    onClick={toggle}
-                                >
-                                    <ChevronDown
-                                        size={16}
-                                        strokeWidth={2}
-                                        style={{
-                                            transform: open
-                                                ? 'rotate(180deg)'
-                                                : undefined,
-                                            transition: 'transform 0.15s ease',
-                                        }}
-                                    />
-                                </Button>
-                            </div>
-                        )}
-                        items={[
-                            {
-                                label: 'Опубликовать сейчас',
-                                description: 'Сразу появится на сайте',
-                                onSelect: () => publish(onPublishNow),
-                            },
-                            ...(onSchedule
-                                ? [
-                                      {
-                                          label: 'Запланировать',
-                                          description:
-                                              'Выйдет в дату из блока «Публикация»',
-                                          onSelect: () => publish(onSchedule),
-                                      },
-                                  ]
-                                : []),
-                            { separator: true },
-                            {
-                                label: 'Отправить на согласование',
-                                description: 'Сначала проверит руководитель',
-                                onSelect: () => submit(onSubmitReview),
-                            },
-                        ]}
-                    />
-                ) : (
+                    {autosave.contentId !== null && (
+                        <Button
+                            variant="ghost"
+                            icon={<History size={15} strokeWidth={1.75} />}
+                            onClick={() => void autosaveState.loadHistory()}
+                        >
+                            История версий
+                        </Button>
+                    )}
+                    <div className="editorial-form-actions-spacer" />
                     <Button
-                        variant="primary"
-                        icon={<Send size={15} strokeWidth={1.75} />}
+                        variant="secondary"
+                        icon={<Save size={15} strokeWidth={1.75} />}
                         loading={processing}
-                        onClick={() => submit(onSubmitReview)}
+                        onClick={() => submit(onSaveDraft)}
                     >
-                        Отправить на проверку
+                        Сохранить черновик
                     </Button>
-                )}
-            </div>
+                    {canPublish ? (
+                        <Dropdown
+                            align="right"
+                            placement="top"
+                            trigger={({ open, toggle }) => (
+                                <div className="ui-splitbtn">
+                                    <Button
+                                        variant="primary"
+                                        loading={processing}
+                                        onClick={() => publish(onPublishNow)}
+                                    >
+                                        Опубликовать
+                                    </Button>
+                                    <Button
+                                        variant="primary"
+                                        className="ui-splitbtn-chevron"
+                                        aria-label="Другие варианты публикации"
+                                        aria-haspopup="menu"
+                                        aria-expanded={open}
+                                        disabled={processing}
+                                        onClick={toggle}
+                                    >
+                                        <ChevronDown
+                                            size={16}
+                                            strokeWidth={2}
+                                            style={{
+                                                transform: open
+                                                    ? 'rotate(180deg)'
+                                                    : undefined,
+                                                transition:
+                                                    'transform 0.15s ease',
+                                            }}
+                                        />
+                                    </Button>
+                                </div>
+                            )}
+                            items={[
+                                {
+                                    label: 'Опубликовать сейчас',
+                                    description: 'Сразу появится на сайте',
+                                    onSelect: () => publish(onPublishNow),
+                                },
+                                ...(onSchedule
+                                    ? [
+                                          {
+                                              label: 'Запланировать',
+                                              description:
+                                                  'Выйдет в дату из блока «Публикация»',
+                                              onSelect: () =>
+                                                  publish(onSchedule),
+                                          },
+                                      ]
+                                    : []),
+                                { separator: true },
+                                {
+                                    label: 'Отправить на согласование',
+                                    description:
+                                        'Сначала проверит руководитель',
+                                    onSelect: () => submit(onSubmitReview),
+                                },
+                            ]}
+                        />
+                    ) : (
+                        <Button
+                            variant="primary"
+                            icon={<Send size={15} strokeWidth={1.75} />}
+                            loading={processing}
+                            onClick={() => submit(onSubmitReview)}
+                        >
+                            Отправить на проверку
+                        </Button>
+                    )}
+                </div>
+            )}
         </>
     );
 }

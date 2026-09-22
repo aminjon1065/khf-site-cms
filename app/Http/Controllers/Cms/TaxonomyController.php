@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Taxonomy\TaxonomyRequest;
 use App\Models\Category;
 use App\Models\Tag;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +61,46 @@ class TaxonomyController extends Controller
         });
 
         return back()->with('success', 'Категории и теги сохранены.');
+    }
+
+    public function quickCategory(Request $request): JsonResponse
+    {
+        abort_unless((bool) $request->user()?->can('taxonomy.create'), 403);
+
+        $validated = $request->validate([
+            'name' => ['nullable', 'string', 'max:255'],
+            'name_ru' => ['nullable', 'string', 'max:255'],
+            'name_tg' => ['nullable', 'string', 'max:255'],
+        ]);
+
+        $rawName = $validated['name'] ?? $validated['name_ru'] ?? '';
+        if (trim($rawName) === '') {
+            return response()->json(['message' => 'Название рубрики обязательно.'], 422);
+        }
+
+        $nameRu = trim($validated['name_ru'] ?? $rawName);
+        $nameTg = ! empty($validated['name_tg']) ? trim($validated['name_tg']) : $nameRu;
+
+        $slug = $this->uniqueCategorySlug($this->desiredSlug([], $nameRu), null);
+        $sort = ((int) Category::query()->where('type', self::CATEGORY_TYPE)->max('sort')) + 1;
+
+        $category = Category::create([
+            'type' => self::CATEGORY_TYPE,
+            'name' => [
+                'ru' => $nameRu,
+                'tg' => $nameTg,
+                'en' => $nameRu,
+            ],
+            'slug' => $slug,
+            'sort' => $sort,
+        ]);
+
+        return response()->json([
+            'id' => $category->id,
+            'name' => $category->getTranslation('name', 'ru'),
+            'value' => $category->id,
+            'label' => $category->getTranslation('name', 'ru'),
+        ]);
     }
 
     // ---------------------------------------------------------------- helpers

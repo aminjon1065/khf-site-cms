@@ -5,7 +5,8 @@ import {
     ChevronRight,
     ChevronsUpDown,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { Fragment  } from 'react';
+import type {ReactNode} from 'react';
 import { cn } from '@/lib/utils';
 import { Blueprint } from './Blueprint';
 import { EmptyState, Skeleton } from './Feedback';
@@ -44,6 +45,7 @@ interface DataTableProps<T> {
     onRowClick?: (row: T) => void;
     bulkActions?: ReactNode;
     maxBodyHeight?: number | string;
+    renderSubRow?: (row: T) => ReactNode;
 }
 
 export function DataTable<T>({
@@ -64,6 +66,7 @@ export function DataTable<T>({
     onRowClick,
     bulkActions,
     maxBodyHeight,
+    renderSubRow,
 }: DataTableProps<T>) {
     const allKeys = rows.map(rowKey);
     const allSelected =
@@ -237,63 +240,78 @@ export function DataTable<T>({
                         ) : (
                             rows.map((row) => {
                                 const key = rowKey(row);
+                                const subRow = renderSubRow ? renderSubRow(row) : null;
 
                                 return (
-                                    <tr
-                                        key={key}
-                                        className={cn(
-                                            selected.has(key) && 'is-selected',
-                                        )}
-                                        onClick={
-                                            onRowClick
-                                                ? () => onRowClick(row)
-                                                : undefined
-                                        }
-                                        style={
-                                            onRowClick
-                                                ? { cursor: 'pointer' }
-                                                : undefined
-                                        }
-                                    >
-                                        {selectable && (
-                                            <td
-                                                className="ui-td-check"
-                                                onClick={(e) =>
-                                                    e.stopPropagation()
-                                                }
-                                            >
-                                                <Checkbox
-                                                    checked={selected.has(key)}
-                                                    onChange={() =>
-                                                        toggleOne(key)
+                                    <Fragment key={key}>
+                                        <tr
+                                            className={cn(
+                                                selected.has(key) && 'is-selected',
+                                            )}
+                                            onClick={
+                                                onRowClick
+                                                    ? () => onRowClick(row)
+                                                    : undefined
+                                            }
+                                            style={
+                                                onRowClick
+                                                    ? { cursor: 'pointer' }
+                                                    : undefined
+                                            }
+                                        >
+                                            {selectable && (
+                                                <td
+                                                    className="ui-td-check"
+                                                    onClick={(e) =>
+                                                        e.stopPropagation()
                                                     }
-                                                    aria-label="Выбрать строку"
-                                                />
-                                            </td>
+                                                >
+                                                    <Checkbox
+                                                        checked={selected.has(key)}
+                                                        onChange={() =>
+                                                            toggleOne(key)
+                                                        }
+                                                        aria-label="Выбрать строку"
+                                                    />
+                                                </td>
+                                            )}
+                                            {columns.map((col) => (
+                                                <td
+                                                    key={col.key}
+                                                    className={cn(
+                                                        col.className,
+                                                        col.key === 'actions' &&
+                                                            'cell-actions',
+                                                    )}
+                                                    style={{
+                                                        textAlign:
+                                                            col.align ?? 'left',
+                                                    }}
+                                                    onClick={
+                                                        col.key === 'actions'
+                                                            ? (event) =>
+                                                                  event.stopPropagation()
+                                                            : undefined
+                                                    }
+                                                >
+                                                    {col.render(row)}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                        {subRow && (
+                                            <tr className="ui-table-subrow">
+                                                <td
+                                                    colSpan={
+                                                        columns.length +
+                                                        (selectable ? 1 : 0)
+                                                    }
+                                                    style={{ padding: 0 }}
+                                                >
+                                                    {subRow}
+                                                </td>
+                                            </tr>
                                         )}
-                                        {columns.map((col) => (
-                                            <td
-                                                key={col.key}
-                                                className={cn(
-                                                    col.className,
-                                                    col.key === 'actions' &&
-                                                        'cell-actions',
-                                                )}
-                                                style={{
-                                                    textAlign:
-                                                        col.align ?? 'left',
-                                                }}
-                                                onClick={
-                                                    col.key === 'actions'
-                                                        ? (event) =>
-                                                              event.stopPropagation()
-                                                        : undefined
-                                                }
-                                            >
-                                                {col.render(row)}
-                                            </td>
-                                        ))}
-                                    </tr>
+                                    </Fragment>
                                 );
                             })
                         )}

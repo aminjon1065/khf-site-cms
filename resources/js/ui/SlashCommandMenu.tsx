@@ -14,8 +14,8 @@ import {
     Table as TableIcon,
     Video,
 } from 'lucide-react';
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 export interface CommandItem {
     id: string;
@@ -59,6 +59,7 @@ export function SlashCommandMenu({
     }
 
     const menuRef = useRef<HTMLDivElement>(null);
+    const listRef = useRef<HTMLDivElement>(null);
 
     const commands: CommandItem[] = useMemo(
         () => [
@@ -108,11 +109,6 @@ export function SlashCommandMenu({
                     'notice',
                 ],
                 action: (ed) =>
-                    ed
-                        .chain()
-                        .focus()
-                        .setCallout({ type: 'warning' })
-                        .run(),
                     ed.chain().focus().setCallout({ type: 'warning' }).run(),
             },
             {
@@ -130,7 +126,6 @@ export function SlashCommandMenu({
                 description: 'Вставка фото из медиатеки или загрузка',
                 category: 'media',
                 icon: ImageIcon,
-                keywords: ['фото', 'картинка', 'снимок', 'изображение', 'image', 'photo'],
                 keywords: [
                     'фото',
                     'картинка',
@@ -147,11 +142,12 @@ export function SlashCommandMenu({
                 description: 'Интерактивная карусель снимков события',
                 category: 'media',
                 icon: Images,
-                keywords: ['галерея', 'карусель', 'снимки', 'альбом', 'gallery'],
                 keywords: [
                     'галерея',
+                    'фотогалерея',
                     'карусель',
                     'снимки',
+                    'фото',
                     'альбом',
                     'gallery',
                 ],
@@ -221,9 +217,6 @@ export function SlashCommandMenu({
         );
     }, [commands, query]);
 
-    useEffect(() => {
-        setSelectedIndex(0);
-    }, [query]);
     const executeCommand = useCallback(
         (item: CommandItem) => {
             // Удаляем слеш или введенный текст запроса перед выполнением команды
@@ -253,6 +246,91 @@ export function SlashCommandMenu({
         [editor, onClose],
     );
 
+    // Автоматическая прокрутка выбранного элемента в видимую область списка
+    useEffect(() => {
+        if (!listRef.current) {
+            return;
+        }
+
+        const selectedEl = listRef.current.querySelector(
+            '.re-slash-item.is-selected',
+        ) as HTMLElement | null;
+
+        if (selectedEl) {
+            selectedEl.scrollIntoView({ block: 'nearest' });
+        }
+    }, [selectedIndex]);
+
+    // Закрытие меню при клике вне него
+    useEffect(() => {
+        if (!isOpen) {
+            return;
+        }
+
+        const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+            if (
+                menuRef.current &&
+                !menuRef.current.contains(e.target as Node)
+            ) {
+                onClose();
+            }
+        };
+
+        document.addEventListener('pointerdown', handlePointerDown);
+
+        return () => {
+            document.removeEventListener('pointerdown', handlePointerDown);
+        };
+    }, [isOpen, onClose]);
+
+    // Вычисление точной позиции с автопереворотом наверх и проверкой границ экрана
+    const [adjustedPos, setAdjustedPos] = useState<{
+        top: number;
+        left: number;
+    }>({
+        top: position?.top ?? 0,
+        left: position?.left ?? 0,
+    });
+
+    useLayoutEffect(() => {
+        if (!isOpen || !position) {
+            return;
+        }
+
+        const menuEl = menuRef.current;
+        const menuHeight = menuEl ? menuEl.offsetHeight : 340;
+        const menuWidth = menuEl ? menuEl.offsetWidth : 320;
+
+        const viewportTop = position.top - window.scrollY;
+        const viewportLeft = position.left - window.scrollX;
+
+        let finalTop = position.top;
+        let finalLeft = position.left;
+
+        // Если снизу меню не помещается, а сверху места достаточно — переворачиваем наверх
+        if (
+            viewportTop + menuHeight > window.innerHeight - 16 &&
+            viewportTop > menuHeight + 40
+        ) {
+            finalTop = position.top - menuHeight - 36;
+        }
+
+        // Ограничиваем по правому краю вьюпорта
+        if (viewportLeft + menuWidth > window.innerWidth - 16) {
+            finalLeft = Math.max(
+                window.scrollX + 16,
+                window.scrollX + window.innerWidth - menuWidth - 16,
+            );
+        }
+
+        // Ограничиваем по левому краю вьюпорта
+        if (finalLeft < window.scrollX + 16) {
+            finalLeft = window.scrollX + 16;
+        }
+
+        setAdjustedPos({ top: finalTop, left: finalLeft });
+    }, [isOpen, position, filtered.length]);
+
     useEffect(() => {
         if (!isOpen) {
             return;
@@ -261,14 +339,12 @@ export function SlashCommandMenu({
         const handleKeyDown = (e: KeyboardEvent) => {
             if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setSelectedIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
                 setSelectedIndex(
                     (prev) => (prev + 1) % Math.max(1, filtered.length),
                 );
             } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
                 setSelectedIndex(
-                    (prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length),
                     (prev) =>
                         (prev - 1 + filtered.length) %
                         Math.max(1, filtered.length),
@@ -289,36 +365,24 @@ export function SlashCommandMenu({
         window.addEventListener('keydown', handleKeyDown, true);
 
         return () => window.removeEventListener('keydown', handleKeyDown, true);
-    }, [isOpen, filtered, selectedIndex]);
     }, [executeCommand, filtered, isOpen, onClose, selectedIndex]);
 
-    const executeCommand = (item: CommandItem) => {
-        // Удаляем слеш или введенный текст запроса перед выполнением команды
-        const { state } = editor;
-        const { from } = state.selection;
-        const $from = state.doc.resolve(from);
-        const textBefore = $from.parent.textBetween(0, $from.parentOffset, undefined, ' ');
-
-        if (textBefore.startsWith('/')) {
-            const deleteFrom = from - textBefore.length;
-            editor.chain().focus().deleteRange({ from: deleteFrom, to: from }).run();
-        }
-
-        item.action(editor);
-        onClose();
-    };
-
-    if (!isOpen || !position || filtered.length === 0) {
+    if (
+        !isOpen ||
+        !position ||
+        filtered.length === 0 ||
+        typeof document === 'undefined'
+    ) {
         return null;
     }
 
-    return (
+    return createPortal(
         <div
             ref={menuRef}
             className="re-slash-menu"
             style={{
-                top: `${position.top}px`,
-                left: `${position.left}px`,
+                top: `${adjustedPos.top}px`,
+                left: `${adjustedPos.left}px`,
             }}
             role="menu"
             aria-label="Вставка блока"
@@ -326,13 +390,12 @@ export function SlashCommandMenu({
             <div className="re-slash-menu-header">
                 <Search size={14} className="re-slash-search-icon" />
                 <span className="re-slash-menu-hint">
-                    {query ? `Поиск: «${query}»` : 'Выберите блок или нажмите Esc'}
                     {query
                         ? `Поиск: «${query}»`
                         : 'Выберите блок или нажмите Esc'}
                 </span>
             </div>
-            <div className="re-slash-menu-list">
+            <div ref={listRef} className="re-slash-menu-list">
                 {filtered.map((item, index) => {
                     const Icon = item.icon;
                     const isSelected = index === selectedIndex;
@@ -361,7 +424,7 @@ export function SlashCommandMenu({
                     );
                 })}
             </div>
-        </div>
+        </div>,
+        document.body,
     );
 }
-

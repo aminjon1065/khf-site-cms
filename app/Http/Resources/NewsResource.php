@@ -26,6 +26,7 @@ class NewsResource extends JsonResource
             'slug' => $this->slug,
             'status' => $this->status->value,
             'category' => $this->whenLoaded('category', fn () => $this->category?->getTranslation('name', 'ru')),
+            'category_id' => $this->category_id,
             'languages' => $this->languageCompleteness(),
             'is_pinned' => (bool) $this->is_pinned,
             'show_on_home' => (bool) $this->show_on_home,

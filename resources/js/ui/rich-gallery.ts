@@ -1,11 +1,9 @@
 import { Node, mergeAttributes } from '@tiptap/core';
+import { ReactNodeViewRenderer } from '@tiptap/react';
+import { RichGalleryView } from './RichGalleryView';
 
 /**
- * Обработчик клика по чипу «Фотогалерея» (открыть медиатеку). Живёт вне опций
- * расширения: @tiptap/react сравнивает опции useEditor по ссылке на каждом
- * рендере, и колбэк в configure() каждый раз «новый» → setOptions →
- * ре-рендер → React #185 (краш редактора по клику в текст). Форма с
- * редактором ставит обработчик через registerGalleryPickerHandler в эффекте.
+ * Обработчик клика по чипу «Фотогалерея» (открыть медиатеку).
  */
 let openPickerHandler: (() => void) | null = null;
 
@@ -15,24 +13,49 @@ export function registerGalleryPickerHandler(
     openPickerHandler = handler;
 }
 
+export function triggerGalleryPicker(): void {
+    openPickerHandler?.();
+}
+
 /**
- * Маркер фотогалереи в теле материала: атомарный блочный узел, который
- * редактор ставит в произвольное место текста. Кадры берутся из коллекции
- * `gallery` материала — маркер только запоминает ГДЕ показать карусель.
+ * Блок фотогалереи в теле материала: интерактивный React NodeView в редакторе
+ * с живой сеткой фотографий, загрузкой снимков и выбором из медиатеки.
  *
  * Сериализуется как `<figure class="cms-gallery">…</figure>`: этот тег
- * разрешён профилем санитайзера 'news' (figure[class]) и не пуст внутри,
- * поэтому AutoFormat.RemoveEmpty его не вырезает. Публичная часть ищет
- * маркер этим классом и подставляет карусель (см. фронт, splitBodyByGallery).
- *
- * Чип в редакторе кликабелен: открывает медиатеку для выбора кадров.
- * Перетаскивание за любое место блока, удаление — Backspace.
+ * разрешён профилем санитайзера 'news' (figure[class]) и распознаётся
+ * публичной частью сайта для вывода интерактивной карусели (см. splitBodyByGallery).
  */
 export const RichGallery = Node.create({
     name: 'gallery',
     group: 'block',
     atom: true,
     draggable: true,
+
+    addAttributes() {
+        return {
+            images: {
+                default: [],
+                parseHTML: () => [],
+                renderHTML: () => ({}),
+            },
+            columns: {
+                default: 3,
+                parseHTML: (el) =>
+                    Number((el as HTMLElement).getAttribute('data-columns')) ||
+                    3,
+                renderHTML: (attrs) =>
+                    attrs.columns ? { 'data-columns': attrs.columns } : {},
+            },
+            caption: {
+                default: '',
+                parseHTML: (el) =>
+                    (el as HTMLElement)
+                        .querySelector('figcaption')
+                        ?.textContent?.trim() || '',
+                renderHTML: () => ({}),
+            },
+        };
+    },
 
     parseHTML() {
         return [{ tag: 'figure[class~="cms-gallery"]' }];
@@ -47,40 +70,13 @@ export const RichGallery = Node.create({
     },
 
     addNodeView() {
-        return () => {
-            const dom = document.createElement('figure');
-            dom.className = 'cms-gallery';
-            dom.setAttribute('data-drag-handle', 'true');
+        return ReactNodeViewRenderer(RichGalleryView, {
+            stopEvent: ({ event }) => {
+                const target = event.target as HTMLElement | null;
 
-            const chip = document.createElement('span');
-            chip.className = 'cms-gallery-chip';
-            chip.textContent = 'Фотогалерея';
-            chip.setAttribute('role', 'button');
-            chip.setAttribute('tabindex', '0');
-
-            const hint = document.createElement('span');
-            hint.className = 'cms-gallery-hint';
-            hint.textContent =
-                'Кадры — клик по чипу или блок «Фотогалерея» под текстом. Перетащите, чтобы переместить; Backspace — удалить.';
-
-            const open = () => openPickerHandler?.();
-
-            chip.addEventListener('click', (event) => {
-                event.stopPropagation();
-                open();
-            });
-            chip.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                    event.preventDefault();
-                    event.stopPropagation();
-                    open();
-                }
-            });
-
-            dom.append(chip, hint);
-
-            return { dom };
-        };
+                return Boolean(target?.closest('[data-re-gallery-ui]'));
+            },
+        });
     },
 
     addCommands() {

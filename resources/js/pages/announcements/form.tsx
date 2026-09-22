@@ -1,12 +1,20 @@
 import { useForm } from '@inertiajs/react';
-import { useState } from 'react';
+import {
+    FileText,
+    Sliders,
+    Wand2,
+    X,
+} from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
+import { languageChecks } from '@/lib/publication-languages';
+import { slugify } from '@/lib/slugify';
 import { index, store, update } from '@/routes/announcements';
-import { Blueprint } from '@/ui/Blueprint';
+import { Button } from '@/ui/Button';
 import { DatePicker, Field, Input, Select, Textarea } from '@/ui/Field';
+import { ReadinessWidget } from '@/ui/ReadinessWidget';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type PublishMode = 'now' | 'review';
@@ -47,6 +55,8 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
     const can = useCan();
     const isEdit = !!announcement;
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const titleRef = useRef<HTMLTextAreaElement>(null);
 
     const form = useForm({
         title: { ...EMPTY, ...announcement?.title } as LocaleMap,
@@ -65,6 +75,13 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
 
+    useEffect(() => {
+        if (titleRef.current) {
+            titleRef.current.style.height = 'auto';
+            titleRef.current.style.height = `${titleRef.current.scrollHeight}px`;
+        }
+    }, [lang]);
+
     const compAll = {
         tg:
             (data.title.tg.trim() !== '' ? 50 : 0) +
@@ -79,6 +96,84 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
 
     const setLocaleField = (field: 'title' | 'body', value: string) =>
         setData(field, { ...data[field], [lang]: value });
+
+    const handleCopyLocale = (from: ContentLocale, to: ContentLocale) => {
+        setData('title', { ...data.title, [to]: data.title[from] });
+        setData('body', { ...data.body, [to]: data.body[from] });
+    };
+
+    const handleAutoSlug = () => {
+        const source =
+            data.title[lang]?.trim() ||
+            data.title.ru?.trim() ||
+            data.title.tg?.trim() ||
+            '';
+
+        if (source) {
+            setData('slug', slugify(source));
+        }
+    };
+
+    // Оценка готовности материала (Traffic-light readiness score)
+    const hasTitle = data.title[lang]?.trim().length > 0;
+    const hasBody = data.body[lang]?.trim().length > 20;
+    const hasDeadline = Boolean(data.deadline?.trim());
+    const hasKind = Boolean(data.kind);
+    const hasBilingual = Boolean(
+        data.title.tg?.trim() && data.title.ru?.trim(),
+    );
+
+    let score = 0;
+
+    if (hasTitle) {
+score += 30;
+}
+
+    if (hasBody) {
+score += 30;
+}
+
+    if (hasDeadline) {
+score += 15;
+}
+
+    if (hasKind) {
+score += 10;
+}
+
+    if (hasBilingual) {
+        score += 15;
+    }
+
+    const readinessItems = [
+        {
+            id: 'title',
+            label: `Заголовок (${lang.toUpperCase()})`,
+            done: hasTitle,
+        },
+        {
+            id: 'body',
+            label: 'Описание объявления',
+            done: hasBody,
+        },
+        {
+            id: 'kind',
+            label: 'Тип объявления',
+            done: hasKind,
+        },
+        {
+            id: 'deadline',
+            label: 'Срок подачи заявок',
+            done: hasDeadline,
+        },
+        {
+            id: 'bilingual',
+            label: 'Заполнено на TG и RU',
+            done: hasBilingual,
+        },
+    ];
+
+    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
 
     const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
         form.transform((d) => ({
@@ -101,6 +196,8 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
 
     return (
         <EditorialFormShell
+            variant="gutenberg"
+            onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование объявления' : 'Новое объявление'}
             subtitle="Вакансия или тендер. Приём заявок закрывается автоматически после срока."
             backLabel="Объявления"
@@ -118,6 +215,20 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
             onSaveDraft={() => submit('draft')}
             onSubmitReview={() => submit('submit', 'review')}
             onPublishNow={() => submit('submit', 'now')}
+            extraActions={
+                <Button
+                    variant={sidebarOpen ? 'primary' : 'secondary'}
+                    icon={<Sliders size={15} />}
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    title={
+                        sidebarOpen
+                            ? 'Скрыть панель настроек'
+                            : 'Показать панель настроек'
+                    }
+                >
+                    Панель настроек
+                </Button>
+            }
             autosave={{
                 contentType: 'announcements',
                 contentId: announcement?.id ?? null,
@@ -143,196 +254,283 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
             }}
         >
             <div
-                className="cms-two-col"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.7fr 1fr',
-                    gap: 16,
-                    alignItems: 'start',
-                }}
+                className={`wp-editor-layout ${sidebarOpen ? 'has-sidebar' : 'no-sidebar'}`}
             >
-                {/* ------------------------------------------------ main */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 14,
-                                flexWrap: 'wrap',
-                                gap: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Текст объявления
-                            </h3>
-                        </div>
-
-                        <Field
-                            label="Заголовок"
-                            required={!hasAnyTranslation(data.title)}
-                            error={
-                                fieldError('title') ??
-                                fieldError(`title.${lang}`)
-                            }
-                        >
-                            <Input
+                {/* ------------------------------------------- Document Canvas */}
+                <main className="wp-editor-canvas-container" role="main">
+                    <div className="wp-editor-canvas">
+                        {/* Title field */}
+                        <div className="wp-title-wrapper">
+                            <textarea
+                                ref={titleRef}
+                                id={`announcement-title-${lang}`}
                                 value={data.title[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('title', e.target.value)
-                                }
-                                hasError={
-                                    !!(
-                                        fieldError('title') ??
-                                        fieldError(`title.${lang}`)
-                                    )
-                                }
+                                onChange={(e) => {
+                                    setLocaleField('title', e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = `${e.target.scrollHeight}px`;
+                                }}
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Например: Оператор службы 112'
-                                        : 'Перевод заголовка'
+                                        ? 'Например: Специалист службы 112...'
+                                        : lang === 'tg'
+                                          ? 'Сарлавҳаи эълон...'
+                                          : 'Announcement title...'
                                 }
+                                className="wp-title-input"
+                                rows={1}
                                 maxLength={255}
+                                aria-label="Заголовок объявления"
                             />
-                        </Field>
+                            {(fieldError('title') ??
+                                fieldError(`title.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('title') ??
+                                        fieldError(`title.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
-                        <Field
-                            label="Описание"
-                            hint="Требования, условия участия, контакты."
-                        >
-                            <Textarea
-                                value={data.body[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('body', e.target.value)
-                                }
-                                style={{ minHeight: 160 }}
-                                maxLength={5000}
-                            />
-                        </Field>
-                    </Blueprint>
-                </div>
-
-                {/* --------------------------------------------- sidebar */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Параметры
-                        </h3>
-
-                        <Field
-                            label="Адрес (slug)"
-                            hint="Оставьте пустым — сгенерируется из русского заголовка."
-                            error={fieldError('slug')}
-                        >
-                            <Input
-                                value={data.slug}
-                                onChange={(e) =>
-                                    setData('slug', e.target.value)
-                                }
-                                placeholder="operator-sluzhby-112"
-                                className="ui-mono"
-                                maxLength={255}
-                            />
-                        </Field>
-
-                        <Field
-                            label="Тип объявления"
-                            required
-                            error={fieldError('kind')}
-                        >
-                            <Select
-                                value={data.kind}
-                                options={reference.kinds}
-                                onChange={(e) =>
-                                    setData('kind', e.target.value)
-                                }
-                            />
-                        </Field>
-
-                        <Field
-                            label="Подразделение / проект"
-                            error={fieldError('org')}
-                        >
-                            <Input
-                                value={data.org}
-                                onChange={(e) => setData('org', e.target.value)}
-                                placeholder="Например: Отдел кадров"
-                                maxLength={255}
-                            />
-                        </Field>
-
-                        {/* Тендер принадлежит проекту: связь нужна, чтобы на
-                            странице проекта появился блок «Тендеры проекта», а
-                            из объявления был путь обратно к проекту. */}
-                        {data.kind === 'tender' && (
+                        {/* Body / Description field */}
+                        <div className="wp-body-wrapper mt-4">
                             <Field
-                                label="Проект"
-                                hint="Тендер появится в списке тендеров этого проекта."
-                                error={fieldError('project_id')}
+                                label="Описание и требования"
+                                hint="Условия участия, требования к соискателям, контактные данные."
                             >
-                                <Select
-                                    value={String(data.project_id ?? '')}
-                                    options={[
-                                        { value: '', label: 'Вне проекта' },
-                                        ...reference.projects,
-                                    ]}
+                                <Textarea
+                                    value={data.body[lang]}
                                     onChange={(e) =>
-                                        setData(
-                                            'project_id',
-                                            e.target.value === ''
-                                                ? ''
-                                                : Number(e.target.value),
-                                        )
+                                        setLocaleField('body', e.target.value)
                                     }
+                                    placeholder="Подробное описание вакансии или условий тендера..."
+                                    style={{ minHeight: 280 }}
+                                    maxLength={5000}
                                 />
                             </Field>
-                        )}
+                            {(fieldError('body') ??
+                                fieldError(`body.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('body') ??
+                                        fieldError(`body.${lang}`)}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </main>
 
-                        <Field
-                            label="Срок подачи"
-                            hint="После этой даты приём заявок закрывается."
-                            error={fieldError('deadline')}
-                        >
-                            <DatePicker
-                                value={data.deadline}
-                                onChange={(e) =>
-                                    setData('deadline', e.target.value)
-                                }
-                            />
-                        </Field>
+                {/* --------------------------------- Inspector Sidebar */}
+                {sidebarOpen && (
+                    <aside
+                        className="wp-inspector"
+                        aria-label="Панель настроек объявления"
+                    >
+                        <div className="wp-inspector-header">
+                            <div className="wp-inspector-tabs" role="tablist">
+                                <button
+                                    type="button"
+                                    role="tab"
+                                    aria-selected="true"
+                                    className="wp-inspector-tab is-active"
+                                >
+                                    <FileText size={15} />
+                                    <span>Объявление</span>
+                                </button>
+                            </div>
+                            <button
+                                type="button"
+                                className="wp-inspector-close"
+                                title="Скрыть панель"
+                                aria-label="Скрыть панель"
+                                onClick={() => setSidebarOpen(false)}
+                            >
+                                <X size={16} strokeWidth={1.75} />
+                            </button>
+                        </div>
 
-                        <Field
-                            label="Ссылка для подачи заявки"
-                            hint="Внутренний путь /..., HTTPS, mailto: или tel:."
-                            error={fieldError('application_url')}
-                        >
-                            <Input
-                                value={data.application_url}
-                                onChange={(e) =>
-                                    setData('application_url', e.target.value)
-                                }
-                                placeholder="/contacts или https://example.tj/form"
-                                maxLength={2048}
-                            />
-                        </Field>
-                    </Blueprint>
-                </div>
+                        <div className="wp-inspector-body">
+                            <div className="wp-inspector-sections">
+                                {/* Оценка готовности */}
+                                <ReadinessWidget
+                                    score={score}
+                                    items={readinessItems}
+                                />
+
+                                {/* 1. Публикация и ссылка */}
+                                <section className="wp-inspector-section">
+                                    <h4 className="wp-inspector-section-title">
+                                        <span>Публикация</span>
+                                    </h4>
+                                    <div className="wp-inspector-section-content">
+                                        <Field
+                                            label="Адрес (slug)"
+                                            htmlFor="announcement-slug"
+                                            hint="Генерируется автоматически из заголовка."
+                                            error={fieldError('slug')}
+                                        >
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    gap: 6,
+                                                }}
+                                            >
+                                                <Input
+                                                    id="announcement-slug"
+                                                    value={data.slug}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            'slug',
+                                                            e.target.value,
+                                                        )
+                                                    }
+                                                    hasError={
+                                                        !!fieldError('slug')
+                                                    }
+                                                    placeholder="operator-sluzhby-112"
+                                                    style={{ flex: 1 }}
+                                                />
+                                                <Button
+                                                    type="button"
+                                                    variant="secondary"
+                                                    size="sm"
+                                                    onClick={handleAutoSlug}
+                                                    title="Сгенерировать слаг из заголовка"
+                                                    icon={<Wand2 size={13} />}
+                                                >
+                                                    Авто
+                                                </Button>
+                                            </div>
+                                        </Field>
+
+                                        <div className="wp-permalink-preview">
+                                            <span className="wp-permalink-prefix">
+                                                khf.tj/{localeUrlSegment}
+                                                /announcements/
+                                            </span>
+                                            <span className="wp-permalink-slug">
+                                                {data.slug || 'announcement'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </section>
+
+                                {/* 2. Параметры объявления */}
+                                <section className="wp-inspector-section">
+                                    <h4 className="wp-inspector-section-title">
+                                        <span>Параметры объявления</span>
+                                    </h4>
+                                    <div className="wp-inspector-section-content">
+                                        <Field
+                                            label="Тип объявления"
+                                            required
+                                            error={fieldError('kind')}
+                                        >
+                                            <Select
+                                                value={data.kind}
+                                                options={reference.kinds}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'kind',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+
+                                        <Field
+                                            label="Подразделение / проект"
+                                            error={fieldError('org')}
+                                            className="mt-3"
+                                        >
+                                            <Input
+                                                value={data.org}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'org',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Например: Отдел кадров"
+                                                maxLength={255}
+                                            />
+                                        </Field>
+
+                                        {data.kind === 'tender' && (
+                                            <Field
+                                                label="Проект"
+                                                hint="Тендер появится в списке этого проекта."
+                                                error={fieldError('project_id')}
+                                                className="mt-3"
+                                            >
+                                                <Select
+                                                    value={String(
+                                                        data.project_id ?? '',
+                                                    )}
+                                                    options={[
+                                                        {
+                                                            value: '',
+                                                            label: 'Вне проекта',
+                                                        },
+                                                        ...reference.projects,
+                                                    ]}
+                                                    onChange={(e) =>
+                                                        setData(
+                                                            'project_id',
+                                                            e.target.value ===
+                                                                ''
+                                                                ? ''
+                                                                : Number(
+                                                                      e.target
+                                                                          .value,
+                                                                  ),
+                                                        )
+                                                    }
+                                                />
+                                            </Field>
+                                        )}
+
+                                        <Field
+                                            label="Срок подачи заявок"
+                                            hint="После этой даты приём закрывается автоматически."
+                                            error={fieldError('deadline')}
+                                            className="mt-3"
+                                        >
+                                            <DatePicker
+                                                value={data.deadline}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'deadline',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            />
+                                        </Field>
+
+                                        <Field
+                                            label="Ссылка для подачи заявки"
+                                            hint="URL, /contacts, mailto: или tel:."
+                                            error={fieldError(
+                                                'application_url',
+                                            )}
+                                            className="mt-3"
+                                        >
+                                            <Input
+                                                value={data.application_url}
+                                                onChange={(e) =>
+                                                    setData(
+                                                        'application_url',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="https://example.tj/form или /contacts"
+                                                maxLength={2048}
+                                            />
+                                        </Field>
+                                    </div>
+                                </section>
+                            </div>
+                        </div>
+                    </aside>
+                )}
             </div>
         </EditorialFormShell>
     );

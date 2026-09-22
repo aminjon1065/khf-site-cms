@@ -26,6 +26,7 @@ interface AnnouncementRow {
     kind: string;
     kind_label: string;
     org: string | null;
+    slug: string | null;
     status: ContentStatus;
     is_open: boolean;
     languages: Record<string, number>;
@@ -138,6 +139,23 @@ export default function AnnouncementsIndex({
                             {r.org}
                         </div>
                     )}
+                    <div className="wp-row-actions">
+                        <Link
+                            href={AnnouncementController.edit.url(r.id)}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            Изменить
+                        </Link>
+                        <span className="wp-row-action-sep">|</span>
+                        <a
+                            href={`https://khf.tj/ru/announcements/${r.slug || r.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            На сайте
+                        </a>
+                    </div>
                 </div>
             ),
         },

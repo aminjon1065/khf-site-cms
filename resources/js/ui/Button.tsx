@@ -28,6 +28,7 @@ interface CommonProps {
     iconRight?: ReactNode;
     className?: string;
     style?: CSSProperties;
+    title?: string;
     children?: ReactNode;
 }
 

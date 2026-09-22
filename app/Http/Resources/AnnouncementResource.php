@@ -26,6 +26,7 @@ class AnnouncementResource extends JsonResource
             'kind' => $this->kind->value,
             'kind_label' => $this->kind->label(),
             'org' => $this->org,
+            'slug' => $this->slug,
             'status' => $this->status->value,
             'is_open' => $this->isOpen(),
             'languages' => $this->languageCompleteness(),

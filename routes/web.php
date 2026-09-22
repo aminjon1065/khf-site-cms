@@ -88,6 +88,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::post('news', [NewsController::class, 'store'])->name('news.store');
     Route::get('news/{news}/edit', [NewsController::class, 'edit'])->name('news.edit');
     Route::put('news/{news}', [NewsController::class, 'update'])->middleware('editorial.version')->name('news.update');
+    Route::patch('news/{news}/quick-update', [NewsController::class, 'quickUpdate'])->name('news.quick-update');
     Route::delete('news/{news}', [NewsController::class, 'destroy'])->name('news.destroy');
     Route::post('news/{news}/duplicate', [NewsController::class, 'duplicate'])->name('news.duplicate');
     Route::post('news/{news}/publish', [NewsController::class, 'publish'])->name('news.publish');
@@ -177,6 +178,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     // Editorial taxonomy manager (news categories + tags).
     Route::get('taxonomy', [TaxonomyController::class, 'index'])->name('taxonomy');
     Route::put('taxonomy', [TaxonomyController::class, 'update'])->name('taxonomy.update');
+    Route::post('taxonomy/quick-category', [TaxonomyController::class, 'quickCategory'])->name('taxonomy.quick-category');
 
     // Site content pages (informational pages under the editorial workflow).
     Route::get('pages', [PageController::class, 'index'])->name('pages.index');

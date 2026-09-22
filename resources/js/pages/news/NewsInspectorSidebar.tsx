@@ -1,24 +1,24 @@
 import {
     AlertTriangle,
     FileText,
-    Grid,
     Heading,
     Image as ImageIcon,
     Images,
-    Paperclip,
-    Search,
+    Plus,
     Sliders,
     Table as TableIcon,
-    Trash2,
     Upload,
     Video,
+    Wand2,
     X,
 } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 import type { ContentLocale } from '@/lib/domain';
+import { postJson } from '@/lib/http';
+import { slugify } from '@/lib/slugify';
 import { AttachmentsField } from '@/ui/AttachmentsField';
 import { Button } from '@/ui/Button';
-import { Checkbox, DatePicker, Field, Input, Select, Textarea } from '@/ui/Field';
 import {
     Checkbox,
     DatePicker,
@@ -28,6 +28,7 @@ import {
     Textarea,
 } from '@/ui/Field';
 import { GalleryField } from '@/ui/GalleryField';
+import { ReadinessWidget } from '@/ui/ReadinessWidget';
 import type { ActiveBlockInfo } from '@/ui/RichEditor';
 
 interface Option {
@@ -85,11 +86,152 @@ export function NewsInspectorSidebar({
     toggleTag,
     setSeoField,
 }: Props) {
+    const [addedCategories, setAddedCategories] = useState<Option[]>([]);
+    const [showAddCat, setShowAddCat] = useState(false);
+    const [newCatName, setNewCatName] = useState('');
+    const [isCreatingCat, setIsCreatingCat] = useState(false);
+    const [catError, setCatError] = useState<string | null>(null);
+
+    const categories: Option[] = useMemo(
+        () => [...reference.categories, ...addedCategories],
+        [reference.categories, addedCategories],
+    );
+
+    const handleCreateCategory = async () => {
+        if (!newCatName.trim()) {
+            return;
+        }
+
+        setIsCreatingCat(true);
+        setCatError(null);
+
+        try {
+            const res = await postJson<{ data: { id: number; name: string } }>(
+                '/cms/categories',
+                { name: newCatName.trim() },
+            );
+            const newCat: Option = {
+                value: res.data.id,
+                label: res.data.name,
+            };
+
+            setAddedCategories((prev) => [...prev, newCat]);
+            setData('category_id', res.data.id);
+            setNewCatName('');
+            setShowAddCat(false);
+        } catch (e: unknown) {
+            const err = e as { message?: string };
+            setCatError(err.message ?? 'Не удалось создать рубрику');
+        } finally {
+            setIsCreatingCat(false);
+        }
+    };
+
     if (!isOpen) {
         return null;
     }
 
     const hasSpecialBlock = activeBlock && activeBlock.type !== 'paragraph';
+
+    const handleAutoSlug = () => {
+        const source =
+            data.title[lang]?.trim() ||
+            data.title.ru?.trim() ||
+            data.title.tg?.trim() ||
+            '';
+
+        if (source) {
+            setData('slug', slugify(source));
+        }
+    };
+
+    // Оценка готовности материала (Traffic light score)
+    const titleText = data.title[lang]?.trim() || '';
+    const hasTitle = titleText.length > 0;
+
+    const bodyHtml = data.body[lang] || '';
+    const bodyText = bodyHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const wordCount = bodyText ? bodyText.split(' ').length : 0;
+    const hasBody = wordCount >= 20;
+
+    const hasCover = Boolean(coverSrc);
+    const hasCoverAlt = Boolean(data.cover_alt?.trim());
+    const hasCategory = Boolean(data.category_id);
+    const hasSummary = Boolean(data.summary[lang]?.trim());
+    const hasBilingual = Boolean(
+        (data.title.tg?.trim() && data.title.ru?.trim()) ||
+        (lang === 'en' && data.title.en?.trim()),
+    );
+
+    let score = 0;
+
+    if (hasTitle) {
+score += 20;
+}
+
+    if (hasBody) {
+score += 25;
+}
+
+    if (hasCover) {
+score += 15;
+}
+
+    if (hasCoverAlt) {
+score += 10;
+}
+
+    if (hasCategory) {
+score += 10;
+}
+
+    if (hasSummary) {
+score += 10;
+}
+
+    if (hasBilingual) {
+        score += 10;
+    }
+
+    const readinessItems = [
+        {
+            id: 'title',
+            label: `Заголовок (${lang.toUpperCase()})`,
+            done: hasTitle,
+        },
+        {
+            id: 'body',
+            label: `Текст (${wordCount} сл., мин. 20)`,
+            done: hasBody,
+        },
+        {
+            id: 'cover',
+            label: 'Изображение записи',
+            done: hasCover,
+        },
+        {
+            id: 'cover_alt',
+            label: 'Alt-текст обложки',
+            done: hasCoverAlt,
+        },
+        {
+            id: 'category',
+            label: 'Рубрика выбрана',
+            done: hasCategory,
+        },
+        {
+            id: 'summary',
+            label: `Лид / анонс (${lang.toUpperCase()})`,
+            done: hasSummary,
+        },
+        {
+            id: 'bilingual',
+            label: 'Заполнено на TG и RU',
+            done: hasBilingual,
+        },
+    ];
+
+    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
 
     return (
         <aside className="wp-inspector" aria-label="Панель настроек">
@@ -113,7 +255,6 @@ export function NewsInspectorSidebar({
                         onClick={() => setTab('block')}
                     >
                         <Sliders size={15} />
-                        <span>Блок {hasSpecialBlock && <span className="wp-badge-dot" />}</span>
                         <span>
                             Блок{' '}
                             {hasSpecialBlock && (
@@ -136,6 +277,12 @@ export function NewsInspectorSidebar({
             <div className="wp-inspector-body">
                 {tab === 'post' ? (
                     <div className="wp-inspector-sections">
+                        {/* 0. Оценка готовности (WordPress-like Traffic Light / Checklist) */}
+                        <ReadinessWidget
+                            score={score}
+                            items={readinessItems}
+                        />
+
                         {/* 1. Публикация и видимость */}
                         <section className="wp-inspector-section">
                             <h4 className="wp-inspector-section-title">
@@ -145,20 +292,41 @@ export function NewsInspectorSidebar({
                                 <Field
                                     label="Адрес (slug)"
                                     htmlFor="news-slug"
-                                    hint="Генерируется автоматически, если оставить пустым."
+                                    hint="Генерируется автоматически из заголовка."
                                     error={fieldError('slug')}
                                 >
-                                    <Input
-                                        id="news-slug"
-                                        value={data.slug}
-                                        onChange={(e) => setData('slug', e.target.value)}
-                                        onChange={(e) =>
-                                            setData('slug', e.target.value)
-                                        }
-                                        hasError={!!fieldError('slug')}
-                                        placeholder="naprimer-soobshchenie-2026"
-                                    />
+                                    <div style={{ display: 'flex', gap: 6 }}>
+                                        <Input
+                                            id="news-slug"
+                                            value={data.slug}
+                                            onChange={(e) =>
+                                                setData('slug', e.target.value)
+                                            }
+                                            hasError={!!fieldError('slug')}
+                                            placeholder="naprimer-soobshchenie-2026"
+                                            style={{ flex: 1 }}
+                                        />
+                                        <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={handleAutoSlug}
+                                            title="Сгенерировать слаг из заголовка"
+                                            icon={<Wand2 size={13} />}
+                                        >
+                                            Авто
+                                        </Button>
+                                    </div>
                                 </Field>
+
+                                <div className="wp-permalink-preview">
+                                    <span className="wp-permalink-prefix">
+                                        khf.tj/{localeUrlSegment}/news/
+                                    </span>
+                                    <span className="wp-permalink-slug">
+                                        {data.slug || 'novost-slug'}
+                                    </span>
+                                </div>
 
                                 <Field
                                     label="Запланировать выход"
@@ -169,7 +337,6 @@ export function NewsInspectorSidebar({
                                         withTime
                                         value={data.scheduled_at}
                                         onChange={(e) =>
-                                            setData('scheduled_at', e.target.value)
                                             setData(
                                                 'scheduled_at',
                                                 e.target.value,
@@ -183,7 +350,6 @@ export function NewsInspectorSidebar({
                                         label="Закрепить вверху ленты"
                                         checked={data.is_pinned}
                                         onChange={(e) =>
-                                            setData('is_pinned', e.target.checked)
                                             setData(
                                                 'is_pinned',
                                                 e.target.checked,
@@ -194,7 +360,6 @@ export function NewsInspectorSidebar({
                                         label="Показывать на главной странице"
                                         checked={data.show_on_home}
                                         onChange={(e) =>
-                                            setData('show_on_home', e.target.checked)
                                             setData(
                                                 'show_on_home',
                                                 e.target.checked,
@@ -215,7 +380,6 @@ export function NewsInspectorSidebar({
                                     <div className="wp-cover-preview-card">
                                         <img
                                             src={coverSrc}
-                                            alt={data.cover_alt || 'Превью обложки'}
                                             alt={
                                                 data.cover_alt ||
                                                 'Превью обложки'
@@ -227,7 +391,6 @@ export function NewsInspectorSidebar({
                                                 label="Удалить обложку"
                                                 checked={data.cover_remove}
                                                 onChange={(e) =>
-                                                    setData('cover_remove', e.target.checked)
                                                     setData(
                                                         'cover_remove',
                                                         e.target.checked,
@@ -242,8 +405,6 @@ export function NewsInspectorSidebar({
                                         className="wp-cover-placeholder"
                                         onClick={() => setCoverPicker(true)}
                                     >
-                                        <ImageIcon size={28} strokeWidth={1.5} />
-                                        <span>Установить изображение записи</span>
                                         <ImageIcon
                                             size={28}
                                             strokeWidth={1.5}
@@ -260,7 +421,6 @@ export function NewsInspectorSidebar({
                                     accept="image/png,image/jpeg,image/webp"
                                     hidden
                                     onChange={(e) => {
-                                        const file = e.target.files?.[0] ?? null;
                                         const file =
                                             e.target.files?.[0] ?? null;
 
@@ -279,7 +439,6 @@ export function NewsInspectorSidebar({
                                         variant="secondary"
                                         size="sm"
                                         icon={<Upload size={14} />}
-                                        onClick={() => coverFileRef.current?.click()}
                                         onClick={() =>
                                             coverFileRef.current?.click()
                                         }
@@ -302,7 +461,6 @@ export function NewsInspectorSidebar({
                                     </div>
                                 )}
 
-                                <Field label="Alt-текст обложки" className="mt-3">
                                 <Field
                                     label="Alt-текст обложки"
                                     className="mt-3"
@@ -324,7 +482,6 @@ export function NewsInspectorSidebar({
                                     <Input
                                         value={data.cover_caption}
                                         onChange={(e) =>
-                                            setData('cover_caption', e.target.value)
                                             setData(
                                                 'cover_caption',
                                                 e.target.value,
@@ -364,28 +521,87 @@ export function NewsInspectorSidebar({
                                             )
                                         }
                                         placeholder="Без рубрики"
-                                        options={reference.categories.map((c) => ({
+                                        options={categories.map((c) => ({
                                             value: c.value,
                                             label: c.label,
                                         }))}
-                                        options={reference.categories.map(
-                                            (c) => ({
-                                                value: c.value,
-                                                label: c.label,
-                                            }),
-                                        )}
                                     />
                                 </Field>
 
+                                <div className="wp-quick-category">
+                                    {!showAddCat ? (
+                                        <button
+                                            type="button"
+                                            className="wp-quick-category-toggle"
+                                            onClick={() => setShowAddCat(true)}
+                                        >
+                                            <Plus size={13} strokeWidth={2} />
+                                            <span>+ Добавить новую рубрику</span>
+                                        </button>
+                                    ) : (
+                                        <div className="wp-quick-category-form">
+                                            <Input
+                                                value={newCatName}
+                                                onChange={(e) =>
+                                                    setNewCatName(
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Новая рубрика"
+                                                disabled={isCreatingCat}
+                                                onKeyDown={(e) => {
+                                                    if (e.key === 'Enter') {
+                                                        e.preventDefault();
+                                                        handleCreateCategory();
+                                                    }
+                                                }}
+                                            />
+                                            {catError && (
+                                                <div className="wp-field-error text-xs">
+                                                    {catError}
+                                                </div>
+                                            )}
+                                            <div className="wp-btn-row">
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="secondary"
+                                                    disabled={
+                                                        isCreatingCat ||
+                                                        !newCatName.trim()
+                                                    }
+                                                    onClick={
+                                                        handleCreateCategory
+                                                    }
+                                                >
+                                                    {isCreatingCat
+                                                        ? 'Сохранение…'
+                                                        : 'Добавить'}
+                                                </Button>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="ghost"
+                                                    onClick={() => {
+                                                        setShowAddCat(false);
+                                                        setNewCatName('');
+                                                        setCatError(null);
+                                                    }}
+                                                >
+                                                    Отмена
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
                                 {reference.tags.length > 0 && (
-                                    <Field label="Метки (теги)" className="mt-3">
                                     <Field
                                         label="Метки (теги)"
                                         className="mt-3"
                                     >
                                         <div className="wp-tags-cloud">
                                             {reference.tags.map((t) => {
-                                                const checked = data.tags.includes(t.value);
                                                 const checked =
                                                     data.tags.includes(t.value);
 
@@ -394,7 +610,6 @@ export function NewsInspectorSidebar({
                                                         key={t.value}
                                                         type="button"
                                                         className={`wp-tag-chip ${checked ? 'is-active' : ''}`}
-                                                        onClick={() => toggleTag(t.value)}
                                                         onClick={() =>
                                                             toggleTag(t.value)
                                                         }
@@ -425,7 +640,6 @@ export function NewsInspectorSidebar({
                                         fieldError('gallery_media_ids')
                                     }
                                     onAddFiles={(files) =>
-                                        setData('gallery', [...data.gallery, ...files])
                                         setData('gallery', [
                                             ...data.gallery,
                                             ...files,
@@ -435,7 +649,6 @@ export function NewsInspectorSidebar({
                                         setData(
                                             'gallery_remove',
                                             data.gallery_remove.includes(id)
-                                                ? data.gallery_remove.filter((x: number) => x !== id)
                                                 ? data.gallery_remove.filter(
                                                       (x: number) => x !== id,
                                                   )
@@ -468,8 +681,6 @@ export function NewsInspectorSidebar({
                                         setData(
                                             'attachments_remove',
                                             data.attachments_remove.includes(id)
-                                                ? data.attachments_remove.filter((x: number) => x !== id)
-                                                : [...data.attachments_remove, id],
                                                 ? data.attachments_remove.filter(
                                                       (x: number) => x !== id,
                                                   )
@@ -489,6 +700,22 @@ export function NewsInspectorSidebar({
                                 <span>Поисковая оптимизация (SEO)</span>
                             </h4>
                             <div className="wp-inspector-section-content">
+                                <div className="wp-seo-preview-card mb-3">
+                                    <div className="wp-seo-preview-url">
+                                        khf.tj &rsaquo; {localeUrlSegment} &rsaquo; news &rsaquo; {data.slug || 'novost'}
+                                    </div>
+                                    <div className="wp-seo-preview-title">
+                                        {data.seo[lang].title.trim() ||
+                                            data.title[lang]?.trim() ||
+                                            'Заголовок новости — КЧС Таджикистана'}
+                                    </div>
+                                    <div className="wp-seo-preview-desc">
+                                        {data.seo[lang].description.trim() ||
+                                            data.summary[lang]?.trim() ||
+                                            'Краткий анонс для поисковой выдачи Google и Яндекс будет показан здесь...'}
+                                    </div>
+                                </div>
+
                                 <Field
                                     label="SEO-заголовок"
                                     htmlFor={`news-seo-title-${lang}`}
@@ -502,7 +729,6 @@ export function NewsInspectorSidebar({
                                             setSeoField('title', e.target.value)
                                         }
                                         maxLength={255}
-                                        placeholder={data.title[lang] || 'Заголовок для поисковиков'}
                                         placeholder={
                                             data.title[lang] ||
                                             'Заголовок для поисковиков'
@@ -513,7 +739,6 @@ export function NewsInspectorSidebar({
                                 <Field
                                     label="SEO-описание (Сниппет)"
                                     htmlFor={`news-seo-description-${lang}`}
-                                    error={fieldError(`seo.${lang}.description`)}
                                     error={fieldError(
                                         `seo.${lang}.description`,
                                     )}
@@ -524,7 +749,6 @@ export function NewsInspectorSidebar({
                                         id={`news-seo-description-${lang}`}
                                         value={data.seo[lang].description}
                                         onChange={(e) =>
-                                            setSeoField('description', e.target.value)
                                             setSeoField(
                                                 'description',
                                                 e.target.value,
@@ -532,7 +756,6 @@ export function NewsInspectorSidebar({
                                         }
                                         style={{ minHeight: 65 }}
                                         maxLength={500}
-                                        placeholder={data.summary[lang] || 'Краткий анонс для поисковой выдачи'}
                                         placeholder={
                                             data.summary[lang] ||
                                             'Краткий анонс для поисковой выдачи'
@@ -548,7 +771,6 @@ export function NewsInspectorSidebar({
                         {activeBlock?.type === 'image' && (
                             <section className="wp-inspector-section">
                                 <div className="wp-block-header">
-                                    <ImageIcon size={18} className="text-blue-500" />
                                     <ImageIcon
                                         size={18}
                                         className="text-blue-500"
@@ -557,16 +779,11 @@ export function NewsInspectorSidebar({
                                 </div>
                                 <div className="wp-inspector-section-content">
                                     <p className="text-xs text-muted">
-                                        Выравнивание, кадрирование и подпись настраиваются
-                                        прямо на самом фото в тексте или кнопками ниже.
                                         Выравнивание, кадрирование и подпись
                                         настраиваются прямо на самом фото в
                                         тексте или кнопками ниже.
                                     </p>
                                     <div className="mt-3">
-                                        <span className="wp-section-sublabel">Alt-текст</span>
-                                        <p className="text-xs text-secondary mt-1">
-                                            {(activeBlock.attrs?.alt as string) || '— (не указан)'}
                                         <span className="wp-section-sublabel">
                                             Alt-текст
                                         </span>
@@ -577,9 +794,6 @@ export function NewsInspectorSidebar({
                                         </p>
                                     </div>
                                     <div className="mt-2">
-                                        <span className="wp-section-sublabel">Подпись</span>
-                                        <p className="text-xs text-secondary mt-1">
-                                            {(activeBlock.attrs?.caption as string) || '— (без подписи)'}
                                         <span className="wp-section-sublabel">
                                             Подпись
                                         </span>
@@ -596,7 +810,6 @@ export function NewsInspectorSidebar({
                         {activeBlock?.type === 'callout' && (
                             <section className="wp-inspector-section">
                                 <div className="wp-block-header">
-                                    <AlertTriangle size={18} className="text-amber-500" />
                                     <AlertTriangle
                                         size={18}
                                         className="text-amber-500"
@@ -605,23 +818,18 @@ export function NewsInspectorSidebar({
                                 </div>
                                 <div className="wp-inspector-section-content">
                                     <p className="text-xs text-muted">
-                                        Блок используется для экстренных сообщений,
-                                        штормовых предупреждений и важных цитат руководства.
                                         Блок используется для экстренных
                                         сообщений, штормовых предупреждений и
                                         важных цитат руководства.
                                     </p>
                                     <div className="mt-3">
-                                        <span className="wp-section-sublabel">Текущий тип:</span>
                                         <span className="wp-section-sublabel">
                                             Текущий тип:
                                         </span>
                                         <span className="wp-pill-label mt-1 inline-block font-medium">
-                                            {activeBlock.attrs?.type === 'warning'
                                             {activeBlock.attrs?.type ===
                                             'warning'
                                                 ? 'Предупреждение КЧС'
-                                                : activeBlock.attrs?.type === 'info'
                                                 : activeBlock.attrs?.type ===
                                                     'info'
                                                   ? 'Важная информация'
@@ -635,7 +843,6 @@ export function NewsInspectorSidebar({
                         {activeBlock?.type === 'table' && (
                             <section className="wp-inspector-section">
                                 <div className="wp-block-header">
-                                    <TableIcon size={18} className="text-emerald-500" />
                                     <TableIcon
                                         size={18}
                                         className="text-emerald-500"
@@ -644,8 +851,6 @@ export function NewsInspectorSidebar({
                                 </div>
                                 <div className="wp-inspector-section-content">
                                     <p className="text-xs text-muted">
-                                        Таблица активна. Для добавления или удаления строк
-                                        и столбцов используйте панель управления таблицей над текстом.
                                         Таблица активна. Для добавления или
                                         удаления строк и столбцов используйте
                                         панель управления таблицей над текстом.
@@ -671,8 +876,6 @@ export function NewsInspectorSidebar({
                         {activeBlock?.type === 'heading' && (
                             <section className="wp-inspector-section">
                                 <div className="wp-block-header">
-                                    <Heading size={18} className="text-purple-500" />
-                                    <strong>Заголовок уровня H{String(activeBlock.attrs?.level || 2)}</strong>
                                     <Heading
                                         size={18}
                                         className="text-purple-500"
@@ -684,7 +887,6 @@ export function NewsInspectorSidebar({
                                 </div>
                                 <div className="wp-inspector-section-content">
                                     <p className="text-xs text-muted">
-                                        Используйте H2 для разделов и H3 для подразделов.
                                         Используйте H2 для разделов и H3 для
                                         подразделов.
                                     </p>
@@ -692,12 +894,10 @@ export function NewsInspectorSidebar({
                             </section>
                         )}
 
-                        {(!activeBlock || activeBlock.type === 'paragraph' || activeBlock.type === 'blockquote') && (
                         {(!activeBlock ||
                             activeBlock.type === 'paragraph' ||
                             activeBlock.type === 'blockquote') && (
                             <div className="wp-inspector-empty">
-                                <Sliders size={32} strokeWidth={1.5} className="text-muted" />
                                 <Sliders
                                     size={32}
                                     strokeWidth={1.5}
@@ -705,8 +905,6 @@ export function NewsInspectorSidebar({
                                 />
                                 <h5>Настройки блока</h5>
                                 <p>
-                                    Кликните на изображение, таблицу, врезку или видео в тексте,
-                                    чтобы настроить параметры конкретного блока.
                                     Кликните на изображение, таблицу, врезку или
                                     видео в тексте, чтобы настроить параметры
                                     конкретного блока.

@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { Sliders } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
@@ -10,7 +10,7 @@ import { Button } from '@/ui/Button';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
 import { RichEditor } from '@/ui/RichEditor';
-import type { ActiveBlockInfo } from '@/ui/RichEditor';
+import type { ActiveBlockInfo, RichGalleryContextValue } from '@/ui/RichEditor';
 import { NewsInspectorSidebar } from './NewsInspectorSidebar';
 
 type LocaleMap = { ru: string; tg: string; en: string };
@@ -85,6 +85,20 @@ export default function NewsForm({ news, reference }: Props) {
     // берём URL ассета; иначе показываем существующую news.cover_url.
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
     const coverFileRef = useRef<HTMLInputElement>(null);
+    const titleRef = useRef<HTMLTextAreaElement>(null);
+    const summaryRef = useRef<HTMLTextAreaElement>(null);
+
+    useEffect(() => {
+        if (titleRef.current) {
+            titleRef.current.style.height = 'auto';
+            titleRef.current.style.height = `${titleRef.current.scrollHeight}px`;
+        }
+
+        if (summaryRef.current) {
+            summaryRef.current.style.height = 'auto';
+            summaryRef.current.style.height = `${summaryRef.current.scrollHeight}px`;
+        }
+    }, [lang]);
 
     const handleActiveBlockChange = (block: ActiveBlockInfo | null) => {
         setActiveBlock(block);
@@ -162,6 +176,69 @@ export default function NewsForm({ news, reference }: Props) {
         ]);
     };
 
+    const handleAddGalleryFiles = (files: File[]) => {
+        setData('gallery', [...data.gallery, ...files]);
+    };
+
+    const handleToggleGalleryRemove = (id: number | string) => {
+        if (typeof id === 'number') {
+            setData(
+                'gallery_remove',
+                data.gallery_remove.includes(id)
+                    ? data.gallery_remove.filter((x) => x !== id)
+                    : [...data.gallery_remove, id],
+            );
+        } else if (typeof id === 'string') {
+            if (id.startsWith('lib-')) {
+                const numId = Number(id.replace('lib-', ''));
+                setData(
+                    'gallery_media_ids',
+                    data.gallery_media_ids.filter((x) => x !== numId),
+                );
+                setGalleryPending((pending) =>
+                    pending.filter((x) => x.id !== numId),
+                );
+            } else if (id.startsWith('file-')) {
+                const matchIndex = Number(id.split('-').pop());
+
+                if (!Number.isNaN(matchIndex)) {
+                    setData(
+                        'gallery',
+                        data.gallery.filter((_, idx) => idx !== matchIndex),
+                    );
+                }
+            }
+        }
+    };
+
+    const galleryContext: RichGalleryContextValue = {
+        items: [
+            ...(news?.gallery ?? []).map((it) => ({
+                id: it.id,
+                title: it.title,
+                url: it.preview_url,
+                isExisting: true,
+                isRemoved: data.gallery_remove.includes(it.id),
+            })),
+            ...galleryPending.map((it) => ({
+                id: `lib-${it.id}`,
+                title: it.title,
+                url: it.url,
+                isPendingLibrary: true,
+            })),
+            ...data.gallery.map((file, idx) => ({
+                id: `file-${file.name}-${idx}`,
+                title: file.name,
+                url: URL.createObjectURL(file),
+                isPendingFile: true,
+            })),
+        ],
+        onAddFiles: handleAddGalleryFiles,
+        onAddLibrary: addGalleryFromLibrary,
+        onToggleRemove: handleToggleGalleryRemove,
+        onOpenPicker: () => setGalleryPicker(true),
+    };
+
     // Что показать в превью обложки: свежий выбор (файл/медиатека) приоритетнее
     // существующей обложки; при отметке «убрать» превью скрывается.
     const coverSrc =
@@ -207,6 +284,19 @@ export default function NewsForm({ news, reference }: Props) {
         );
     };
 
+    const handleCopyLocale = (from: ContentLocale, to: ContentLocale) => {
+        setData('title', { ...data.title, [to]: data.title[from] });
+        setData('summary', { ...data.summary, [to]: data.summary[from] });
+        setData('body', { ...data.body, [to]: data.body[from] });
+        setData('seo', {
+            ...data.seo,
+            [to]: {
+                title: data.seo[from].title,
+                description: data.seo[from].description,
+            },
+        });
+    };
+
     const submit = (
         action: 'draft' | 'submit',
         mode?: PublishMode,
@@ -234,6 +324,8 @@ export default function NewsForm({ news, reference }: Props) {
 
     return (
         <EditorialFormShell
+            variant="gutenberg"
+            onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование новости' : 'Новая новость'}
             subtitle={
                 isEdit
@@ -333,6 +425,7 @@ export default function NewsForm({ news, reference }: Props) {
                         {/* Title field */}
                         <div className="wp-title-wrapper">
                             <textarea
+                                ref={titleRef}
                                 id={`news-title-${lang}`}
                                 value={data.title[lang]}
                                 onChange={(e) => {
@@ -364,6 +457,7 @@ export default function NewsForm({ news, reference }: Props) {
                         {/* Lead / Summary field */}
                         <div className="wp-lead-wrapper">
                             <textarea
+                                ref={summaryRef}
                                 id={`news-summary-${lang}`}
                                 value={data.summary[lang]}
                                 onChange={(e) => {
@@ -399,6 +493,7 @@ export default function NewsForm({ news, reference }: Props) {
                                 key={lang}
                                 variant="article"
                                 gallery
+                                galleryContext={galleryContext}
                                 onGalleryClick={() => setGalleryPicker(true)}
                                 value={data.body[lang]}
                                 onChange={(html) =>

@@ -137,6 +137,23 @@ export default function InstructionsIndex({
                     >
                         {r.slug ?? '—'}
                     </div>
+                    <div className="wp-row-actions">
+                        <Link
+                            href={InstructionController.edit.url(r.id)}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            Изменить
+                        </Link>
+                        <span className="wp-row-action-sep">|</span>
+                        <a
+                            href={`https://khf.tj/ru/instructions/${r.slug || r.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            На сайте
+                        </a>
+                    </div>
                 </div>
             ),
         },

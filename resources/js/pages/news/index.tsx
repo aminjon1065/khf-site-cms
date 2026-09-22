@@ -7,17 +7,21 @@ import {
     Plus,
     SquareArrowOutUpRight,
     Trash2,
+    Wand2,
+    Zap,
 } from 'lucide-react';
 import { useState } from 'react';
 import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
 import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
+import { patchJson } from '@/lib/http';
+import { slugify } from '@/lib/slugify';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
-import { IconButton, LinkButton } from '@/ui/Button';
+import { Button, IconButton, LinkButton } from '@/ui/Button';
 import { DataTable, Pagination } from '@/ui/DataTable';
 import type { Column, SortState } from '@/ui/DataTable';
-import { Select } from '@/ui/Field';
+import { Checkbox, Field, Input, Select } from '@/ui/Field';
 import { FilterBar, SavedViews, SearchInput } from '@/ui/Filters';
 import { ConfirmDialog, Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
@@ -28,6 +32,7 @@ interface NewsRow {
     slug: string | null;
     status: ContentStatus;
     category: string | null;
+    category_id?: number | null;
     languages: Record<string, number>;
     is_pinned: boolean;
     show_on_home: boolean;
@@ -35,6 +40,7 @@ interface NewsRow {
     author: string | null;
     cover: string | null;
     published_at: string | null;
+    scheduled_at?: string | null;
     updated_at: string | null;
 }
 
@@ -88,11 +94,96 @@ export default function NewsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const [newsItems, setNewsItems] = useState<NewsRow[]>(news);
+    const [prevNews, setPrevNews] = useState<NewsRow[]>(news);
+
+    if (prevNews !== news) {
+        setPrevNews(news);
+        setNewsItems(news);
+    }
+
     const [deleteTarget, setDeleteTarget] = useState<NewsRow | null>(null);
     const [unpublishTarget, setUnpublishTarget] = useState<NewsRow | null>(
         null,
     );
     const [processing, setProcessing] = useState(false);
+
+    // Быстрое редактирование (WordPress Quick Edit)
+    const [quickEditId, setQuickEditId] = useState<number | null>(null);
+    const [quickData, setQuickData] = useState<{
+        title: string;
+        slug: string;
+        category_id: string;
+        status: ContentStatus;
+        is_pinned: boolean;
+        show_on_home: boolean;
+        published_at: string;
+    }>({
+        title: '',
+        slug: '',
+        category_id: '',
+        status: 'draft',
+        is_pinned: false,
+        show_on_home: true,
+        published_at: '',
+    });
+    const [quickSaving, setQuickSaving] = useState(false);
+    const [quickError, setQuickError] = useState<string | null>(null);
+
+    const startQuickEdit = (r: NewsRow) => {
+        setQuickEditId(r.id);
+        setQuickError(null);
+        setQuickData({
+            title: r.title === '— без заголовка —' ? '' : r.title,
+            slug: r.slug ?? '',
+            category_id: r.category_id ? String(r.category_id) : '',
+            status: r.status,
+            is_pinned: r.is_pinned,
+            show_on_home: r.show_on_home,
+            published_at: r.published_at ? r.published_at.slice(0, 16) : '',
+        });
+    };
+
+    const cancelQuickEdit = () => {
+        setQuickEditId(null);
+        setQuickError(null);
+    };
+
+    const handleSaveQuickEdit = async (rowId: number) => {
+        setQuickSaving(true);
+        setQuickError(null);
+
+        try {
+            const res = await patchJson<{
+                success: boolean;
+                news: NewsRow;
+            }>(`/news/${rowId}/quick-update`, {
+                title: quickData.title,
+                slug: quickData.slug,
+                category_id: quickData.category_id
+                    ? Number(quickData.category_id)
+                    : null,
+                status: quickData.status,
+                is_pinned: quickData.is_pinned,
+                show_on_home: quickData.show_on_home,
+                published_at: quickData.published_at || null,
+            });
+
+            if (res.news) {
+                setNewsItems((prev) =>
+                    prev.map((item) =>
+                        item.id === rowId ? { ...item, ...res.news } : item,
+                    ),
+                );
+            }
+
+            setQuickEditId(null);
+        } catch (err: any) {
+            setQuickError(err.message || 'Не удалось сохранить изменения');
+        } finally {
+            setQuickSaving(false);
+        }
+    };
 
     const reload = (patch: Partial<Props['filters']>) => {
         router.get(
@@ -156,6 +247,38 @@ export default function NewsIndex({
                         }}
                     >
                         {r.slug ?? '—'}
+                    </div>
+
+                    <div className="wp-row-actions">
+                        <Link
+                            href={NewsController.edit.url(r.id)}
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            Изменить
+                        </Link>
+                        {can('news.update') && (
+                            <>
+                                <span className="wp-row-action-sep">|</span>
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        startQuickEdit(r);
+                                    }}
+                                >
+                                    Свойства
+                                </button>
+                            </>
+                        )}
+                        <span className="wp-row-action-sep">|</span>
+                        <a
+                            href={`https://khf.tj/ru/news/${r.slug || r.id}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            На сайте
+                        </a>
                     </div>
                 </div>
             ),
@@ -250,6 +373,15 @@ export default function NewsIndex({
                             onSelect: () =>
                                 window.open('https://khf.tj/news', '_blank'),
                         },
+                        ...(can('news.update')
+                            ? [
+                                  {
+                                      label: 'Свойства (быстро)',
+                                      icon: <Zap size={15} strokeWidth={1.5} />,
+                                      onSelect: () => startQuickEdit(r),
+                                  },
+                              ]
+                            : []),
                         ...(can('news.create')
                             ? [
                                   {
@@ -295,6 +427,228 @@ export default function NewsIndex({
             ),
         },
     ];
+
+    const renderSubRow = (r: NewsRow) => {
+        if (quickEditId !== r.id) {
+            return null;
+        }
+
+        return (
+            <div
+                className="wp-quick-edit-panel"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div
+                    style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        marginBottom: 10,
+                    }}
+                >
+                    <strong style={{ fontSize: 13, color: 'var(--color-text)' }}>
+                        Быстрое редактирование: {r.title}
+                    </strong>
+                    <span
+                        style={{
+                            fontSize: 11.5,
+                            color: 'var(--color-neutral-500)',
+                        }}
+                    >
+                        ID: {r.id}
+                    </span>
+                </div>
+
+                {quickError && (
+                    <div
+                        style={{
+                            color: 'var(--danger, #dc2626)',
+                            fontSize: 12,
+                            marginBottom: 10,
+                        }}
+                    >
+                        {quickError}
+                    </div>
+                )}
+
+                <div className="wp-quick-edit-grid">
+                    {/* Колонка 1: Заголовок, Slug, Дата */}
+                    <div>
+                        <Field label="Заголовок" htmlFor={`quick-title-${r.id}`}>
+                            <Input
+                                id={`quick-title-${r.id}`}
+                                value={quickData.title}
+                                onChange={(e) =>
+                                    setQuickData((d) => ({
+                                        ...d,
+                                        title: e.target.value,
+                                    }))
+                                }
+                                placeholder="Заголовок новости"
+                            />
+                        </Field>
+
+                        <Field
+                            label="Ярлык (slug)"
+                            htmlFor={`quick-slug-${r.id}`}
+                            className="mt-2"
+                        >
+                            <div style={{ display: 'flex', gap: 6 }}>
+                                <Input
+                                    id={`quick-slug-${r.id}`}
+                                    value={quickData.slug}
+                                    onChange={(e) =>
+                                        setQuickData((d) => ({
+                                            ...d,
+                                            slug: e.target.value,
+                                        }))
+                                    }
+                                    placeholder="slug-novosti"
+                                    style={{ flex: 1 }}
+                                />
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    icon={<Wand2 size={13} />}
+                                    title="Сгенерировать из заголовка"
+                                    onClick={() => {
+                                        if (quickData.title) {
+                                            setQuickData((d) => ({
+                                                ...d,
+                                                slug: slugify(quickData.title),
+                                            }));
+                                        }
+                                    }}
+                                >
+                                    Авто
+                                </Button>
+                            </div>
+                        </Field>
+
+                        <Field
+                            label="Дата публикации"
+                            htmlFor={`quick-date-${r.id}`}
+                            className="mt-2"
+                        >
+                            <Input
+                                id={`quick-date-${r.id}`}
+                                type="datetime-local"
+                                value={quickData.published_at}
+                                onChange={(e) =>
+                                    setQuickData((d) => ({
+                                        ...d,
+                                        published_at: e.target.value,
+                                    }))
+                                }
+                            />
+                        </Field>
+                    </div>
+
+                    {/* Колонка 2: Рубрика и Статус */}
+                    <div>
+                        <Field
+                            label="Рубрика"
+                            htmlFor={`quick-cat-${r.id}`}
+                        >
+                            <Select
+                                id={`quick-cat-${r.id}`}
+                                value={quickData.category_id}
+                                onChange={(e) =>
+                                    setQuickData((d) => ({
+                                        ...d,
+                                        category_id: e.target.value,
+                                    }))
+                                }
+                                placeholder="Без рубрики"
+                                options={options.categories.map((c) => ({
+                                    value: String(c.value),
+                                    label: c.label,
+                                }))}
+                            />
+                        </Field>
+
+                        <Field
+                            label="Статус"
+                            htmlFor={`quick-status-${r.id}`}
+                            className="mt-2"
+                        >
+                            <Select
+                                id={`quick-status-${r.id}`}
+                                value={quickData.status}
+                                onChange={(e) =>
+                                    setQuickData((d) => ({
+                                        ...d,
+                                        status: e.target.value as ContentStatus,
+                                    }))
+                                }
+                                options={options.statuses.map((s) => ({
+                                    value: String(s.value),
+                                    label: s.label,
+                                }))}
+                            />
+                        </Field>
+                    </div>
+
+                    {/* Колонка 3: Закрепление и Главная страница */}
+                    <div>
+                        <span
+                            style={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                color: 'var(--color-neutral-700)',
+                                display: 'block',
+                                marginBottom: 6,
+                            }}
+                        >
+                            Отображение
+                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                            <Checkbox
+                                label="Закрепить запись"
+                                checked={quickData.is_pinned}
+                                onChange={(e) =>
+                                    setQuickData((d) => ({
+                                        ...d,
+                                        is_pinned: e.target.checked,
+                                    }))
+                                }
+                            />
+                            <Checkbox
+                                label="Показывать на главной"
+                                checked={quickData.show_on_home}
+                                onChange={(e) =>
+                                    setQuickData((d) => ({
+                                        ...d,
+                                        show_on_home: e.target.checked,
+                                    }))
+                                }
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="wp-quick-edit-actions">
+                    <Button
+                        variant="primary"
+                        size="sm"
+                        disabled={quickSaving}
+                        onClick={() => handleSaveQuickEdit(r.id)}
+                    >
+                        {quickSaving ? 'Сохранение…' : 'Обновить'}
+                    </Button>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        disabled={quickSaving}
+                        onClick={cancelQuickEdit}
+                    >
+                        Отмена
+                    </Button>
+                </div>
+            </div>
+        );
+    };
 
     return (
         <>
@@ -353,15 +707,16 @@ export default function NewsIndex({
                         color: 'var(--color-neutral-600)',
                     }}
                 >
-                    {news.length} из {meta.total} записей
+                    {newsItems.length} из {meta.total} записей
                 </span>
             </FilterBar>
 
             <DataTable
                 columns={columns}
-                rows={news}
+                rows={newsItems}
                 rowKey={(r) => r.id}
                 sort={sort}
+                renderSubRow={renderSubRow}
                 onRowClick={(r) => router.visit(NewsController.edit.url(r.id))}
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
                 emptyTitle="Новостей не найдено"
