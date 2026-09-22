@@ -1,5 +1,6 @@
 import type { Editor } from '@tiptap/react';
 import {
+    AlertTriangle,
     AlignCenter,
     AlignJustify,
     AlignLeft,
@@ -75,6 +76,7 @@ interface Props {
     editor: Editor;
     setLink: () => void;
     insertVideo: () => void;
+    insertCallout?: () => void;
     /** Вставка маркера фотогалереи в позицию курсора; undefined — материал без галереи. */
     insertGallery?: () => void;
     setPickerOpen: Dispatch<SetStateAction<boolean>>;
@@ -96,6 +98,7 @@ export function RichEditorToolbar({
     editor,
     setLink,
     insertVideo,
+    insertCallout,
     insertGallery,
     setPickerOpen,
     focusMode,
@@ -370,6 +373,14 @@ export function RichEditorToolbar({
                         label="Видео с YouTube"
                         onClick={insertVideo}
                     />
+                    {insertCallout && (
+                        <Btn
+                            icon={<AlertTriangle size={16} />}
+                            label="Врезка КЧС / Предупреждение"
+                            active={editor.isActive('callout')}
+                            onClick={insertCallout}
+                        />
+                    )}
                     <Btn
                         icon={<TableIcon size={16} />}
                         label="Вставить таблицу"

@@ -39,6 +39,7 @@ interface EditorialFormShellProps<T extends object> {
     onSchedule?: () => void;
     autosave: EditorialAutosaveConfig<T>;
     preview: EditorialPreviewConfig;
+    extraActions?: ReactNode;
     children: ReactNode;
 }
 
@@ -60,6 +61,7 @@ export function EditorialFormShell<T extends object>({
     onSchedule,
     autosave,
     preview,
+    extraActions,
     children,
 }: EditorialFormShellProps<T>) {
     const errorEntries = Object.entries(errors).filter(
@@ -117,6 +119,7 @@ export function EditorialFormShell<T extends object>({
                                 autosaveState.savedAt,
                             )}
                         </span>
+                        {extraActions}
                     </div>
                 }
             />

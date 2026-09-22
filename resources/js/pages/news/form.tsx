@@ -1,5 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { Images, Upload } from 'lucide-react';
+import { Sliders } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
@@ -21,6 +22,8 @@ import { GalleryField } from '@/ui/GalleryField';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
 import { RichEditor } from '@/ui/RichEditor';
+import type { ActiveBlockInfo } from '@/ui/RichEditor';
+import { NewsInspectorSidebar } from './NewsInspectorSidebar';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type SeoFields = { title: string; description: string };
@@ -78,6 +81,9 @@ export default function NewsForm({ news, reference }: Props) {
     const can = useCan();
     const isEdit = !!news;
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarTab, setSidebarTab] = useState<'post' | 'block'>('post');
+    const [activeBlock, setActiveBlock] = useState<ActiveBlockInfo | null>(null);
     const [coverPicker, setCoverPicker] = useState(false);
     const [galleryPicker, setGalleryPicker] = useState(false);
     // Снимки галереи, добавленные из медиатеки, но ещё не отправленные:
@@ -89,6 +95,13 @@ export default function NewsForm({ news, reference }: Props) {
     // берём URL ассета; иначе показываем существующую news.cover_url.
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
     const coverFileRef = useRef<HTMLInputElement>(null);
+
+    const handleActiveBlockChange = (block: ActiveBlockInfo | null) => {
+        setActiveBlock(block);
+        if (block && block.type !== 'paragraph' && block.type !== 'blockquote') {
+            setSidebarTab('block');
+        }
+    };
 
     const form = useForm({
         title: { ...EMPTY, ...news?.title } as LocaleMap,
@@ -301,6 +314,20 @@ export default function NewsForm({ news, reference }: Props) {
                     },
                 ],
             }}
+            extraActions={
+                <Button
+                    variant={sidebarOpen ? 'primary' : 'secondary'}
+                    icon={<Sliders size={15} />}
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    title={
+                        sidebarOpen
+                            ? 'Скрыть панель настроек'
+                            : 'Показать панель настроек'
+                    }
+                >
+                    Панель настроек
+                </Button>
+            }
         >
             <div
                 className="cms-two-col"
@@ -310,6 +337,7 @@ export default function NewsForm({ news, reference }: Props) {
                     gap: 16,
                     alignItems: 'start',
                 }}
+                className={`wp-editor-layout ${sidebarOpen ? 'has-sidebar' : 'no-sidebar'}`}
             >
                 {/* ------------------------------------------------ main */}
                 <div
@@ -330,6 +358,12 @@ export default function NewsForm({ news, reference }: Props) {
                             }
                         >
                             <Input
+                {/* ------------------------------------------- Document Canvas */}
+                <main className="wp-editor-canvas-container" role="main">
+                    <div className="wp-editor-canvas">
+                        {/* Title field */}
+                        <div className="wp-title-wrapper">
+                            <textarea
                                 id={`news-title-${lang}`}
                                 value={data.title[lang]}
                                 onChange={(e) =>
@@ -341,14 +375,34 @@ export default function NewsForm({ news, reference }: Props) {
                                         fieldError(`title.${lang}`)
                                     )
                                 }
+                                onChange={(e) => {
+                                    setLocaleField('title', e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = `${e.target.scrollHeight}px`;
+                                }}
                                 placeholder={
                                     lang === 'ru'
                                         ? 'Например: Итоги учений в Хатлонской области'
                                         : 'Перевод заголовка'
+                                        ? 'Добавьте заголовок...'
+                                        : lang === 'tg'
+                                          ? 'Сарлавҳа илова кунед...'
+                                          : 'Add title...'
                                 }
+                                className="wp-title-input"
+                                rows={1}
                                 maxLength={255}
+                                aria-label="Заголовок новости"
                             />
                         </Field>
+                            {(fieldError('title') ??
+                                fieldError(`title.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('title') ??
+                                        fieldError(`title.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
                         <Field
                             label="Краткое описание"
@@ -356,17 +410,44 @@ export default function NewsForm({ news, reference }: Props) {
                             hint="Показывается в списке новостей и в предпросмотре ссылки."
                         >
                             <Textarea
+                        {/* Lead / Summary field */}
+                        <div className="wp-lead-wrapper">
+                            <textarea
                                 id={`news-summary-${lang}`}
                                 value={data.summary[lang]}
                                 onChange={(e) =>
                                     setLocaleField('summary', e.target.value)
+                                onChange={(e) => {
+                                    setLocaleField('summary', e.target.value);
+                                    e.target.style.height = 'auto';
+                                    e.target.style.height = `${e.target.scrollHeight}px`;
+                                }}
+                                placeholder={
+                                    lang === 'ru'
+                                        ? 'Краткое введение (лид) новости...'
+                                        : lang === 'tg'
+                                          ? 'Муқаддимаи мухтасар (лид)...'
+                                          : 'Brief lead / summary of the news...'
                                 }
                                 style={{ minHeight: 72 }}
+                                className="wp-lead-input"
+                                rows={2}
                                 maxLength={1000}
+                                aria-label="Лид / Краткое описание"
                             />
                         </Field>
+                            {(fieldError('summary') ??
+                                fieldError(`summary.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('summary') ??
+                                        fieldError(`summary.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
                         <Field label="Текст новости">
+                        {/* Rich Editor body */}
+                        <div className="wp-body-wrapper">
                             <RichEditor
                                 key={lang}
                                 variant="article"
@@ -377,6 +458,8 @@ export default function NewsForm({ news, reference }: Props) {
                                     setLocaleField('body', html)
                                 }
                                 placeholder="Начните писать текст новости…"
+                                onActiveBlockChange={handleActiveBlockChange}
+                                placeholder="Нажмите «/» для выбора блока или начните писать..."
                             />
                         </Field>
                     </Blueprint>
@@ -544,6 +627,11 @@ export default function NewsForm({ news, reference }: Props) {
                                             onChange={() => toggleTag(t.value)}
                                         />
                                     ))}
+                            {(fieldError('body') ??
+                                fieldError(`body.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('body') ??
+                                        fieldError(`body.${lang}`)}
                                 </div>
                             </Field>
                         )}
@@ -584,8 +672,11 @@ export default function NewsForm({ news, reference }: Props) {
                                     setData('show_on_home', e.target.checked)
                                 }
                             />
+                            )}
                         </div>
                     </Blueprint>
+                    </div>
+                </main>
 
                     <Blueprint style={{ padding: 20 }}>
                         <h3
@@ -606,6 +697,28 @@ export default function NewsForm({ news, reference }: Props) {
                                 }}
                             />
                         )}
+                {/* --------------------------------- Inspector Sidebar */}
+                <NewsInspectorSidebar
+                    isOpen={sidebarOpen}
+                    onClose={() => setSidebarOpen(false)}
+                    tab={sidebarTab}
+                    setTab={setSidebarTab}
+                    activeBlock={activeBlock}
+                    data={data}
+                    setData={setData}
+                    fieldError={fieldError}
+                    lang={lang}
+                    reference={reference}
+                    coverSrc={coverSrc}
+                    coverFileRef={coverFileRef}
+                    setCoverPicker={setCoverPicker}
+                    setGalleryPicker={setGalleryPicker}
+                    galleryPending={galleryPending}
+                    news={news}
+                    toggleTag={toggleTag}
+                    setSeoField={setSeoField}
+                />
+            </div>
 
                         <input
                             ref={coverFileRef}
@@ -614,6 +727,11 @@ export default function NewsForm({ news, reference }: Props) {
                             hidden
                             onChange={(e) => {
                                 const file = e.target.files?.[0] ?? null;
+            <MediaPicker
+                open={coverPicker}
+                onClose={() => setCoverPicker(false)}
+                onSelect={pickCoverFromLibrary}
+            />
 
                                 if (file) {
                                     setData('cover', file);
@@ -734,6 +852,12 @@ export default function NewsForm({ news, reference }: Props) {
                     </Blueprint>
                 </div>
             </div>
+            <MediaPicker
+                open={galleryPicker}
+                onClose={() => setGalleryPicker(false)}
+                multiple
+                onSelectMany={addGalleryFromLibrary}
+            />
         </EditorialFormShell>
     );
 }

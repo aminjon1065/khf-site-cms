@@ -8,14 +8,17 @@ import type { EditorView } from '@tiptap/pm/view';
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { BubbleMenu } from '@tiptap/react/menus';
+import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
 import { Bold, Heading2, Heading3, Italic, Link2, Trash2 } from 'lucide-react';
+import { Bold, Heading2, Heading3, Italic, Link2, Plus, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { postForm } from '@/lib/http';
 import { cn } from '@/lib/utils';
 import { MediaPicker } from './MediaPicker';
 import type { MediaItem } from './MediaPicker';
+import { RichCallout } from './rich-callout';
 import {
     cleanPastedHtml,
     countWords,
@@ -36,7 +39,13 @@ import { LinkDialog, YoutubeDialog } from './RichEditorDialogs';
 import type { LinkDialogValue } from './RichEditorDialogs';
 import { Btn, RichEditorToolbar } from './RichEditorToolbar';
 import { RichTableBar } from './RichTableBar';
+import { SlashCommandMenu } from './SlashCommandMenu';
 import { useToast } from './Toast';
+
+export interface ActiveBlockInfo {
+    type: 'image' | 'callout' | 'table' | 'youtube' | 'heading' | 'blockquote' | 'paragraph';
+    attrs?: Record<string, unknown>;
+}
 
 export interface Props {
     value: string;
@@ -48,6 +57,8 @@ export interface Props {
     gallery?: boolean;
     /** Клик по чипу галереи в тексте: открыть выбор кадров (медиатека). */
     onGalleryClick?: () => void;
+    /** Уведомление об активном блоке для инспектора сайдбара */
+    onActiveBlockChange?: (block: ActiveBlockInfo | null) => void;
 }
 
 /**
@@ -233,6 +244,7 @@ export function RichEditorField({
     variant = 'default',
     gallery = false,
     onGalleryClick,
+    onActiveBlockChange,
 }: Props) {
     const toast = useToast();
     const [pickerOpen, setPickerOpen] = useState(false);
@@ -245,6 +257,12 @@ export function RichEditorField({
     const [focused, setFocused] = useState(false);
     const [tableBarOpen, setTableBarOpen] = useState(false);
     const [videoBarOpen, setVideoBarOpen] = useState(false);
+    const [slashOpen, setSlashOpen] = useState(false);
+    const [slashPosition, setSlashPosition] = useState<{
+        top: number;
+        left: number;
+    } | null>(null);
+    const [slashQuery, setSlashQuery] = useState('');
 
     // Колбэк чипа галереи — через модульный сеттер, не через опции
     // расширения: колбэк в configure() ломал сравнение опций useEditor
@@ -272,6 +290,7 @@ export function RichEditorField({
             }),
             RichImage.configure({ inline: false }),
             RichGallery,
+            RichCallout,
             TextAlign.configure({ types: ['heading', 'paragraph'] }),
             TableKit.configure({
                 table: {
@@ -349,6 +368,78 @@ export function RichEditorField({
             },
         },
         onUpdate: ({ editor: instance }) => onChange(instance.getHTML()),
+        onSelectionUpdate: ({ editor: instance }) => {
+            if (!onActiveBlockChange) {
+                return;
+            }
+
+            if (instance.isActive('image')) {
+                onActiveBlockChange({
+                    type: 'image',
+                    attrs: instance.getAttributes('image'),
+                });
+            } else if (instance.isActive('callout')) {
+                onActiveBlockChange({
+                    type: 'callout',
+                    attrs: instance.getAttributes('callout'),
+                });
+            } else if (instance.isActive('table')) {
+                onActiveBlockChange({
+                    type: 'table',
+                    attrs: {},
+                });
+            } else if (instance.isActive('youtube')) {
+                onActiveBlockChange({
+                    type: 'youtube',
+                    attrs: instance.getAttributes('youtube'),
+                });
+            } else if (instance.isActive('heading')) {
+                onActiveBlockChange({
+                    type: 'heading',
+                    attrs: instance.getAttributes('heading'),
+                });
+            } else if (instance.isActive('blockquote')) {
+                onActiveBlockChange({
+                    type: 'blockquote',
+                    attrs: {},
+                });
+            } else {
+                onActiveBlockChange({
+                    type: 'paragraph',
+                    attrs: {},
+                });
+            }
+        },
+        onUpdate: ({ editor: instance }) => {
+            onChange(instance.getHTML());
+
+            // Определение слеш-команды
+            const { state } = instance;
+            const { from } = state.selection;
+            const $from = state.doc.resolve(from);
+            const textBefore = $from.parent.textBetween(
+                0,
+                $from.parentOffset,
+                undefined,
+                ' ',
+            );
+
+            if (textBefore.startsWith('/')) {
+                try {
+                    const coords = instance.view.coordsAtPos(from);
+                    setSlashPosition({
+                        top: coords.bottom + window.scrollY + 8,
+                        left: coords.left + window.scrollX,
+                    });
+                    setSlashQuery(textBefore.slice(1));
+                    setSlashOpen(true);
+                } catch {
+                    setSlashOpen(false);
+                }
+            } else if (slashOpen) {
+                setSlashOpen(false);
+            }
+        },
         onFocus: () => setFocused(true),
         onBlur: () => setFocused(false),
     });
@@ -476,6 +567,11 @@ export function RichEditorField({
         setVideoOpen(false);
     };
 
+    const insertCallout = () => {
+        editor.view.focus();
+        editor.chain().focus().setCallout({ type: 'warning' }).run();
+    };
+
     const words = snapshot.words;
     const chars = snapshot.chars;
     const minutes = readingMinutes(words);
@@ -526,6 +622,7 @@ export function RichEditorField({
                 editor={editor}
                 setLink={() => setLinkOpen(true)}
                 insertVideo={() => setVideoOpen(true)}
+                insertCallout={insertCallout}
                 insertGallery={
                     gallery
                         ? () => {
@@ -632,6 +729,62 @@ export function RichEditorField({
                     />
                 </BubbleMenu>
             )}
+
+            {!sourceMode && (
+                <FloatingMenu
+                    editor={editor}
+                    shouldShow={({ state }) => {
+                        const { selection } = state;
+                        const { $from, empty } = selection;
+                        return (
+                            empty &&
+                            $from.parent.type.name === 'paragraph' &&
+                            $from.parent.content.size === 0
+                        );
+                    }}
+                    className="re-floating-menu"
+                >
+                    <button
+                        type="button"
+                        className="re-quick-inserter-btn"
+                        title="Добавить блок (/)"
+                        aria-label="Добавить блок"
+                        onClick={() => {
+                            const coords = editor.view.coordsAtPos(
+                                editor.state.selection.from,
+                            );
+                            setSlashPosition({
+                                top: coords.bottom + window.scrollY + 8,
+                                left: coords.left + window.scrollX,
+                            });
+                            setSlashQuery('');
+                            setSlashOpen(true);
+                        }}
+                    >
+                        <Plus size={16} strokeWidth={2.5} />
+                    </button>
+                </FloatingMenu>
+            )}
+
+            <SlashCommandMenu
+                editor={editor}
+                isOpen={slashOpen}
+                onClose={() => setSlashOpen(false)}
+                position={slashPosition}
+                query={slashQuery}
+                onOpenImagePicker={() => setPickerOpen(true)}
+                onInsertGallery={
+                    gallery
+                        ? () => {
+                              if (!editor.chain().insertGalleryMarker().run()) {
+                                  toast('Не удалось вставить галерею', 'error');
+                              }
+                          }
+                        : () => {}
+                }
+                onOpenVideoDialog={() => setVideoOpen(true)}
+                onInsertTable={insertTable}
+            />
 
             {(snapshot.hasYoutube || videoBarOpen) && (
                 <div className="re-table-bar" role="toolbar" aria-label="Видео">
