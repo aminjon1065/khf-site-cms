@@ -140,6 +140,7 @@ export default function SubmissionsIndex({
             key: 'assignee',
             header: 'Ответственный',
             width: 150,
+            optional: 1,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }}>{r.assignee ?? '—'}</span>
             ),
@@ -148,6 +149,7 @@ export default function SubmissionsIndex({
             key: 'created',
             header: 'Получено',
             width: 150,
+            optional: 2,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }} className="ui-mono">
                     {fmt(r.created_at)}
