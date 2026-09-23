@@ -3,6 +3,7 @@
 use App\Jobs\RevalidateFrontend;
 use App\Models\MenuItem;
 use App\Models\User;
+use Database\Seeders\MenuSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Queue;
@@ -310,4 +311,28 @@ it('forbids a non-admin from saving the menu', function () {
     actingAs(menuUser('chief_editor'))->put('/menu', [
         'items' => ['main' => [], 'footer' => []],
     ])->assertForbidden();
+});
+
+it('seeds menu labels in every site language', function () {
+    seed(MenuSeeder::class);
+
+    $news = MenuItem::query()->where('location', 'main')->where('url', '/news')->sole();
+
+    expect($news->getTranslations('label'))->toBe(['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News']);
+});
+
+it('translates seeded menu labels without touching what editors typed', function () {
+    $copied = MenuItem::query()->create([
+        'location' => 'main', 'url' => '/news', 'sort' => 0, 'enabled' => true,
+        'label' => ['ru' => 'Новости', 'tg' => 'Новости', 'en' => ''],
+    ]);
+    $edited = MenuItem::query()->create([
+        'location' => 'main', 'url' => '/map', 'sort' => 1, 'enabled' => true,
+        'label' => ['ru' => 'Карта рисков', 'tg' => 'Харитаи хатар', 'en' => 'Hazard map'],
+    ]);
+
+    (require database_path('migrations/2026_09_23_175404_translate_seeded_menu_labels.php'))->up();
+
+    expect($copied->fresh()->getTranslations('label'))->toBe(['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News'])
+        ->and($edited->fresh()->getTranslations('label'))->toBe(['ru' => 'Карта рисков', 'tg' => 'Харитаи хатар', 'en' => 'Hazard map']);
 });

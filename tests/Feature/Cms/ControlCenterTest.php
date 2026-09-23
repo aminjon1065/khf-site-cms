@@ -81,14 +81,10 @@ it('limits the control center to the assigned region', function () {
             ->where('alerts.0.title', 'Своё предупреждение'));
 });
 
-it('renders central services and regional emergency contacts', function () {
-    actingAs(controlUser('viewer'))->get('/contacts')
-        ->assertOk()
-        ->assertInertia(fn (Assert $page) => $page
-            ->component('contacts/index')
-            ->where('central.emergency_number', '112')
-            ->has('services', 4)
-            ->has('regions'));
+it('no longer serves the read-only copy of emergency contacts', function () {
+    // Контакты редактируются там, откуда их берёт сайт: «Настройки»
+    // (телефон доверия, адрес, почта, подписи 112–103) и «Регионы».
+    actingAs(controlUser('viewer'))->get('/contacts')->assertNotFound();
 });
 
 it('keeps the RUM dashboard table semantically labelled', function () {

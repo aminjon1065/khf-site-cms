@@ -17,7 +17,6 @@ import {
     Megaphone,
     Network,
     Newspaper,
-    Phone,
     Settings,
     ShieldCheck,
     Tags,
@@ -34,7 +33,6 @@ import AnnouncementController from '@/actions/App/Http/Controllers/Cms/Announcem
 import ApprovalController from '@/actions/App/Http/Controllers/Cms/ApprovalController';
 import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentController';
 import EditorialTrashController from '@/actions/App/Http/Controllers/Cms/EditorialTrashController';
-import EmergencyContactController from '@/actions/App/Http/Controllers/Cms/EmergencyContactController';
 import HomeBlockController from '@/actions/App/Http/Controllers/Cms/HomeBlockController';
 import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
 import LeaderController from '@/actions/App/Http/Controllers/Cms/LeaderController';
@@ -129,12 +127,6 @@ export const NAV: NavGroup[] = [
                 labelKey: 'nav.notifications',
                 href: NotificationController.index.url(),
                 icon: Bell,
-            },
-            {
-                key: 'contacts',
-                labelKey: 'Экстренные контакты',
-                href: EmergencyContactController.index.url(),
-                icon: Phone,
             },
             {
                 key: 'submissions',

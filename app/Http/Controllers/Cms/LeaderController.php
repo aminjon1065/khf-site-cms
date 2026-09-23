@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Leader\LeaderRequest;
+use App\Jobs\RevalidateFrontend;
 use App\Models\Leader;
+use App\Support\FrontendRevalidation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -61,6 +63,8 @@ class LeaderController extends Controller
             $this->syncMedia($leader, $request);
         });
 
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('leadership'));
+
         return redirect('/leadership')->with('success', 'Запись добавлена.');
     }
 
@@ -74,6 +78,8 @@ class LeaderController extends Controller
             $this->syncMedia($leader, $request);
         });
 
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('leadership'));
+
         return redirect('/leadership')->with('success', 'Запись обновлена.');
     }
 
@@ -81,6 +87,8 @@ class LeaderController extends Controller
     {
         $this->authorize('delete', $leader);
         $leader->delete();
+
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('leadership'));
 
         return redirect('/leadership')->with('success', 'Запись удалена.');
     }

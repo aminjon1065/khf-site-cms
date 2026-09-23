@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\HomeBlock\HomeBlockRequest;
+use App\Jobs\RevalidateFrontend;
 use App\Models\HomeBlock;
+use App\Support\FrontendRevalidation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -39,22 +41,27 @@ class HomeBlockController extends Controller
     {
         abort_unless((bool) $request->user()?->can('home.view'), 403);
 
-        $blocks = HomeBlock::query()->orderBy('sort')->get()->map(function (HomeBlock $block): array {
-            $config = $block->config ?? [];
+        $blocks = HomeBlock::query()
+            ->whereNotIn('type', HomeBlock::HIDDEN_TYPES)
+            ->orderBy('sort')
+            ->get()
+            ->map(function (HomeBlock $block): array {
+                $config = $block->config ?? [];
 
-            return [
-                'id' => $block->id,
-                'type' => $block->type,
-                'type_label' => self::TYPE_LABELS[$block->type] ?? $block->type,
-                'title' => $block->getTranslations('title'),
-                'enabled' => (bool) $block->enabled,
-                'sort' => (int) $block->sort,
-                'supports_limit' => in_array($block->type, self::WITH_LIMIT, true),
-                'limit' => isset($config['limit']) ? (int) $config['limit'] : null,
-                'supports_items' => $block->type === 'indicators',
-                'items' => is_array($config['items'] ?? null) ? $config['items'] : [],
-            ];
-        })->all();
+                return [
+                    'id' => $block->id,
+                    'type' => $block->type,
+                    'type_label' => self::TYPE_LABELS[$block->type] ?? $block->type,
+                    'title' => $block->getTranslations('title'),
+                    'enabled' => (bool) $block->enabled,
+                    'sort' => (int) $block->sort,
+                    'supports_limit' => in_array($block->type, self::WITH_LIMIT, true),
+                    'limit' => isset($config['limit']) ? (int) $config['limit'] : null,
+                    'max_limit' => HomeBlock::MAX_ITEMS[$block->type] ?? null,
+                    'supports_items' => $block->type === 'indicators',
+                    'items' => is_array($config['items'] ?? null) ? $config['items'] : [],
+                ];
+            })->all();
 
         return Inertia::render('home-blocks/index', ['blocks' => $blocks]);
     }
@@ -101,6 +108,8 @@ class HomeBlockController extends Controller
                 $block->save();
             }
         });
+
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('home'));
 
         return back()->with('success', 'Главная страница обновлена.');
     }

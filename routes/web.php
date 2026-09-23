@@ -10,7 +10,6 @@ use App\Http\Controllers\Cms\DocumentController;
 use App\Http\Controllers\Cms\EditorialAutosaveController;
 use App\Http\Controllers\Cms\EditorialPreviewController;
 use App\Http\Controllers\Cms\EditorialTrashController;
-use App\Http\Controllers\Cms\EmergencyContactController;
 use App\Http\Controllers\Cms\HomeBlockController;
 use App\Http\Controllers\Cms\InstructionController;
 use App\Http\Controllers\Cms\LeaderController;
@@ -72,7 +71,6 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
 
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('control', [ControlController::class, 'index'])->name('control');
-    Route::get('contacts', [EmergencyContactController::class, 'index'])->name('contacts');
 
     // Alerts — the reference module.
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');

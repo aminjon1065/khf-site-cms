@@ -55,6 +55,23 @@ class RevalidateFrontend implements ShouldBeUnique, ShouldQueue
         ];
     }
 
+    /**
+     * Queue a site refresh for a FrontendRevalidation payload once the
+     * surrounding transaction has committed.
+     *
+     * @param  array{type: string, id: int|null, slug: string|null, locales: list<string>, event: string, tags: list<string>}  $payload
+     */
+    public static function forPayload(array $payload): void
+    {
+        self::dispatch(
+            type: $payload['type'],
+            id: $payload['id'],
+            slug: $payload['slug'],
+            locales: $payload['locales'],
+            event: $payload['event'],
+        )->afterCommit();
+    }
+
     public function uniqueId(): string
     {
         return hash('sha256', implode('|', $this->tags()));

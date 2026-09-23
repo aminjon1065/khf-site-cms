@@ -18,6 +18,8 @@ interface BlockRow {
     title: LocaleMap;
     enabled: boolean;
     supports_limit: boolean;
+    /** How many items this block can show on the site. */
+    max_limit: number | null;
     limit: number | null;
     supports_items: boolean;
     items: IndicatorItem[];
@@ -49,6 +51,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
             } as LocaleMap,
             enabled: b.enabled,
             supports_limit: b.supports_limit,
+            max_limit: b.max_limit,
             limit: b.limit as number | null,
             supports_items: b.supports_items,
             items: (b.items ?? []).map((it) => ({
@@ -100,7 +103,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
             <Head title="Главная страница" />
             <PageHeader
                 title="Главная страница"
-                subtitle="Блоки главной страницы сайта · порядок, видимость и количество материалов"
+                subtitle="Порядок, заголовки, видимость и число материалов в блоках главной страницы сайта. Слайдер новостей и оперативная сводка всегда вверху."
                 actions={
                     editable && (
                         <Button
@@ -251,11 +254,27 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                         {/* limit */}
                         <div>
                             {block.supports_limit ? (
-                                <Field label="Материалов" className="m-0">
+                                <Field
+                                    label="Материалов"
+                                    className="m-0"
+                                    hint={
+                                        block.max_limit
+                                            ? `до ${block.max_limit} на сайте`
+                                            : undefined
+                                    }
+                                    error={
+                                        (
+                                            errors as Record<
+                                                string,
+                                                string | undefined
+                                            >
+                                        )[`blocks.${i}.limit`]
+                                    }
+                                >
                                     <Input
                                         type="number"
                                         min={1}
-                                        max={20}
+                                        max={block.max_limit ?? 20}
                                         value={
                                             block.limit === null
                                                 ? ''
@@ -359,7 +378,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                             )}
                                             <button
                                                 type="button"
-                                                className="btn btn-icon"
+                                                className="ui-btn ui-btn-icon ui-btn-ghost"
                                                 aria-label="Удалить показатель"
                                                 disabled={!editable}
                                                 onClick={() =>
@@ -381,7 +400,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                         <div>
                                             <button
                                                 type="button"
-                                                className="btn"
+                                                className="ui-btn ui-btn-secondary"
                                                 onClick={() =>
                                                     update(i, {
                                                         items: [

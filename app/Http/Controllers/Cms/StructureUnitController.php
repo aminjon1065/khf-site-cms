@@ -4,7 +4,9 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StructureUnit\StructureUnitRequest;
+use App\Jobs\RevalidateFrontend;
 use App\Models\StructureUnit;
+use App\Support\FrontendRevalidation;
 use App\Support\StructureTree;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -69,6 +71,8 @@ class StructureUnitController extends Controller
         $this->fill($unit, $request);
         $unit->save();
 
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('structure'));
+
         return redirect('/structure')->with('success', 'Подразделение добавлено.');
     }
 
@@ -78,6 +82,8 @@ class StructureUnitController extends Controller
 
         $this->fill($structureUnit, $request);
         $structureUnit->save();
+
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('structure'));
 
         return redirect('/structure')->with('success', 'Подразделение обновлено.');
     }
@@ -91,6 +97,8 @@ class StructureUnitController extends Controller
         }
 
         $structureUnit->delete();
+
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('structure'));
 
         return redirect('/structure')->with('success', 'Подразделение удалено.');
     }

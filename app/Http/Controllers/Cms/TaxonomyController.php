@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Cms;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Taxonomy\TaxonomyRequest;
+use App\Jobs\RevalidateFrontend;
 use App\Models\Category;
 use App\Models\Tag;
+use App\Support\FrontendRevalidation;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -59,6 +61,8 @@ class TaxonomyController extends Controller
             $this->syncCategories($request);
             $this->syncTags($request);
         });
+
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('category'));
 
         return back()->with('success', 'Категории и теги сохранены.');
     }

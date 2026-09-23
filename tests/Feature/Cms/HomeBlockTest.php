@@ -57,3 +57,23 @@ it('saves block order, visibility and limits', function () {
 it('forbids an editor (view-only home access) from saving', function () {
     actingAs(hbUser('editor'))->put('/home-blocks', ['blocks' => []])->assertForbidden();
 });
+
+it('does not offer blocks the public site never shows', function () {
+    actingAs(hbUser('chief_editor'))->get('/home-blocks')
+        ->assertInertia(fn ($page) => $page->where(
+            'blocks',
+            fn ($blocks): bool => collect($blocks)->pluck('type')->doesntContain('emergency_contacts')
+                && collect($blocks)->firstWhere('type', 'latest_news')['max_limit'] === HomeBlock::MAX_ITEMS['latest_news'],
+        ));
+});
+
+it('refuses more items than a block shows on the site', function () {
+    $news = HomeBlock::query()->where('type', 'latest_news')->sole();
+
+    actingAs(hbUser('chief_editor'))->put('/home-blocks', ['blocks' => [[
+        'id' => $news->id,
+        'enabled' => true,
+        'title' => $news->getTranslations('title'),
+        'limit' => HomeBlock::MAX_ITEMS['latest_news'] + 1,
+    ]]])->assertSessionHasErrors('blocks.0.limit');
+});

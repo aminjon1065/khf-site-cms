@@ -22,6 +22,21 @@ final class FrontendRevalidation
         'project' => 'projects',
     ];
 
+    /**
+     * Reference data the site caches under a single tag per locale: home
+     * page blocks, the leadership and structure rosters, regions and news
+     * categories. Contract with khf-site-front/lib/cache-tags.ts.
+     *
+     * @var array<string, string>
+     */
+    private const REFERENCE_RESOURCES = [
+        'home' => 'home',
+        'leadership' => 'leadership',
+        'structure' => 'structure',
+        'region' => 'regions',
+        'category' => 'categories',
+    ];
+
     /** @var list<string> */
     private const HOME_TYPES = [
         'alert',
@@ -95,6 +110,23 @@ final class FrontendRevalidation
     }
 
     /**
+     * Payload for a change of reference data (see REFERENCE_RESOURCES).
+     *
+     * @return array{
+     *     type: string,
+     *     id: int|null,
+     *     slug: string|null,
+     *     locales: list<string>,
+     *     event: string,
+     *     tags: list<string>
+     * }
+     */
+    public static function forReference(string $type, string $event = 'updated'): array
+    {
+        return self::payload(type: $type, id: null, slug: null, locales: self::LOCALES, event: $event);
+    }
+
+    /**
      * @param  list<string>  $locales
      * @return array{
      *     type: string,
@@ -133,6 +165,15 @@ final class FrontendRevalidation
         if ($type === 'shell') {
             return array_map(
                 fn (string $locale): string => "cms:shell:{$locale}",
+                $locales,
+            );
+        }
+
+        if (isset(self::REFERENCE_RESOURCES[$type])) {
+            $reference = self::REFERENCE_RESOURCES[$type];
+
+            return array_map(
+                fn (string $locale): string => "cms:{$reference}:{$locale}",
                 $locales,
             );
         }

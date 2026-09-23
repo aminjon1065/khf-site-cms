@@ -26,6 +26,30 @@ class HomeBlock extends Model
     public array $translatable = ['title'];
 
     /**
+     * Block types the public site doesn't render: not offered to editors, so
+     * no switch in the CMS pretends to change the home page.
+     *
+     * @var list<string>
+     */
+    public const HIDDEN_TYPES = ['emergency_contacts'];
+
+    /**
+     * How many items each list block can show on the public home page — its
+     * layout caps them (see khf-site-front components/public/home). The CMS
+     * never promises more.
+     *
+     * @var array<string, int>
+     */
+    public const MAX_ITEMS = [
+        'active_alerts' => 6,
+        'latest_news' => 5,
+        'instructions' => 3,
+        'documents' => 6,
+        'announcements' => 6,
+        'projects' => 4,
+    ];
+
+    /**
      * @var list<string>
      */
     protected $fillable = ['type', 'title', 'enabled', 'sort', 'config'];

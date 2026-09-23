@@ -71,7 +71,6 @@ class PageController extends Controller
 
         return Inertia::render('pages/form', [
             'page' => null,
-            'reference' => $this->reference(null),
         ]);
     }
 
@@ -83,7 +82,6 @@ class PageController extends Controller
 
         return Inertia::render('pages/form', [
             'page' => $this->formPayload($page),
-            'reference' => $this->reference($page),
         ]);
     }
 
@@ -242,21 +240,6 @@ class PageController extends Controller
     /**
      * @return array<string, mixed>
      */
-    private function reference(?Page $current): array
-    {
-        return [
-            'parents' => Page::query()->accessibleTo(request()->user())
-                ->when($current !== null, fn (Builder $q) => $q->whereKeyNot($current?->id))
-                ->orderBy('title->ru')
-                ->get()
-                ->map(fn (Page $p): array => ['value' => $p->id, 'label' => $p->getTranslation('title', 'ru', false) ?: $p->slug])
-                ->all(),
-        ];
-    }
-
-    /**
-     * @return array<string, mixed>
-     */
     private function formPayload(Page $page): array
     {
         return [
@@ -298,8 +281,15 @@ class PageController extends Controller
             $page->slug = $slug;
         }
 
-        $page->parent_id = $request->input('parent_id') !== null ? (int) $request->input('parent_id') : null;
-        $page->sort = (int) $request->input('sort', 0);
+        // The page form no longer edits hierarchy and order (the public site
+        // uses neither); keep stored values unless a client still sends them.
+        if ($request->exists('parent_id')) {
+            $page->parent_id = $request->input('parent_id') !== null ? (int) $request->input('parent_id') : null;
+        }
+
+        if ($request->exists('sort')) {
+            $page->sort = (int) $request->input('sort', 0);
+        }
     }
 
     private function runPublishAction(Page $page, PageRequest $request): void

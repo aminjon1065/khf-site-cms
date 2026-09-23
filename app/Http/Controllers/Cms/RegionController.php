@@ -5,9 +5,11 @@ namespace App\Http\Controllers\Cms;
 use App\Enums\RegionType;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Region\RegionRequest;
+use App\Jobs\RevalidateFrontend;
 use App\Models\District;
 use App\Models\Region;
 use App\Services\AlertMapService;
+use App\Support\FrontendRevalidation;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -86,6 +88,8 @@ class RegionController extends Controller
             $this->syncDistricts($region, $request);
         });
 
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('region'));
+
         return redirect('/regions')->with('success', 'Регион создан.');
     }
 
@@ -99,6 +103,8 @@ class RegionController extends Controller
             $this->syncDistricts($region, $request);
         });
 
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('region'));
+
         return redirect('/regions')->with('success', 'Регион обновлён.');
     }
 
@@ -111,6 +117,8 @@ class RegionController extends Controller
         }
 
         $region->delete();
+
+        RevalidateFrontend::forPayload(FrontendRevalidation::forReference('region'));
 
         return redirect('/regions')->with('success', 'Регион удалён.');
     }

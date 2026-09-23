@@ -9,17 +9,12 @@ import { languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
 import { index, store, update } from '@/routes/pages';
 import { Button } from '@/ui/Button';
-import { Field, Input, Select, Textarea } from '@/ui/Field';
+import { Field, Input, Textarea } from '@/ui/Field';
 import { ReadinessWidget } from '@/ui/ReadinessWidget';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
 type PublishMode = 'now' | 'review';
-
-interface Option {
-    value: string;
-    label: string;
-}
 
 interface PageData {
     id: number;
@@ -33,20 +28,17 @@ interface PageData {
     /** The site depends on this page's slug: it can't be changed. */
     is_system: boolean;
     status: ContentStatus;
-    parent_id: number | null;
-    sort: number;
     updated_at: string;
     preview_url: string;
 }
 
 interface Props {
     page: PageData | null;
-    reference: { parents: { value: number; label: string }[] };
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
 
-export default function PageForm({ page, reference }: Props) {
+export default function PageForm({ page }: Props) {
     const can = useCan();
     const isEdit = !!page;
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -68,8 +60,6 @@ export default function PageForm({ page, reference }: Props) {
         seo_title: { ...EMPTY, ...page?.seo_title } as LocaleMap,
         seo_description: { ...EMPTY, ...page?.seo_description } as LocaleMap,
         slug: page?.slug ?? '',
-        parent_id: (page?.parent_id ?? '') as number | '',
-        sort: page?.sort ?? 0,
         publish_mode: 'review' as PublishMode,
         action: 'draft' as 'draft' | 'submit',
     });
@@ -130,14 +120,6 @@ export default function PageForm({ page, reference }: Props) {
         }
     };
 
-    const parentOptions: Option[] = [
-        { value: '', label: '— Верхний уровень (без родителя) —' },
-        ...reference.parents.map((p) => ({
-            value: String(p.value),
-            label: p.label,
-        })),
-    ];
-
     // Readiness: what a page needs before it goes out. The address is
     // generated automatically and the search snippet is optional, so neither
     // is a readiness step.
@@ -176,7 +158,6 @@ export default function PageForm({ page, reference }: Props) {
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
-            parent_id: d.parent_id === '' ? null : d.parent_id,
             ...(isEdit
                 ? {
                       _method: 'put',
@@ -462,67 +443,6 @@ export default function PageForm({ page, reference }: Props) {
                                                 {fieldError('slug')}
                                             </div>
                                         )}
-                                    </div>
-
-                                    {/* Hierarchy & Order Attributes */}
-                                    <div className="wp-inspector-section">
-                                        <div className="wp-inspector-section-title">
-                                            Атрибуты страницы
-                                        </div>
-                                        <div className="wp-inspector-field">
-                                            <Field
-                                                label="Родительская страница"
-                                                error={fieldError('parent_id')}
-                                            >
-                                                <Select
-                                                    value={
-                                                        data.parent_id === ''
-                                                            ? ''
-                                                            : String(
-                                                                  data.parent_id,
-                                                              )
-                                                    }
-                                                    options={parentOptions}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            'parent_id',
-                                                            e.target.value ===
-                                                                ''
-                                                                ? ''
-                                                                : Number(
-                                                                      e.target
-                                                                          .value,
-                                                                  ),
-                                                        )
-                                                    }
-                                                />
-                                            </Field>
-                                        </div>
-
-                                        <div
-                                            className="wp-inspector-field"
-                                            style={{ marginTop: 12 }}
-                                        >
-                                            <Field
-                                                label="Порядок сортировки"
-                                                hint="Меньше — выше в списке страниц"
-                                                error={fieldError('sort')}
-                                            >
-                                                <Input
-                                                    type="number"
-                                                    min={0}
-                                                    value={String(data.sort)}
-                                                    onChange={(e) =>
-                                                        setData(
-                                                            'sort',
-                                                            Number(
-                                                                e.target.value,
-                                                            ) || 0,
-                                                        )
-                                                    }
-                                                />
-                                            </Field>
-                                        </div>
                                     </div>
                                 </>
                             )}

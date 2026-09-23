@@ -35,13 +35,7 @@ class SettingController extends Controller
             ['key' => 'address_ru', 'label' => 'Адрес · РУ', 'type' => 'text'],
             ['key' => 'address_en', 'label' => 'Адрес · EN', 'type' => 'text'],
             ['key' => 'email', 'label' => 'E-mail', 'type' => 'text'],
-            ['key' => 'emergency_number', 'label' => 'Экстренный номер', 'type' => 'text'],
             ['key' => 'trust_phone', 'label' => 'Телефон доверия', 'type' => 'text'],
-        ]],
-        ['group' => 'contacts', 'label' => 'Пресс-служба и дежурная часть', 'fields' => [
-            ['key' => 'press_email', 'label' => 'E-mail пресс-службы', 'type' => 'text'],
-            ['key' => 'press_phone', 'label' => 'Телефон пресс-службы', 'type' => 'text'],
-            ['key' => 'duty_phone', 'label' => 'Дежурная часть', 'type' => 'text'],
         ]],
         ['group' => 'social', 'label' => 'Социальные сети', 'fields' => [
             ['key' => 'telegram', 'label' => 'Telegram', 'type' => 'text'],

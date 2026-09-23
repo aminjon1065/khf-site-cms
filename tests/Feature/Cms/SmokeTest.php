@@ -43,7 +43,6 @@ it('renders the alert wizard', function () {
 it('renders the implemented operational workspace pages', function () {
     $user = admin();
     actingAs($user)->get('/control')->assertOk();
-    actingAs($user)->get('/contacts')->assertOk();
     actingAs($user)->get('/notifications')->assertOk();
     actingAs($user)->get('/approvals')->assertOk();
 });
