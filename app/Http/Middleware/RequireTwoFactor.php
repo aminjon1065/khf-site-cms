@@ -8,6 +8,7 @@ use App\Models\User;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Spatie\Permission\Models\Permission;
 use Symfony\Component\HttpFoundation\Response;
 
 class RequireTwoFactor
@@ -54,6 +55,18 @@ class RequireTwoFactor
             RoleName::ChiefEditor->value,
             RoleName::AlertOperator->value,
             RoleName::Approver->value,
-        ]);
+        ]) || $this->canPublish($user);
+    }
+
+    /**
+     * Anyone who may put a material on the site — an editor publishes
+     * official news — signs in with a code too (owner decision, 2026-09-23).
+     * Read from permissions, so a role that gains the right is covered.
+     */
+    private function canPublish(User $user): bool
+    {
+        return $user->getAllPermissions()->contains(
+            fn (Permission $permission): bool => str_ends_with($permission->name, '.publish'),
+        );
     }
 }

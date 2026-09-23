@@ -47,3 +47,14 @@ it('keeps the security screen reachable while 2FA is required', function () {
     actingAs(twoFactorPolicyUser('admin'))->get('/profile/security')
         ->assertRedirect('/user/confirm-password');
 });
+
+it('requires 2FA from everyone who may publish, editors included', function () {
+    actingAs(twoFactorPolicyUser('editor'))->get('/dashboard')
+        ->assertRedirect('/profile/security');
+    actingAs(twoFactorPolicyUser('editor', enabled: true))->get('/dashboard')->assertOk();
+});
+
+it('does not require 2FA from roles that cannot publish', function () {
+    actingAs(twoFactorPolicyUser('translator'))->get('/dashboard')->assertOk();
+    actingAs(twoFactorPolicyUser('regional_editor'))->get('/dashboard')->assertOk();
+});

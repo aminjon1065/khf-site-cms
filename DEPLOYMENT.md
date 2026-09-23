@@ -226,7 +226,7 @@ php artisan queue:work database --queue=media --sleep=3 --tries=3 --timeout=150 
 
 ### 2.9. Политика 2FA
 
-Fortify 2FA включён. Настройки `security.require_2fa` и `security.require_2fa_from` определяют дату обязательного включения для привилегированных ролей. До этой даты администраторы должны настроить TOTP и сохранить recovery codes в защищённом месте.
+Fortify 2FA включён. Настройки `security.require_2fa` и `security.require_2fa_from` определяют дату обязательного включения. С этой даты вход с кодом обязателен для администраторов, главного редактора, операторов предупреждений, согласующих и для всех, у кого есть право публикации (`*.publish`) — то есть и для редакторов, публикующих официальные новости. Такой сотрудник при входе без 2FA попадает на страницу настройки. До даты включения пусть настроят TOTP и сохранят коды восстановления в защищённом месте.
 
 ### 2.10. Nginx (пример)
 
@@ -596,3 +596,38 @@ systemctl restart khf-front
 - [ ] Сжатие работает на edge: `curl -sI -H 'Accept-Encoding: br' https://khf.tj/ru | grep -i content-encoding` → `br`;
       `curl -sI -H 'Accept-Encoding: br' https://khf.tj/sitemap.xml | grep -i content-encoding` → не пусто
       (карта сайта — единственный ответ, который сам Next не сжимает вовсе).
+
+---
+
+## 7. E2E-стенд (локально, lerd)
+
+Браузерные тесты CMS (`tests/e2e`) создают и меняют данные, поэтому их
+запускают только на стенде с собственной базой, а не на рабочей. lerd даёт
+такой стенд из git worktree:
+
+```bash
+cd khf-site-cms
+git worktree add ../khf-site-cms-e2e -b e2e-stand   # поддомен e2e-stand.khf-site-cms.test
+lerd worktree wait ../khf-site-cms-e2e --timeout 10m
+cd ../khf-site-cms-e2e
+lerd db:isolate --source empty                      # своя пустая БД
+```
+
+В `.env` стенда:
+
+```dotenv
+DEMO_TWO_FACTOR_SECRET=khf-e2e-stand   # демо-учётки входят с кодом 2FA (tests/e2e/fixtures/login.ts)
+QUEUE_CONNECTION=sync                  # задания не уходят воркеру рабочего сайта с чужой БД
+CACHE_STORE=file                       # не делить Redis-кэш с рабочим сайтом
+FRONTEND_REVALIDATION_URL=             # вебхук сайта выключен
+MAIL_MAILER=log                        # письма — только в лог
+```
+
+```bash
+php artisan migrate --seed   # справочники + демо-контент и демо-учётки (не production)
+npm run build
+CMS_E2E_BASE_URL=https://e2e-stand.khf-site-cms.test node node_modules/@playwright/test/cli.js test
+```
+
+Обновить код стенда: `git -C ../khf-site-cms-e2e merge --ff-only <ветка>`.
+Убрать стенд: `lerd worktree remove ../khf-site-cms-e2e` (спросит, удалить ли его БД).

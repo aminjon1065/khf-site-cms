@@ -99,6 +99,20 @@ return [
 
     'cipher' => 'AES-256-CBC',
 
+    /*
+    |--------------------------------------------------------------------------
+    | Demo two-factor secret (demo and e2e stands only)
+    |--------------------------------------------------------------------------
+    |
+    | When set, UserSeeder gives every demo account a confirmed 2FA whose TOTP
+    | secret is derived from this value and the account's e-mail, so browser
+    | tests can sign in with a code (tests/e2e/fixtures/login.ts). The demo
+    | seeder refuses to run in production; never set this there.
+    |
+    */
+
+    'demo_two_factor_secret' => env('DEMO_TWO_FACTOR_SECRET'),
+
     'key' => env('APP_KEY'),
 
     'previous_keys' => [

@@ -5,8 +5,13 @@ namespace Database\Seeders;
 use App\Enums\RoleName;
 use App\Models\Region;
 use App\Models\User;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Fortify\Fortify;
+use Laravel\Fortify\RecoveryCode;
+use ParagonIE\ConstantTime\Base32;
 use RuntimeException;
 
 class UserSeeder extends Seeder
@@ -81,9 +86,10 @@ class UserSeeder extends Seeder
             $region = $data['region'];
             $role = $data['role'];
 
-            // 2FA не сеется: фейковый секрет делает TOTP-вход невозможным.
-            // Роли с обязательной 2FA сами попадают на страницу настройки
-            // при первом входе (RequireTwoFactor) — это рабочий флоу.
+            // Без DEMO_TWO_FACTOR_SECRET 2FA не сеется: роли с обязательной
+            // 2FA сами попадают на страницу настройки при первом входе
+            // (RequireTwoFactor) — это рабочий флоу. На e2e-стенде секрет
+            // задан, и вход проходит по коду (tests/e2e/fixtures/login.ts).
             $user = User::updateOrCreate(
                 ['email' => $data['email']],
                 [
@@ -95,13 +101,38 @@ class UserSeeder extends Seeder
                     'is_active' => true,
                     'email_verified_at' => now(),
                     'last_login_at' => now()->subHours(random_int(0, 48)),
-                    'two_factor_secret' => null,
-                    'two_factor_recovery_codes' => null,
-                    'two_factor_confirmed_at' => null,
+                    ...$this->twoFactorFor($data['email']),
                 ],
             );
 
             $user->syncRoles([$role->value]);
         }
+    }
+
+    /**
+     * Confirmed 2FA with a per-account secret derived from the demo secret
+     * and the e-mail: codes differ between accounts, so Fortify's guard
+     * against reusing a code doesn't trip when tests sign in as several
+     * people. Nothing without DEMO_TWO_FACTOR_SECRET.
+     *
+     * @return array{two_factor_secret: string|null, two_factor_recovery_codes: string|null, two_factor_confirmed_at: CarbonInterface|null}
+     */
+    private function twoFactorFor(string $email): array
+    {
+        $demoSecret = config('app.demo_two_factor_secret');
+
+        if (! is_string($demoSecret) || $demoSecret === '') {
+            return ['two_factor_secret' => null, 'two_factor_recovery_codes' => null, 'two_factor_confirmed_at' => null];
+        }
+
+        $secret = Base32::encodeUpperUnpadded(hash_hmac('sha1', $email, $demoSecret, true));
+
+        return [
+            'two_factor_secret' => Fortify::currentEncrypter()->encrypt($secret),
+            'two_factor_recovery_codes' => Fortify::currentEncrypter()->encrypt(json_encode(
+                Collection::times(8, fn (): string => RecoveryCode::generate())->all(),
+            )),
+            'two_factor_confirmed_at' => now(),
+        ];
     }
 }

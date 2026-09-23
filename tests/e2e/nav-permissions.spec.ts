@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { logIn } from './fixtures/login';
 
 /**
  * Паритет «видимость меню ↔ права»: то, что сайдбар показывает роли,
@@ -6,9 +7,8 @@ import { test, expect } from '@playwright/test';
  * (navItemAllowed) — если новый пункт меню забыли закрыть permission,
  * тест упадёт на 403 вместо пользователя.
  *
- * Роли выбраны из числа не требующих 2FA (RequireTwoFactor), чтобы
- * логин проходил без TOTP; admin/chief_editor/approver остаются
- * вне e2e до появления стратегии генерации кодов.
+ * Редактор публикует новости и входит с кодом 2FA — его выдаёт
+ * fixtures/login.ts из того же секрета, что и сидер стенда.
  */
 const ROLES = [
     { label: 'editor', email: 'd.sattorov@khf.tj' },
@@ -32,11 +32,7 @@ test('каждый видимый пункт сайдбара открывает
         });
         const page = await context.newPage();
 
-        await page.goto('/login');
-        await page.locator('#email').fill(role.email);
-        await page.locator('#password').fill('password');
-        await page.getByRole('button', { name: 'Войти' }).click();
-        await expect(page).toHaveURL(/dashboard/);
+        await logIn(page, role.email);
 
         const links = page.locator('nav.ui-sidebar-nav a');
         const count = await links.count();

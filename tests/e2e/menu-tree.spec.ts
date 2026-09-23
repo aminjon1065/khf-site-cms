@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test, expect } from '@playwright/test';
+import { E2E_TWO_FACTOR_SECRET, logIn } from './fixtures/login';
 
 const DIRNAME = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(DIRNAME, '..', '..');
@@ -19,19 +20,20 @@ function artisan(code: string): void {
 
 test.use({ storageState: { cookies: [], origins: [] } });
 
+// The admin signs in with a 2FA code like any other: the test gives the
+// account a secret derived the way the stand's seeder does (fixtures/login.ts)
+// instead of switching the site-wide 2FA requirement off for its duration.
 test.beforeAll(() => {
     artisan(`
-        $row = App\\Models\\Setting::query()->where('group', 'security')->where('key', 'require_2fa')->first();
-        $row->value = false;
-        $row->save();
         $user = App\\Models\\User::query()->firstOrNew(['email' => '${E2E_EMAIL}']);
         $user->name = 'E2E Menu';
         $user->password = 'password';
         $user->is_active = true;
         $user->email_verified_at = now();
-        $user->two_factor_secret = null;
+        $secret = \\ParagonIE\\ConstantTime\\Base32::encodeUpperUnpadded(hash_hmac('sha1', '${E2E_EMAIL}', '${E2E_TWO_FACTOR_SECRET}', true));
+        $user->two_factor_secret = \\Laravel\\Fortify\\Fortify::currentEncrypter()->encrypt($secret);
         $user->two_factor_recovery_codes = null;
-        $user->two_factor_confirmed_at = null;
+        $user->two_factor_confirmed_at = now();
         $user->save();
         $user->syncRoles(['admin']);
     `);
@@ -42,18 +44,11 @@ test.afterAll(() => {
         App\\Models\\MenuItem::query()->where('url', '${CHILD_URL}')->orWhere('label->ru', '${CHILD}')->delete();
         App\\Models\\MenuItem::query()->where('label->ru', '${GROUP}')->delete();
         App\\Models\\User::query()->where('email', '${E2E_EMAIL}')->delete();
-        $row = App\\Models\\Setting::query()->where('group', 'security')->where('key', 'require_2fa')->first();
-        $row->value = true;
-        $row->save();
     `);
 });
 
 test('admin can nest a child item and see it after save', async ({ page }) => {
-    await page.goto('/login');
-    await page.locator('#email').fill(E2E_EMAIL);
-    await page.locator('#password').fill('password');
-    await page.getByRole('button', { name: 'Войти' }).click();
-    await expect(page).toHaveURL(/\/dashboard/);
+    await logIn(page, E2E_EMAIL);
 
     await page.goto('/menu');
     await expect(
