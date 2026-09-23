@@ -270,8 +270,14 @@ it('counts only recent materials that still lack a required language', function 
     $oneLanguage = ['ru' => 'Только по-русски', 'tg' => '', 'en' => ''];
 
     News::factory()->published()->create(['title' => $oneLanguage, 'summary' => $oneLanguage, 'body' => $oneLanguage]);
-    News::factory()->published()->create(['title' => $oneLanguage, 'summary' => $oneLanguage, 'body' => $oneLanguage])
-        ->forceFill(['updated_at' => now()->subMonths(3)])->saveQuietly();
+    // Archive imported with its original date: edited today, published long ago.
+    News::factory()->create([
+        'status' => 'published',
+        'published_at' => now()->subMonths(3),
+        'title' => $oneLanguage,
+        'summary' => $oneLanguage,
+        'body' => $oneLanguage,
+    ]);
 
     actingAs(dashboardUser('editor'))->get('/dashboard')
         ->assertInertia(fn (Assert $page) => $page

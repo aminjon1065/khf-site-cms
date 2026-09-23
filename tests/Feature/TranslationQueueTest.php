@@ -183,8 +183,9 @@ it('does not treat a missing English version as translation work by default', fu
 
 it('puts fresh materials before the old archive', function () {
     $tajikMissing = ['tg' => '', 'ru' => 'Текст', 'en' => ''];
-    $archived = News::factory()->create(['body' => $tajikMissing, 'updated_at' => now()->subYear()]);
-    $fresh = News::factory()->create(['body' => $tajikMissing, 'updated_at' => now()]);
+    // Imported archive: edited today, published a year ago.
+    $archived = News::factory()->create(['body' => $tajikMissing, 'status' => 'published', 'published_at' => now()->subYear()]);
+    $fresh = News::factory()->create(['body' => $tajikMissing, 'status' => 'published', 'published_at' => now()->subHour()]);
 
     actingAs(translationQueueUser('editor'))
         ->get('/editorial/translations?type=news')

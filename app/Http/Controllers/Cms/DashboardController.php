@@ -19,12 +19,10 @@ use App\Services\AlertMapService;
 use App\Support\ContentLocales;
 use App\Support\ContentTitle;
 use App\Support\ContentTypes;
-use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
-use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -71,19 +69,32 @@ class DashboardController extends Controller
             ->get();
 
         return array_map(
-            fn (array $region): array => Arr::only($region, ['key', 'name', 'level', 'count']),
+            fn (array $region): array => [
+                'key' => $region['key'],
+                'name' => $region['name'],
+                'level' => $region['level'],
+                'count' => $region['count'],
+            ],
             $this->alertMap->snapshotFor($activeAlerts, $regions, 'ru')['regions'],
         );
     }
 
     /**
-     * The translation metric covers materials of the last 30 days: those are
-     * what readers see now. Counting the whole one-language archive gave a
-     * red number in the hundreds that never went down and meant nothing.
+     * The translation metric covers materials of the last 30 days — published
+     * then, or, if not yet published, created then: those are what readers
+     * see now. Counting the whole one-language archive gave a red number in
+     * the hundreds that never went down and meant nothing.
+     *
+     * @param  Builder<covariant Model>  $query
      */
-    private function translationWindowStart(): CarbonInterface
+    private function publishedRecently(Builder $query): void
     {
-        return now()->subDays(30);
+        $since = now()->subDays(30);
+
+        $query->where('published_at', '>=', $since)
+            ->orWhere(fn (Builder $unpublished) => $unpublished
+                ->whereNull('published_at')
+                ->where('created_at', '>=', $since));
     }
 
     /**
@@ -93,7 +104,7 @@ class DashboardController extends Controller
     {
         $incompleteTranslations = $this->alertQuery($user)
             ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
-            ->where('updated_at', '>=', $this->translationWindowStart())
+            ->where(fn (Builder $query) => $this->publishedRecently($query))
             ->get()
             ->filter(fn (Alert $a): bool => ContentLocales::missingRequired($a->languageCompleteness()) !== [])
             ->count();
@@ -121,7 +132,7 @@ class DashboardController extends Controller
                 'published_month' => $this->newsQuery($user)->where('status', 'published')->whereYear('published_at', now()->year)->whereMonth('published_at', now()->month)->count(),
                 'translations' => $this->newsQuery($user)
                     ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
-                    ->where('updated_at', '>=', $this->translationWindowStart())
+                    ->where(fn (Builder $query) => $this->publishedRecently($query))
                     ->get()
                     ->filter(fn (News $n): bool => ContentLocales::missingRequired($n->languageCompleteness()) !== [])
                     ->count(),
@@ -137,7 +148,7 @@ class DashboardController extends Controller
             if (method_exists($modelClass, 'languageCompleteness')) {
                 $translations = $modelClass::query()->accessibleTo($user)
                     ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
-                    ->where('updated_at', '>=', $this->translationWindowStart())
+                    ->where(fn (Builder $query) => $this->publishedRecently($query))
                     ->get()
                     ->filter(fn (Model $m): bool => ContentLocales::missingRequired($m->languageCompleteness()) !== [])
                     ->count();
@@ -153,8 +164,8 @@ class DashboardController extends Controller
         }
 
         return [
-            ['key' => 'active', 'value' => $this->alertQuery($user)->active()->count(), 'label' => 'активных предупреждения', 'tone' => 'warn', 'href' => $this->metricHref($user, 'active', $byType)],
-            ['key' => 'drafts', 'value' => $this->metricSum($byType, 'drafts'), 'label' => 'черновиков', 'tone' => null, 'href' => $this->metricHref($user, 'drafts', $byType)],
+            ['key' => 'active', 'value' => $this->alertQuery($user)->active()->count(), 'label' => 'действующие предупреждения', 'tone' => 'warn', 'href' => $this->metricHref($user, 'active', $byType)],
+            ['key' => 'drafts', 'value' => $this->metricSum($byType, 'drafts'), 'label' => 'черновики', 'tone' => null, 'href' => $this->metricHref($user, 'drafts', $byType)],
             ['key' => 'review', 'value' => $this->metricSum($byType, 'review'), 'label' => 'на согласовании', 'tone' => null, 'href' => $this->metricHref($user, 'review', $byType)],
             // Not expanded to the other 5 types: only Alert/News have a
             // `scheduled_at` column and a scheduler at all (see
@@ -351,7 +362,7 @@ class DashboardController extends Controller
                     'kind_label' => $isReturned ? 'Исправить' : 'Черновик',
                     'title' => $this->typeTitle($model),
                     'meta' => ContentTypes::label($type).($isReturned
-                        ? ' · возвращено с проверки'
+                        ? ' · возвращено на доработку'
                         : ' · ваш незавершённый материал'),
                     'due' => $model->updated_at?->diffForHumans(['parts' => 1]) ?? '',
                     'due_tone' => $isReturned ? 'danger' : 'neutral',

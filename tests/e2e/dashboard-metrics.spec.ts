@@ -7,7 +7,7 @@ test('dashboard metric cards open the matching filtered lists', async ({
 
     const main = page.getByRole('main');
 
-    await main.getByRole('link', { name: /^\d+ активных предупреждения$/ }).click();
+    await main.getByRole('link', { name: /^\d+ действующие предупреждения$/ }).click();
     await expect(page).toHaveURL(/\/alerts\?view=active/);
     await expect(
         page.getByRole('heading', { name: 'Предупреждения' }),
@@ -18,7 +18,7 @@ test('dashboard metric cards open the matching filtered lists', async ({
     );
 
     await page.goto('/dashboard');
-    await main.getByRole('link', { name: /^\d+ черновиков$/ }).click();
+    await main.getByRole('link', { name: /^\d+ черновики$/ }).click();
     await expect(page).toHaveURL(/view=drafts|status=draft/);
     await expect(page.getByRole('heading').first()).toBeVisible();
 
@@ -39,7 +39,7 @@ test('dashboard metric cards open the matching filtered lists', async ({
 
     await page.goto('/dashboard');
     await main
-        .getByRole('link', { name: /^\d+ незавершённых переводов$/ })
+        .getByRole('link', { name: /^\d+ без перевода за 30 дней$/ })
         .click();
     await expect(page).toHaveURL(/\/editorial\/translations$/);
     await expect(

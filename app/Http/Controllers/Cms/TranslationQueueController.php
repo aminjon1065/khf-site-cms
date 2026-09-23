@@ -101,9 +101,10 @@ class TranslationQueueController extends Controller
         $locales = $selectedLocale === '' ? ContentLocales::REQUIRED : [$selectedLocale];
         $paginator = $this->queueQuery($selectedTypes, $locales, $user)
             ->orderByRaw("CASE status WHEN 'translation_check' THEN 0 WHEN 'returned' THEN 1 WHEN 'review' THEN 2 ELSE 3 END")
-            // Fresh materials first: they are what readers see now, and an
+            // Fresh materials first — by publication date, or by the last
+            // edit while unpublished: they are what readers see now, and an
             // old one-language archive would otherwise bury them.
-            ->orderByDesc('updated_at')
+            ->orderByRaw('COALESCE(published_at, updated_at) DESC')
             ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
@@ -131,9 +132,9 @@ class TranslationQueueController extends Controller
                 $allowedTypes,
             ),
             'locales' => [
-                ['value' => 'tg', 'label' => 'Тоҷикӣ'],
+                ['value' => 'tg', 'label' => 'Таджикский'],
                 ['value' => 'ru', 'label' => 'Русский'],
-                ['value' => 'en', 'label' => 'English (необязательно)'],
+                ['value' => 'en', 'label' => 'Английский (необязательно)'],
             ],
         ]);
     }
@@ -149,7 +150,7 @@ class TranslationQueueController extends Controller
         foreach ($types as $type) {
             $meta = self::TYPE_META[$type];
             $query = $this->modelQuery($type, $user)
-                ->select(['id', 'status', 'updated_at', 'author_id'])
+                ->select(['id', 'status', 'published_at', 'updated_at', 'author_id'])
                 ->selectRaw('? as content_type', [$type])
                 ->selectRaw("{$meta['title_attribute']} as title_data");
 

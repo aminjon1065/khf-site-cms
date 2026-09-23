@@ -105,13 +105,17 @@ class Instruction extends Model implements HasMedia, Workflowable
      */
     protected function completenessExtras(string $locale): array
     {
-        $hasStep = collect(is_array($this->sections) ? $this->sections : [])
-            ->contains(fn (mixed $section): bool => is_array($section)
-                && collect($section[$locale] ?? [])->contains(
-                    fn (mixed $step): bool => is_string($step) && trim($step) !== '',
-                ));
+        foreach (is_array($this->sections) ? $this->sections : [] as $section) {
+            $steps = is_array($section) ? ($section[$locale] ?? []) : [];
 
-        return [$hasStep];
+            foreach (is_array($steps) ? $steps : [] as $step) {
+                if (is_string($step) && trim($step) !== '') {
+                    return [true];
+                }
+            }
+        }
+
+        return [false];
     }
 
     protected static function booted(): void
