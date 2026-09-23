@@ -2,6 +2,7 @@
 
 use App\Enums\ContentStatus;
 use App\Models\News;
+use App\Models\PendingChange;
 use App\Models\Region;
 use App\Models\User;
 use Database\Seeders\RegionSeeder;
@@ -487,9 +488,12 @@ it('accepts an unchanged publication date from users who cannot publish', functi
             'title' => 'Уточнённый заголовок',
             'published_at' => '2026-09-10T08:30',
         ])
-        ->assertOk();
+        ->assertOk()
+        ->assertJsonPath('pending', true);
 
-    expect($news->fresh()->getTranslation('title', 'ru'))->toBe('Уточнённый заголовок');
+    // The news is on the site, so the new title waits for approval.
+    expect(PendingChange::query()->sole()->changes)->toHaveKey('title')
+        ->and($news->fresh()->published_at->format('Y-m-d H:i'))->toBe('2026-09-10 08:30');
 });
 
 it('keeps a quick-edited title in the language it is written in', function () {

@@ -174,6 +174,8 @@ class NewsController extends Controller
      * unpublishing and approval go through WorkflowService (permissions,
      * checklist, history, site cache). The publication date decides when the
      * news appears on the site, so changing it needs the publish permission.
+     * On a live news item, someone without that permission proposes the edit
+     * for approval, as in the editor.
      */
     public function quickUpdate(Request $request, News $news): JsonResponse|RedirectResponse
     {
@@ -195,27 +197,41 @@ class NewsController extends Controller
             $this->authorize('publish', $news);
         }
 
-        // The list shows the title in the first language the news is written
-        // in, so the edited title goes back into that language — never into
-        // another one (a Tajik title must not become the Russian version).
-        $news->setTranslation('title', ContentTitle::firstLocale($news) ?? 'ru', $validated['title']);
+        $fill = function () use ($news, $validated): void {
+            // The list shows the title in the first language the news is
+            // written in, so the edited title goes back into that language —
+            // never into another one (a Tajik title must not become the
+            // Russian version).
+            $news->setTranslation('title', ContentTitle::firstLocale($news) ?? 'ru', $validated['title']);
 
-        if (! empty($validated['slug'])) {
-            $news->slug = $validated['slug'];
+            if (! empty($validated['slug'])) {
+                $news->slug = $validated['slug'];
+            }
+            if (array_key_exists('category_id', $validated)) {
+                $news->category_id = $validated['category_id'] ?: null;
+            }
+            if (array_key_exists('is_pinned', $validated)) {
+                $news->is_pinned = (bool) $validated['is_pinned'];
+            }
+            if (array_key_exists('show_on_home', $validated)) {
+                $news->show_on_home = (bool) $validated['show_on_home'];
+            }
+            if (array_key_exists('published_at', $validated)) {
+                $news->published_at = $validated['published_at'] ? Carbon::parse($validated['published_at']) : null;
+            }
+        };
+
+        if ($this->proposeQuickEditInsteadOfSaving($news, $request, $fill)) {
+            $message = 'Изменения отправлены на согласование. На сайте пока прежняя версия.';
+
+            return $request->wantsJson()
+                ? response()->json(['success' => true, 'pending' => true, 'message' => $message])
+                : back()->with('success', $message);
         }
-        if (array_key_exists('category_id', $validated)) {
-            $news->category_id = $validated['category_id'] ?: null;
-        }
-        if (array_key_exists('is_pinned', $validated)) {
-            $news->is_pinned = (bool) $validated['is_pinned'];
-        }
-        if (array_key_exists('show_on_home', $validated)) {
-            $news->show_on_home = (bool) $validated['show_on_home'];
-        }
-        if (array_key_exists('published_at', $validated)) {
-            $news->published_at = $validated['published_at'] ? Carbon::parse($validated['published_at']) : null;
-        }
+
+        $fill();
         $news->save();
+        $this->refreshSiteIfLive($news);
         $news->load('category');
 
         if ($request->wantsJson()) {

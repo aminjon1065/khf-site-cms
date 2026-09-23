@@ -270,3 +270,51 @@ it('shows approvers the whole material, not only its lead', function () {
             ->where('detail.change_id', null)
             ->where('detail.preview_url', fn ($url): bool => is_string($url) && str_contains($url, "/editorial/news/{$news->id}/preview")));
 });
+
+it('sends a quick edit of a live news item from someone who cannot publish to approval', function () {
+    $news = liveNews();
+
+    actingAs(changeUser('translator'))
+        ->patchJson("/news/{$news->id}/quick-update", ['title' => 'Быстро исправленный заголовок', 'is_pinned' => true])
+        ->assertOk()
+        ->assertJsonPath('pending', true)
+        ->assertJsonPath('message', 'Изменения отправлены на согласование. На сайте пока прежняя версия.');
+
+    $change = PendingChange::query()->sole();
+
+    expect($news->fresh()->getTranslation('title', 'ru'))->toBe('Опубликованный заголовок')
+        ->and($news->fresh()->is_pinned)->toBeFalse()
+        ->and($change->changes)->toHaveKeys(['title', 'is_pinned']);
+
+    Queue::assertNotPushed(RevalidateFrontend::class);
+});
+
+it('adds a quick edit to the waiting proposal of its author instead of replacing it', function () {
+    $news = liveNews();
+    $translator = changeUser('translator');
+    actingAs($translator)->post("/news/{$news->id}", newsForm($news, ['body' => ['ru' => '<p>Исправленный текст.</p>']]));
+
+    actingAs($translator)
+        ->patchJson("/news/{$news->id}/quick-update", ['title' => 'Исправленный заголовок'])
+        ->assertOk();
+
+    $change = PendingChange::query()->pending()->sole();
+
+    expect(json_decode($change->changes['body'], true)['ru'])->toBe('<p>Исправленный текст.</p>')
+        ->and(json_decode($change->changes['title'], true)['ru'])->toBe('Исправленный заголовок')
+        ->and(PendingChange::query()->where('status', PendingChange::SUPERSEDED)->count())->toBe(1);
+});
+
+it('saves a quick edit from someone who may publish directly and refreshes the site', function () {
+    $news = liveNews();
+
+    actingAs(changeUser('editor'))
+        ->patchJson("/news/{$news->id}/quick-update", ['title' => 'Заголовок после правки'])
+        ->assertOk()
+        ->assertJsonPath('news.title', 'Заголовок после правки');
+
+    expect($news->fresh()->getTranslation('title', 'ru'))->toBe('Заголовок после правки')
+        ->and(PendingChange::query()->count())->toBe(0);
+
+    Queue::assertPushed(RevalidateFrontend::class, fn (RevalidateFrontend $job): bool => $job->type === 'news' && $job->event === 'updated');
+});

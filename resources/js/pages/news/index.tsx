@@ -14,6 +14,7 @@ import { useState } from 'react';
 import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
 import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
+import { LIVE_STATUSES } from '@/lib/domain';
 import type { ContentStatus } from '@/lib/domain';
 import { patchJson } from '@/lib/http';
 import { slugify } from '@/lib/slugify';
@@ -25,6 +26,7 @@ import { Checkbox, Field, Input, Select } from '@/ui/Field';
 import { FilterBar, SavedViews, SearchInput } from '@/ui/Filters';
 import { ConfirmDialog, Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
+import { useToast } from '@/ui/Toast';
 
 interface NewsRow {
     id: number;
@@ -96,6 +98,7 @@ export default function NewsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const toast = useToast();
     const [newsItems, setNewsItems] = useState<NewsRow[]>(news);
     const [prevNews, setPrevNews] = useState<NewsRow[]>(news);
 
@@ -158,7 +161,9 @@ export default function NewsIndex({
         try {
             const res = await patchJson<{
                 success: boolean;
-                news: NewsRow;
+                news?: NewsRow;
+                pending?: boolean;
+                message?: string;
             }>(`/news/${rowId}/quick-update`, {
                 title: quickData.title,
                 slug: quickData.slug,
@@ -175,12 +180,18 @@ export default function NewsIndex({
                 _editorial_version: quickData.updated_at,
             });
 
-            if (res.news) {
+            const saved = res.news;
+
+            if (saved) {
                 setNewsItems((prev) =>
                     prev.map((item) =>
-                        item.id === rowId ? { ...item, ...res.news } : item,
+                        item.id === rowId ? { ...item, ...saved } : item,
                     ),
                 );
+            }
+
+            if (res.pending && res.message) {
+                toast(res.message, 'info');
             }
 
             setQuickEditId(null);
@@ -447,6 +458,9 @@ export default function NewsIndex({
             return null;
         }
 
+        const needsApproval =
+            LIVE_STATUSES.includes(r.status) && !can('news.publish');
+
         return (
             <div
                 className="wp-quick-edit-panel"
@@ -474,6 +488,19 @@ export default function NewsIndex({
                         ID: {r.id}
                     </span>
                 </div>
+
+                {needsApproval && (
+                    <p
+                        style={{
+                            fontSize: 12,
+                            color: 'var(--color-neutral-600)',
+                            margin: '0 0 10px',
+                        }}
+                    >
+                        Новость уже на сайте: изменения уйдут на согласование, а
+                        до решения на сайте останется прежняя версия.
+                    </p>
+                )}
 
                 {quickError && (
                     <div
@@ -639,7 +666,11 @@ export default function NewsIndex({
                         disabled={quickSaving}
                         onClick={() => handleSaveQuickEdit(r.id)}
                     >
-                        {quickSaving ? 'Сохранение…' : 'Обновить'}
+                        {quickSaving
+                            ? 'Сохранение…'
+                            : needsApproval
+                              ? 'Отправить на согласование'
+                              : 'Обновить'}
                     </Button>
                     <Button
                         variant="secondary"

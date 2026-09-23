@@ -51,6 +51,38 @@ trait HandlesPendingChanges
     }
 
     /**
+     * Quick edit from a list, under the same rule as the editor. The list
+     * shows the live version, so the edit is added to the user's own waiting
+     * proposal instead of replacing it. False means "save normally".
+     *
+     * @param  callable(): void  $fill  Applies the quick edit to $subject without saving it
+     *
+     * @throws ValidationException
+     */
+    protected function proposeQuickEditInsteadOfSaving(Model&Workflowable $subject, Request $request, callable $fill): bool
+    {
+        $service = app(PendingChangeService::class);
+        $user = $request->user();
+
+        if (! $user instanceof User || ! $service->required($subject, $user)) {
+            return false;
+        }
+
+        $active = $service->activeFor($subject);
+        $mine = $active !== null && $active->user_id === $user->id ? $active : null;
+
+        $service->propose($subject, $user, function () use ($service, $subject, $mine, $fill): void {
+            if ($mine !== null) {
+                $service->preview($subject, $mine);
+            }
+
+            $fill();
+        }, $mine->relations ?? []);
+
+        return true;
+    }
+
+    /**
      * Editor props about proposals. Call it before building the form payload:
      * for the proposal's author the material is filled with what they
      * proposed.

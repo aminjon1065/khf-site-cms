@@ -20,6 +20,18 @@ export type ContentStatus =
 
 export type StatusTone = 'neutral' | 'warn' | 'ok' | 'accent' | 'danger';
 
+/**
+ * Statuses whose material is on the site or will get there without another
+ * decision: someone without the publish permission changes such a material
+ * only through approval (PendingChangeService::LIVE_STATUSES).
+ */
+export const LIVE_STATUSES: readonly ContentStatus[] = [
+    'published',
+    'updated',
+    'completed',
+    'scheduled',
+];
+
 export const SEVERITY_ORDER: Severity[] = [
     'info',
     'attention',
