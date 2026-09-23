@@ -170,6 +170,7 @@ final class HomePageReadModel
             'alerts' => [
                 'state' => $snapshot['state'],
                 'count' => $snapshot['count'],
+                'updated_at' => $snapshot['updated_at'],
                 'regions' => $snapshot['regions'],
                 'items' => PublicAlertResource::collection(
                     $activeAlerts->take($this->limitOf($blocks, 'active_alerts', 3)),

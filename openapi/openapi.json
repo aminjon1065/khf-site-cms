@@ -1978,6 +1978,7 @@
         "required": [
           "state",
           "count",
+          "updated_at",
           "regions"
         ],
         "properties": {
@@ -1991,6 +1992,11 @@
           },
           "count": {
             "type": "integer"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The moment the alert state is known to be true (ISO 8601 with the Asia/Dushanbe offset): when the snapshot read the database, or — if the scheduler that starts and ends alerts has stopped — its last run. Present even when count is 0."
           },
           "regions": {
             "type": "array",
@@ -2044,6 +2050,7 @@
             "required": [
               "state",
               "count",
+              "updated_at",
               "regions",
               "items"
             ],
@@ -2058,6 +2065,11 @@
               },
               "count": {
                 "type": "integer"
+              },
+              "updated_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "The moment the alert state is known to be true (ISO 8601 with the Asia/Dushanbe offset): when the snapshot read the database, or — if the scheduler that starts and ends alerts has stopped — its last run. Present even when count is 0."
               },
               "regions": {
                 "type": "array",

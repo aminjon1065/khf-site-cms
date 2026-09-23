@@ -5,7 +5,10 @@ use App\Enums\HazardType;
 use App\Enums\Severity;
 use App\Models\Alert;
 use App\Models\Region;
+use App\Services\AlertMapService;
+use Carbon\CarbonImmutable;
 use Database\Seeders\RegionSeeder;
+use Illuminate\Support\Facades\Cache;
 
 use function Pest\Laravel\seed;
 
@@ -159,4 +162,29 @@ it('applies a country-wide alert to every region', function () {
         expect($region['level'])->toBe('warning')
             ->and($region['count'])->toBe(1);
     }
+});
+
+it('says as of when the alert state is known, even when there are no alerts', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-16 09:42:37', 'Asia/Dushanbe'));
+    Cache::forever(AlertMapService::RECONCILED_AT_KEY, now()->subMinute()->toIso8601String());
+
+    $this->getJson('/api/v1/alerts/active?locale=ru')
+        ->assertOk()
+        ->assertJsonPath('data.count', 0)
+        ->assertJsonPath('data.updated_at', '2026-09-16T09:42:00+05:00');
+
+    $this->getJson('/api/v1/home?locale=ru')
+        ->assertOk()
+        ->assertJsonPath('data.alerts.updated_at', '2026-09-16T09:42:00+05:00');
+});
+
+it('dates the alert state back to the last reconciliation when the scheduler has stopped', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-16 12:00:00', 'Asia/Dushanbe'));
+    Cache::forever(AlertMapService::RECONCILED_AT_KEY, '2026-09-16T09:15:00+05:00');
+    activeAlert(Severity::Warning, 'Сель');
+
+    $this->getJson('/api/v1/alerts/active?locale=ru')
+        ->assertOk()
+        ->assertJsonPath('data.count', 1)
+        ->assertJsonPath('data.updated_at', '2026-09-16T09:15:00+05:00');
 });

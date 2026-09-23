@@ -4,7 +4,9 @@ use App\Enums\ContentStatus;
 use App\Models\Alert;
 use App\Models\User;
 use App\Notifications\WorkflowNotification;
+use App\Services\AlertMapService;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 
 use function Pest\Laravel\artisan;
@@ -26,6 +28,14 @@ it('publishes scheduled alerts whose time has passed', function () {
     $fresh = $alert->fresh();
     expect($fresh->status)->toBe(ContentStatus::Published);
     expect($fresh->published_at)->not->toBeNull();
+});
+
+it('records when it last reconciled alert states, for the site', function () {
+    $this->travelTo(now()->setTime(10, 5));
+
+    artisan('content:process-scheduled')->assertSuccessful();
+
+    expect(Cache::get(AlertMapService::RECONCILED_AT_KEY))->toBe(now()->toIso8601String());
 });
 
 it('auto-completes published alerts past their end time', function () {

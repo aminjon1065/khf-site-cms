@@ -7,6 +7,7 @@ use App\Models\Alert;
 use App\Models\News;
 use App\Models\User;
 use App\Notifications\WorkflowNotification;
+use App\Services\AlertMapService;
 use App\Services\WorkflowService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Cache;
@@ -28,6 +29,7 @@ class ProcessScheduledContent extends Command
         // публикация упадёт на середине, `/ready` перестанет отвечать
         // «готов» — и это правильный сигнал, а не ложная бодрость.
         Cache::put('health.scheduler.last_run', now()->toIso8601String(), now()->addHour());
+        Cache::forever(AlertMapService::RECONCILED_AT_KEY, now()->toIso8601String());
 
         $this->info("Опубликовано: {$published} · завершено: {$completed} · уведомлений об истечении: {$notified}");
 
