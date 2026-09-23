@@ -5,6 +5,7 @@ namespace App\Http\Resources\Api;
 use App\Models\News;
 use App\Support\PublicAttachments;
 use App\Support\PublicImageData;
+use App\Support\PublicLocale;
 use App\Support\RichTextMediaResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -56,6 +57,8 @@ class PublicNewsResource extends JsonResource
         ];
 
         if ($this->withBody) {
+            // Languages the material is published in (hreflang, «no translation» notice).
+            $data['available_locales'] = PublicLocale::publishedIn($this->resource, 'title');
             // Вложения и галерея — только на детальной: в списке они не
             // выводятся, и тянуть медиа на каждую строку незачем.
             $data['attachments'] = PublicAttachments::fromModel($this->resource, $locale);

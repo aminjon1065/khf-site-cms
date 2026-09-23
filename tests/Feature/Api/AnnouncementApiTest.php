@@ -136,6 +136,6 @@ it('exposes only public fields', function () {
     $item = $this->getJson('/api/v1/announcements?locale=ru')->json('data.0');
 
     expect(array_keys($item))->toEqualCanonicalizing([
-        'slug', 'kind', 'kind_label', 'title', 'org', 'desc', 'deadline', 'deadline_at', 'deadline_state', 'open', 'application_url',
+        'slug', 'available_locales', 'kind', 'kind_label', 'title', 'org', 'desc', 'deadline', 'deadline_at', 'deadline_state', 'open', 'application_url',
     ]);
 });

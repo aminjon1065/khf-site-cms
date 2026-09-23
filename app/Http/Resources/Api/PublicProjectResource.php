@@ -5,6 +5,7 @@ namespace App\Http\Resources\Api;
 use App\Models\Project;
 use App\Support\PublicApiLabels;
 use App\Support\PublicImageData;
+use App\Support\PublicLocale;
 use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -51,6 +52,8 @@ class PublicProjectResource extends JsonResource
         ];
 
         if ($this->withDetail) {
+            // Languages the material is published in (hreflang, «no translation» notice).
+            $data['available_locales'] = PublicLocale::publishedIn($this->resource, 'title');
             $data['code'] = $this->code;
             $data['customer'] = $this->customer;
             $data['body'] = app(RichTextMediaResolver::class)

@@ -4,6 +4,7 @@ namespace App\Http\Resources\Api;
 
 use App\Models\Announcement;
 use App\Support\PublicApiLabels;
+use App\Support\PublicLocale;
 use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -27,6 +28,8 @@ class PublicAnnouncementResource extends JsonResource
 
         return [
             'slug' => $this->slug,
+            // Languages the announcement is published in (hreflang, «no translation» notice).
+            'available_locales' => PublicLocale::publishedIn($this->resource, 'title'),
             'kind' => $this->kind->value,
             'kind_label' => PublicApiLabels::get('announcement_kind', $this->kind->value, $locale),
             'title' => $this->tr('title', $locale),

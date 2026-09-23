@@ -188,3 +188,12 @@ it('dates the alert state back to the last reconciliation when the scheduler has
         ->assertJsonPath('data.count', 1)
         ->assertJsonPath('data.updated_at', '2026-09-16T09:15:00+05:00');
 });
+
+it('lists the languages an alert is published in on its detail', function () {
+    $alert = activeAlert(Severity::Warning, 'Сель');
+    $alert->forceFill(['title' => ['ru' => 'Сель', 'tg' => 'Сел', 'en' => '']])->save();
+
+    $this->getJson("/api/v1/alerts/{$alert->slug}?locale=tg")
+        ->assertOk()
+        ->assertJsonPath('data.available_locales', ['tg', 'ru']);
+});

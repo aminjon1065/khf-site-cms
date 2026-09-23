@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Page;
+use App\Support\PublicLocale;
 use App\Support\RichTextMediaResolver;
 use Carbon\CarbonInterface;
 use Illuminate\Http\Request;
@@ -39,6 +40,8 @@ class PublicPageResource extends JsonResource
         ];
 
         if ($this->withBody) {
+            // Languages the material is published in (hreflang, «no translation» notice).
+            $data['available_locales'] = PublicLocale::publishedIn($this->resource, 'title');
             $data['body'] = app(RichTextMediaResolver::class)
                 ->resolve($this->tr('body', $locale));
             $data['seo'] = [

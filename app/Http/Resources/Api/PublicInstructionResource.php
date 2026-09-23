@@ -6,6 +6,7 @@ use App\Models\Instruction;
 use App\Support\PublicApiLabels;
 use App\Support\PublicAttachments;
 use App\Support\PublicImageData;
+use App\Support\PublicLocale;
 use App\Support\RichTextMediaResolver;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -57,6 +58,8 @@ class PublicInstructionResource extends JsonResource
         ];
 
         if ($this->withSections) {
+            // Languages the material is published in (hreflang, «no translation» notice).
+            $data['available_locales'] = PublicLocale::publishedIn($this->resource, 'name');
             // «Главное за 10 секунд» — только на детальной странице и только
             // если редактор его заполнил. Пустое поле означает, что блок не
             // выводится: раньше под этим заголовком стоял `summary`, то есть

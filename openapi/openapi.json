@@ -1114,6 +1114,18 @@
           "slug": {
             "type": "string"
           },
+          "available_locales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tg",
+                "ru",
+                "en"
+              ]
+            },
+            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+          },
           "title": {
             "type": "string"
           },
@@ -1243,6 +1255,18 @@
         "properties": {
           "slug": {
             "type": "string"
+          },
+          "available_locales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tg",
+                "ru",
+                "en"
+              ]
+            },
+            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "title": {
             "type": "string"
@@ -1519,6 +1543,18 @@
           "slug": {
             "type": "string"
           },
+          "available_locales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tg",
+                "ru",
+                "en"
+              ]
+            },
+            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+          },
           "title": {
             "type": "string"
           },
@@ -1671,6 +1707,18 @@
           "slug": {
             "type": "string"
           },
+          "available_locales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tg",
+                "ru",
+                "en"
+              ]
+            },
+            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+          },
           "kind": {
             "type": "string",
             "enum": [
@@ -1796,6 +1844,18 @@
         "properties": {
           "slug": {
             "type": "string"
+          },
+          "available_locales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tg",
+                "ru",
+                "en"
+              ]
+            },
+            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "level": {
             "type": "string",
@@ -2433,6 +2493,18 @@
         "properties": {
           "slug": {
             "type": "string"
+          },
+          "available_locales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tg",
+                "ru",
+                "en"
+              ]
+            },
+            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "title": {
             "type": "string"

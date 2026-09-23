@@ -140,3 +140,16 @@ it('supports correlation IDs and conditional GETs', function () {
         ->assertNotModified()
         ->assertHeader('ETag', $etag);
 });
+
+it('lists the languages a news item is published in on its detail', function () {
+    $news = News::factory()->published()->create([
+        'title' => ['ru' => 'Учения', 'tg' => 'Машқҳо', 'en' => ''],
+    ]);
+
+    $this->getJson("/api/v1/news/{$news->slug}?locale=ru")
+        ->assertOk()
+        ->assertJsonPath('data.available_locales', ['tg', 'ru']);
+
+    // The list stays light: the field is for the detail page.
+    expect($this->getJson('/api/v1/news?locale=ru')->json('data.0'))->not->toHaveKey('available_locales');
+});
