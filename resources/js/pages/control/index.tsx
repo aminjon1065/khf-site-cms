@@ -225,7 +225,7 @@ export default function ControlCenter({
                     <TriangleAlert
                         size={16}
                         strokeWidth={1.75}
-                        style={{ color: 'var(--danger)', flex: 'none' }}
+                        style={{ color: 'var(--danger-text)', flex: 'none' }}
                     />
                     <span>
                         Схема БД отстаёт от кода: не применено миграций —{' '}

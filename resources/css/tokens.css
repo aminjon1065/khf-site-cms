@@ -51,7 +51,9 @@
        тёмный сине-фиолетовый сайдбар — он темнее и контрастнее. */
     --chrome: #1c1c32;
     --chrome-text: rgba(255, 255, 255, 0.82);
-    --chrome-muted: rgba(255, 255, 255, 0.42);
+    /* 0.6, не ниже: подписи групп, поиск и подзаголовок бренда должны
+       держать контраст 4.5:1 на тёмном сайдбаре (WCAG AA). */
+    --chrome-muted: rgba(255, 255, 255, 0.6);
 
     /* Кольцо фокуса — Statamic focus-outline */
     --color-focus: oklch(0.707 0.165 254.624);
@@ -63,6 +65,11 @@
     --warn-soft: #fef6e7;
     --danger: oklch(0.577 0.245 27.325);
     --danger-soft: #fde8ed;
+    /* Текст статусных цветов: яркие --ok/--warn/--danger годятся для точек
+       и рамок, а надписи на белом и на *-soft должны держать 4.5:1. */
+    --ok-text: #047857;
+    --warn-text: #b45309;
+    --danger-text: #b91c1c;
     --info: #416180;
     --info-soft: #eef6ff;
 
@@ -75,6 +82,10 @@
     --sev-warning-soft: #fff4e5;
     --sev-danger: #e11d48;
     --sev-danger-soft: #fde8ed;
+    /* Надписи уровней на светлых плашках — те же оттенки, темнее (4.5:1). */
+    --sev-attention-text: #a16207;
+    --sev-warning-text: #c2410c;
+    --sev-danger-text: #be123c;
     --sev-critical: #9f1239;
     --sev-critical-soft: #fce7ee;
 
@@ -155,6 +166,9 @@
     --warn-soft: #33280f;
     --danger: #fb7185;
     --danger-soft: #3a171e;
+    --ok-text: #34d399;
+    --warn-text: #f5b942;
+    --danger-text: #fb7185;
     --info: #8eb0cc;
     --info-soft: #1b2833;
     --sev-info: #8eb0cc;
@@ -165,6 +179,9 @@
     --sev-warning-soft: #3a2610;
     --sev-danger: #fb7185;
     --sev-danger-soft: #3a171e;
+    --sev-attention-text: #f5b942;
+    --sev-warning-text: #fb923c;
+    --sev-danger-text: #fb7185;
     --sev-critical: #be123c;
     --sev-critical-soft: #2a1018;
 

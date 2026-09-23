@@ -391,7 +391,7 @@ export default function ProjectForm({
                                 style={{
                                     margin: 0,
                                     fontSize: 12.5,
-                                    color: 'var(--color-neutral-400)',
+                                    color: 'var(--color-neutral-500)',
                                 }}
                             >
                                 Цели не добавлены.
@@ -425,6 +425,7 @@ export default function ProjectForm({
                                             {String(i + 1).padStart(2, '0')}
                                         </span>
                                         <Textarea
+                                            aria-label={`Цель ${i + 1}`}
                                             value={goal}
                                             onChange={(e) =>
                                                 updateGoal(i, e.target.value)
@@ -482,7 +483,7 @@ export default function ProjectForm({
                                 style={{
                                     margin: 0,
                                     fontSize: 12.5,
-                                    color: 'var(--color-neutral-400)',
+                                    color: 'var(--color-neutral-500)',
                                 }}
                             >
                                 Этапы не добавлены.
@@ -498,6 +499,7 @@ export default function ProjectForm({
                                 {data.timeline.map((item, i) => (
                                     <div
                                         key={i}
+                                        className="cms-stack-narrow"
                                         style={{
                                             display: 'grid',
                                             gridTemplateColumns:
@@ -507,6 +509,7 @@ export default function ProjectForm({
                                         }}
                                     >
                                         <Input
+                                            aria-label={`Этап ${i + 1}: когда`}
                                             value={item.date}
                                             onChange={(e) =>
                                                 updateTimeline(
@@ -518,6 +521,7 @@ export default function ProjectForm({
                                             placeholder="Июнь 2026"
                                         />
                                         <Textarea
+                                            aria-label={`Этап ${i + 1}: что сделано или запланировано`}
                                             value={item.text}
                                             onChange={(e) =>
                                                 updateTimeline(
@@ -530,6 +534,7 @@ export default function ProjectForm({
                                             style={{ minHeight: 38 }}
                                         />
                                         <Select
+                                            aria-label={`Этап ${i + 1}: состояние`}
                                             value={item.tone}
                                             options={TONE_OPTIONS}
                                             onChange={(e) =>

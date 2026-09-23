@@ -171,7 +171,7 @@ export default function InstructionsIndex({
                 r.hazard_label ? (
                     <Tag tone="outline">{r.hazard_label}</Tag>
                 ) : (
-                    <span style={{ color: 'var(--color-neutral-400)' }}>—</span>
+                    <span style={{ color: 'var(--color-neutral-500)' }}>—</span>
                 ),
         },
         {
@@ -185,12 +185,14 @@ export default function InstructionsIndex({
             key: 'languages',
             header: 'Языки',
             width: 170,
+            optional: 2,
             render: (r) => <LanguageBadges completeness={r.languages} />,
         },
         {
             key: 'author',
             header: 'Автор',
             width: 130,
+            optional: 1,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }}>{r.author ?? '—'}</span>
             ),
@@ -199,6 +201,7 @@ export default function InstructionsIndex({
             key: 'published',
             header: 'Публикация',
             width: 120,
+            optional: 1,
             sortable: true,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }} className="ui-mono">

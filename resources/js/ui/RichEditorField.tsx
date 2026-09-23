@@ -342,6 +342,9 @@ export function RichEditorField({
         editorProps: {
             attributes: {
                 class: 're-content',
+                // An editable region needs a role for its name to be read.
+                role: 'textbox',
+                'aria-multiline': 'true',
                 'aria-label': placeholder ?? 'Текст материала',
             },
             transformPastedHTML: cleanPastedHtml,
@@ -887,6 +890,7 @@ function EditorSkeleton() {
     return (
         <div
             className="re-shell re-loading"
+            role="status"
             aria-busy="true"
             aria-label="Загрузка редактора"
         >

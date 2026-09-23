@@ -5,8 +5,8 @@ import {
     ChevronRight,
     ChevronsUpDown,
 } from 'lucide-react';
-import { Fragment  } from 'react';
-import type {ReactNode} from 'react';
+import { Fragment } from 'react';
+import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Blueprint } from './Blueprint';
 import { EmptyState, Skeleton } from './Feedback';
@@ -20,6 +20,12 @@ export interface Column<T> {
     sortable?: boolean;
     render: (row: T) => ReactNode;
     className?: string;
+    /**
+     * A secondary column the table drops when it gets narrow, so the title
+     * keeps room to read: 1 goes first (table under 1180 px), 2 next
+     * (under 980 px). Like WordPress list tables.
+     */
+    optional?: 1 | 2;
 }
 
 export interface SortState {
@@ -125,7 +131,7 @@ export function DataTable<T>({
                 </div>
             )}
             <div
-                className="ui-scroll"
+                className="ui-scroll ui-table-container"
                 style={{ overflow: 'auto', maxHeight: maxBodyHeight }}
             >
                 <table className="ui-table">
@@ -143,7 +149,11 @@ export function DataTable<T>({
                             {columns.map((col) => (
                                 <th
                                     key={col.key}
-                                    className={cn(col.sortable && 'sortable')}
+                                    className={cn(
+                                        col.sortable && 'sortable',
+                                        col.optional &&
+                                            `ui-col-optional-${col.optional}`,
+                                    )}
                                     style={{
                                         width: col.width,
                                         textAlign: col.align ?? 'left',
@@ -240,13 +250,16 @@ export function DataTable<T>({
                         ) : (
                             rows.map((row) => {
                                 const key = rowKey(row);
-                                const subRow = renderSubRow ? renderSubRow(row) : null;
+                                const subRow = renderSubRow
+                                    ? renderSubRow(row)
+                                    : null;
 
                                 return (
                                     <Fragment key={key}>
                                         <tr
                                             className={cn(
-                                                selected.has(key) && 'is-selected',
+                                                selected.has(key) &&
+                                                    'is-selected',
                                             )}
                                             onClick={
                                                 onRowClick
@@ -267,7 +280,9 @@ export function DataTable<T>({
                                                     }
                                                 >
                                                     <Checkbox
-                                                        checked={selected.has(key)}
+                                                        checked={selected.has(
+                                                            key,
+                                                        )}
                                                         onChange={() =>
                                                             toggleOne(key)
                                                         }
@@ -282,6 +297,8 @@ export function DataTable<T>({
                                                         col.className,
                                                         col.key === 'actions' &&
                                                             'cell-actions',
+                                                        col.optional &&
+                                                            `ui-col-optional-${col.optional}`,
                                                     )}
                                                     style={{
                                                         textAlign:

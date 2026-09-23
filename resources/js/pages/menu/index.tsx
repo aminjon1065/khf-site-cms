@@ -345,7 +345,7 @@ export default function MenuIndex({ menus }: Props) {
                             margin: 0,
                             paddingLeft: 18,
                             fontSize: 13,
-                            color: 'var(--danger)',
+                            color: 'var(--danger-text)',
                         }}
                     >
                         {Object.entries(errors).map(([key, message]) => (

@@ -58,12 +58,20 @@ test('dialogs trap keyboard focus and return it to their trigger', async ({
 
     const drawer = page.getByRole('dialog', { name: 'Уведомления' });
     const closeDrawer = drawer.getByRole('button', { name: 'Закрыть' });
+    const allNotifications = drawer.getByRole('button', {
+        name: 'Все уведомления',
+    });
 
     await expect(drawer).toBeVisible();
     await expect(closeDrawer).toBeFocused();
 
+    // Focus cycles inside the drawer: «Закрыть» ↔ «Все уведомления».
+    await page.keyboard.press('Tab');
+    await expect(allNotifications).toBeFocused();
     await page.keyboard.press('Tab');
     await expect(closeDrawer).toBeFocused();
+    await page.keyboard.press('Shift+Tab');
+    await expect(allNotifications).toBeFocused();
     await page.keyboard.press('Shift+Tab');
     await expect(closeDrawer).toBeFocused();
 
@@ -122,7 +130,9 @@ test('editorial form reflows and exposes non-drag and live-region alternatives',
     await expect(
         page.getByRole('heading', { name: 'Новая новость' }),
     ).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Загрузить' })).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Загрузить', exact: true }),
+    ).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Из медиатеки' }),
     ).toBeVisible();

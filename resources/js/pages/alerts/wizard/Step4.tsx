@@ -31,6 +31,7 @@ export function Step4({
             }}
         >
             <div
+                className="cms-stack-narrow"
                 style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',
@@ -81,6 +82,7 @@ export function Step4({
                 </div>
             </Field>
             <div
+                className="cms-stack-narrow"
                 style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr 1fr',

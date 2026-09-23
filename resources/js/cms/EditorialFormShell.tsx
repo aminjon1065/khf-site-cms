@@ -157,6 +157,9 @@ export function EditorialFormShell<T extends object>({
 
             {variant === 'gutenberg' ? (
                 <header className="wp-topbar" role="banner">
+                    {/* The editor's big title field is content, not a
+                        heading: screen readers still need the page's one. */}
+                    <h1 className="sr-only">{title}</h1>
                     <div className="wp-topbar-left">
                         <Link
                             href={backHref}

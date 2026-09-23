@@ -98,7 +98,7 @@ export function LanguageBadges({
                 return (
                     <span key={l} className="ui-mono">
                         {i > 0 && (
-                            <span style={{ color: 'var(--color-neutral-400)' }}>
+                            <span style={{ color: 'var(--color-neutral-500)' }}>
                                 {' '}
                                 ·{' '}
                             </span>
@@ -108,9 +108,9 @@ export function LanguageBadges({
                                 color: !isRequiredLocale(l)
                                     ? 'var(--color-neutral-500)'
                                     : pct === 0
-                                      ? 'var(--danger)'
+                                      ? 'var(--danger-text)'
                                       : pct < 100
-                                        ? 'var(--warn)'
+                                        ? 'var(--warn-text)'
                                         : 'var(--color-neutral-700)',
                             }}
                             title={
@@ -128,7 +128,7 @@ export function LanguageBadges({
                 <TriangleAlert
                     size={14}
                     strokeWidth={1.5}
-                    style={{ color: 'var(--warn)' }}
+                    style={{ color: 'var(--warn-text)' }}
                     aria-label="Перевод не завершён"
                 />
             )}

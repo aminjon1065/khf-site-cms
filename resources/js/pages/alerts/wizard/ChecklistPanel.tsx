@@ -35,20 +35,20 @@ export function ChecklistPanel({
                             <CheckCircle2
                                 size={15}
                                 strokeWidth={1.5}
-                                style={{ color: 'var(--ok)' }}
+                                style={{ color: 'var(--ok-text)' }}
                             />
                         ) : (
                             <TriangleAlert
                                 size={15}
                                 strokeWidth={1.5}
-                                style={{ color: 'var(--warn)' }}
+                                style={{ color: 'var(--warn-text)' }}
                             />
                         )}
                         <span
                             style={{
                                 color: c.ok
                                     ? 'var(--color-text)'
-                                    : 'var(--warn)',
+                                    : 'var(--warn-text)',
                             }}
                         >
                             {c.label}

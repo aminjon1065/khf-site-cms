@@ -125,13 +125,16 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                 {data.blocks.map((block, i) => (
                     <Blueprint
                         key={block.id}
+                        className="cms-home-block-row"
                         style={{
                             padding: 16,
                             display: 'grid',
                             gridTemplateColumns: '34px 1fr 220px 110px 90px',
                             gap: 14,
                             alignItems: 'center',
-                            opacity: block.enabled ? 1 : 0.6,
+                            background: block.enabled
+                                ? undefined
+                                : 'var(--color-neutral-100)',
                         }}
                     >
                         {/* order controls */}
@@ -197,6 +200,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                 )}
                             </div>
                             <div
+                                className="cms-stack-narrow"
                                 style={{
                                     display: 'grid',
                                     gridTemplateColumns:
@@ -257,6 +261,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                             {block.supports_limit ? (
                                 <Field
                                     label="Материалов"
+                                    htmlFor={`block-limit-${block.id}`}
                                     className="m-0"
                                     hint={
                                         block.max_limit
@@ -273,6 +278,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                     }
                                 >
                                     <Input
+                                        id={`block-limit-${block.id}`}
                                         type="number"
                                         min={1}
                                         max={block.max_limit ?? 20}
@@ -299,7 +305,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                 <span
                                     style={{
                                         fontSize: 12,
-                                        color: 'var(--color-neutral-400)',
+                                        color: 'var(--color-neutral-500)',
                                     }}
                                 >
                                     —
@@ -322,7 +328,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                             className="ui-mono"
                             style={{
                                 fontSize: 12,
-                                color: 'var(--color-neutral-500)',
+                                color: 'var(--color-neutral-600)',
                                 textAlign: 'right',
                             }}
                         >

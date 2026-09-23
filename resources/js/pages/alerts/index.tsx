@@ -178,12 +178,14 @@ export default function AlertsIndex({
             key: 'languages',
             header: t('common.languages'),
             width: 170,
+            optional: 2,
             render: (r) => <LanguageBadges completeness={r.languages} />,
         },
         {
             key: 'author',
             header: t('common.author'),
             width: 120,
+            optional: 1,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }}>{r.author ?? '—'}</span>
             ),
@@ -192,6 +194,7 @@ export default function AlertsIndex({
             key: 'published',
             header: t('common.published'),
             width: 140,
+            optional: 1,
             sortable: true,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }} className="ui-mono">

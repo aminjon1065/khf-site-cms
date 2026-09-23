@@ -175,7 +175,7 @@ export default function AnnouncementsIndex({
                     style={{
                         fontSize: 12.5,
                         color: r.is_open
-                            ? 'var(--warn)'
+                            ? 'var(--warn-text)'
                             : 'var(--color-neutral-500)',
                     }}
                     className="ui-mono"
@@ -198,6 +198,7 @@ export default function AnnouncementsIndex({
             key: 'status',
             header: 'Публикация',
             width: 150,
+            optional: 1,
             sortable: true,
             render: (r) => <StatusBadge status={r.status} />,
         },
@@ -205,6 +206,7 @@ export default function AnnouncementsIndex({
             key: 'languages',
             header: 'Языки',
             width: 170,
+            optional: 2,
             render: (r) => <LanguageBadges completeness={r.languages} />,
         },
         {

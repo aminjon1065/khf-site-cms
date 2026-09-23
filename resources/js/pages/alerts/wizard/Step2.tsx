@@ -159,6 +159,7 @@ export function Step2({
                     Схема регионов · выбор кликом
                 </div>
                 <Blueprint
+                    className="cms-stack-narrow"
                     style={{
                         padding: 16,
                         display: 'grid',

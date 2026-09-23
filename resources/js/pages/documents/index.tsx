@@ -98,7 +98,8 @@ function FileLangs({ files }: { files: DocumentRow['files'] }) {
                         fontSize: 11.5,
                         color: files[l]
                             ? 'var(--color-text)'
-                            : 'var(--color-neutral-400)',
+                            : 'var(--color-neutral-500)',
+                        textDecoration: files[l] ? undefined : 'line-through',
                         fontWeight: files[l] ? 600 : 400,
                     }}
                 >
@@ -197,6 +198,7 @@ export default function DocumentsIndex({
             key: 'files',
             header: 'Файлы',
             width: 110,
+            optional: 1,
             render: (r) =>
                 r.has_file ? (
                     <FileLangs files={r.files} />
@@ -204,7 +206,7 @@ export default function DocumentsIndex({
                     <span
                         style={{
                             fontSize: 12,
-                            color: 'var(--warn)',
+                            color: 'var(--warn-text)',
                             display: 'inline-flex',
                             alignItems: 'center',
                             gap: 4,

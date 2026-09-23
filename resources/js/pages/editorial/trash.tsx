@@ -87,6 +87,7 @@ export default function EditorialTrash({ items, meta, filters, types }: Props) {
             key: 'author',
             header: 'Автор',
             width: 160,
+            optional: 1,
             render: (item) => item.author,
         },
         {

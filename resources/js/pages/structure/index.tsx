@@ -102,7 +102,7 @@ export default function StructureIndex({ units }: Props) {
                             aria-hidden="true"
                             style={{
                                 flex: 'none',
-                                color: 'var(--color-neutral-400)',
+                                color: 'var(--color-neutral-500)',
                             }}
                         />
                     )}

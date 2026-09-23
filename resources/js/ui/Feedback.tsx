@@ -97,11 +97,11 @@ export function MetricCard({
 }) {
     const color =
         tone === 'warn'
-            ? 'var(--warn)'
+            ? 'var(--warn-text)'
             : tone === 'danger'
-              ? 'var(--danger)'
+              ? 'var(--danger-text)'
               : tone === 'ok'
-                ? 'var(--ok)'
+                ? 'var(--ok-text)'
                 : tone === 'accent'
                   ? 'var(--brand-700)'
                   : 'var(--color-text)';

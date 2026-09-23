@@ -129,7 +129,7 @@ export function ConfirmDialog({
                         <TriangleAlert
                             size={20}
                             strokeWidth={1.5}
-                            style={{ color: 'var(--danger)' }}
+                            style={{ color: 'var(--danger-text)' }}
                         />
                     )}
                     {title}

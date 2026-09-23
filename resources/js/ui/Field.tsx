@@ -1,6 +1,8 @@
 import { TriangleAlert } from 'lucide-react';
+import { cloneElement, isValidElement, useId } from 'react';
 import type {
     InputHTMLAttributes,
+    ReactElement,
     ReactNode,
     SelectHTMLAttributes,
     TextareaHTMLAttributes,
@@ -24,21 +26,41 @@ export function Field({
     className?: string;
     children: ReactNode;
 }) {
+    const autoId = useId();
+    // A single form control inside the field gets tied to its label, so
+    // screen readers announce the label when the control is focused.
+    const control =
+        !htmlFor && label && isLabelableControl(children) ? children : null;
+    const controlId = control ? (control.props.id ?? autoId) : undefined;
+
     return (
         <div className={cn('ui-field', className)}>
             {label && (
-                <label className="ui-label" htmlFor={htmlFor}>
+                <label className="ui-label" htmlFor={htmlFor ?? controlId}>
                     {label}
                     {required && <span className="req">*</span>}
                 </label>
             )}
-            {children}
+            {control && !control.props.id
+                ? cloneElement(control, { id: controlId })
+                : children}
             {error ? (
                 <InputError message={error} />
             ) : hint ? (
                 <span className="ui-hint">{hint}</span>
             ) : null}
         </div>
+    );
+}
+
+const LABELABLE = new Set<unknown>(['input', 'select', 'textarea']);
+
+function isLabelableControl(
+    node: ReactNode,
+): node is ReactElement<{ id?: string }> {
+    return (
+        isValidElement(node) &&
+        (LABELABLE.has(node.type) || CONTROLS.has(node.type))
     );
 }
 
@@ -117,9 +139,19 @@ export function Select({
     children,
     ...props
 }: SelectProps) {
+    // A filter select («Статус: все») has no visible label: its name comes
+    // from the placeholder, so screen readers announce «Статус», not nothing.
+    const unlabelled =
+        !props.id && !props['aria-label'] && !props['aria-labelledby'];
+
     return (
         <select
             className={cn('ui-select', hasError && 'has-error', className)}
+            aria-label={
+                unlabelled && placeholder
+                    ? placeholder.split(':')[0].trim()
+                    : undefined
+            }
             {...props}
         >
             {placeholder && <option value="">{placeholder}</option>}
@@ -254,3 +286,6 @@ export function DatePicker({
         />
     );
 }
+
+/** Design-system controls that pass `id` to their native element. */
+const CONTROLS = new Set<unknown>([Input, Select, Textarea, DatePicker]);

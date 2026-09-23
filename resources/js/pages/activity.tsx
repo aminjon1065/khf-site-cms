@@ -103,7 +103,10 @@ export default function Activity({
                         <TriangleAlert
                             size={14}
                             strokeWidth={1.5}
-                            style={{ color: 'var(--danger)', flex: 'none' }}
+                            style={{
+                                color: 'var(--danger-text)',
+                                flex: 'none',
+                            }}
                         />
                     )}
                     <span>{r.action}</span>

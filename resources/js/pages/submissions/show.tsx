@@ -162,7 +162,7 @@ export default function SubmissionShow({ submission, reference }: Props) {
                                 style={{
                                     margin: '0 0 12px',
                                     fontSize: 12.5,
-                                    color: 'var(--color-neutral-400)',
+                                    color: 'var(--color-neutral-500)',
                                 }}
                             >
                                 Комментариев пока нет.
@@ -229,7 +229,7 @@ export default function SubmissionShow({ submission, reference }: Props) {
                                 {comment.errors.body && (
                                     <div
                                         style={{
-                                            color: 'var(--danger)',
+                                            color: 'var(--danger-text)',
                                             fontSize: 12,
                                             marginTop: 4,
                                         }}

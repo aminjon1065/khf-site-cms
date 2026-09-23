@@ -146,6 +146,7 @@ export default function ProjectsIndex({
             key: 'partner',
             header: 'Партнёр',
             width: 200,
+            optional: 1,
             render: (r) => (
                 <span
                     style={{
@@ -168,6 +169,7 @@ export default function ProjectsIndex({
             key: 'languages',
             header: 'Языки',
             width: 170,
+            optional: 2,
             render: (r) => <LanguageBadges completeness={r.languages} />,
         },
         {

@@ -140,7 +140,7 @@ export function RevisionDiff({ revisionId, onClose }: Props) {
         <Modal open onClose={onClose} title="Сравнение версии" width={760}>
             {state === 'loading' && <p>Загрузка версии…</p>}
             {state === 'error' && (
-                <p style={{ color: 'var(--danger)' }}>
+                <p style={{ color: 'var(--danger-text)' }}>
                     Не удалось загрузить версию.
                 </p>
             )}

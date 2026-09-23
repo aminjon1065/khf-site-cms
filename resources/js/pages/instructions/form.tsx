@@ -548,7 +548,7 @@ export default function InstructionForm({
                                 <span
                                     style={{
                                         fontSize: 12,
-                                        color: 'var(--color-neutral-500)',
+                                        color: 'var(--color-neutral-600)',
                                         marginLeft: 'auto',
                                     }}
                                 >
@@ -645,7 +645,7 @@ export default function InstructionForm({
                                                     fontSize: 14,
                                                     color:
                                                         key === 'prohibited'
-                                                            ? 'var(--danger)'
+                                                            ? 'var(--danger-text)'
                                                             : 'var(--color-text)',
                                                 }}
                                             >
@@ -672,7 +672,7 @@ export default function InstructionForm({
                                                 style={{
                                                     margin: 0,
                                                     fontSize: 12.5,
-                                                    color: 'var(--color-neutral-400)',
+                                                    color: 'var(--color-neutral-500)',
                                                     fontStyle: 'italic',
                                                 }}
                                             >
@@ -781,7 +781,7 @@ export default function InstructionForm({
                                 <span
                                     style={{
                                         fontSize: 12,
-                                        color: 'var(--color-neutral-500)',
+                                        color: 'var(--color-neutral-600)',
                                     }}
                                 >
                                     Язык: <b>{localeShort[lang]}</b>

@@ -150,7 +150,7 @@ export default function Approvals({
                             <CheckCircle2
                                 size={30}
                                 strokeWidth={1.25}
-                                style={{ color: 'var(--ok)' }}
+                                style={{ color: 'var(--ok-text)' }}
                             />
                         }
                         title="Очередь пуста"

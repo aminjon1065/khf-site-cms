@@ -186,7 +186,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                         aria-label="Включена"
                     />
                 ) : (
-                    <span style={{ color: 'var(--color-neutral-400)' }}>—</span>
+                    <span style={{ color: 'var(--color-neutral-500)' }}>—</span>
                 ),
         },
         {

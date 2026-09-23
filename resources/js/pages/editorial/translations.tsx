@@ -79,6 +79,7 @@ export default function TranslationQueue({
             key: 'status',
             header: 'Статус',
             width: 150,
+            optional: 2,
             render: (item) => (
                 <Tag
                     tone={
@@ -108,6 +109,7 @@ export default function TranslationQueue({
             key: 'updated_at',
             header: 'Обновлён',
             width: 145,
+            optional: 1,
             render: (item) => (
                 <span className="ui-mono" style={{ fontSize: 12.5 }}>
                     {item.updated_at ?? '—'}

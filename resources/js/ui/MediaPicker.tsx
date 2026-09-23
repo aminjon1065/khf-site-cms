@@ -267,7 +267,7 @@ export function MediaPicker({
                 {error && (
                     <div
                         style={{
-                            color: 'var(--danger)',
+                            color: 'var(--danger-text)',
                             fontSize: 13,
                             marginBottom: 12,
                         }}

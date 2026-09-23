@@ -204,6 +204,7 @@ export default function AlertWizard({
             <div
                 style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'flex-start',
                     gap: 12,
                     marginBottom: 18,
@@ -216,7 +217,7 @@ export default function AlertWizard({
                 >
                     <ArrowLeft size={17} strokeWidth={1.5} />
                 </IconButton>
-                <div style={{ flex: 1 }}>
+                <div style={{ flex: '1 1 180px', minWidth: 0 }}>
                     <h1 className="ui-page-title">
                         {alert
                             ? 'Редактирование предупреждения'
@@ -305,10 +306,7 @@ export default function AlertWizard({
             </div>
 
             {/* Sticky action bar */}
-            <div
-                className="ui-actionbar"
-                style={{ marginLeft: -20, marginRight: -20, marginBottom: -24 }}
-            >
+            <div className="ui-actionbar ui-actionbar-bleed">
                 <Button
                     variant="secondary"
                     disabled={step === 0}

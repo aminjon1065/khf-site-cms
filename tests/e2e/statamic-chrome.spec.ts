@@ -27,7 +27,7 @@ test('control panel chrome uses the official KHF steel blue', async ({
     expect(colors.create).toBe('rgb(65, 97, 128)');
     expect(colors.surface).toBe('rgb(255, 255, 255)');
     expect(colors.font.toLowerCase()).toContain('inter');
-    await expect(page.getByText('Коллекции', { exact: true })).toBeVisible();
+    await expect(page.getByText('Материалы', { exact: true })).toBeVisible();
     await expect(
         page.getByRole('button', { name: 'Найти в панели' }),
     ).toBeVisible();

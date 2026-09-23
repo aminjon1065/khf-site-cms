@@ -222,7 +222,6 @@ export default function NewsIndex({
         {
             key: 'title',
             header: 'Заголовок',
-            width: '32%',
             render: (r) => (
                 <div style={{ minWidth: 0 }}>
                     <Link
@@ -261,7 +260,11 @@ export default function NewsIndex({
                         style={{
                             fontSize: 11.5,
                             color: 'var(--color-neutral-500)',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
                         }}
+                        title={r.slug ?? undefined}
                     >
                         {r.slug ?? '—'}
                     </div>
@@ -308,11 +311,12 @@ export default function NewsIndex({
             key: 'category',
             header: 'Рубрика',
             width: 160,
+            optional: 2,
             render: (r) =>
                 r.category ? (
                     <Tag tone="outline">{r.category}</Tag>
                 ) : (
-                    <span style={{ color: 'var(--color-neutral-400)' }}>—</span>
+                    <span style={{ color: 'var(--color-neutral-500)' }}>—</span>
                 ),
         },
         {
@@ -332,6 +336,7 @@ export default function NewsIndex({
             key: 'views',
             header: 'Просмотры',
             width: 100,
+            optional: 1,
             sortable: true,
             align: 'right',
             render: (r) => (
@@ -344,6 +349,7 @@ export default function NewsIndex({
             key: 'author',
             header: 'Автор',
             width: 130,
+            optional: 1,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }}>{r.author ?? '—'}</span>
             ),

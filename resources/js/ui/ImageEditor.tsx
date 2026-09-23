@@ -173,7 +173,7 @@ export function ImageEditor({ open, source, onClose, onSaved }: Props) {
                     {error && (
                         <span
                             style={{
-                                color: 'var(--danger)',
+                                color: 'var(--danger-text)',
                                 fontSize: 13,
                                 marginRight: 'auto',
                             }}

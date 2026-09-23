@@ -262,6 +262,7 @@ export default function DocumentForm({
                                     <div key={key}>
                                         <Field
                                             label={label}
+                                            htmlFor={`document-file-${key}`}
                                             error={fieldError(`file_${key}`)}
                                         >
                                             {existing && !data[removeKey] && (
@@ -294,6 +295,7 @@ export default function DocumentForm({
                                                 </div>
                                             )}
                                             <input
+                                                id={`document-file-${key}`}
                                                 type="file"
                                                 accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx"
                                                 onChange={(e) =>
@@ -382,10 +384,12 @@ export default function DocumentForm({
 
                         <Field
                             label="Раздел"
+                            htmlFor="document-section"
                             hint="Группировка в каталоге (напр. «Законодательство»)."
                             error={fieldError('section')}
                         >
                             <Input
+                                id="document-section"
                                 value={data.section}
                                 onChange={(e) =>
                                     setData('section', e.target.value)

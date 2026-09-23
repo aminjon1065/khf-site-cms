@@ -22,6 +22,7 @@ export function RichEditor(props: Props) {
             fallback={
                 <div
                     className="re-shell re-loading"
+                    role="status"
                     aria-busy="true"
                     aria-label="Загрузка редактора"
                 >

@@ -172,7 +172,7 @@ export default function Dashboard({
                         <CheckCircle2
                             size={20}
                             strokeWidth={1.5}
-                            style={{ color: 'var(--ok)' }}
+                            style={{ color: 'var(--ok-text)' }}
                         />
                     ) : (
                         <TriangleAlert
