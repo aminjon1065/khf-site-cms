@@ -48,8 +48,11 @@ class PublicPageResource extends JsonResource
                 'title' => $this->tr('seo_title', $locale),
                 'description' => $this->tr('seo_description', $locale),
             ];
-            $data['updated'] = $this->localizedDate($this->published_at ?? $this->updated_at, $locale);
-            $data['updated_at'] = ($this->published_at ?? $this->updated_at)?->toIso8601String();
+            // The last real edit of the text, or else its publication: never
+            // the time the row was merely touched (TracksContentEdits).
+            $contentDate = $this->content_updated_at ?? $this->published_at;
+            $data['updated'] = $this->localizedDate($contentDate, $locale);
+            $data['updated_at'] = $contentDate?->toIso8601String();
         }
 
         return $data;

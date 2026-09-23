@@ -6,6 +6,7 @@ use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Concerns\ProtectsUnpublishedMedia;
 use App\Concerns\RemembersOldSlugs;
+use App\Concerns\TracksContentEdits;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
@@ -44,13 +45,14 @@ use Spatie\Translatable\HasTranslations;
  * @property array<int, mixed>|null $timeline
  * @property array<string, mixed>|null $direction
  * @property Carbon|null $published_at
+ * @property Carbon|null $content_updated_at
  * @property int $sort
  * @property int|null $author_id
  */
 class Project extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<ProjectFactory> */
-    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness {
+    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksContentEdits, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 
@@ -86,6 +88,16 @@ class Project extends Model implements HasMedia, Workflowable
     ];
 
     /**
+     * Fields whose edit is an edit of the material (TracksContentEdits).
+     *
+     * @return list<string>
+     */
+    protected function contentColumns(): array
+    {
+        return ['title', 'summary', 'body', 'lifecycle_status', 'code', 'years', 'customer', 'partner', 'budget', 'goals', 'timeline', 'direction'];
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -97,6 +109,7 @@ class Project extends Model implements HasMedia, Workflowable
             'timeline' => 'array',
             'direction' => 'array',
             'published_at' => 'datetime',
+            'content_updated_at' => 'datetime',
         ];
     }
 

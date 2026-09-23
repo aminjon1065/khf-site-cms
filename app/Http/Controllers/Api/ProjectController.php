@@ -63,6 +63,7 @@ class ProjectController extends Controller
                 'goals',
                 'timeline',
                 'direction',
+                'content_updated_at',
             ])
             ->public()
             // Тендеры проекта — только на детальной, в списке они не нужны.

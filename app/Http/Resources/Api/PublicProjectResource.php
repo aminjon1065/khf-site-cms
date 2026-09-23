@@ -52,6 +52,8 @@ class PublicProjectResource extends JsonResource
         ];
 
         if ($this->withDetail) {
+            // A real edit after publication, or null (A-2).
+            $data['updated_at'] = $this->content_updated_at?->toIso8601String();
             // Languages the material is published in (hreflang, «no translation» notice).
             $data['available_locales'] = PublicLocale::publishedIn($this->resource, 'title');
             $data['code'] = $this->code;

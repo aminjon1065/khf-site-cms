@@ -7,6 +7,7 @@ use App\Concerns\HasTags;
 use App\Concerns\HasWorkflow;
 use App\Concerns\ProtectsUnpublishedMedia;
 use App\Concerns\RemembersOldSlugs;
+use App\Concerns\TracksContentEdits;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
@@ -41,13 +42,14 @@ use Spatie\Translatable\HasTranslations;
  * @property int $views_count
  * @property array<string, mixed>|null $seo
  * @property Carbon|null $published_at
+ * @property Carbon|null $content_updated_at
  * @property Carbon|null $scheduled_at
  * @property int|null $author_id
  */
 class News extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<NewsFactory> */
-    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness {
+    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksContentEdits, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 
@@ -83,6 +85,16 @@ class News extends Model implements HasMedia, Workflowable
     ];
 
     /**
+     * Fields whose edit is an edit of the material (TracksContentEdits).
+     *
+     * @return list<string>
+     */
+    protected function contentColumns(): array
+    {
+        return ['title', 'summary', 'body', 'cover_alt', 'cover_caption'];
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -93,6 +105,7 @@ class News extends Model implements HasMedia, Workflowable
             'show_on_home' => 'boolean',
             'seo' => 'array',
             'published_at' => 'datetime',
+            'content_updated_at' => 'datetime',
             'scheduled_at' => 'datetime',
         ];
     }

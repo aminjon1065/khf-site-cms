@@ -58,6 +58,8 @@ class PublicInstructionResource extends JsonResource
         ];
 
         if ($this->withSections) {
+            // A real edit after publication, or null (A-2).
+            $data['updated_at'] = $this->content_updated_at?->toIso8601String();
             // Languages the material is published in (hreflang, «no translation» notice).
             $data['available_locales'] = PublicLocale::publishedIn($this->resource, 'name');
             // «Главное за 10 секунд» — только на детальной странице и только

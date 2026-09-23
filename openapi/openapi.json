@@ -1235,6 +1235,14 @@
             "items": {
               "$ref": "#/components/schemas/CmsImageDto"
             }
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the text of the material last really changed after publication (A-2): not moved by re-saving without edits, status changes, the view counter or migrations. Null if it has not been edited since publication. Detail responses only."
           }
         }
       },
@@ -1394,6 +1402,14 @@
                 "size_bytes"
               ]
             }
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the text of the material last really changed after publication (A-2): not moved by re-saving without edits, status changes, the view counter or migrations. Null if it has not been edited since publication. Detail responses only."
           }
         }
       },
@@ -1685,6 +1701,14 @@
                 "open"
               ]
             }
+          },
+          "updated_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the text of the material last really changed after publication (A-2): not moved by re-saving without edits, status changes, the view counter or migrations. Null if it has not been edited since publication. Detail responses only."
           }
         }
       },
@@ -2522,7 +2546,8 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "When the text of the page last really changed, or else its publication — never the time the row was merely touched (A-2)."
           },
           "seo": {
             "type": "object",

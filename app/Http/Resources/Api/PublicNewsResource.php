@@ -66,6 +66,8 @@ class PublicNewsResource extends JsonResource
             $data['body'] = app(RichTextMediaResolver::class)
                 ->resolve($this->tr('body', $locale));
             $data['views'] = (int) $this->views_count;
+            // A real edit of the text after publication, or null (A-2).
+            $data['updated_at'] = $this->content_updated_at?->toIso8601String();
             $data['seo'] = $this->localizedSeo($locale);
         }
 

@@ -6,6 +6,7 @@ use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Concerns\ProtectsUnpublishedMedia;
 use App\Concerns\RemembersOldSlugs;
+use App\Concerns\TracksContentEdits;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
@@ -38,12 +39,13 @@ use Spatie\Translatable\HasTranslations;
  * @property array<string, mixed>|null $sections
  * @property ContentStatus $status
  * @property Carbon|null $published_at
+ * @property Carbon|null $content_updated_at
  * @property int|null $author_id
  */
 class Instruction extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<InstructionFactory> */
-    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness {
+    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksContentEdits, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 
@@ -85,6 +87,16 @@ class Instruction extends Model implements HasMedia, Workflowable
     ];
 
     /**
+     * Fields whose edit is an edit of the material (TracksContentEdits).
+     *
+     * @return list<string>
+     */
+    protected function contentColumns(): array
+    {
+        return ['name', 'summary', 'key_point', 'body', 'sections', 'hazard_type'];
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -95,6 +107,7 @@ class Instruction extends Model implements HasMedia, Workflowable
             'sections' => 'array',
             'status' => ContentStatus::class,
             'published_at' => 'datetime',
+            'content_updated_at' => 'datetime',
         ];
     }
 

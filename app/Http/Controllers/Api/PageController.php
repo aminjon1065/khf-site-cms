@@ -44,7 +44,7 @@ class PageController extends Controller
                 'seo_title',
                 'seo_description',
                 'published_at',
-                'updated_at',
+                'content_updated_at',
             ])
             ->public();
 

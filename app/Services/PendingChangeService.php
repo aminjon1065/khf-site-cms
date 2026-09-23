@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Notifications\WorkflowNotification;
 use App\Support\ContentTitle;
 use App\Support\FrontendRevalidation;
+use App\Support\StoredValue;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
@@ -119,7 +120,7 @@ class PendingChangeService
         $fill();
         $changes = array_filter(
             Arr::except($subject->getDirty(), self::PROTECTED_COLUMNS),
-            fn (mixed $value, string $column): bool => ! $this->sameValue($subject->getRawOriginal($column), $value),
+            fn (mixed $value, string $column): bool => ! StoredValue::same($subject->getRawOriginal($column), $value),
             ARRAY_FILTER_USE_BOTH,
         );
         $subject->refresh();
@@ -306,46 +307,6 @@ class PendingChangeService
         }
 
         return $rows;
-    }
-
-    /**
-     * Whether a column keeps its meaning: the same translations stored as
-     * JSON with different key order or with empty languages dropped are not
-     * a change, nor is `1` versus `true`.
-     */
-    private function sameValue(mixed $before, mixed $after): bool
-    {
-        $decodedBefore = is_string($before) ? json_decode($before, true) : null;
-        $decodedAfter = is_string($after) ? json_decode($after, true) : null;
-
-        if (is_array($decodedBefore) || is_array($decodedAfter)) {
-            return $this->normalized($decodedBefore) === $this->normalized($decodedAfter);
-        }
-
-        return (string) (is_bool($before) ? (int) $before : $before) === (string) (is_bool($after) ? (int) $after : $after);
-    }
-
-    private function normalized(mixed $value): mixed
-    {
-        if (! is_array($value)) {
-            return $value === '' ? null : $value;
-        }
-
-        $clean = [];
-
-        foreach ($value as $key => $item) {
-            $item = $this->normalized($item);
-
-            if ($item !== null && $item !== []) {
-                $clean[$key] = $item;
-            }
-        }
-
-        if (! array_is_list($clean)) {
-            ksort($clean);
-        }
-
-        return $clean;
     }
 
     /**

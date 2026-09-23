@@ -68,6 +68,7 @@ class NewsController extends Controller
                 'summary',
                 'body',
                 'published_at',
+                'content_updated_at',
                 'is_pinned',
                 'cover_alt',
                 'cover_caption',

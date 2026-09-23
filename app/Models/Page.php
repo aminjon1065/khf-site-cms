@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Concerns\RemembersOldSlugs;
+use App\Concerns\TracksContentEdits;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
@@ -31,6 +32,7 @@ use Spatie\Translatable\HasTranslations;
  * @property string $slug
  * @property ContentStatus $status
  * @property Carbon|null $published_at
+ * @property Carbon|null $content_updated_at
  * @property int|null $parent_id
  * @property int $sort
  * @property int|null $author_id
@@ -38,7 +40,7 @@ use Spatie\Translatable\HasTranslations;
 class Page extends Model implements Workflowable
 {
     /** @use HasFactory<PageFactory> */
-    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness;
+    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksContentEdits, TracksTranslationCompleteness;
 
     use HasTranslations;
 
@@ -62,6 +64,16 @@ class Page extends Model implements Workflowable
     protected $fillable = ['title', 'body', 'seo_title', 'seo_description', 'slug', 'status', 'published_at', 'parent_id', 'sort', 'author_id'];
 
     /**
+     * Fields whose edit is an edit of the material (TracksContentEdits).
+     *
+     * @return list<string>
+     */
+    protected function contentColumns(): array
+    {
+        return ['title', 'body'];
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function casts(): array
@@ -69,6 +81,7 @@ class Page extends Model implements Workflowable
         return [
             'status' => ContentStatus::class,
             'published_at' => 'datetime',
+            'content_updated_at' => 'datetime',
         ];
     }
 
