@@ -90,7 +90,7 @@ export function CommandPalette({
                                     <Plus size={15} strokeWidth={1.5} />
                                     <span style={{ flex: 1 }}>
                                         {t('action.create')} —{' '}
-                                        {t(i.labelKey).toLowerCase()}
+                                        {i.createLabel.toLowerCase()}
                                     </span>
                                     <CornerDownLeft
                                         size={13}

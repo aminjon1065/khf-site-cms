@@ -50,10 +50,12 @@ class TranslationQueueController extends Controller
             'title_attribute' => 'title',
             'fields' => ['title', 'summary', 'body'],
         ],
+        // «Подробное описание» инструкции необязательно (см. Instruction::
+        // $completenessOptional); шаги хранятся не по колонкам языков.
         'instructions' => [
             'label' => 'Инструкции',
             'title_attribute' => 'name',
-            'fields' => ['name', 'summary', 'body'],
+            'fields' => ['name', 'summary'],
         ],
         'announcements' => [
             'label' => 'Объявления',
@@ -99,8 +101,10 @@ class TranslationQueueController extends Controller
         $locales = $selectedLocale === '' ? ContentLocales::REQUIRED : [$selectedLocale];
         $paginator = $this->queueQuery($selectedTypes, $locales, $user)
             ->orderByRaw("CASE status WHEN 'translation_check' THEN 0 WHEN 'returned' THEN 1 WHEN 'review' THEN 2 ELSE 3 END")
-            ->orderBy('updated_at')
-            ->orderBy('id')
+            // Fresh materials first: they are what readers see now, and an
+            // old one-language archive would otherwise bury them.
+            ->orderByDesc('updated_at')
+            ->orderByDesc('id')
             ->paginate(25)
             ->withQueryString();
         $rows = array_values(array_map(

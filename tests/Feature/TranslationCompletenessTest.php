@@ -10,12 +10,18 @@ use App\Models\Instruction;
 // молча запрещает редактору публиковать материал, пока он не заполнит это
 // поле на всех языках, — и ошибка выглядит как поломка публикации.
 
+function stepsIn(string ...$locales): array
+{
+    return ['during' => array_fill_keys($locales, ['Сохраняйте спокойствие.'])];
+}
+
 it('does not count an optional field towards completeness', function () {
     $instruction = Instruction::factory()->make([
         'name' => ['ru' => 'Землетрясение', 'tg' => 'Заминҷунбӣ', 'en' => 'Earthquake'],
         'summary' => ['ru' => 'Описание', 'tg' => 'Тавсиф', 'en' => 'Summary'],
-        'body' => ['ru' => 'Текст', 'tg' => 'Матн', 'en' => 'Body'],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
         'key_point' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'sections' => stepsIn('ru', 'tg', 'en'),
     ]);
 
     expect($instruction->languageCompleteness())
@@ -28,6 +34,7 @@ it('still reaches 100% when the optional field is filled', function () {
         'summary' => ['ru' => 'Описание', 'tg' => 'Тавсиф', 'en' => 'Summary'],
         'body' => ['ru' => 'Текст', 'tg' => 'Матн', 'en' => 'Body'],
         'key_point' => ['ru' => 'Присядьте', 'tg' => 'Нишинед', 'en' => 'Drop'],
+        'sections' => stepsIn('ru', 'tg', 'en'),
     ]);
 
     expect($instruction->languageCompleteness())
@@ -40,8 +47,9 @@ it('still counts the required fields', function () {
     $instruction = Instruction::factory()->make([
         'name' => ['ru' => 'Землетрясение', 'tg' => '', 'en' => ''],
         'summary' => ['ru' => 'Описание', 'tg' => '', 'en' => ''],
-        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => 'Текст', 'tg' => 'Матн', 'en' => ''],
         'key_point' => ['ru' => 'Присядьте', 'tg' => 'Нишинед', 'en' => 'Drop'],
+        'sections' => [],
     ]);
 
     expect($instruction->languageCompleteness()['ru'])->toBe(67)
@@ -53,8 +61,8 @@ it('counts every translatable field of a model without exclusions', function () 
     // полнота обязана считаться по всем её переводимым полям: заполнены все —
     // 100%, пропущено одно — меньше 100%, то есть публикация блокируется.
     //
-    // News сюда не годится: она переопределяет languageCompleteness() и
-    // считает ещё и SEO, то есть расчёт трейта на неё не влияет.
+    // News сюда не годится: она переопределяет languageCompleteness(), то
+    // есть расчёт трейта на неё не влияет.
     $announcement = Announcement::factory()->make();
     $fields = $announcement->getTranslatableAttributes();
 
@@ -79,7 +87,8 @@ it('rounds per-locale percentages over required fields', function () {
     $instruction = Instruction::factory()->make([
         'name' => ['ru' => 'Заголовок', 'tg' => 'Сарлавҳа', 'en' => ''],
         'summary' => ['ru' => 'Анонс', 'tg' => 'Мухтасар', 'en' => ''],
-        'body' => ['ru' => '<p>Текст</p>', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'sections' => stepsIn('ru'),
     ]);
 
     expect($instruction->languageCompleteness())
@@ -91,7 +100,23 @@ it('does not count whitespace-only translations as filled', function () {
         'name' => ['ru' => '   ', 'tg' => '', 'en' => ''],
         'summary' => ['ru' => "\t\n", 'tg' => '', 'en' => ''],
         'body' => ['ru' => ' ', 'tg' => '', 'en' => ''],
+        'sections' => ['during' => ['ru' => ['  ']]],
     ]);
 
     expect($instruction->languageCompleteness()['ru'])->toBe(0);
+});
+
+it('counts the steps of an instruction, not its optional detailed text', function () {
+    // Суть инструкции — шаги «до / во время / после». Инструкция без шагов на
+    // языке не заполнена, даже если есть «Подробное описание»; со шагами —
+    // заполнена и без него.
+    $instruction = Instruction::factory()->make([
+        'name' => ['ru' => 'Паводок', 'tg' => 'Обхезӣ', 'en' => ''],
+        'summary' => ['ru' => 'Что делать', 'tg' => 'Чӣ бояд кард', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '<p>Матни муфассал</p>', 'en' => ''],
+        'sections' => stepsIn('ru'),
+    ]);
+
+    expect($instruction->languageCompleteness())
+        ->toMatchArray(['ru' => 100, 'tg' => 67]);
 });

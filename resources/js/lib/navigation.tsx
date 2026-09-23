@@ -301,6 +301,8 @@ export const NAV: NavGroup[] = [
 export const CREATE_ITEMS: {
     key: string;
     labelKey: string;
+    /** What is created, in the singular: «+ Новость». */
+    createLabel: string;
     href: string;
     permission?: string;
     tone?: string;
@@ -308,6 +310,7 @@ export const CREATE_ITEMS: {
     {
         key: 'alert',
         labelKey: 'nav.alerts',
+        createLabel: 'Предупреждение',
         href: AlertController.create.url(),
         permission: 'alerts.create',
         tone: 'warn',
@@ -315,36 +318,42 @@ export const CREATE_ITEMS: {
     {
         key: 'news',
         labelKey: 'nav.news',
+        createLabel: 'Новость',
         href: NewsController.create.url(),
         permission: 'news.create',
     },
     {
         key: 'instruction',
         labelKey: 'nav.instructions',
+        createLabel: 'Инструкция',
         href: InstructionController.create.url(),
         permission: 'instructions.create',
     },
     {
         key: 'document',
         labelKey: 'nav.documents',
+        createLabel: 'Документ',
         href: DocumentController.create.url(),
         permission: 'documents.create',
     },
     {
         key: 'project',
         labelKey: 'Проекты',
+        createLabel: 'Проект',
         href: ProjectController.create.url(),
         permission: 'projects.create',
     },
     {
         key: 'announcement',
         labelKey: 'nav.announcements',
+        createLabel: 'Объявление',
         href: AnnouncementController.create.url(),
         permission: 'announcements.create',
     },
     {
         key: 'page',
         labelKey: 'nav.pages',
+        createLabel: 'Страница',
         href: PageController.create.url(),
         permission: 'pages.create',
     },

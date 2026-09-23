@@ -85,7 +85,28 @@ it('limits dashboard data to the assigned region and own editorial content', fun
             ->where('metrics.0.value', 1)
             ->where('metrics.1.value', 1)
             ->has('activeAlerts', 1)
-            ->has('regionStatuses', 1));
+            ->has('regionStatuses', 1)
+            ->where('regionStatuses.0.key', 'khatlon')
+            ->where('regionStatuses.0.count', 1));
+});
+
+it('shows each region the way the public map does, from its active alerts', function () {
+    $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
+    Region::query()->where('code', 'sughd')->firstOrFail()->forceFill(['status' => 'warning'])->save();
+
+    Alert::factory()->published()->create([
+        'severity' => 'danger',
+        'starts_at' => now()->subHour(),
+        'ends_at' => now()->addHour(),
+    ])->regions()->attach($khatlon);
+
+    actingAs(dashboardUser('editor'))->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('operationalLevel', fn (string $level): bool => $level !== 'calm')
+            ->where('regionStatuses', fn ($regions): bool => collect($regions)->firstWhere('key', 'khatlon')['level'] === 'danger'
+                // The stored status of a region no longer says «warning»
+                // when no alert touches it.
+                && collect($regions)->firstWhere('key', 'sughd')['level'] === 'none'));
 });
 
 // D-6 (CMS_AUDIT.md P2): metrics/tasks/calendar used to only ever look at
@@ -244,3 +265,17 @@ it('lets an editor open every default metric destination', function (string $pat
     '/news?view=published',
     '/editorial/translations',
 ]);
+
+it('counts only recent materials that still lack a required language', function () {
+    $oneLanguage = ['ru' => 'Только по-русски', 'tg' => '', 'en' => ''];
+
+    News::factory()->published()->create(['title' => $oneLanguage, 'summary' => $oneLanguage, 'body' => $oneLanguage]);
+    News::factory()->published()->create(['title' => $oneLanguage, 'summary' => $oneLanguage, 'body' => $oneLanguage])
+        ->forceFill(['updated_at' => now()->subMonths(3)])->saveQuietly();
+
+    actingAs(dashboardUser('editor'))->get('/dashboard')
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('metrics.5.key', 'translations')
+            ->where('metrics.5.value', 1)
+            ->where('metrics.5.label', 'без перевода за 30 дней'));
+});

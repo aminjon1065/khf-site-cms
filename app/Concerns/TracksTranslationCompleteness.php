@@ -34,6 +34,18 @@ trait TracksTranslationCompleteness
     }
 
     /**
+     * Обязательное содержание языка, которое хранится не в переводимой
+     * колонке (шаги инструкции). Каждый элемент — одно обязательное «поле»:
+     * true, если на этом языке оно заполнено.
+     *
+     * @return list<bool>
+     */
+    protected function completenessExtras(string $locale): array
+    {
+        return [];
+    }
+
+    /**
      * @return array<string, int>
      */
     public function languageCompleteness(): array
@@ -44,13 +56,16 @@ trait TracksTranslationCompleteness
         $result = [];
 
         foreach (self::CONTENT_LOCALES as $locale) {
-            if ($fields === []) {
+            $extras = $this->completenessExtras($locale);
+            $required = count($fields) + count($extras);
+
+            if ($required === 0) {
                 $result[$locale] = 0;
 
                 continue;
             }
 
-            $filled = 0;
+            $filled = count(array_filter($extras));
 
             foreach ($fields as $field) {
                 if (trim((string) ($this->getTranslations($field)[$locale] ?? '')) !== '') {
@@ -58,7 +73,7 @@ trait TracksTranslationCompleteness
                 }
             }
 
-            $result[$locale] = (int) round($filled / count($fields) * 100);
+            $result[$locale] = (int) round($filled / $required * 100);
         }
 
         return $result;

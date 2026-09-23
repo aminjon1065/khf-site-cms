@@ -41,7 +41,7 @@ export function TopBar({
     const crumb = resolveCrumb(url, t);
     const createItems = CREATE_ITEMS.filter((i) => navItemAllowed(i, can)).map(
         (i) => ({
-            label: t(i.labelKey),
+            label: i.createLabel,
             onSelect: () => router.visit(i.href),
         }),
     );

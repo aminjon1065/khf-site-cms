@@ -3,6 +3,7 @@
 use App\Enums\ContentStatus;
 use App\Enums\RegionType;
 use App\Models\Document;
+use App\Models\Instruction;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Region;
@@ -178,4 +179,28 @@ it('does not treat a missing English version as translation work by default', fu
             ->where('items.0.id', $englishOnlyMissing->id)
             ->where('items.0.missing_locales', ['en']),
         );
+});
+
+it('puts fresh materials before the old archive', function () {
+    $tajikMissing = ['tg' => '', 'ru' => 'Текст', 'en' => ''];
+    $archived = News::factory()->create(['body' => $tajikMissing, 'updated_at' => now()->subYear()]);
+    $fresh = News::factory()->create(['body' => $tajikMissing, 'updated_at' => now()]);
+
+    actingAs(translationQueueUser('editor'))
+        ->get('/editorial/translations?type=news')
+        ->assertInertia(fn ($inertia) => $inertia
+            ->where('items.0.id', $fresh->id)
+            ->where('items.1.id', $archived->id));
+});
+
+it('does not ask to translate the optional detailed text of an instruction', function () {
+    Instruction::factory()->create([
+        'name' => ['ru' => 'Паводок', 'tg' => 'Обхезӣ', 'en' => ''],
+        'summary' => ['ru' => 'Что делать', 'tg' => 'Чӣ бояд кард', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+    ]);
+
+    actingAs(translationQueueUser('editor'))
+        ->get('/editorial/translations?type=instructions')
+        ->assertInertia(fn ($inertia) => $inertia->has('items', 0));
 });

@@ -56,14 +56,15 @@ class Instruction extends Model implements HasMedia, Workflowable
     public array $translatable = ['name', 'summary', 'key_point', 'body'];
 
     /**
-     * «Главное за 10 секунд» — поле необязательное: без него страница просто
-     * не выводит блок. В полноту перевода оно не входит, иначе публикация
-     * инструкции была бы заблокирована, пока редактор не заполнит его на всех
-     * языках.
+     * «Главное за 10 секунд» и «Подробное описание» — поля необязательные:
+     * без них страница просто не выводит блок. В полноту перевода они не
+     * входят, иначе публикация инструкции была бы заблокирована, пока
+     * редактор не заполнит их на всех языках. Суть инструкции — шаги, их
+     * учитывает completenessExtras().
      *
      * @var list<string>
      */
-    public array $completenessOptional = ['key_point'];
+    public array $completenessOptional = ['key_point', 'body'];
 
     /**
      * @var list<string>
@@ -95,6 +96,22 @@ class Instruction extends Model implements HasMedia, Workflowable
             'status' => ContentStatus::class,
             'published_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Хотя бы один шаг («до», «во время» или «после») на этом языке.
+     *
+     * @return list<bool>
+     */
+    protected function completenessExtras(string $locale): array
+    {
+        $hasStep = collect(is_array($this->sections) ? $this->sections : [])
+            ->contains(fn (mixed $section): bool => is_array($section)
+                && collect($section[$locale] ?? [])->contains(
+                    fn (mixed $step): bool => is_string($step) && trim($step) !== '',
+                ));
+
+        return [$hasStep];
     }
 
     protected static function booted(): void

@@ -15,12 +15,16 @@ use App\Models\Page;
 use App\Models\Project;
 use App\Models\Region;
 use App\Models\User;
+use App\Services\AlertMapService;
 use App\Support\ContentLocales;
 use App\Support\ContentTitle;
 use App\Support\ContentTypes;
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -28,6 +32,8 @@ use Inertia\Response;
 
 class DashboardController extends Controller
 {
+    public function __construct(private readonly AlertMapService $alertMap) {}
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -39,15 +45,7 @@ class DashboardController extends Controller
             'metrics' => $this->metrics($user),
             'operationalLevel' => $this->operationalLevel($activeAlerts),
             'activeAlerts' => AlertResource::collection($activeAlerts->take(4))->resolve(),
-            'regionStatuses' => Region::query()
-                ->when($user->hasRole('regional_editor'), fn (Builder $query) => $query->whereKey($user->region_id ?? 0))
-                ->orderBy('sort')
-                ->get()
-                ->map(fn (Region $r): array => [
-                    'id' => $r->id,
-                    'name' => $r->getTranslation('name', 'ru'),
-                    'status' => $r->status,
-                ])->all(),
+            'regionStatuses' => $this->regionStatuses($user, $activeAlerts),
             'tasks' => $this->attentionTasks($user),
             'taskCenter' => $this->taskCenter($user),
             'activity' => $this->recentActivity($user),
@@ -58,12 +56,44 @@ class DashboardController extends Controller
     }
 
     /**
+     * Each region's situation as the site shows it: derived from the active
+     * alerts that touch it, the same way as the public map and «Оперативная
+     * обстановка» — not from the region's own stored status.
+     *
+     * @param  EloquentCollection<int, Alert>  $activeAlerts
+     * @return list<array{key: string, name: string, level: string, count: int}>
+     */
+    private function regionStatuses(User $user, EloquentCollection $activeAlerts): array
+    {
+        $regions = Region::query()
+            ->when($user->hasRole('regional_editor'), fn (Builder $query) => $query->whereKey($user->region_id ?? 0))
+            ->orderBy('sort')
+            ->get();
+
+        return array_map(
+            fn (array $region): array => Arr::only($region, ['key', 'name', 'level', 'count']),
+            $this->alertMap->snapshotFor($activeAlerts, $regions, 'ru')['regions'],
+        );
+    }
+
+    /**
+     * The translation metric covers materials of the last 30 days: those are
+     * what readers see now. Counting the whole one-language archive gave a
+     * red number in the hundreds that never went down and meant nothing.
+     */
+    private function translationWindowStart(): CarbonInterface
+    {
+        return now()->subDays(30);
+    }
+
+    /**
      * @return array<int, array{key: string, value: int, label: string, tone: string|null, href: string|null}>
      */
     private function metrics(User $user): array
     {
         $incompleteTranslations = $this->alertQuery($user)
             ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
+            ->where('updated_at', '>=', $this->translationWindowStart())
             ->get()
             ->filter(fn (Alert $a): bool => ContentLocales::missingRequired($a->languageCompleteness()) !== [])
             ->count();
@@ -91,6 +121,7 @@ class DashboardController extends Controller
                 'published_month' => $this->newsQuery($user)->where('status', 'published')->whereYear('published_at', now()->year)->whereMonth('published_at', now()->month)->count(),
                 'translations' => $this->newsQuery($user)
                     ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
+                    ->where('updated_at', '>=', $this->translationWindowStart())
                     ->get()
                     ->filter(fn (News $n): bool => ContentLocales::missingRequired($n->languageCompleteness()) !== [])
                     ->count(),
@@ -106,6 +137,7 @@ class DashboardController extends Controller
             if (method_exists($modelClass, 'languageCompleteness')) {
                 $translations = $modelClass::query()->accessibleTo($user)
                     ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
+                    ->where('updated_at', '>=', $this->translationWindowStart())
                     ->get()
                     ->filter(fn (Model $m): bool => ContentLocales::missingRequired($m->languageCompleteness()) !== [])
                     ->count();
@@ -130,7 +162,7 @@ class DashboardController extends Controller
             // status=scheduled, so looping them would just add 0.
             ['key' => 'scheduled', 'value' => $this->metricSum($byType, 'scheduled'), 'label' => 'запланировано', 'tone' => null, 'href' => $this->metricHref($user, 'scheduled', $byType)],
             ['key' => 'published_month', 'value' => $this->metricSum($byType, 'published_month'), 'label' => 'опубликовано за месяц', 'tone' => null, 'href' => $this->metricHref($user, 'published_month', $byType)],
-            ['key' => 'translations', 'value' => $this->metricSum($byType, 'translations'), 'label' => 'незавершённых переводов', 'tone' => 'danger', 'href' => $this->metricHref($user, 'translations', $byType)],
+            ['key' => 'translations', 'value' => $this->metricSum($byType, 'translations'), 'label' => 'без перевода за 30 дней', 'tone' => 'warn', 'href' => $this->metricHref($user, 'translations', $byType)],
         ];
     }
 

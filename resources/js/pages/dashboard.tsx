@@ -4,9 +4,10 @@ import ActivityController from '@/actions/App/Http/Controllers/Cms/ActivityContr
 import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
 import { useAuth, useCan } from '@/lib/auth';
 import { toneColor } from '@/lib/domain';
-import type { Severity } from '@/lib/domain';
+import type { Severity, StatusTone } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
 import { CREATE_ITEMS, navItemAllowed } from '@/lib/navigation';
+import { plural } from '@/lib/plural';
 import { SeverityBadge, Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { LinkButton } from '@/ui/Button';
@@ -52,9 +53,11 @@ interface ActivityItem {
     section: string;
 }
 interface RegionStatus {
-    id: number;
+    key: string;
     name: string;
-    status: string;
+    /** Highest alert level touching the region (AlertMapService). */
+    level: 'none' | 'info' | 'warning' | 'danger' | 'critical';
+    count: number;
 }
 interface CalendarEvent {
     date: string;
@@ -76,10 +79,15 @@ interface Props {
     greetingName: string;
 }
 
-const regionStateLabel: Record<string, { label: string; tone: string }> = {
-    normal: { label: 'штатно', tone: 'ok' },
-    attention: { label: 'информация', tone: 'accent' },
+const regionStateLabel: Record<
+    RegionStatus['level'],
+    { label: string; tone: StatusTone }
+> = {
+    none: { label: 'штатно', tone: 'ok' },
+    info: { label: 'информация', tone: 'accent' },
     warning: { label: 'предупреждение', tone: 'warn' },
+    danger: { label: 'опасно', tone: 'danger' },
+    critical: { label: 'критично', tone: 'danger' },
 };
 
 const kindTone: Record<string, string> = {
@@ -118,8 +126,8 @@ export default function Dashboard({
                 title={`Добро пожаловать, ${greetingName}`}
                 subtitle={
                     tasks.length > 0
-                        ? `${tasks.length} материала требуют вашего внимания. Действуют ${metrics[0]?.value ?? 0} предупреждения.`
-                        : 'Обстановка штатная. Все материалы в работе.'
+                        ? `${tasks.length} ${plural(tasks.length, 'материал требует', 'материала требуют', 'материалов требуют')} вашего внимания. ${activeAlertsLine(metrics[0]?.value ?? 0)}`
+                        : 'Все материалы в работе.'
                 }
             />
             {quickCreate.length > 0 && (
@@ -139,7 +147,7 @@ export default function Dashboard({
                             size="sm"
                             icon={<Plus size={14} strokeWidth={2} />}
                         >
-                            {t('action.create')}: {t(i.labelKey)}
+                            {i.createLabel}
                         </LinkButton>
                     ))}
                 </div>
@@ -277,12 +285,12 @@ export default function Dashboard({
                         </div>
                         {regionStatuses.map((r) => {
                             const st =
-                                regionStateLabel[r.status] ??
-                                regionStateLabel.normal;
+                                regionStateLabel[r.level] ??
+                                regionStateLabel.none;
 
                             return (
                                 <div
-                                    key={r.id}
+                                    key={r.key}
                                     style={{
                                         display: 'flex',
                                         alignItems: 'center',
@@ -296,8 +304,7 @@ export default function Dashboard({
                                             width: 8,
                                             height: 8,
                                             borderRadius: '50%',
-                                            background:
-                                                toneColor[st.tone as 'ok'],
+                                            background: toneColor[st.tone],
                                         }}
                                     />
                                     <span style={{ flex: 1 }}>{r.name}</span>
@@ -595,4 +602,10 @@ function SectionTitle({
             )}
         </div>
     );
+}
+
+function activeAlertsLine(count: number): string {
+    return count === 0
+        ? 'Действующих предупреждений нет.'
+        : `${plural(count, 'Действует', 'Действуют', 'Действуют')} ${count} ${plural(count, 'предупреждение', 'предупреждения', 'предупреждений')}.`;
 }
