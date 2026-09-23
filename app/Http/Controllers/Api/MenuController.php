@@ -45,10 +45,10 @@ class MenuController extends Controller
             ->get();
 
         return array_values($items->whereNull('parent_id')->map(fn (MenuItem $item): array => [
-            'label' => (string) $item->getTranslation('label', $locale, true),
+            'label' => (string) $item->getTranslation('label', $locale, false),
             'url' => $item->url,
             'children' => array_values($items->where('parent_id', $item->id)->map(fn (MenuItem $child): array => [
-                'label' => (string) $child->getTranslation('label', $locale, true),
+                'label' => (string) $child->getTranslation('label', $locale, false),
                 'url' => $child->url,
             ])->all()),
         ])->all());

@@ -109,6 +109,30 @@ it('marks a locale fallback explicitly', function () {
         ->assertJsonPath('meta.fallback_used', true);
 });
 
+it('leaves the address and SEO defaults empty in a language they are not written in', function () {
+    Setting::query()
+        ->where('group', 'org')->where('key', 'address_en')
+        ->orWhere(fn ($query) => $query->where('group', 'seo')->whereIn('key', ['meta_title_tg', 'meta_description_tg']))
+        ->get()
+        ->each(fn (Setting $setting) => $setting->update(['value' => '']));
+
+    $this->getJson('/api/v1/settings?locale=en')
+        ->assertOk()
+        ->assertJsonPath('data.org.address', '')
+        ->assertJsonPath('data.seo.meta_title', 'CESCD of the Republic of Tajikistan');
+
+    $this->getJson('/api/v1/settings?locale=tg')
+        ->assertOk()
+        ->assertJsonPath('data.org.address', 'ш. Душанбе, кӯчаи Лоҳутӣ, 26')
+        ->assertJsonPath('data.seo.meta_title', '')
+        ->assertJsonPath('data.seo.meta_description', '');
+
+    $this->getJson('/api/v1/settings?locale=ru')
+        ->assertOk()
+        ->assertJsonPath('data.org.address', 'г. Душанбе, ул. Лохути, 26')
+        ->assertJsonPath('data.seo.meta_title', 'КЧС и ГО Республики Таджикистан');
+});
+
 it('returns social links as a keyed map', function () {
     $data = $this->getJson('/api/v1/settings')->json('data');
 

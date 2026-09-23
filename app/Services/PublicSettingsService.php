@@ -47,6 +47,23 @@ class PublicSettingsService
             return $default;
         };
 
+        // The site shows these only when they exist in the page's language
+        // and otherwise uses its own wording for that language; a Russian
+        // fallback would put a Russian <title> or address on /tj and /en.
+        $exact = function (string $group, string $key) use ($get, $locale): string {
+            $keys = $locale === 'ru' ? ["{$key}_ru", $key] : ["{$key}_{$locale}"];
+
+            foreach ($keys as $candidate) {
+                $value = $get($group, $candidate);
+
+                if (is_string($value) && trim($value) !== '') {
+                    return $value;
+                }
+            }
+
+            return '';
+        };
+
         $legacyServiceValues = $get('footer', 'emergency_services', []);
         $legacyServices = collect(is_array($legacyServiceValues) ? $legacyServiceValues : [])->keyBy('num');
         $emergencyServices = collect(['112', '101', '102', '103'])
@@ -66,7 +83,7 @@ class PublicSettingsService
                     'name' => $localized('org', 'name'),
                     'short_name' => $localized('org', 'short_name'),
                     'about' => $localized('org', 'about'),
-                    'address' => $localized('org', 'address'),
+                    'address' => $exact('org', 'address'),
                     'email' => $get('org', 'email'),
                     'emergency_number' => $get('org', 'emergency_number', '112'),
                     'trust_phone' => $get('org', 'trust_phone'),
@@ -84,8 +101,8 @@ class PublicSettingsService
                 ],
                 'copyright' => $localized('footer', 'copyright'),
                 'seo' => [
-                    'meta_title' => $localized('seo', 'meta_title'),
-                    'meta_description' => $localized('seo', 'meta_description'),
+                    'meta_title' => $exact('seo', 'meta_title'),
+                    'meta_description' => $exact('seo', 'meta_description'),
                 ],
             ],
             'meta' => [

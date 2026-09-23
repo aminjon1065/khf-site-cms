@@ -67,6 +67,33 @@ it('does not offer blocks the public site never shows', function () {
         ));
 });
 
+it('seeds every block within what its section on the site shows', function () {
+    HomeBlock::query()->whereIn('type', array_keys(HomeBlock::MAX_ITEMS))->get()
+        ->each(fn (HomeBlock $block) => expect($block->config['limit'])->toBeLessThanOrEqual(HomeBlock::MAX_ITEMS[$block->type]));
+
+    expect(HomeBlock::query()->where('type', 'active_alerts')->sole()->getTranslations('title'))
+        ->toBe(['tg' => 'Огоҳиҳо', 'ru' => 'Предупреждения', 'en' => 'Warnings']);
+});
+
+it('fits stored blocks to the site layout and keeps titles editors wrote', function () {
+    HomeBlock::query()->delete();
+    $alerts = HomeBlock::query()->create([
+        'type' => 'active_alerts', 'sort' => 0, 'enabled' => true, 'config' => ['limit' => 6],
+        'title' => ['tg' => 'Хулосаи оперативӣ', 'ru' => 'Оперативная сводка', 'en' => 'Current warnings'],
+    ]);
+    $news = HomeBlock::query()->create([
+        'type' => 'latest_news', 'sort' => 1, 'enabled' => true, 'config' => ['limit' => 4],
+        'title' => ['ru' => 'Новости ведомства'],
+    ]);
+
+    (require database_path('migrations/2026_09_23_182355_fit_home_blocks_to_site_layout.php'))->up();
+
+    expect($alerts->fresh()->config['limit'])->toBe(3)
+        ->and($alerts->fresh()->getTranslations('title'))->toBe(['tg' => 'Огоҳиҳо', 'ru' => 'Предупреждения', 'en' => 'Current warnings'])
+        ->and($news->fresh()->config['limit'])->toBe(4)
+        ->and($news->fresh()->getTranslations('title'))->toBe(['ru' => 'Новости ведомства']);
+});
+
 it('refuses more items than a block shows on the site', function () {
     $news = HomeBlock::query()->where('type', 'latest_news')->sole();
 

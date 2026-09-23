@@ -69,6 +69,19 @@ it('resolves labels to the requested locale', function () {
         ->and(collect($en)->pluck('label'))->toContain('News');
 });
 
+it('leaves an untranslated label empty so the site uses its own wording', function () {
+    $item = MenuItem::query()->where('location', 'main')->orderBy('sort')->first();
+    $item->replaceTranslations('label', ['ru' => 'Только по-русски', 'en' => 'English only']);
+    $item->save();
+
+    $label = fn (string $locale): string => collect($this->getJson("/api/v1/menu?locale={$locale}")->assertOk()->json('data.main'))
+        ->firstWhere('url', $item->url)['label'];
+
+    expect($label('ru'))->toBe('Только по-русски')
+        ->and($label('en'))->toBe('English only')
+        ->and($label('tg'))->toBe('');
+});
+
 // D-2: the test above already proves invalidation-on-save (it saves a label
 // change and immediately sees it) — this adds the other half: a repeat
 // request must skip the database entirely.

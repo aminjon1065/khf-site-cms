@@ -41,12 +41,12 @@ class HomeBlock extends Model
      * @var array<string, int>
      */
     public const MAX_ITEMS = [
-        'active_alerts' => 6,
+        'active_alerts' => 3,
         'latest_news' => 5,
         'instructions' => 3,
-        'documents' => 6,
-        'announcements' => 6,
-        'projects' => 4,
+        'documents' => 5,
+        'announcements' => 5,
+        'projects' => 3,
     ];
 
     /**
