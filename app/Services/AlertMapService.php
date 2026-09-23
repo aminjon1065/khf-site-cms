@@ -26,9 +26,10 @@ class AlertMapService
     public const RECONCILED_AT_KEY = 'alerts.reconciled_at';
 
     /**
-     * The scheduler runs every minute; beyond this it is considered stopped.
+     * The scheduler runs every five minutes (routes/console.php); like
+     * /ready, it is considered stopped after fifteen without a run.
      */
-    private const RECONCILE_GRACE_MINUTES = 5;
+    private const RECONCILE_GRACE_MINUTES = 15;
 
     /**
      * @var array<string, int>

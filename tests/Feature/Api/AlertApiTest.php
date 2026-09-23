@@ -197,3 +197,11 @@ it('lists the languages an alert is published in on its detail', function () {
         ->assertOk()
         ->assertJsonPath('data.available_locales', ['tg', 'ru']);
 });
+
+it('keeps the state current between the five-minute scheduler runs', function () {
+    $this->travelTo(CarbonImmutable::parse('2026-09-16 10:07:20', 'Asia/Dushanbe'));
+    Cache::forever(AlertMapService::RECONCILED_AT_KEY, '2026-09-16T10:00:04+05:00');
+
+    $this->getJson('/api/v1/alerts/active?locale=ru')
+        ->assertJsonPath('data.updated_at', '2026-09-16T10:07:00+05:00');
+});

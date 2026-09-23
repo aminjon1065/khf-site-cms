@@ -112,6 +112,10 @@ CORS_ALLOWED_ORIGINS=https://khf.tj,https://www.khf.tj
 # см. config/trustedproxy.php и deploy/nginx/cms.conf.
 TRUSTED_PROXIES=REMOTE_ADDR
 
+# Адрес публичного сайта: из него CMS строит ссылки «Открыть на сайте»,
+# предпросмотр и ссылки в уведомлениях. Без него ссылки ведут на khf.tj.
+FRONTEND_URL=https://khf.tj
+
 # Ревалидация публичного сайта при публикации/изменении контента.
 # FRONTEND_REVALIDATION_SECRET должен побайтово совпадать с
 # REVALIDATION_SECRET в .env.local публичного сайта (сгенерируйте один
@@ -152,26 +156,18 @@ php artisan db:seed --class=HomeBlockSeeder --force
 php artisan db:seed --class=PageSeeder --force
 ```
 
-> `php artisan db:seed --force` (без `--class`) дополнительно создаёт **демо-контент** (новости, предупреждения, документы, проекты, объявления, тестовых пользователей) — используйте только на staging.
+> `php artisan db:seed --force` без `--class` в production создаёт те же справочники и ничего больше: демо-контент и тестовые пользователи сеются только вне production (`APP_ENV` ≠ `production`), а `UserSeeder` в production отказывается запускаться — демо-пароли на боевой сервер не попадут.
 
 ### 2.4. Первый администратор
 
-Демо-сидер создаёт `admin@khf.tj` / `password`. **На production не используйте демо-пароль.** Создайте суперадминистратора с собственным паролем:
-
 ```bash
-php artisan tinker
+php artisan cms:create-admin --email=admin@khf.tj --name="Системный администратор"
 ```
-```php
-$u = App\Models\User::create([
-    'name' => 'Системный администратор',
-    'email' => 'admin@khf.tj',
-    'password' => 'ВАШ-НАДЁЖНЫЙ-ПАРОЛЬ',   // будет захеширован автоматически
-    'is_active' => true,
-    'interface_locale' => 'ru',
-    'email_verified_at' => now(),
-]);
-$u->assignRole(App\Enums\RoleName::Superadmin->value);
-```
+
+Команда дважды спросит пароль (он не попадает в историю shell и в логи),
+проверит его по правилам production, создаст активного суперадминистратора и
+запишет событие в журнал действий. Двухфакторную аутентификацию он включит при
+первом входе: для администраторов она обязательна.
 
 > В production действуют строгие требования к паролю (мин. 12 символов, разный регистр, цифры, спецсимволы, проверка по утечкам). Настроено в `AppServiceProvider`.
 
