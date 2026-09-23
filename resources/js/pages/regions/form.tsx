@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowLeft, ArrowUp, Plus, Save, X } from 'lucide-react';
 import { useState } from 'react';
 import RegionController from '@/actions/App/Http/Controllers/Cms/RegionController';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
@@ -171,7 +172,7 @@ export default function RegionForm({ region, reference }: Props) {
                         Основные данные
                     </h3>
                     <Field
-                        label={`Название региона (${lang.toUpperCase()})`}
+                        label={`Название региона (${localeShort[lang]})`}
                         error={fieldError('name.ru')}
                         required={lang === 'ru'}
                     >
@@ -245,16 +246,14 @@ export default function RegionForm({ region, reference }: Props) {
                     <h3 className="ui-card-title" style={{ marginTop: 0 }}>
                         Региональное управление
                     </h3>
-                    <Field
-                        label={`Название управления (${lang.toUpperCase()})`}
-                    >
+                    <Field label={`Название управления (${localeShort[lang]})`}>
                         <Input
                             value={data.head[lang]}
                             onChange={(e) => setLocale('head', e.target.value)}
                             placeholder="Управление по Согдийской области"
                         />
                     </Field>
-                    <Field label={`Адрес (${lang.toUpperCase()})`}>
+                    <Field label={`Адрес (${localeShort[lang]})`}>
                         <Input
                             value={data.address[lang]}
                             onChange={(e) =>
@@ -279,7 +278,7 @@ export default function RegionForm({ region, reference }: Props) {
                             placeholder="+992 (3422) 6-25-11"
                         />
                     </Field>
-                    <Field label="E-mail" error={fieldError('email')}>
+                    <Field label="Эл. почта" error={fieldError('email')}>
                         <Input
                             type="email"
                             value={data.email}
@@ -319,7 +318,7 @@ export default function RegionForm({ region, reference }: Props) {
                     }}
                 >
                     Названия районов для выбора зоны в предупреждениях (
-                    {lang.toUpperCase()}).
+                    {localeShort[lang]}).
                 </p>
 
                 <div

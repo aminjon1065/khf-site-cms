@@ -133,7 +133,11 @@ export default function UserForm({ user, reference }: Props) {
                             placeholder="Фаридун Назаров"
                         />
                     </Field>
-                    <Field label="E-mail" required error={fieldError('email')}>
+                    <Field
+                        label="Эл. почта"
+                        required
+                        error={fieldError('email')}
+                    >
                         <Input
                             type="email"
                             value={data.email}

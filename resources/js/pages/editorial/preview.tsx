@@ -20,6 +20,12 @@ interface PreviewData {
     }[];
 }
 
+const LOCALE_VERSIONS: Record<ContentLocale, string> = {
+    tg: 'таджикская версия',
+    ru: 'русская версия',
+    en: 'английская версия',
+};
+
 export default function SignedEditorialPreview({
     preview,
 }: {
@@ -35,7 +41,9 @@ export default function SignedEditorialPreview({
                 }
             />
             <header>
-                <span>Приватный предпросмотр · {preview.locale}</span>
+                <span>
+                    Закрытый предпросмотр · {LOCALE_VERSIONS[preview.locale]}
+                </span>
                 {preview.available ? (
                     <h1>{preview.title}</h1>
                 ) : (

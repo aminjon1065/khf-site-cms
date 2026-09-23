@@ -9,7 +9,7 @@ test('mobile topbar stays inside the viewport and keeps its primary actions acce
 
     const primaryActions = [
         page.getByRole('button', { name: 'Меню' }),
-        page.getByRole('button', { name: 'Поиск по CMS' }),
+        page.getByRole('button', { name: 'Поиск по панели' }),
         page.getByRole('button', { name: 'Создать', exact: true }),
         page.getByRole('button', { name: 'Уведомления' }),
         page.locator('.cms-topbar-profile'),

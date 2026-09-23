@@ -16,8 +16,10 @@ import { useMemo, useState } from 'react';
 import type { RefObject } from 'react';
 import { quickCategory } from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
 import { useCan } from '@/lib/auth';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
 import { postJson } from '@/lib/http';
+import { plural } from '@/lib/plural';
 import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { slugify } from '@/lib/slugify';
 import { AttachmentsField } from '@/ui/AttachmentsField';
@@ -204,22 +206,22 @@ export function NewsInspectorSidebar({
     const readinessItems = [
         {
             id: 'title',
-            label: `Заголовок (${lang.toUpperCase()})`,
+            label: `Заголовок (${localeShort[lang]})`,
             done: hasTitle,
         },
         {
             id: 'body',
-            label: `Текст (${wordCount} сл., мин. 20)`,
+            label: `Текст: ${wordCount} ${plural(wordCount, 'слово', 'слова', 'слов')} (нужно не меньше 20)`,
             done: hasBody,
         },
         {
             id: 'cover',
-            label: 'Изображение записи',
+            label: 'Обложка',
             done: hasCover,
         },
         {
             id: 'cover_alt',
-            label: 'Alt-текст обложки',
+            label: 'Описание обложки',
             done: hasCoverAlt,
         },
         {
@@ -229,12 +231,12 @@ export function NewsInspectorSidebar({
         },
         {
             id: 'summary',
-            label: `Лид / анонс (${lang.toUpperCase()})`,
+            label: `Краткое описание (${localeShort[lang]})`,
             done: hasSummary,
         },
         {
             id: 'bilingual',
-            label: 'Заполнено на TG и RU',
+            label: 'Заполнено на таджикском и русском',
             done: hasBilingual,
         },
     ];
@@ -253,7 +255,7 @@ export function NewsInspectorSidebar({
                         onClick={() => setTab('post')}
                     >
                         <FileText size={15} />
-                        <span>Запись</span>
+                        <span>Новость</span>
                     </button>
                     <button
                         type="button"
@@ -295,9 +297,9 @@ export function NewsInspectorSidebar({
                             </h4>
                             <div className="wp-inspector-section-content">
                                 <Field
-                                    label="Адрес (slug)"
+                                    label="Адрес ссылки"
                                     htmlFor="news-slug"
-                                    hint="Генерируется автоматически из заголовка."
+                                    hint="Составляется из заголовка; можно изменить."
                                     error={fieldError('slug')}
                                 >
                                     <div style={{ display: 'flex', gap: 6 }}>
@@ -316,10 +318,10 @@ export function NewsInspectorSidebar({
                                             variant="secondary"
                                             size="sm"
                                             onClick={handleAutoSlug}
-                                            title="Сгенерировать слаг из заголовка"
+                                            title="Составить адрес из заголовка"
                                             icon={<Wand2 size={13} />}
                                         >
-                                            Авто
+                                            Из заголовка
                                         </Button>
                                     </div>
                                 </Field>
@@ -329,7 +331,7 @@ export function NewsInspectorSidebar({
                                         {permalinkPrefix}
                                     </span>
                                     <span className="wp-permalink-slug">
-                                        {data.slug || 'novost-slug'}
+                                        {data.slug || 'adres-novosti'}
                                     </span>
                                 </div>
 
@@ -375,20 +377,17 @@ export function NewsInspectorSidebar({
                             </div>
                         </section>
 
-                        {/* 2. Изображение записи (Главная обложка) */}
+                        {/* 2. Обложка */}
                         <section className="wp-inspector-section">
                             <h4 className="wp-inspector-section-title">
-                                <span>Изображение записи</span>
+                                <span>Обложка</span>
                             </h4>
                             <div className="wp-inspector-section-content">
                                 {coverSrc ? (
                                     <div className="wp-cover-preview-card">
                                         <img
                                             src={coverSrc}
-                                            alt={
-                                                data.cover_alt ||
-                                                'Превью обложки'
-                                            }
+                                            alt={data.cover_alt || 'Обложка'}
                                             className="wp-cover-img"
                                         />
                                         {news?.cover_url && (
@@ -414,9 +413,7 @@ export function NewsInspectorSidebar({
                                             size={28}
                                             strokeWidth={1.5}
                                         />
-                                        <span>
-                                            Установить изображение записи
-                                        </span>
+                                        <span>Выбрать обложку</span>
                                     </div>
                                 )}
 
@@ -467,7 +464,7 @@ export function NewsInspectorSidebar({
                                 )}
 
                                 <Field
-                                    label="Alt-текст обложки"
+                                    label="Описание обложки"
                                     className="mt-3"
                                 >
                                     <Input
@@ -506,7 +503,7 @@ export function NewsInspectorSidebar({
                             </h4>
                             <div className="wp-inspector-section-content">
                                 <Field
-                                    label="Рубрика (категория)"
+                                    label="Рубрика"
                                     htmlFor="news-category"
                                     error={fieldError('category_id')}
                                 >
@@ -612,10 +609,7 @@ export function NewsInspectorSidebar({
                                 )}
 
                                 {reference.tags.length > 0 && (
-                                    <Field
-                                        label="Метки (теги)"
-                                        className="mt-3"
-                                    >
+                                    <Field label="Метки" className="mt-3">
                                         <div className="wp-tags-cloud">
                                             {reference.tags.map((t) => {
                                                 const checked =
@@ -710,10 +704,10 @@ export function NewsInspectorSidebar({
                             </div>
                         </section>
 
-                        {/* 6. SEO */}
+                        {/* 6. Поиск */}
                         <section className="wp-inspector-section">
                             <h4 className="wp-inspector-section-title">
-                                <span>Поисковая оптимизация (SEO)</span>
+                                <span>Как новость выглядит в поиске</span>
                             </h4>
                             <div className="wp-inspector-section-content">
                                 <div className="wp-seo-preview-card mb-3">
@@ -731,12 +725,12 @@ export function NewsInspectorSidebar({
                                     <div className="wp-seo-preview-desc">
                                         {data.seo[lang].description.trim() ||
                                             data.summary[lang]?.trim() ||
-                                            'Краткий анонс для поисковой выдачи Google и Яндекс будет показан здесь...'}
+                                            'Здесь будет краткое описание, которое покажут Google и Яндекс…'}
                                     </div>
                                 </div>
 
                                 <Field
-                                    label="SEO-заголовок"
+                                    label="Заголовок для поиска"
                                     htmlFor={`news-seo-title-${lang}`}
                                     error={fieldError(`seo.${lang}.title`)}
                                     hint={`${data.seo[lang].title.length} / 60 знаков`}
@@ -750,13 +744,13 @@ export function NewsInspectorSidebar({
                                         maxLength={255}
                                         placeholder={
                                             data.title[lang] ||
-                                            'Заголовок для поисковиков'
+                                            'Если пусто — заголовок новости'
                                         }
                                     />
                                 </Field>
 
                                 <Field
-                                    label="SEO-описание (Сниппет)"
+                                    label="Описание для поиска"
                                     htmlFor={`news-seo-description-${lang}`}
                                     error={fieldError(
                                         `seo.${lang}.description`,
@@ -804,7 +798,7 @@ export function NewsInspectorSidebar({
                                     </p>
                                     <div className="mt-3">
                                         <span className="wp-section-sublabel">
-                                            Alt-текст
+                                            Описание изображения
                                         </span>
                                         <p className="mt-1 text-xs text-secondary">
                                             {(activeBlock.attrs
@@ -900,14 +894,17 @@ export function NewsInspectorSidebar({
                                         className="text-purple-500"
                                     />
                                     <strong>
-                                        Заголовок уровня H
-                                        {String(activeBlock.attrs?.level || 2)}
+                                        {Number(
+                                            activeBlock.attrs?.level || 2,
+                                        ) <= 2
+                                            ? 'Крупный подзаголовок'
+                                            : 'Мелкий подзаголовок'}
                                     </strong>
                                 </div>
                                 <div className="wp-inspector-section-content">
                                     <p className="text-xs text-muted">
-                                        Используйте H2 для разделов и H3 для
-                                        подразделов.
+                                        Крупный подзаголовок — для разделов,
+                                        мелкий — для частей внутри раздела.
                                     </p>
                                 </div>
                             </section>
@@ -924,7 +921,7 @@ export function NewsInspectorSidebar({
                                 />
                                 <h5>Настройки блока</h5>
                                 <p>
-                                    Кликните на изображение, таблицу, врезку или
+                                    Нажмите на изображение, таблицу, врезку или
                                     видео в тексте, чтобы настроить параметры
                                     конкретного блока.
                                 </p>

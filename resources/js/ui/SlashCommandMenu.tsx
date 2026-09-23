@@ -14,7 +14,14 @@ import {
     Table as TableIcon,
     Video,
 } from 'lucide-react';
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useRef,
+    useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 
 export interface CommandItem {
@@ -74,8 +81,8 @@ export function SlashCommandMenu({
             },
             {
                 id: 'h2',
-                title: 'Заголовок H2',
-                description: 'Крупный заголовок раздела',
+                title: 'Крупный подзаголовок',
+                description: 'Название раздела текста',
                 category: 'text',
                 icon: Heading2,
                 keywords: ['h2', 'заголовок', 'раздел', 'heading'],
@@ -84,8 +91,8 @@ export function SlashCommandMenu({
             },
             {
                 id: 'h3',
-                title: 'Заголовок H3',
-                description: 'Подзаголовок подраздела',
+                title: 'Мелкий подзаголовок',
+                description: 'Часть внутри раздела',
                 category: 'text',
                 icon: Heading3,
                 keywords: ['h3', 'подзаголовок', 'subheading'],

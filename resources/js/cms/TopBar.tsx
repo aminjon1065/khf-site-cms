@@ -79,7 +79,7 @@ export function TopBar({
                 type="button"
                 onClick={onOpenSearch}
                 className="cms-search-trigger"
-                aria-label="Поиск по CMS"
+                aria-label="Поиск по панели"
             >
                 <Search size={15} strokeWidth={1.75} />
                 <span className="cms-search-trigger-label">Поиск…</span>

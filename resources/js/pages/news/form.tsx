@@ -344,7 +344,7 @@ export default function NewsForm({
             title={isEdit ? 'Редактирование новости' : 'Новая новость'}
             subtitle={
                 isEdit
-                    ? 'Изменения сохраняются как новая ревизия материала.'
+                    ? 'Каждое сохранение — новая версия материала: к прежней можно вернуться.'
                     : 'Заполните заголовок и текст, затем сохраните черновик или отправьте на согласование.'
             }
             backLabel="Новости"
@@ -402,12 +402,12 @@ export default function NewsForm({
                 checklist: [
                     ...languageChecks(compAll, data.title),
                     {
-                        label: 'Alt-текст обложки',
+                        label: 'Описание обложки',
                         ok: !coverSrc || data.cover_alt.trim() !== '',
                         blocking: true,
                     },
                     {
-                        label: 'SEO preview заполнен',
+                        label: 'Описание для поиска заполнено',
                         ok: Object.values(data.seo).some(
                             (seo) =>
                                 seo.title.trim() !== '' &&
@@ -450,10 +450,10 @@ export default function NewsForm({
                                 }}
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Добавьте заголовок...'
+                                        ? 'Добавьте заголовок…'
                                         : lang === 'tg'
-                                          ? 'Сарлавҳа илова кунед...'
-                                          : 'Add title...'
+                                          ? 'Заголовок на таджикском…'
+                                          : 'Заголовок на английском…'
                                 }
                                 className="wp-title-input"
                                 rows={1}
@@ -482,16 +482,16 @@ export default function NewsForm({
                                 }}
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Краткое введение (лид) новости...'
+                                        ? 'Краткое описание (лид) новости…'
                                         : lang === 'tg'
-                                          ? 'Муқаддимаи мухтасар (лид)...'
-                                          : 'Brief lead / summary of the news...'
+                                          ? 'Краткое описание на таджикском…'
+                                          : 'Краткое описание на английском…'
                                 }
                                 style={{ minHeight: 72 }}
                                 className="wp-lead-input"
                                 rows={2}
                                 maxLength={1000}
-                                aria-label="Лид / Краткое описание"
+                                aria-label="Краткое описание (лид)"
                             />
                             {(fieldError('summary') ??
                                 fieldError(`summary.${lang}`)) && (

@@ -2,6 +2,7 @@ import { Head, useForm } from '@inertiajs/react';
 import { ArrowDown, ArrowUp, GripVertical, Save, Trash2 } from 'lucide-react';
 import HomeBlockController from '@/actions/App/Http/Controllers/Cms/HomeBlockController';
 import { useCan } from '@/lib/auth';
+import { localeShort } from '@/lib/domain';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
@@ -360,8 +361,8 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                                                             item.label[loc] ??
                                                             ''
                                                         }
-                                                        aria-label={`Подпись · ${loc.toUpperCase()}`}
-                                                        placeholder={`Подпись · ${loc.toUpperCase()}`}
+                                                        aria-label={`Подпись · ${localeShort[loc]}`}
+                                                        placeholder={`Подпись · ${localeShort[loc]}`}
                                                         disabled={!editable}
                                                         onChange={(e) =>
                                                             updateItem(i, k, {

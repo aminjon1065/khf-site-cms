@@ -1,11 +1,9 @@
-import { Form, Head } from '@inertiajs/react';
-import InputError from '@/components/input-error';
-import PasswordInput from '@/components/password-input';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
+import { Form } from '@inertiajs/react';
 import { update } from '@/routes/password';
+import { AuthCard } from '@/ui/AuthCard';
+import { Button } from '@/ui/Button';
+import { Field, Input } from '@/ui/Field';
+import { PasswordInput } from '@/ui/PasswordInput';
 
 type Props = {
     token: string;
@@ -15,82 +13,84 @@ type Props = {
 
 export default function ResetPassword({ token, email, passwordRules }: Props) {
     return (
-        <>
-            <Head title="Reset password" />
-
+        <AuthCard
+            title="Новый пароль"
+            lead="Придумайте новый пароль для входа."
+        >
             <Form
                 {...update.form()}
                 transform={(data) => ({ ...data, token, email })}
                 resetOnSuccess={['password', 'password_confirmation']}
+                disableWhileProcessing
             >
                 {({ processing, errors }) => (
-                    <div className="grid gap-6">
-                        <div className="grid gap-2">
-                            <Label htmlFor="email">Email</Label>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 14,
+                        }}
+                    >
+                        <Field
+                            label="Эл. почта"
+                            error={errors.email}
+                            htmlFor="email"
+                        >
                             <Input
                                 id="email"
-                                type="email"
                                 name="email"
-                                autoComplete="email"
+                                type="email"
+                                autoComplete="username"
                                 value={email}
-                                className="mt-1 block w-full"
                                 readOnly
+                                hasError={!!errors.email}
                             />
-                            <InputError
-                                message={errors.email}
-                                className="mt-2"
-                            />
-                        </div>
+                        </Field>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                        <Field
+                            label="Новый пароль"
+                            required
+                            error={errors.password}
+                            hint={passwordRules}
+                            htmlFor="password"
+                        >
                             <PasswordInput
                                 id="password"
                                 name="password"
                                 autoComplete="new-password"
-                                className="mt-1 block w-full"
                                 autoFocus
-                                placeholder="Password"
-                                passwordrules={passwordRules}
+                                required
+                                hasError={!!errors.password}
                             />
-                            <InputError message={errors.password} />
-                        </div>
+                        </Field>
 
-                        <div className="grid gap-2">
-                            <Label htmlFor="password_confirmation">
-                                Confirm password
-                            </Label>
+                        <Field
+                            label="Повторите пароль"
+                            required
+                            error={errors.password_confirmation}
+                            htmlFor="password_confirmation"
+                        >
                             <PasswordInput
                                 id="password_confirmation"
                                 name="password_confirmation"
                                 autoComplete="new-password"
-                                className="mt-1 block w-full"
-                                placeholder="Confirm password"
-                                passwordrules={passwordRules}
+                                required
+                                hasError={!!errors.password_confirmation}
                             />
-                            <InputError
-                                message={errors.password_confirmation}
-                                className="mt-2"
-                            />
-                        </div>
+                        </Field>
 
                         <Button
                             type="submit"
-                            className="mt-4 w-full"
-                            disabled={processing}
-                            data-test="reset-password-button"
+                            variant="primary"
+                            block
+                            size="lg"
+                            loading={processing}
                         >
-                            {processing && <Spinner />}
-                            Reset password
+                            Сохранить пароль
                         </Button>
                     </div>
                 )}
             </Form>
-        </>
+        </AuthCard>
     );
 }
-
-ResetPassword.layout = {
-    title: 'Reset password',
-    description: 'Please enter your new password below',
-};

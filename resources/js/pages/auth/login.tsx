@@ -1,47 +1,27 @@
-import { Form, Head, Link } from '@inertiajs/react';
-import { Eye, EyeOff } from 'lucide-react';
-import { useState } from 'react';
+import { Form, Link } from '@inertiajs/react';
 import { useT } from '@/lib/i18n';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
-import { Blueprint } from '@/ui/Blueprint';
+import { AuthCard } from '@/ui/AuthCard';
 import { Button } from '@/ui/Button';
 import { Checkbox, Field, Input } from '@/ui/Field';
+import { PasswordInput } from '@/ui/PasswordInput';
 
 export default function Login({
     canResetPassword = true,
+    status,
 }: {
     canResetPassword?: boolean;
     status?: string;
 }) {
     const { t } = useT();
-    const [show, setShow] = useState(false);
 
     return (
-        <Blueprint corners={false} style={{ padding: 32 }}>
-            <Head title={t('auth.login_title')} />
-            <h2
-                style={{
-                    fontSize: 20,
-                    fontWeight: 650,
-                    fontFamily: 'var(--font-heading)',
-                    letterSpacing: '-0.03em',
-                }}
-            >
-                {t('auth.login_title')}
-            </h2>
-            <p
-                style={{
-                    fontSize: 13.5,
-                    color: 'var(--color-neutral-600)',
-                    marginTop: 6,
-                    marginBottom: 22,
-                    lineHeight: 1.45,
-                }}
-            >
-                Доступ только для уполномоченных сотрудников Комитета
-            </p>
-
+        <AuthCard
+            title={t('auth.login_title')}
+            lead="Доступ только для уполномоченных сотрудников Комитета"
+            status={status}
+        >
             <Form
                 {...store.form()}
                 resetOnSuccess={['password']}
@@ -56,7 +36,7 @@ export default function Login({
                         }}
                     >
                         <Field
-                            label="Служебный логин или email"
+                            label="Служебная эл. почта"
                             required
                             error={errors.email}
                             htmlFor="email"
@@ -79,42 +59,13 @@ export default function Login({
                             error={errors.password}
                             htmlFor="password"
                         >
-                            <Input
+                            <PasswordInput
                                 id="password"
                                 name="password"
-                                type={show ? 'text' : 'password'}
                                 autoComplete="current-password"
                                 placeholder="••••••••••"
                                 required
                                 hasError={!!errors.password}
-                                trailing={
-                                    <button
-                                        type="button"
-                                        onClick={() => setShow((s) => !s)}
-                                        aria-label={
-                                            show
-                                                ? t('auth.hide_password')
-                                                : t('auth.show_password')
-                                        }
-                                        style={{
-                                            border: 0,
-                                            background: 'transparent',
-                                            cursor: 'pointer',
-                                            color: 'var(--color-neutral-600)',
-                                            padding: 4,
-                                            display: 'flex',
-                                        }}
-                                    >
-                                        {show ? (
-                                            <EyeOff
-                                                size={16}
-                                                strokeWidth={1.5}
-                                            />
-                                        ) : (
-                                            <Eye size={16} strokeWidth={1.5} />
-                                        )}
-                                    </button>
-                                }
                             />
                         </Field>
 
@@ -163,6 +114,6 @@ export default function Login({
             >
                 {t('auth.security_notice')}
             </p>
-        </Blueprint>
+        </AuthCard>
     );
 }

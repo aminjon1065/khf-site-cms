@@ -140,7 +140,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                     errors.alt ??
                         errors.focal_x ??
                         errors.focal_y ??
-                        'Не удалось сохранить метаданные.',
+                        'Не удалось сохранить описание файла.',
                 ),
             onFinish: () => setEditSaving(false),
         });
@@ -224,7 +224,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
             <Head title="Медиатека" />
             <PageHeader
                 title="Медиатека"
-                subtitle={`Всего файлов: ${stats.total} · изображений: ${stats.images} · в библиотеке: ${stats.library} · в корзине: ${stats.trash}`}
+                subtitle={`Всего файлов: ${stats.total} · изображений: ${stats.images} · в медиатеке: ${stats.library} · в корзине: ${stats.trash}`}
                 actions={
                     can('media.create') && (
                         <Button
@@ -414,7 +414,9 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                                     {item.kind === 'image' &&
                                         !item.alt &&
                                         !item.is_decorative && (
-                                            <Tag tone="danger">Нет alt</Tag>
+                                            <Tag tone="danger">
+                                                Нет описания
+                                            </Tag>
                                         )}
                                     {item.conversion_status && (
                                         <Tag
@@ -449,9 +451,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                                         can('media.create') && (
                                             <IconButton
                                                 label={
-                                                    item.conversion_error
-                                                        ? `Повторить обработку. Ошибка: ${item.conversion_error}`
-                                                        : 'Повторить обработку'
+                                                    'Файл не удалось подготовить — повторить обработку'
                                                 }
                                                 variant="ghost"
                                                 disabled={retrying === item.id}
@@ -620,7 +620,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
             <Modal
                 open={!!editTarget}
                 onClose={() => setEditTarget(null)}
-                title="Метаданные изображения"
+                title="Свойства изображения"
                 width={520}
                 footer={
                     <>
@@ -656,8 +656,8 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                     />
                 </Field>
                 <Field
-                    label="Alt-текст"
-                    hint="Для доступности и SEO; подставляется при вставке картинки в текст."
+                    label="Описание изображения"
+                    hint="Для незрячих читателей и поисковиков; подставляется, когда картинку вставляют в текст."
                 >
                     <Input
                         value={editForm.alt}
@@ -678,7 +678,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                             alt: event.target.checked ? '' : editForm.alt,
                         })
                     }
-                    label="Декоративное изображение — alt будет пустым"
+                    label="Декоративное изображение — описание не нужно"
                 />
                 <Field
                     label="Подпись"

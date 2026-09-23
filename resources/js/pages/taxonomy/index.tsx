@@ -4,6 +4,7 @@ import { useState } from 'react';
 import TaxonomyController from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale } from '@/lib/domain';
+import { plural } from '@/lib/plural';
 import { Tag as TagPill } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
@@ -134,7 +135,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
             <Head title="Рубрики и метки" />
             <PageHeader
                 title="Рубрики и метки"
-                subtitle="Рубрики новостей и словарь тегов · пустой адрес заполняется автоматически"
+                subtitle="Рубрики новостей и метки · пустой адрес ссылки заполняется сам"
                 actions={
                     editable && (
                         <Button
@@ -176,7 +177,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                 </div>
             )}
 
-            {/* Категории новостей */}
+            {/* Рубрики новостей */}
             <Blueprint style={{ padding: 20, marginBottom: 16 }}>
                 <div
                     style={{
@@ -187,7 +188,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                     }}
                 >
                     <h3 className="ui-card-title" style={{ margin: 0 }}>
-                        Категории новостей
+                        Рубрики новостей
                     </h3>
                     {editable && (
                         <Button
@@ -196,7 +197,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                             icon={<Plus size={14} strokeWidth={2} />}
                             onClick={addCat}
                         >
-                            Категория
+                            Рубрика
                         </Button>
                     )}
                 </div>
@@ -264,7 +265,8 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                                 onChange={(e) =>
                                     updateCat(i, { slug: e.target.value })
                                 }
-                                placeholder="auto"
+                                placeholder="адрес — заполнится сам"
+                                aria-label="Адрес ссылки рубрики"
                                 disabled={!editable}
                                 className="ui-mono"
                                 style={{ fontSize: 13 }}
@@ -275,9 +277,15 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                                     color: 'var(--color-neutral-500)',
                                     textAlign: 'center',
                                 }}
-                                title="Новостей в категории"
+                                title="Новостей в рубрике"
                             >
-                                {row.usage ?? 0} нов.
+                                {row.usage ?? 0}{' '}
+                                {plural(
+                                    row.usage ?? 0,
+                                    'новость',
+                                    'новости',
+                                    'новостей',
+                                )}
                             </span>
                             <IconButton
                                 label="Удалить"
@@ -297,13 +305,13 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                                 color: 'var(--color-neutral-500)',
                             }}
                         >
-                            Категорий пока нет.
+                            Рубрик пока нет.
                         </p>
                     )}
                 </div>
             </Blueprint>
 
-            {/* Теги */}
+            {/* Метки */}
             <Blueprint style={{ padding: 20 }}>
                 <div
                     style={{
@@ -314,7 +322,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                     }}
                 >
                     <h3 className="ui-card-title" style={{ margin: 0 }}>
-                        Теги
+                        Метки
                     </h3>
                     {editable && (
                         <Button
@@ -323,7 +331,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                             icon={<Plus size={14} strokeWidth={2} />}
                             onClick={addTag}
                         >
-                            Тег
+                            Метка
                         </Button>
                     )}
                 </div>
@@ -355,7 +363,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                                         },
                                     })
                                 }
-                                placeholder="Тег"
+                                placeholder="Метка"
                                 disabled={!editable}
                                 hasError={lang === 'ru' && !!tagError(i)}
                                 style={{ fontSize: 13 }}
@@ -365,7 +373,8 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                                 onChange={(e) =>
                                     updateTag(i, { slug: e.target.value })
                                 }
-                                placeholder="auto"
+                                placeholder="адрес — заполнится сам"
+                                aria-label="Адрес ссылки метки"
                                 disabled={!editable}
                                 className="ui-mono"
                                 style={{ fontSize: 13 }}
@@ -388,7 +397,7 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
                                 color: 'var(--color-neutral-500)',
                             }}
                         >
-                            Тегов пока нет.
+                            Меток пока нет.
                         </p>
                     )}
                 </div>
@@ -397,8 +406,15 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
             {editable && (
                 <div className="news-form-actions">
                     <TagPill tone="neutral">
-                        {data.categories.length} категорий · {data.tags.length}{' '}
-                        тегов
+                        {data.categories.length}{' '}
+                        {plural(
+                            data.categories.length,
+                            'рубрика',
+                            'рубрики',
+                            'рубрик',
+                        )}{' '}
+                        · {data.tags.length}{' '}
+                        {plural(data.tags.length, 'метка', 'метки', 'меток')}
                     </TagPill>
                     <div style={{ flex: 1 }} />
                     <Button

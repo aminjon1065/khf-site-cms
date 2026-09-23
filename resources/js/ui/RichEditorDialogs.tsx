@@ -83,7 +83,7 @@ export function LinkDialog({
                         setHref(e.target.value);
                         setError(null);
                     }}
-                    placeholder="https://khf.tj или /alerts"
+                    placeholder="Например: https://khf.tj/news/…"
                     autoFocus
                     onKeyDown={(e) => {
                         if (e.key === 'Enter') {
@@ -141,7 +141,7 @@ export function YoutubeDialog({
         const src = parseYoutubeUrl(url);
 
         if (src === null) {
-            setError('Нужна ссылка YouTube: watch, youtu.be или embed');
+            setError('Вставьте ссылку на видео с YouTube.');
 
             return;
         }
@@ -171,7 +171,7 @@ export function YoutubeDialog({
                 htmlFor={urlId}
                 required
                 error={error}
-                hint="Редактор вставит безопасный проигрыватель youtube-nocookie."
+                hint="Видео покажется на сайте без рекламы и отслеживания."
             >
                 <Input
                     id={urlId}

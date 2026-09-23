@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Save } from 'lucide-react';
 import { useState } from 'react';
 import StructureUnitController from '@/actions/App/Http/Controllers/Cms/StructureUnitController';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
@@ -184,7 +185,7 @@ export default function StructureForm({
                     </Field>
                 </div>
                 <Field
-                    label={`Название (${lang.toUpperCase()})`}
+                    label={`Название (${localeShort[lang]})`}
                     error={fieldError('name.ru')}
                     required={lang === 'ru'}
                 >
@@ -195,7 +196,7 @@ export default function StructureForm({
                     />
                 </Field>
                 <Field
-                    label={`Описание (${lang.toUpperCase()})`}
+                    label={`Описание (${localeShort[lang]})`}
                     error={fieldError('desc.ru')}
                     required={lang === 'ru'}
                 >

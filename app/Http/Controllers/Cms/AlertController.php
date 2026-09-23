@@ -282,7 +282,7 @@ class AlertController extends Controller
     {
         $views = [
             ['key' => 'active', 'label' => 'Активные'],
-            ['key' => 'review', 'label' => 'Требуют согласования'],
+            ['key' => 'review', 'label' => 'На согласовании'],
             ['key' => 'scheduled', 'label' => 'Запланированные'],
             ['key' => 'expiring', 'label' => 'Истекают сегодня'],
             ['key' => 'mine', 'label' => 'Мои материалы'],

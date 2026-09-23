@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { show as showRevision } from '@/actions/App/Http/Controllers/Cms/EditorialAutosaveController';
 import { DiffSegments } from '@/cms/DiffSegments';
+import { localeShort } from '@/lib/domain';
+import type { ContentLocale } from '@/lib/domain';
 import { diffLines, fieldChanged, normalizeField } from '@/lib/text-diff';
 import { Modal } from '@/ui/Overlay';
 
@@ -16,18 +18,42 @@ const FIELD_LABELS: Record<string, string> = {
     name: 'Название',
     summary: 'Краткое описание',
     body: 'Текст',
-    slug: 'Адрес (slug)',
-    seo: 'SEO',
-    cover_alt: 'Alt-текст обложки',
+    key_point: 'Главное за 10 секунд',
+    sections: 'Шаги инструкции',
+    slug: 'Адрес ссылки',
+    seo: 'Заголовок и описание для поиска',
+    seo_title: 'Заголовок для поиска',
+    seo_description: 'Описание для поиска',
+    cover_alt: 'Описание обложки',
     cover_caption: 'Подпись под фото',
     is_pinned: 'Закрепление',
+    is_priority: 'Закрепление в каталоге',
     show_on_home: 'Показ на главной',
     scheduled_at: 'Запланированная публикация',
-    category_id: 'Категория',
-    tags: 'Теги',
+    published_at: 'Дата публикации',
+    category_id: 'Рубрика',
+    tags: 'Метки',
+    hazard_type: 'Тип опасности',
+    sort: 'Порядок',
+    parent_id: 'Родительская страница',
     goals: 'Цели',
     timeline: 'Ход реализации',
     lifecycle_status: 'Статус проекта',
+    code: 'Код проекта',
+    years: 'Сроки',
+    customer: 'Заказчик',
+    partner: 'Партнёры',
+    budget: 'Бюджет',
+    direction: 'Дирекция проекта',
+    kind: 'Тип объявления',
+    org: 'Подразделение / проект',
+    project_id: 'Проект',
+    deadline: 'Срок подачи заявок',
+    application_url: 'Ссылка для подачи заявки',
+    doc_type: 'Тип документа',
+    number: 'Номер',
+    doc_date: 'Дата документа',
+    section: 'Раздел',
 };
 
 /**
@@ -48,11 +74,11 @@ const IGNORED_FIELDS = new Set([
     'draft_key',
 ]);
 
-const LOCALES = ['ru', 'tg', 'en'];
+const LOCALES: ContentLocale[] = ['ru', 'tg', 'en'];
 
 /**
  * Сравнение сохранённой ревизии с текущим состоянием материала:
- * по полям и локаалям, построчный diff с подсветкой удаления/вставки.
+ * по полям и языкам, построчный diff с подсветкой удаления/вставки.
  * HTML-поля сравниваются как текст без разметки — diff тегов нечитаем.
  */
 export function RevisionDiff({ revisionId, onClose }: Props) {
@@ -200,7 +226,7 @@ function buildSections(
 
                 addField(
                     `${key}.${locale}`,
-                    `${labelFor(key)} (${locale.toUpperCase()})`,
+                    `${labelFor(key)} (${localeShort[locale]})`,
                     before,
                     after,
                 );

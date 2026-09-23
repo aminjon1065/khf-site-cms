@@ -158,8 +158,8 @@ export function Step5({
                         value={preview}
                         onChange={setPreview}
                         options={[
-                            { value: 'desktop', label: 'Desktop' },
-                            { value: 'mobile', label: 'Mobile' },
+                            { value: 'desktop', label: 'Компьютер' },
+                            { value: 'mobile', label: 'Телефон' },
                         ]}
                     />
                 </div>

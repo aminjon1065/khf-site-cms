@@ -859,7 +859,7 @@ export function RichEditorField({
                 <span className="re-status-hint">
                     {focusMode
                         ? 'Esc — выйти из режима письма'
-                        : 'Перетащите фото в текст или вставьте из буфера'}
+                        : 'Перетащите фото в текст или вставьте скопированное (Ctrl+V)'}
                 </span>
             </div>
 

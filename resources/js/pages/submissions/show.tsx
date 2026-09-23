@@ -80,7 +80,7 @@ export default function SubmissionShow({ submission, reference }: Props) {
 
     const info: { label: string; value: string }[] = [
         { label: 'Заявитель', value: submission.name },
-        { label: 'E-mail', value: submission.email },
+        { label: 'Эл. почта', value: submission.email },
         { label: 'Телефон', value: submission.phone ?? '—' },
         { label: 'Тема', value: submission.topic ?? '—' },
         { label: 'Регион', value: submission.region ?? '—' },
@@ -355,7 +355,7 @@ export default function SubmissionShow({ submission, reference }: Props) {
                             className="ui-btn ui-btn-secondary ui-btn-block mt-3"
                             href={`mailto:${submission.email}`}
                         >
-                            Ответить по e-mail
+                            Ответить письмом
                         </a>
                     </Blueprint>
                 </div>

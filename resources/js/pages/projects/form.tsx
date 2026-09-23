@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
 import { index, store, unpublish, update } from '@/routes/projects';
@@ -373,7 +374,7 @@ export default function ProjectForm({
                             }}
                         >
                             <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Цели и задачи ({lang.toUpperCase()})
+                                Цели и задачи ({localeShort[lang]})
                             </h3>
                             <Button
                                 variant="ghost"
@@ -626,8 +627,8 @@ export default function ProjectForm({
                             />
                         </Field>
                         <Field
-                            label="Адрес (slug)"
-                            hint="Пусто — из названия."
+                            label="Адрес ссылки"
+                            hint="Если пусто — составится из названия."
                             error={fieldError('slug')}
                         >
                             <Input
@@ -636,7 +637,7 @@ export default function ProjectForm({
                                     setData('slug', e.target.value)
                                 }
                                 hasError={!!fieldError('slug')}
-                                placeholder="early-warning-system"
+                                placeholder="sistema-opoveshcheniya"
                             />
                         </Field>
                     </Blueprint>
@@ -664,7 +665,7 @@ export default function ProjectForm({
                                 }
                             />
                         </Field>
-                        <Field label="E-mail">
+                        <Field label="Эл. почта">
                             <Input
                                 value={data.direction.email}
                                 onChange={(e) =>

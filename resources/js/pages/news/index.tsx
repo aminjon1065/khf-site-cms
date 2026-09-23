@@ -306,7 +306,7 @@ export default function NewsIndex({
         },
         {
             key: 'category',
-            header: 'Категория',
+            header: 'Рубрика',
             width: 160,
             render: (r) =>
                 r.category ? (
@@ -541,7 +541,7 @@ export default function NewsIndex({
                                             slug: e.target.value,
                                         }))
                                     }
-                                    placeholder="slug-novosti"
+                                    placeholder="adres-novosti"
                                     style={{ flex: 1 }}
                                 />
                                 <Button
@@ -549,7 +549,7 @@ export default function NewsIndex({
                                     size="sm"
                                     variant="secondary"
                                     icon={<Wand2 size={13} />}
-                                    title="Сгенерировать из заголовка"
+                                    title="Составить адрес из заголовка"
                                     onClick={() => {
                                         if (quickData.title) {
                                             setQuickData((d) => ({
@@ -559,7 +559,7 @@ export default function NewsIndex({
                                         }
                                     }}
                                 >
-                                    Авто
+                                    Из заголовка
                                 </Button>
                             </div>
                         </Field>
@@ -628,7 +628,7 @@ export default function NewsIndex({
                             }}
                         >
                             <Checkbox
-                                label="Закрепить запись"
+                                label="Закрепить вверху ленты"
                                 checked={quickData.is_pinned}
                                 onChange={(e) =>
                                     setQuickData((d) => ({
@@ -718,7 +718,7 @@ export default function NewsIndex({
                 />
                 <Select
                     aria-label="Фильтр новостей по категории"
-                    placeholder="Категория: все"
+                    placeholder="Рубрика: все"
                     value={filters.category}
                     options={options.categories.map((c) => ({
                         value: String(c.value),

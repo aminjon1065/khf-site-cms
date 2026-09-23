@@ -31,7 +31,7 @@ test('search palette stays dark when the CMS theme is dark', async ({
     await page.getByRole('radio', { name: 'Тёмная' }).click();
     await expect(page.locator('html')).toHaveClass(/dark/);
 
-    await page.getByRole('button', { name: 'Поиск по CMS' }).click();
+    await page.getByRole('button', { name: 'Поиск по панели' }).click();
     const panel = page.locator('.cms-cmd-panel');
     await expect(panel).toBeVisible();
     await expect(page.getByPlaceholder(/Команда или поиск/)).toBeVisible();

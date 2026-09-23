@@ -82,16 +82,16 @@ test('dialogs trap keyboard focus and return it to their trigger', async ({
     await expect(drawer).toBeHidden();
     await expect(notifications).toBeFocused();
 
-    const search = page.getByRole('button', { name: 'Поиск по CMS' });
+    const search = page.getByRole('button', { name: 'Поиск по панели' });
     await search.focus();
     await page.keyboard.press('Enter');
 
     const palette = page.getByRole('dialog', {
-        name: 'Командная палитра',
+        name: 'Быстрый переход',
     });
     await expect(palette).toBeVisible();
     await expect(
-        palette.getByRole('combobox', { name: 'Командная палитра' }),
+        palette.getByRole('combobox', { name: 'Быстрый переход' }),
     ).toBeFocused();
 
     await page.keyboard.press('Escape');

@@ -1,51 +1,57 @@
-import { Form, Head } from '@inertiajs/react';
-import InputError from '@/components/input-error';
-import PasswordInput from '@/components/password-input';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
+import { Form } from '@inertiajs/react';
 import { store } from '@/routes/password/confirm';
+import { AuthCard } from '@/ui/AuthCard';
+import { Button } from '@/ui/Button';
+import { Field } from '@/ui/Field';
+import { PasswordInput } from '@/ui/PasswordInput';
 
 export default function ConfirmPassword() {
     return (
-        <>
-            <Head title="Confirm password" />
-
-            <Form {...store.form()} resetOnSuccess={['password']}>
+        <AuthCard
+            title="Подтвердите пароль"
+            lead="Это действие меняет настройки безопасности — введите пароль ещё раз."
+        >
+            <Form
+                {...store.form()}
+                resetOnSuccess={['password']}
+                disableWhileProcessing
+            >
                 {({ processing, errors }) => (
-                    <div className="space-y-6">
-                        <div className="grid gap-2">
-                            <Label htmlFor="password">Password</Label>
+                    <div
+                        style={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 14,
+                        }}
+                    >
+                        <Field
+                            label="Пароль"
+                            required
+                            error={errors.password}
+                            htmlFor="password"
+                        >
                             <PasswordInput
                                 id="password"
                                 name="password"
-                                placeholder="Password"
                                 autoComplete="current-password"
                                 autoFocus
+                                required
+                                hasError={!!errors.password}
                             />
+                        </Field>
 
-                            <InputError message={errors.password} />
-                        </div>
-
-                        <div className="flex items-center">
-                            <Button
-                                className="w-full"
-                                disabled={processing}
-                                data-test="confirm-password-button"
-                            >
-                                {processing && <Spinner />}
-                                Confirm password
-                            </Button>
-                        </div>
+                        <Button
+                            type="submit"
+                            variant="primary"
+                            block
+                            size="lg"
+                            loading={processing}
+                        >
+                            Подтвердить
+                        </Button>
                     </div>
                 )}
             </Form>
-        </>
+        </AuthCard>
     );
 }
-
-ConfirmPassword.layout = {
-    title: 'Confirm password',
-    description:
-        'This is a secure area of the application. Please confirm your password before continuing.',
-};

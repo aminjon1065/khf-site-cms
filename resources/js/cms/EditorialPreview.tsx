@@ -6,6 +6,7 @@ import {
     TriangleAlert,
 } from 'lucide-react';
 import { useState } from 'react';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
 import { displayUrl, usePublicSiteUrl } from '@/lib/public-site';
 import {
@@ -41,6 +42,12 @@ export interface EditorialPreviewConfig {
     signedUrl?: string | null;
     checklist: PublicationCheck[];
 }
+
+const PREVIEW_MODE_LABELS: Record<'desktop' | 'mobile' | 'og', string> = {
+    desktop: 'Предпросмотр на компьютере',
+    mobile: 'Предпросмотр на телефоне',
+    og: 'Карточка ссылки в соцсетях',
+};
 
 export function EditorialPreview({
     open,
@@ -87,7 +94,7 @@ export function EditorialPreview({
                             variant={locale === item ? 'primary' : 'ghost'}
                             onClick={() => setChosenLocale(item)}
                         >
-                            {item.toUpperCase()}
+                            {localeShort[item]}
                         </Button>
                     ))}
                 </div>
@@ -98,7 +105,7 @@ export function EditorialPreview({
                         icon={<Monitor size={14} />}
                         onClick={() => setMode('desktop')}
                     >
-                        Desktop
+                        Компьютер
                     </Button>
                     <Button
                         size="sm"
@@ -106,14 +113,14 @@ export function EditorialPreview({
                         icon={<Smartphone size={14} />}
                         onClick={() => setMode('mobile')}
                     >
-                        Mobile
+                        Телефон
                     </Button>
                     <Button
                         size="sm"
                         variant={mode === 'og' ? 'primary' : 'ghost'}
                         onClick={() => setMode('og')}
                     >
-                        Share / OG
+                        В соцсетях
                     </Button>
                 </div>
                 {preview.signedUrl && (
@@ -123,7 +130,7 @@ export function EditorialPreview({
                         rel="noreferrer"
                         className="editorial-preview-signed"
                     >
-                        Открыть приватную ссылку
+                        Открыть закрытый просмотр
                     </a>
                 )}
             </div>
@@ -137,7 +144,7 @@ export function EditorialPreview({
             <div className="editorial-preview-layout">
                 <div
                     className={`editorial-preview-canvas is-${mode}`}
-                    aria-label={`${mode} preview`}
+                    aria-label={PREVIEW_MODE_LABELS[mode]}
                 >
                     {!available ? (
                         <EmptyState

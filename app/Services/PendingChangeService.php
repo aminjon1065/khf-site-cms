@@ -61,7 +61,7 @@ class PendingChangeService
         'title' => 'Заголовок',
         'name' => 'Название',
         'internal_title' => 'Внутреннее название',
-        'summary' => 'Лид',
+        'summary' => 'Краткое описание',
         'body' => 'Текст',
         'key_point' => 'Главное за 10 секунд',
         'sections' => 'Шаги инструкции',

@@ -252,7 +252,7 @@ export function MediaPicker({
                     <Input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Поиск по имени, названию, alt и подписи…"
+                        placeholder="Поиск по имени, названию, описанию и подписи…"
                         style={{ flex: 1 }}
                     />
                     <Select
@@ -284,7 +284,7 @@ export function MediaPicker({
                         <span>
                             {search
                                 ? 'Ничего не найдено.'
-                                : 'В библиотеке пока нет изображений — загрузите файл, чтобы вставить его в текст.'}
+                                : 'В медиатеке пока нет изображений — загрузите файл, чтобы вставить его в текст.'}
                         </span>
                         {!search && (
                             <Button

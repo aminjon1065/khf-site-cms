@@ -12,6 +12,7 @@ import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import {
     displayUrl,
@@ -283,7 +284,7 @@ export default function InstructionForm({
     const readinessItems = [
         {
             id: 'name',
-            label: `Название (${lang.toUpperCase()})`,
+            label: `Название (${localeShort[lang]})`,
             done: hasName,
         },
         {
@@ -308,7 +309,7 @@ export default function InstructionForm({
         },
         {
             id: 'bilingual',
-            label: 'Двуязычие (TG + RU)',
+            label: 'Заполнено на таджикском и русском',
             done: hasBilingual,
         },
     ];
@@ -456,8 +457,8 @@ export default function InstructionForm({
                                     lang === 'ru'
                                         ? 'Название инструкции по безопасности…'
                                         : lang === 'tg'
-                                          ? 'Номи дастурамали бехатарӣ…'
-                                          : 'Safety instruction title…'
+                                          ? 'Название на таджикском…'
+                                          : 'Название на английском…'
                                 }
                                 rows={1}
                                 className="wp-title-input"
@@ -485,8 +486,8 @@ export default function InstructionForm({
                                     lang === 'ru'
                                         ? 'Краткое описание ситуации и правил для каталога…'
                                         : lang === 'tg'
-                                          ? 'Тавсифи мухтасари вазъият барои феҳрист…'
-                                          : 'Brief situation overview for catalog…'
+                                          ? 'Краткое описание на таджикском…'
+                                          : 'Краткое описание на английском…'
                                 }
                                 rows={2}
                                 className="wp-lead-input"
@@ -603,9 +604,9 @@ export default function InstructionForm({
                                             color: 'var(--color-neutral-600)',
                                         }}
                                     >
-                                        Язык блоков: <b>{lang.toUpperCase()}</b>
-                                        . Заполните рекомендации по ключевым
-                                        фазам ЧС.
+                                        Язык шагов: <b>{localeShort[lang]}</b>.
+                                        Заполните рекомендации по ключевым фазам
+                                        ЧС.
                                     </p>
                                 </div>
                             </div>
@@ -783,7 +784,7 @@ export default function InstructionForm({
                                         color: 'var(--color-neutral-500)',
                                     }}
                                 >
-                                    Язык: <b>{lang.toUpperCase()}</b>
+                                    Язык: <b>{localeShort[lang]}</b>
                                 </span>
                             </div>
                             <RichEditor
@@ -846,7 +847,7 @@ export default function InstructionForm({
                         {/* Header */}
                         <div className="wp-inspector-header">
                             <span className="wp-inspector-title">
-                                Инспектор инструкции
+                                Настройки инструкции
                             </span>
                             <button
                                 type="button"
@@ -895,7 +896,7 @@ export default function InstructionForm({
                                     {/* Permalink & Slug with Auto-generate */}
                                     <div className="wp-inspector-section">
                                         <div className="wp-inspector-section-title">
-                                            Адрес инструкции (Slug)
+                                            Адрес ссылки
                                         </div>
                                         <div className="wp-permalink-preview">
                                             <div className="wp-permalink-label">
@@ -940,10 +941,10 @@ export default function InstructionForm({
                                                 type="button"
                                                 className="wp-quick-slug-btn"
                                                 onClick={handleAutoSlug}
-                                                title="Сгенерировать slug из названия"
+                                                title="Составить адрес из названия"
                                             >
                                                 <Sparkles size={14} />
-                                                <span>Авто</span>
+                                                <span>Из названия</span>
                                             </button>
                                         </div>
                                         {fieldError('slug') && (

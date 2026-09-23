@@ -181,8 +181,8 @@ export function RichImageView({
                             <button
                                 type="button"
                                 className="re-btn"
-                                title="Alt-текст"
-                                aria-label="Alt-текст"
+                                title="Описание изображения"
+                                aria-label="Описание изображения"
                                 onMouseDown={(e) => e.preventDefault()}
                                 onClick={() => altRef.current?.focus()}
                             >
@@ -203,7 +203,7 @@ export function RichImageView({
                 </div>
                 {selected && (
                     <label className="re-figure-alt">
-                        <span>Alt</span>
+                        <span>Описание</span>
                         <input
                             ref={altRef}
                             value={alt ?? ''}
@@ -212,7 +212,7 @@ export function RichImageView({
                                     alt: e.target.value,
                                 })
                             }
-                            placeholder="Описание для скринридеров"
+                            placeholder="Что на фото — для незрячих читателей"
                             onMouseDown={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}
                         />

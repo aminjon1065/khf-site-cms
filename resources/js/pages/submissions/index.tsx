@@ -215,7 +215,7 @@ export default function SubmissionsIndex({
 
             <FilterBar>
                 <SearchInput
-                    placeholder="Имя, email, номер…"
+                    placeholder="Имя, эл. почта, номер…"
                     defaultValue={filters.search}
                     onChange={(e) => reload({ search: e.target.value })}
                 />

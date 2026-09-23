@@ -37,9 +37,9 @@ interface Props {
 }
 
 const localeNames: Record<'tg' | 'ru' | 'en', string> = {
-    tg: 'Тоҷикӣ',
+    tg: 'Таджикский',
     ru: 'Русский',
-    en: 'English',
+    en: 'Английский',
 };
 
 export default function TranslationQueue({

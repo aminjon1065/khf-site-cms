@@ -274,7 +274,7 @@ class MediaController extends Controller
 
         if ($isImage && ! $isDecorative && blank($alt)) {
             throw ValidationException::withMessages([
-                'alt' => 'Добавьте alt-текст или отметьте изображение как декоративное.',
+                'alt' => 'Опишите, что на изображении, или отметьте его как декоративное.',
             ]);
         }
 

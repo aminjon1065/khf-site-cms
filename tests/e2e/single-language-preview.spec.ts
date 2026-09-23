@@ -26,7 +26,7 @@ test('preview of a Tajik-only news opens in Tajik and states it is absent in Rus
     await expect(dialog.getByRole('heading', { name: TITLE })).toBeVisible();
     await expect(dialog).not.toContainText('fallback');
 
-    await dialog.getByRole('button', { name: 'RU', exact: true }).click();
+    await dialog.getByRole('button', { name: 'РУ', exact: true }).click();
 
     await expect(dialog.getByRole('status')).toHaveText(
         'Для RU нет заголовка — на русской версии сайта материал не появится.',

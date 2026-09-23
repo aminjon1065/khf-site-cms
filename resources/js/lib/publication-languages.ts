@@ -23,10 +23,13 @@ const isRequiredLocale = (locale: ContentLocale): boolean =>
 /** Order in which a filled language is picked when the preferred one is empty. */
 const FIRST_FILLED_ORDER: ContentLocale[] = ['ru', 'tg', 'en'];
 
-const VERSIONS: Record<ContentLocale, { label: string; site: string }> = {
-    tg: { label: 'Таджикская', site: 'таджикской' },
-    ru: { label: 'Русская', site: 'русской' },
-    en: { label: 'Английская', site: 'английской' },
+const VERSIONS: Record<
+    ContentLocale,
+    { label: string; site: string; short: string }
+> = {
+    tg: { label: 'Таджикская', site: 'таджикской', short: 'ТҶ' },
+    ru: { label: 'Русская', site: 'русской', short: 'РУ' },
+    en: { label: 'Английская', site: 'английской', short: 'EN' },
 };
 
 export function hasAnyTranslation(
@@ -39,7 +42,7 @@ export function missingVersionNotice(
     locale: ContentLocale,
     titleWord: TitleWord = 'заголовка',
 ): string {
-    return `Для ${locale.toUpperCase()} нет ${titleWord} — на ${VERSIONS[locale].site} версии сайта материал не появится.`;
+    return `Для ${VERSIONS[locale].short} нет ${titleWord} — на ${VERSIONS[locale].site} версии сайта материал не появится.`;
 }
 
 /**

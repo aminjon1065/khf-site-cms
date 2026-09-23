@@ -176,7 +176,7 @@ export function RichGalleryView({
                                     viewMode === 'carousel' && 'is-active',
                                 )}
                                 onClick={() => setViewMode('carousel')}
-                                title="Вид карусели как на фронтенде"
+                                title="Как карусель выглядит на сайте"
                             >
                                 <Images size={13} />
                                 <span>Карусель</span>

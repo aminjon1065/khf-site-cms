@@ -10,7 +10,7 @@ export type Locale = 'ru';
 
 /** Flat key → string dictionary. */
 const ru: Record<string, string> = {
-    'app.name': 'КЧС РТ · CMS',
+    'app.name': 'КЧС РТ · Панель управления',
     'app.tagline': 'Комитет по чрезвычайным ситуациям и гражданской обороне',
 
     // generic actions
@@ -32,7 +32,7 @@ const ru: Record<string, string> = {
     'action.unpublish': 'Снять с публикации',
     'action.approve': 'Согласовать',
     'action.return': 'Вернуть на доработку',
-    'action.send_review': 'Отправить на проверку',
+    'action.send_review': 'Отправить на согласование',
     'action.search': 'Поиск',
     'action.filter': 'Фильтр',
     'action.reset': 'Сбросить',
@@ -77,8 +77,8 @@ const ru: Record<string, string> = {
     'common.unsaved': 'Есть несохранённые изменения',
     'common.required': 'Обязательное поле',
     'common.optional': 'необязательно',
-    'common.category': 'Категория',
-    'common.tags': 'Теги',
+    'common.category': 'Рубрика',
+    'common.tags': 'Метки',
     'common.updated_at': 'Обновлено',
     'common.created_at': 'Создано',
     'common.role': 'Роль',

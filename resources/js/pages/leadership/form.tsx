@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Images, Save, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import LeaderController from '@/actions/App/Http/Controllers/Cms/LeaderController';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
@@ -155,7 +156,7 @@ export default function LeadershipForm({ leader }: Props) {
                         Основные данные
                     </h3>
                     <Field
-                        label={`Должность (${lang.toUpperCase()})`}
+                        label={`Должность (${localeShort[lang]})`}
                         error={fieldError('role.ru')}
                         required={lang === 'ru'}
                     >
@@ -166,7 +167,7 @@ export default function LeadershipForm({ leader }: Props) {
                         />
                     </Field>
                     <Field
-                        label={`ФИО (${lang.toUpperCase()})`}
+                        label={`ФИО (${localeShort[lang]})`}
                         error={fieldError('name.ru')}
                         required={lang === 'ru'}
                     >
@@ -176,14 +177,14 @@ export default function LeadershipForm({ leader }: Props) {
                             placeholder="Рустам Назарзода"
                         />
                     </Field>
-                    <Field label={`Звание и стаж (${lang.toUpperCase()})`}>
+                    <Field label={`Звание и стаж (${localeShort[lang]})`}>
                         <Input
                             value={data.meta[lang]}
                             onChange={(e) => setLocale('meta', e.target.value)}
                             placeholder="Генерал-лейтенант · руководит Комитетом с 2016 года"
                         />
                     </Field>
-                    <Field label={`Биография (${lang.toUpperCase()})`}>
+                    <Field label={`Биография (${localeShort[lang]})`}>
                         <Textarea
                             value={data.bio[lang]}
                             onChange={(e) => setLocale('bio', e.target.value)}

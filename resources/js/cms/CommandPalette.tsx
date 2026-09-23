@@ -41,7 +41,7 @@ export function CommandPalette({
             onMouseDown={onClose}
             role="dialog"
             aria-modal="true"
-            aria-label="Командная палитра"
+            aria-label="Быстрый переход"
             tabIndex={-1}
             className="cms-cmd-backdrop"
         >
@@ -50,7 +50,7 @@ export function CommandPalette({
                 onMouseDown={(e) => e.stopPropagation()}
                 className="cms-cmd-panel"
             >
-                <Command label="Командная палитра">
+                <Command label="Быстрый переход">
                     <div className="cms-cmd-head">
                         <Search
                             size={17}

@@ -2,7 +2,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import AuthShell from '@/layouts/auth-shell';
 import CmsLayout from '@/layouts/cms-layout';
 
-const appName = import.meta.env.VITE_APP_NAME || 'КЧС РТ · CMS';
+const appName = import.meta.env.VITE_APP_NAME || 'КЧС РТ · Панель управления';
 
 createInertiaApp({
     title: (title) => (title ? `${title} — ${appName}` : appName),

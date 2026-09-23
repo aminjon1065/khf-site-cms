@@ -175,7 +175,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
         },
         {
             key: 'two_factor',
-            header: '2FA',
+            header: 'Вход с кодом',
             width: 70,
             render: (r) =>
                 r.two_factor ? (
@@ -289,7 +289,7 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
 
             <FilterBar>
                 <SearchInput
-                    placeholder="Имя, e-mail или отдел…"
+                    placeholder="Имя, эл. почта или отдел…"
                     defaultValue={filters.search}
                     onChange={(e) => reload({ search: e.target.value })}
                 />

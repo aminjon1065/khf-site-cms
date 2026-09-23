@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
@@ -154,7 +155,7 @@ export default function AnnouncementForm({
     const readinessItems = [
         {
             id: 'title',
-            label: `Заголовок (${lang.toUpperCase()})`,
+            label: `Заголовок (${localeShort[lang]})`,
             done: hasTitle,
         },
         {
@@ -174,7 +175,7 @@ export default function AnnouncementForm({
         },
         {
             id: 'bilingual',
-            label: 'Заполнено на TG и RU',
+            label: 'Заполнено на таджикском и русском',
             done: hasBilingual,
         },
     ];
@@ -287,8 +288,8 @@ export default function AnnouncementForm({
                                     lang === 'ru'
                                         ? 'Например: Специалист службы 112...'
                                         : lang === 'tg'
-                                          ? 'Сарлавҳаи эълон...'
-                                          : 'Announcement title...'
+                                          ? 'Заголовок на таджикском…'
+                                          : 'Заголовок на английском…'
                                 }
                                 className="wp-title-input"
                                 rows={1}
@@ -375,7 +376,7 @@ export default function AnnouncementForm({
                                     </h4>
                                     <div className="wp-inspector-section-content">
                                         <Field
-                                            label="Адрес (slug)"
+                                            label="Адрес ссылки"
                                             htmlFor="announcement-slug"
                                             hint="Генерируется автоматически из заголовка."
                                             error={fieldError('slug')}
@@ -406,10 +407,10 @@ export default function AnnouncementForm({
                                                     variant="secondary"
                                                     size="sm"
                                                     onClick={handleAutoSlug}
-                                                    title="Сгенерировать слаг из заголовка"
+                                                    title="Составить адрес из заголовка"
                                                     icon={<Wand2 size={13} />}
                                                 >
-                                                    Авто
+                                                    Из заголовка
                                                 </Button>
                                             </div>
                                         </Field>
@@ -419,7 +420,8 @@ export default function AnnouncementForm({
                                                 {permalinkPrefix}
                                             </span>
                                             <span className="wp-permalink-slug">
-                                                {data.slug || 'announcement'}
+                                                {data.slug ||
+                                                    'adres-obyavleniya'}
                                             </span>
                                         </div>
                                     </div>
@@ -519,7 +521,7 @@ export default function AnnouncementForm({
 
                                         <Field
                                             label="Ссылка для подачи заявки"
-                                            hint="URL, /contacts, mailto: или tel:."
+                                            hint="Ссылка на страницу, адрес эл. почты (mailto:) или телефон (tel:)."
                                             error={fieldError(
                                                 'application_url',
                                             )}
@@ -533,7 +535,7 @@ export default function AnnouncementForm({
                                                         e.target.value,
                                                     )
                                                 }
-                                                placeholder="https://example.tj/form или /contacts"
+                                                placeholder="Например: https://khf.tj/contacts"
                                                 maxLength={2048}
                                             />
                                         </Field>

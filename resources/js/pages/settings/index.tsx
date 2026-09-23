@@ -58,7 +58,7 @@ export default function SettingsIndex({ sections }: Props) {
             <Head title="Настройки сайта" />
             <PageHeader
                 title="Настройки сайта"
-                subtitle="Реквизиты организации, контакты, соцсети и SEO · используются в шапке и подвале публичного сайта"
+                subtitle="Реквизиты организации, контакты, соцсети и описание для поисковиков · используются в шапке и подвале сайта"
                 actions={
                     editable && (
                         <Button

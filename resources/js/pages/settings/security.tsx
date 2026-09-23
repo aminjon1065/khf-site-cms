@@ -164,7 +164,7 @@ export default function Security({ passwordRules, twoFactor }: Props) {
                                     enableForm.submit({ preserveScroll: true })
                                 }
                             >
-                                Включить 2FA
+                                Включить вход с кодом
                             </Button>
                         )}
 
@@ -216,7 +216,7 @@ export default function Security({ passwordRules, twoFactor }: Props) {
                                             })
                                         }
                                     >
-                                        Подтвердить 2FA
+                                        Подтвердить
                                     </Button>
                                     <Button
                                         variant="danger-outline"
@@ -236,7 +236,7 @@ export default function Security({ passwordRules, twoFactor }: Props) {
                         {twoFactor.enabled && (
                             <div className="flex flex-col gap-4">
                                 <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-800">
-                                    2FA включена и подтверждена.
+                                    Вход с кодом включён.
                                 </div>
 
                                 <div>
@@ -279,7 +279,7 @@ export default function Security({ passwordRules, twoFactor }: Props) {
                                             })
                                         }
                                     >
-                                        Отключить 2FA
+                                        Отключить вход с кодом
                                     </Button>
                                 </div>
                             </div>

@@ -38,7 +38,7 @@ class PublicationChecklist
         if ($subject instanceof News && $subject->hasMedia('cover')) {
             $items[] = [
                 'key' => 'image_alt',
-                'label' => 'Alt-текст обложки',
+                'label' => 'Описание обложки',
                 'ok' => filled($subject->cover_alt),
                 'blocking' => true,
                 'detail' => filled($subject->cover_alt) ? null : 'Опишите изображение для людей, которые его не видят.',
@@ -82,10 +82,10 @@ class PublicationChecklist
 
         $items[] = [
             'key' => 'seo',
-            'label' => 'SEO-описание заполнено',
+            'label' => 'Описание для поиска заполнено',
             'ok' => $this->hasSeoDescription($subject),
             'blocking' => false,
-            'detail' => $this->hasSeoDescription($subject) ? null : 'Можно опубликовать, но сниппет будет сформирован автоматически.',
+            'detail' => $this->hasSeoDescription($subject) ? null : 'Можно опубликовать: поисковики возьмут начало текста.',
         ];
 
         return $items;

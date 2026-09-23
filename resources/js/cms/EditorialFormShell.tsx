@@ -184,14 +184,14 @@ export function EditorialFormShell<T extends object>({
                             <button
                                 type="button"
                                 className="wp-copy-locale-btn"
-                                title="Скопировать заголовок, лид и текст из русской версии в текущую"
+                                title="Скопировать заголовок, краткое описание и текст из русской версии в текущую"
                                 onClick={() =>
                                     onCopyLocale('ru', language.active)
                                 }
                             >
                                 <Copy size={13} strokeWidth={1.75} />
                                 <span className="wp-topbar-label">
-                                    Копировать из RU
+                                    Скопировать с русского
                                 </span>
                             </button>
                         )}
@@ -266,7 +266,7 @@ export function EditorialFormShell<T extends object>({
                         <div>
                             <strong>Язык материала</strong>
                             <span>
-                                Поля ниже редактируются для выбранной локали.
+                                Поля ниже редактируются для выбранного языка.
                             </span>
                         </div>
                         {languageTabsNode}
@@ -296,7 +296,7 @@ export function EditorialFormShell<T extends object>({
                                 <Link
                                     href={`/approvals?change=${pendingChange.id}`}
                                 >
-                                    Открыть в центре согласования →
+                                    Открыть в разделе «Согласование» →
                                 </Link>
                             )}
                         </>
@@ -362,12 +362,12 @@ export function EditorialFormShell<T extends object>({
             {autosaveState.recovery && (
                 <div className="editorial-recovery" role="status">
                     <div>
-                        <strong>Найдена локальная копия</strong>
+                        <strong>Найдена несохранённая копия</strong>
                         <span>
                             Сохранена{' '}
-                            {formatSavedAt(autosaveState.recovery.savedAt)}.
-                            Можно восстановить данные после закрытия вкладки или
-                            истечения сессии.
+                            {formatSavedAt(autosaveState.recovery.savedAt)}. Её
+                            можно восстановить, если вкладка закрылась или вас
+                            вывело из системы.
                         </span>
                     </div>
                     <Button
@@ -394,7 +394,7 @@ export function EditorialFormShell<T extends object>({
                         <span>
                             {autosaveState.conflict.savedBy
                                 ? `${autosaveState.conflict.savedBy} сохранил другую версию`
-                                : 'На сервере уже есть другая версия'}
+                                : 'В системе уже сохранена другая версия'}
                             {autosaveState.conflict.savedAt
                                 ? ` в ${formatSavedAt(autosaveState.conflict.savedAt)}`
                                 : ''}
@@ -406,7 +406,7 @@ export function EditorialFormShell<T extends object>({
                         size="sm"
                         onClick={autosaveState.useRemoteConflict}
                     >
-                        Загрузить серверную
+                        Взять сохранённую
                     </Button>
                     <Button
                         variant="primary"
@@ -535,7 +535,7 @@ function autosaveLabel(
     }
 
     if (state === 'offline') {
-        return 'Офлайн-копия сохранена';
+        return 'Копия сохранена на этом компьютере';
     }
 
     if (state === 'conflict') {

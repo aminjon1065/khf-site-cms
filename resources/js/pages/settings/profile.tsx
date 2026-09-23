@@ -74,7 +74,7 @@ export default function Profile({ mustVerifyEmail, status }: Props) {
                         </Field>
 
                         <Field
-                            label="E-mail"
+                            label="Эл. почта"
                             required
                             error={form.errors.email}
                             htmlFor="profile-email"

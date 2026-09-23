@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
+import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
@@ -142,7 +143,7 @@ export default function PageForm({
     const readinessItems = [
         {
             id: 'title',
-            label: `Заголовок (${lang.toUpperCase()})`,
+            label: `Заголовок (${localeShort[lang]})`,
             done: hasTitle,
         },
         {
@@ -189,7 +190,7 @@ export default function PageForm({
             variant="gutenberg"
             onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование страницы' : 'Новая страница'}
-            subtitle="Редакционная страница портала КЧС с чистым оформлением и SEO."
+            subtitle="Информационная страница сайта КЧС."
             backLabel="Страницы сайта"
             backHref={index.url()}
             status={page?.status}
@@ -288,8 +289,8 @@ export default function PageForm({
                                     lang === 'ru'
                                         ? 'Заголовок страницы…'
                                         : lang === 'tg'
-                                          ? 'Сарлавҳаи саҳифа…'
-                                          : 'Page title…'
+                                          ? 'Заголовок на таджикском…'
+                                          : 'Заголовок на английском…'
                                 }
                                 rows={1}
                                 className="wp-title-input"
@@ -334,7 +335,7 @@ export default function PageForm({
                         {/* Header */}
                         <div className="wp-inspector-header">
                             <span className="wp-inspector-title">
-                                Инспектор страницы
+                                Настройки страницы
                             </span>
                             <button
                                 type="button"
@@ -355,7 +356,7 @@ export default function PageForm({
                                 className={`wp-inspector-tab ${sidebarTab === 'document' ? 'is-active' : ''}`}
                                 onClick={() => setSidebarTab('document')}
                             >
-                                Свойства
+                                Основное
                             </button>
                             <button
                                 type="button"
@@ -364,7 +365,7 @@ export default function PageForm({
                                 className={`wp-inspector-tab ${sidebarTab === 'seo' ? 'is-active' : ''}`}
                                 onClick={() => setSidebarTab('seo')}
                             >
-                                SEO & Snippet
+                                Поиск
                             </button>
                         </div>
 
@@ -381,10 +382,10 @@ export default function PageForm({
                                         />
                                     </div>
 
-                                    {/* Permalink & Slug with Auto-generate */}
+                                    {/* Адрес страницы: составляется из заголовка */}
                                     <div className="wp-inspector-section">
                                         <div className="wp-inspector-section-title">
-                                            Адрес страницы (URL)
+                                            Адрес страницы
                                         </div>
                                         <div className="wp-permalink-preview">
                                             <div className="wp-permalink-label">
@@ -435,7 +436,7 @@ export default function PageForm({
                                                             e.target.value,
                                                         );
                                                     }}
-                                                    placeholder="about"
+                                                    placeholder="o-komitete"
                                                     className="ui-mono"
                                                     style={{ fontSize: 12.5 }}
                                                     aria-label="Адрес страницы"
@@ -447,7 +448,7 @@ export default function PageForm({
                                                     title="Составить адрес из заголовка"
                                                 >
                                                     <Sparkles size={14} />
-                                                    <span>Авто</span>
+                                                    <span>Из заголовка</span>
                                                 </button>
                                             </div>
                                         )}
@@ -463,7 +464,7 @@ export default function PageForm({
                             {sidebarTab === 'seo' && (
                                 <div className="wp-inspector-section">
                                     <div className="wp-inspector-section-title">
-                                        Поисковая выдача (Google / Yandex)
+                                        Как страница выглядит в поиске
                                     </div>
 
                                     {/* Google SERP Snippet Preview */}
@@ -488,7 +489,7 @@ export default function PageForm({
 
                                     <div className="wp-inspector-field">
                                         <Field
-                                            label={`SEO Title (${lang.toUpperCase()})`}
+                                            label={`Заголовок для поиска (${localeShort[lang]})`}
                                             hint={`${data.seo_title[lang]?.length || 0} / 70 знаков`}
                                             error={fieldError(
                                                 `seo_title.${lang}`,
@@ -516,7 +517,7 @@ export default function PageForm({
                                         style={{ marginTop: 12 }}
                                     >
                                         <Field
-                                            label={`SEO Description (${lang.toUpperCase()})`}
+                                            label={`Описание для поиска (${localeShort[lang]})`}
                                             hint={`${data.seo_description[lang]?.length || 0} / 180 знаков`}
                                             error={fieldError(
                                                 `seo_description.${lang}`,
