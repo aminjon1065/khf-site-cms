@@ -12,7 +12,10 @@ use Spatie\MediaLibrary\Conversions\FileManipulator;
 
 it('raises the process memory limit for the duration of a conversion', function () {
     $original = ini_get('memory_limit');
-    ini_set('memory_limit', '128M');
+    // A worker's usual 128M. Late in a serial test run the process already
+    // holds about that much, so the limit then sits just above its usage —
+    // still below the configured one.
+    ini_set('memory_limit', max(128, intdiv(memory_get_usage(true), 1024 ** 2) + 64).'M');
 
     config(['media-library.conversion_memory_limit' => '512M']);
 
