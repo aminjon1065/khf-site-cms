@@ -132,6 +132,7 @@ export default function Activity({
             key: 'source',
             header: 'Источник',
             width: 150,
+            optional: 1,
             render: (r) => (
                 <span
                     style={{ fontSize: 12, color: 'var(--color-neutral-600)' }}

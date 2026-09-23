@@ -206,6 +206,7 @@ export default function AlertsIndex({
             key: 'ends',
             header: t('common.deadline'),
             width: 120,
+            optional: 2,
             sortable: true,
             render: (r) => (
                 <span style={{ fontSize: 12.5 }} className="ui-mono">
