@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
+import { useBulkActions } from '@/cms/BulkActions';
 import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
@@ -89,6 +90,16 @@ export default function InstructionsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const bulk = useBulkActions({
+        type: 'instructions',
+        rows: instructions,
+        rowTitle: (r) => r.name,
+        allowed: {
+            submit: can('instructions.edit'),
+            publish: can('instructions.publish'),
+            trash: can('instructions.delete'),
+        },
+    });
     const [deleteTarget, setDeleteTarget] = useState<InstructionRow | null>(
         null,
     );
@@ -364,6 +375,7 @@ export default function InstructionsIndex({
                 columns={columns}
                 rows={instructions}
                 rowKey={(r) => r.id}
+                {...bulk.table}
                 sort={sort}
                 onRowClick={(r) =>
                     router.visit(InstructionController.edit.url(r.id))
@@ -472,6 +484,8 @@ export default function InstructionsIndex({
                     );
                 }}
             />
+
+            {bulk.dialogs}
         </>
     );
 }

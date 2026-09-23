@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import ProjectController from '@/actions/App/Http/Controllers/Cms/ProjectController';
+import { useBulkActions } from '@/cms/BulkActions';
 import { TrashLink } from '@/cms/TrashLink';
 import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
@@ -86,6 +87,16 @@ export default function ProjectsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const bulk = useBulkActions({
+        type: 'projects',
+        rows: projects,
+        rowTitle: (r) => r.title,
+        allowed: {
+            submit: can('projects.edit'),
+            publish: can('projects.publish'),
+            trash: can('projects.delete'),
+        },
+    });
     const [deleteTarget, setDeleteTarget] = useState<ProjectRow | null>(null);
     const [unpublishTarget, setUnpublishTarget] = useState<ProjectRow | null>(
         null,
@@ -325,6 +336,7 @@ export default function ProjectsIndex({
                 columns={columns}
                 rows={projects}
                 rowKey={(r) => r.id}
+                {...bulk.table}
                 sort={sort}
                 onRowClick={(r) =>
                     router.visit(ProjectController.edit.url(r.id))
@@ -433,6 +445,8 @@ export default function ProjectsIndex({
                     );
                 }}
             />
+
+            {bulk.dialogs}
         </>
     );
 }

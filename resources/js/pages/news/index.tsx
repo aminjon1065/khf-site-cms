@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
+import { useBulkActions } from '@/cms/BulkActions';
 import { TrashLink } from '@/cms/TrashLink';
 import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
@@ -101,6 +102,16 @@ export default function NewsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const bulk = useBulkActions({
+        type: 'news',
+        rows: news,
+        rowTitle: (r) => r.title,
+        allowed: {
+            submit: can('news.edit'),
+            publish: can('news.publish'),
+            trash: can('news.delete'),
+        },
+    });
     const toast = useToast();
     const [newsItems, setNewsItems] = useState<NewsRow[]>(news);
     const [prevNews, setPrevNews] = useState<NewsRow[]>(news);
@@ -756,6 +767,7 @@ export default function NewsIndex({
                 columns={columns}
                 rows={newsItems}
                 rowKey={(r) => r.id}
+                {...bulk.table}
                 sort={sort}
                 renderSubRow={renderSubRow}
                 onRowClick={(r) => router.visit(NewsController.edit.url(r.id))}
@@ -860,6 +872,8 @@ export default function NewsIndex({
                     );
                 }}
             />
+
+            {bulk.dialogs}
         </>
     );
 }

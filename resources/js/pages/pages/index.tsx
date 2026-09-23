@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import PageController from '@/actions/App/Http/Controllers/Cms/PageController';
+import { useBulkActions } from '@/cms/BulkActions';
 import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
@@ -74,6 +75,16 @@ export default function PagesIndex({
     options,
 }: Props) {
     const can = useCan();
+    const bulk = useBulkActions({
+        type: 'pages',
+        rows: pages,
+        rowTitle: (r) => r.title,
+        allowed: {
+            submit: can('pages.edit'),
+            publish: can('pages.publish'),
+            trash: can('pages.delete'),
+        },
+    });
     const [deleteTarget, setDeleteTarget] = useState<PageRow | null>(null);
     const [unpublishTarget, setUnpublishTarget] = useState<PageRow | null>(
         null,
@@ -298,6 +309,7 @@ export default function PagesIndex({
                 columns={columns}
                 rows={pages}
                 rowKey={(r) => r.id}
+                {...bulk.table}
                 sort={sort}
                 onRowClick={(r) => router.visit(PageController.edit.url(r.id))}
                 onSortChange={(s) => reload({ sort: s.key, dir: s.dir })}
@@ -401,6 +413,8 @@ export default function PagesIndex({
                     );
                 }}
             />
+
+            {bulk.dialogs}
         </>
     );
 }

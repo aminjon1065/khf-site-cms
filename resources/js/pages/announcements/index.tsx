@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import AnnouncementController from '@/actions/App/Http/Controllers/Cms/AnnouncementController';
+import { useBulkActions } from '@/cms/BulkActions';
 import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
@@ -88,6 +89,16 @@ export default function AnnouncementsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const bulk = useBulkActions({
+        type: 'announcements',
+        rows: announcements,
+        rowTitle: (r) => r.title,
+        allowed: {
+            submit: can('announcements.edit'),
+            publish: can('announcements.publish'),
+            trash: can('announcements.delete'),
+        },
+    });
     const [deleteTarget, setDeleteTarget] = useState<AnnouncementRow | null>(
         null,
     );
@@ -364,6 +375,7 @@ export default function AnnouncementsIndex({
                 columns={columns}
                 rows={announcements}
                 rowKey={(r) => r.id}
+                {...bulk.table}
                 sort={sort}
                 onRowClick={(r) =>
                     router.visit(AnnouncementController.edit.url(r.id))
@@ -474,6 +486,8 @@ export default function AnnouncementsIndex({
                     );
                 }}
             />
+
+            {bulk.dialogs}
         </>
     );
 }

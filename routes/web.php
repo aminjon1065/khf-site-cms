@@ -8,6 +8,7 @@ use App\Http\Controllers\Cms\ControlController;
 use App\Http\Controllers\Cms\DashboardController;
 use App\Http\Controllers\Cms\DocumentController;
 use App\Http\Controllers\Cms\EditorialAutosaveController;
+use App\Http\Controllers\Cms\EditorialBulkController;
 use App\Http\Controllers\Cms\EditorialPreviewController;
 use App\Http\Controllers\Cms\EditorialTrashController;
 use App\Http\Controllers\Cms\HomeBlockController;
@@ -68,6 +69,9 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
         ->name('editorial.trash.restore');
     Route::get('editorial/translations', [TranslationQueueController::class, 'index'])
         ->name('editorial.translations');
+    Route::post('editorial/{contentType}/bulk', EditorialBulkController::class)
+        ->whereIn('contentType', ['news', 'pages', 'projects', 'instructions', 'announcements', 'documents'])
+        ->name('editorial.bulk');
 
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('control', [ControlController::class, 'index'])->name('control');

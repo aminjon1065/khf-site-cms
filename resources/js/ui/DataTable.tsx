@@ -46,6 +46,8 @@ interface DataTableProps<T> {
     selectable?: boolean;
     selected?: Set<string | number>;
     onSelectedChange?: (keys: Set<string | number>) => void;
+    /** Accessible name of a row's checkbox, e.g. «Выбрать «Паводок»». */
+    selectLabel?: (row: T) => string;
     sort?: SortState | null;
     onSortChange?: (sort: SortState) => void;
     onRowClick?: (row: T) => void;
@@ -67,6 +69,7 @@ export function DataTable<T>({
     selectable = false,
     selected = new Set(),
     onSelectedChange,
+    selectLabel,
     sort = null,
     onSortChange,
     onRowClick,
@@ -118,6 +121,7 @@ export function DataTable<T>({
                 <div
                     style={{
                         display: 'flex',
+                        flexWrap: 'wrap',
                         alignItems: 'center',
                         gap: 12,
                         padding: '8px 12px',
@@ -126,7 +130,7 @@ export function DataTable<T>({
                         fontSize: 13,
                     }}
                 >
-                    <strong>Выбрано: {selected.size}</strong>
+                    <strong aria-live="polite">Выбрано: {selected.size}</strong>
                     {bulkActions}
                 </div>
             )}
@@ -286,7 +290,12 @@ export function DataTable<T>({
                                                         onChange={() =>
                                                             toggleOne(key)
                                                         }
-                                                        aria-label="Выбрать строку"
+                                                        aria-label={
+                                                            selectLabel?.(
+                                                                row,
+                                                            ) ??
+                                                            'Выбрать строку'
+                                                        }
                                                     />
                                                 </td>
                                             )}

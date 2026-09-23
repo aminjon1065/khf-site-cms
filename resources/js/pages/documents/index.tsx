@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentController';
+import { useBulkActions } from '@/cms/BulkActions';
 import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
@@ -121,6 +122,16 @@ export default function DocumentsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const bulk = useBulkActions({
+        type: 'documents',
+        rows: documents,
+        rowTitle: (r) => r.name,
+        allowed: {
+            submit: can('documents.edit'),
+            publish: can('documents.publish'),
+            trash: can('documents.delete'),
+        },
+    });
     const publicSiteUrl = usePublicSiteUrl();
     const [deleteTarget, setDeleteTarget] = useState<DocumentRow | null>(null);
     const [unpublishTarget, setUnpublishTarget] = useState<DocumentRow | null>(
@@ -397,6 +408,7 @@ export default function DocumentsIndex({
                 columns={columns}
                 rows={documents}
                 rowKey={(r) => r.id}
+                {...bulk.table}
                 sort={sort}
                 onRowClick={(r) =>
                     router.visit(DocumentController.edit.url(r.id))
@@ -505,6 +517,8 @@ export default function DocumentsIndex({
                     );
                 }}
             />
+
+            {bulk.dialogs}
         </>
     );
 }
