@@ -61,6 +61,40 @@ it('dispatches exactly one granular revalidation job when publishing and a webho
     });
 });
 
+it('refreshes the site when a live material goes to the trash', function () {
+    Queue::fake();
+    $editor = revalidationEditor();
+    $live = News::factory()->published()->create(['slug' => 'storm']);
+    $draft = News::factory()->create();
+
+    actingAs($editor)->delete("/news/{$live->id}")->assertRedirect();
+    actingAs($editor)->delete("/news/{$draft->id}")->assertRedirect();
+
+    Queue::assertPushed(
+        RevalidateFrontend::class,
+        fn (RevalidateFrontend $job): bool => $job->id === $live->id
+            && $job->event === 'deleted'
+            && in_array('cms:news:storm:ru', $job->payload()['tags'], true),
+    );
+    // A draft was never on the site.
+    Queue::assertNotPushed(RevalidateFrontend::class, fn (RevalidateFrontend $job): bool => $job->id === $draft->id);
+});
+
+it('refreshes the site when a live material comes back from the trash', function () {
+    $live = News::factory()->published()->create(['slug' => 'storm']);
+    $live->deleteQuietly();
+    Queue::fake();
+
+    actingAs(revalidationEditor())
+        ->post("/editorial/trash/news/{$live->id}/restore")
+        ->assertRedirect();
+
+    Queue::assertPushed(
+        RevalidateFrontend::class,
+        fn (RevalidateFrontend $job): bool => $job->id === $live->id && $job->event === 'restored',
+    );
+});
+
 it('sends nothing when the frontend webhook is not configured', function () {
     config([
         'services.frontend.revalidation_url' => '',
