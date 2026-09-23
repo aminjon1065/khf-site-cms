@@ -7,7 +7,7 @@ const DIRNAME = path.dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = path.resolve(DIRNAME, '..', '..');
 
 // P3-7: real browser coverage for a form + the media (cover) upload, using
-// the seeded 2FA-exempt editor (see auth.setup.ts). Deliberately narrow —
+// the seeded editor (see auth.setup.ts). Deliberately narrow —
 // see PROGRESS.md for what P3-7 still doesn't cover (menu management,
 // approve/publish, the "pick from library" half of the media picker) and
 // why.
@@ -15,11 +15,10 @@ const PROJECT_ROOT = path.resolve(DIRNAME, '..', '..');
 const DRAFT_TITLE = 'E2E-тест: черновик из формы (P3-7)';
 
 test.afterEach(() => {
-    // Cleanup goes through artisan, not the UI: `editor` (this suite's only
-    // 2FA-exempt role, see playwright.config.ts) has no news.delete permission
-    // — by design, not an oversight (PermissionMatrix grants delete only to
-    // 2FA-required roles) — so there is no in-permission, 2FA-free way to
-    // delete this draft through the app itself. Matched on the title so a
+    // Cleanup goes through artisan, not the UI: `editor` has no news.delete
+    // permission — by design (PermissionMatrix grants delete to the chief
+    // editor and above) — so the draft can't be deleted through the app as
+    // this user. Matched on the title so a
     // failed run's leftovers get swept up by the next run too, not just the
     // row this run created.
     execFileSync(
@@ -40,7 +39,7 @@ test('editor creates a news draft with a cover image via the form, then deletes 
     await page.goto('/news/create');
 
     await page
-        .getByRole('textbox', { name: 'Заголовок*', exact: true })
+        .getByRole('textbox', { name: 'Заголовок новости' })
         .fill(DRAFT_TITLE);
     await page
         // Именно поле обложки: рядом появилось поле вложений, и локатор без

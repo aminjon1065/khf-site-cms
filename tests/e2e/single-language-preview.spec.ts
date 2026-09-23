@@ -13,7 +13,7 @@ test('preview of a Tajik-only news opens in Tajik and states it is absent in Rus
 
     await page.getByRole('tab', { name: /^ТҶ/ }).click();
     await page
-        .getByRole('textbox', { name: 'Заголовок*', exact: true })
+        .getByRole('textbox', { name: 'Заголовок новости' })
         .fill(TITLE);
     await page
         .getByRole('button', { name: 'Предпросмотр', exact: true })
@@ -29,7 +29,7 @@ test('preview of a Tajik-only news opens in Tajik and states it is absent in Rus
     await dialog.getByRole('button', { name: 'РУ', exact: true }).click();
 
     await expect(dialog.getByRole('status')).toHaveText(
-        'Для RU нет заголовка — на русской версии сайта материал не появится.',
+        'Для РУ нет заголовка — на русской версии сайта материал не появится.',
     );
     await expect(dialog.getByRole('heading', { name: TITLE })).toHaveCount(0);
 });
