@@ -1,6 +1,7 @@
 import { TriangleAlert } from 'lucide-react';
 import type { ReactNode } from 'react';
 import {
+    isRequiredLocale,
     localeShort,
     LOCALES,
     severityBadgeClass,
@@ -73,7 +74,8 @@ export function StatusBadge({
 
 /**
  * "ТҶ 100 · РУ 100 · EN 40" language completeness row with a warning icon
- * when any tracked locale is below 100%.
+ * when a required language (ТҶ, РУ) is below 100%. English is optional: an
+ * empty English version is shown quietly, never as a problem.
  */
 export function LanguageBadges({
     completeness,
@@ -84,7 +86,9 @@ export function LanguageBadges({
     locales?: readonly ContentLocale[];
     showWarning?: boolean;
 }) {
-    const incomplete = locales.some((l) => (completeness[l] ?? 0) < 100);
+    const incomplete = locales.some(
+        (l) => isRequiredLocale(l) && (completeness[l] ?? 0) < 100,
+    );
 
     return (
         <span className="ui-status" style={{ gap: 8, fontSize: 12.5 }}>
@@ -101,13 +105,19 @@ export function LanguageBadges({
                         )}
                         <span
                             style={{
-                                color:
-                                    pct === 0
-                                        ? 'var(--danger)'
-                                        : pct < 100
-                                          ? 'var(--warn)'
-                                          : 'var(--color-neutral-700)',
+                                color: !isRequiredLocale(l)
+                                    ? 'var(--color-neutral-500)'
+                                    : pct === 0
+                                      ? 'var(--danger)'
+                                      : pct < 100
+                                        ? 'var(--warn)'
+                                        : 'var(--color-neutral-700)',
                             }}
+                            title={
+                                isRequiredLocale(l)
+                                    ? undefined
+                                    : 'Английская версия — по желанию'
+                            }
                         >
                             {localeShort[l]} {pct}
                         </span>

@@ -1,5 +1,14 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ArrowLeft, ChevronDown, Eye, History, Save, Send } from 'lucide-react';
+import {
+    ArrowLeft,
+    ChevronDown,
+    Copy,
+    Eye,
+    History,
+    Save,
+    Send,
+    X,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { ReactNode, RefObject } from 'react';
 import { EditorialPreview } from '@/cms/EditorialPreview';
@@ -147,7 +156,10 @@ export function EditorialFormShell<T extends object>({
                                     onCopyLocale('ru', language.active)
                                 }
                             >
-                                Копировать из RU
+                                <Copy size={13} strokeWidth={1.75} />
+                                <span className="wp-topbar-label">
+                                    Копировать из RU
+                                </span>
                             </button>
                         )}
                     </div>
@@ -161,16 +173,17 @@ export function EditorialFormShell<T extends object>({
                                 onClick={() => void autosaveState.loadHistory()}
                                 title="История версий"
                             >
-                                История
+                                <span className="wp-topbar-label">История</span>
                             </Button>
                         )}
                         <LinkButton
                             href={backHref}
                             variant="ghost"
                             size="sm"
-                            title="Отмена"
+                            icon={<X size={15} strokeWidth={1.75} />}
+                            title="Отмена — выйти без сохранения"
                         >
-                            Отмена
+                            <span className="wp-topbar-label">Отмена</span>
                         </LinkButton>
                         <Button
                             variant="ghost"
@@ -179,7 +192,9 @@ export function EditorialFormShell<T extends object>({
                             onClick={() => setPreviewOpen(true)}
                             title="Предпросмотр материала"
                         >
-                            Предпросмотр
+                            <span className="wp-topbar-label">
+                                Предпросмотр
+                            </span>
                         </Button>
                         <Button
                             variant="secondary"
@@ -189,7 +204,9 @@ export function EditorialFormShell<T extends object>({
                             onClick={() => submit(onSaveDraft)}
                             title="Сохранить черновик (Ctrl+S)"
                         >
-                            Сохранить черновик
+                            <span className="wp-topbar-label">
+                                Сохранить черновик
+                            </span>
                         </Button>
 
                         {canPublish ? (
@@ -202,7 +219,9 @@ export function EditorialFormShell<T extends object>({
                                             variant="primary"
                                             size="sm"
                                             loading={processing}
-                                            onClick={() => publish(onPublishNow)}
+                                            onClick={() =>
+                                                publish(onPublishNow)
+                                            }
                                         >
                                             Опубликовать
                                         </Button>

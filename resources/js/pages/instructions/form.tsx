@@ -12,6 +12,12 @@ import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import {
+    displayUrl,
+    publicPath,
+    siteUrl,
+    usePublicSiteUrl,
+} from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
 import { index, store, update } from '@/routes/instructions';
@@ -78,11 +84,17 @@ export default function InstructionForm({ instruction, reference }: Props) {
     const isEdit = !!instruction;
     const [lang, setLang] = useState<ContentLocale>('ru');
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [sidebarTab, setSidebarTab] = useState<'document' | 'media'>('document');
+    const [sidebarTab, setSidebarTab] = useState<'document' | 'media'>(
+        'document',
+    );
     const [imagePicker, setImagePicker] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const imageFileRef = useRef<HTMLInputElement>(null);
     const nameRef = useRef<HTMLTextAreaElement>(null);
+    // A new instruction's address follows its Russian name until the editor
+    // types one (it used to stop after the first letter); an existing one
+    // never changes address on its own — links to it would break.
+    const [slugTouched, setSlugTouched] = useState(isEdit);
     const summaryRef = useRef<HTMLTextAreaElement>(null);
 
     const form = useForm({
@@ -230,31 +242,29 @@ export default function InstructionForm({ instruction, reference }: Props) {
     );
     const hasSteps = totalSteps > 0;
     const hasHazard = Boolean(data.hazard_type);
-    const hasBilingual = Boolean(
-        data.name.tg?.trim() && data.name.ru?.trim(),
-    );
+    const hasBilingual = Boolean(data.name.tg?.trim() && data.name.ru?.trim());
 
     let readinessScore = 0;
 
     if (hasName) {
-readinessScore += 25;
-}
+        readinessScore += 25;
+    }
 
     if (hasSummary) {
-readinessScore += 15;
-}
+        readinessScore += 15;
+    }
 
     if (hasKeyPoint) {
-readinessScore += 15;
-}
+        readinessScore += 15;
+    }
 
     if (hasSteps) {
-readinessScore += 20;
-}
+        readinessScore += 20;
+    }
 
     if (hasHazard) {
-readinessScore += 15;
-}
+        readinessScore += 15;
+    }
 
     if (hasBilingual) {
         readinessScore += 10;
@@ -293,7 +303,12 @@ readinessScore += 15;
         },
     ];
 
-    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
+    const publicSiteUrl = usePublicSiteUrl();
+    const permalink = siteUrl(
+        publicSiteUrl,
+        publicPath('instruction', data.slug || '…') ?? '/guides',
+        lang,
+    );
 
     const submit = (
         action: 'draft' | 'submit',
@@ -316,7 +331,10 @@ readinessScore += 15;
         form.post(isEdit ? update.url(instruction!.id) : store.url(), {
             forceFormData: true,
             preserveScroll: true,
-            preserveState: stay,
+            // Keep what the editor typed when validation fails (the page
+            // would otherwise remount from server data and drop the errors);
+            // a successful save leaving the editor starts clean.
+            preserveState: stay ? true : 'errors',
         });
     };
 
@@ -353,7 +371,7 @@ readinessScore += 15;
                             : 'Показать панель настроек'
                     }
                 >
-                    Панель настроек
+                    <span className="wp-topbar-label">Настройки</span>
                 </Button>
             }
             autosave={{
@@ -413,7 +431,7 @@ readinessScore += 15;
                                 onChange={(e) => {
                                     setLocaleField('name', e.target.value);
 
-                                    if (!data.slug && lang === 'ru') {
+                                    if (!slugTouched && lang === 'ru') {
                                         setData((prev) => ({
                                             ...prev,
                                             slug: slugify(e.target.value),
@@ -519,7 +537,8 @@ readinessScore += 15;
                                         marginLeft: 'auto',
                                     }}
                                 >
-                                    Первое действие при ЧС (выделяется на карточке)
+                                    Первое действие при ЧС (выделяется на
+                                    карточке)
                                 </span>
                             </div>
                             <Textarea
@@ -570,9 +589,9 @@ readinessScore += 15;
                                             color: 'var(--color-neutral-600)',
                                         }}
                                     >
-                                        Язык блоков:{' '}
-                                        <b>{lang.toUpperCase()}</b>. Заполните
-                                        рекомендации по ключевым фазам ЧС.
+                                        Язык блоков: <b>{lang.toUpperCase()}</b>
+                                        . Заполните рекомендации по ключевым
+                                        фазам ЧС.
                                     </p>
                                 </div>
                             </div>
@@ -584,82 +603,78 @@ readinessScore += 15;
                                     gap: 20,
                                 }}
                             >
-                                {reference.sectionKeys.map(
-                                    ({ key, label }) => (
+                                {reference.sectionKeys.map(({ key, label }) => (
+                                    <div
+                                        key={key}
+                                        style={{
+                                            background:
+                                                'var(--color-neutral-50)',
+                                            border: '1px solid var(--color-divider)',
+                                            borderRadius: 'var(--radius-md)',
+                                            padding: '16px 18px',
+                                        }}
+                                    >
                                         <div
-                                            key={key}
                                             style={{
-                                                background:
-                                                    'var(--color-neutral-50)',
-                                                border: '1px solid var(--color-divider)',
-                                                borderRadius:
-                                                    'var(--radius-md)',
-                                                padding: '16px 18px',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'space-between',
+                                                marginBottom: 10,
                                             }}
                                         >
+                                            <span
+                                                style={{
+                                                    fontFamily:
+                                                        'var(--font-heading)',
+                                                    fontWeight: 600,
+                                                    fontSize: 14,
+                                                    color:
+                                                        key === 'prohibited'
+                                                            ? 'var(--danger)'
+                                                            : 'var(--color-text)',
+                                                }}
+                                            >
+                                                {label}
+                                            </span>
+                                            <Button
+                                                variant="secondary"
+                                                size="sm"
+                                                icon={
+                                                    <Plus
+                                                        size={14}
+                                                        strokeWidth={2}
+                                                    />
+                                                }
+                                                onClick={() => addStep(key)}
+                                            >
+                                                Добавить шаг
+                                            </Button>
+                                        </div>
+
+                                        {data.sections[key][lang].length ===
+                                        0 ? (
+                                            <p
+                                                style={{
+                                                    margin: 0,
+                                                    fontSize: 12.5,
+                                                    color: 'var(--color-neutral-400)',
+                                                    fontStyle: 'italic',
+                                                }}
+                                            >
+                                                Шаги не добавлены. Нажмите
+                                                «Добавить шаг», чтобы внести
+                                                рекомендацию.
+                                            </p>
+                                        ) : (
                                             <div
                                                 style={{
                                                     display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent:
-                                                        'space-between',
-                                                    marginBottom: 10,
+                                                    flexDirection: 'column',
+                                                    gap: 8,
                                                 }}
                                             >
-                                                <span
-                                                    style={{
-                                                        fontFamily:
-                                                            'var(--font-heading)',
-                                                        fontWeight: 600,
-                                                        fontSize: 14,
-                                                        color:
-                                                            key === 'prohibited'
-                                                                ? 'var(--danger)'
-                                                                : 'var(--color-text)',
-                                                    }}
-                                                >
-                                                    {label}
-                                                </span>
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    icon={
-                                                        <Plus
-                                                            size={14}
-                                                            strokeWidth={2}
-                                                        />
-                                                    }
-                                                    onClick={() => addStep(key)}
-                                                >
-                                                    Добавить шаг
-                                                </Button>
-                                            </div>
-
-                                            {data.sections[key][lang].length ===
-                                            0 ? (
-                                                <p
-                                                    style={{
-                                                        margin: 0,
-                                                        fontSize: 12.5,
-                                                        color: 'var(--color-neutral-400)',
-                                                        fontStyle: 'italic',
-                                                    }}
-                                                >
-                                                    Шаги не добавлены. Нажмите
-                                                    «Добавить шаг», чтобы внести
-                                                    рекомендацию.
-                                                </p>
-                                            ) : (
-                                                <div
-                                                    style={{
-                                                        display: 'flex',
-                                                        flexDirection: 'column',
-                                                        gap: 8,
-                                                    }}
-                                                >
-                                                    {data.sections[key][
-                                                        lang
-                                                    ].map((step, i) => (
+                                                {data.sections[key][lang].map(
+                                                    (step, i) => (
                                                         <div
                                                             key={i}
                                                             style={{
@@ -721,12 +736,12 @@ readinessScore += 15;
                                                                 />
                                                             </IconButton>
                                                         </div>
-                                                    ))}
-                                                </div>
-                                            )}
-                                        </div>
-                                    ),
-                                )}
+                                                    ),
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
                             </div>
                         </div>
 
@@ -873,15 +888,13 @@ readinessScore += 15;
                                                 Ссылка на сайте:
                                             </div>
                                             <a
-                                                href={`https://khf.tj/${localeUrlSegment}/instructions/${data.slug || '...'}`}
+                                                href={permalink}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="wp-permalink-link"
                                             >
                                                 <span>
-                                                    khf.tj/{localeUrlSegment}
-                                                    /instructions/
-                                                    {data.slug || '...'}
+                                                    {displayUrl(permalink)}
                                                 </span>
                                                 <ExternalLink
                                                     size={12}
@@ -898,12 +911,13 @@ readinessScore += 15;
                                         >
                                             <Input
                                                 value={data.slug}
-                                                onChange={(e) =>
+                                                onChange={(e) => {
+                                                    setSlugTouched(true);
                                                     setData(
                                                         'slug',
                                                         e.target.value,
-                                                    )
-                                                }
+                                                    );
+                                                }}
                                                 placeholder="deystviya-pri-zemletryasenii"
                                                 className="ui-mono"
                                                 style={{ fontSize: 12.5 }}
@@ -933,7 +947,9 @@ readinessScore += 15;
                                         <div className="wp-inspector-field">
                                             <Field
                                                 label="Тип опасности"
-                                                error={fieldError('hazard_type')}
+                                                error={fieldError(
+                                                    'hazard_type',
+                                                )}
                                             >
                                                 <Select
                                                     value={data.hazard_type}
@@ -1039,14 +1055,8 @@ readinessScore += 15;
 
                                             if (file) {
                                                 setData('image', file);
-                                                setData(
-                                                    'image_media_id',
-                                                    null,
-                                                );
-                                                setData(
-                                                    'image_remove',
-                                                    false,
-                                                );
+                                                setData('image_media_id', null);
+                                                setData('image_remove', false);
                                                 setImagePreview(
                                                     URL.createObjectURL(file),
                                                 );

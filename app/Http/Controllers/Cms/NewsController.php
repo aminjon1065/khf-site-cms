@@ -12,9 +12,12 @@ use App\Models\News;
 use App\Models\Tag;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\ContentTitle;
 use App\Support\EditorialContent;
 use App\Support\FileSize;
+use App\Support\PublicSite;
 use App\Support\RichText;
+use App\Support\SaveOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -136,6 +139,12 @@ class NewsController extends Controller
         return $this->redirectAfterSave($news, $request);
     }
 
+    /**
+     * List «Quick edit». It never changes the workflow status: publishing,
+     * unpublishing and approval go through WorkflowService (permissions,
+     * checklist, history, site cache). The publication date decides when the
+     * news appears on the site, so changing it needs the publish permission.
+     */
     public function quickUpdate(Request $request, News $news): JsonResponse|RedirectResponse
     {
         $this->authorize('update', $news);
@@ -147,17 +156,19 @@ class NewsController extends Controller
                 Rule::unique('news', 'slug')->ignore($news->id),
             ],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
-            'status' => ['nullable', Rule::enum(ContentStatus::class)],
             'is_pinned' => ['nullable', 'boolean'],
             'show_on_home' => ['nullable', 'boolean'],
             'published_at' => ['nullable', 'date'],
         ]);
 
-        $locale = app()->getLocale();
-        $news->setTranslation('title', $locale, $validated['title']);
-        if (! $news->hasTranslation('title', 'ru')) {
-            $news->setTranslation('title', 'ru', $validated['title']);
+        if (array_key_exists('published_at', $validated) && ! $this->samePublicationMinute($news, $validated['published_at'])) {
+            $this->authorize('publish', $news);
         }
+
+        // The list shows the title in the first language the news is written
+        // in, so the edited title goes back into that language — never into
+        // another one (a Tajik title must not become the Russian version).
+        $news->setTranslation('title', ContentTitle::firstLocale($news) ?? 'ru', $validated['title']);
 
         if (! empty($validated['slug'])) {
             $news->slug = $validated['slug'];
@@ -171,9 +182,6 @@ class NewsController extends Controller
         if (array_key_exists('show_on_home', $validated)) {
             $news->show_on_home = (bool) $validated['show_on_home'];
         }
-        if (! empty($validated['status'])) {
-            $news->status = ContentStatus::from($validated['status']);
-        }
         if (array_key_exists('published_at', $validated)) {
             $news->published_at = $validated['published_at'] ? Carbon::parse($validated['published_at']) : null;
         }
@@ -185,14 +193,16 @@ class NewsController extends Controller
                 'success' => true,
                 'news' => [
                     'id' => $news->id,
-                    'title' => $news->getTranslation('title', 'ru'),
+                    'title' => ContentTitle::of($news),
                     'slug' => $news->slug,
+                    'public_url' => PublicSite::urlFor($news),
                     'status' => $news->status->value,
                     'category' => $news->category?->getTranslation('name', 'ru'),
                     'category_id' => $news->category_id,
                     'is_pinned' => (bool) $news->is_pinned,
                     'show_on_home' => (bool) $news->show_on_home,
                     'published_at' => $news->published_at?->toIso8601String(),
+                    'updated_at' => $news->updated_at?->toIso8601String(),
                 ],
             ]);
         }
@@ -241,7 +251,7 @@ class NewsController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($news, ContentStatus::Archived, $request->user(), $validated['comment']);
+        $this->workflow->transition($news, ContentStatus::Draft, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Новость снята с публикации.');
     }
@@ -559,7 +569,9 @@ class NewsController extends Controller
         try {
             match ($mode) {
                 'now' => $this->authorizeAndPublish($news, $user),
-                'schedule' => $news->scheduled_at
+                // Scheduling is a publication decision: without the publish
+                // permission (or without a date) the news goes to approval.
+                'schedule' => $news->scheduled_at && $user?->can('publish', $news)
                     ? $this->workflow->transition($news, ContentStatus::Scheduled, $user)
                     : $this->workflow->transition($news, ContentStatus::Review, $user),
                 default => $this->workflow->transition($news, ContentStatus::Review, $user),
@@ -571,6 +583,20 @@ class NewsController extends Controller
 
             throw $exception;
         }
+    }
+
+    /**
+     * Quick edit sends the date back at minute precision; an unchanged date
+     * is not a publication decision.
+     */
+    private function samePublicationMinute(News $news, ?string $value): bool
+    {
+        if ($value === null || $value === '') {
+            return $news->published_at === null;
+        }
+
+        return $news->published_at !== null
+            && Carbon::parse($value)->format('Y-m-d H:i') === $news->published_at->format('Y-m-d H:i');
     }
 
     private function authorizeAndPublish(News $news, ?User $user): void
@@ -589,26 +615,20 @@ class NewsController extends Controller
      */
     private function redirectAfterSave(News $news, NewsRequest $request): RedirectResponse
     {
-        $message = $this->savedMessage($request);
+        $message = $this->savedMessage($news, $request);
 
         return $request->boolean('stay')
             ? redirect("/news/{$news->id}/edit")->with('success', $message)
             : redirect('/news')->with('success', $message);
     }
 
-    private function savedMessage(NewsRequest $request): string
+    private function savedMessage(News $news, NewsRequest $request): string
     {
-        if ($request->input('action') !== 'submit') {
-            return 'Черновик сохранён.';
-        }
-
-        return match ($request->input('publish_mode')) {
-            'now' => 'Новость опубликована.',
-            'schedule' => $request->filled('scheduled_at')
-                ? 'Новость запланирована к публикации.'
-                : 'Новость отправлена на согласование.',
-            default => 'Новость отправлена на согласование.',
-        };
+        return SaveOutcome::message($news, $request->input('action') === 'submit', [
+            'published' => 'Новость опубликована.',
+            'review' => 'Новость отправлена на согласование.',
+            'scheduled' => 'Новость запланирована к публикации.',
+        ]);
     }
 
     /**

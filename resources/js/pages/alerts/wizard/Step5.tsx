@@ -1,3 +1,4 @@
+import { useCan } from '@/lib/auth';
 import type { Severity } from '@/lib/domain';
 import { SeverityBadge } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
@@ -33,6 +34,10 @@ export function Step5({
     toggleChannel: (v: string) => void;
     checklist: { label: string; ok: boolean }[];
 }) {
+    // Without the publish permission an alert can only go to approval: the
+    // server would route «now» and «schedule» there anyway.
+    const canPublish = useCan()('alerts.publish');
+
     return (
         <div
             style={{
@@ -58,18 +63,22 @@ export function Step5({
                             gap: 8,
                         }}
                     >
-                        <Radio
-                            name="pm"
-                            label="Опубликовать сейчас"
-                            checked={publishMode === 'now'}
-                            onChange={() => setPublishMode('now')}
-                        />
-                        <Radio
-                            name="pm"
-                            label="Запланировать дату и время"
-                            checked={publishMode === 'schedule'}
-                            onChange={() => setPublishMode('schedule')}
-                        />
+                        {canPublish && (
+                            <>
+                                <Radio
+                                    name="pm"
+                                    label="Опубликовать сейчас"
+                                    checked={publishMode === 'now'}
+                                    onChange={() => setPublishMode('now')}
+                                />
+                                <Radio
+                                    name="pm"
+                                    label="Запланировать дату и время"
+                                    checked={publishMode === 'schedule'}
+                                    onChange={() => setPublishMode('schedule')}
+                                />
+                            </>
+                        )}
                         <Radio
                             name="pm"
                             label="Отправить на согласование руководителю"

@@ -27,6 +27,8 @@ interface AnnouncementRow {
     kind_label: string;
     org: string | null;
     slug: string | null;
+    /** Null while the item isn't visible on the public site. */
+    public_url: string | null;
     status: ContentStatus;
     is_open: boolean;
     languages: Record<string, number>;
@@ -146,15 +148,19 @@ export default function AnnouncementsIndex({
                         >
                             Изменить
                         </Link>
-                        <span className="wp-row-action-sep">|</span>
-                        <a
-                            href={`https://khf.tj/ru/announcements/${r.slug || r.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            На сайте
-                        </a>
+                        {r.public_url && (
+                            <>
+                                <span className="wp-row-action-sep">|</span>
+                                <a
+                                    href={r.public_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    На сайте
+                                </a>
+                            </>
+                        )}
                     </div>
                 </div>
             ),
@@ -232,15 +238,16 @@ export default function AnnouncementsIndex({
                                     AnnouncementController.edit.url(r.id),
                                 ),
                         },
-                        {
-                            label: 'Предпросмотр',
-                            icon: <Eye size={15} strokeWidth={1.5} />,
-                            onSelect: () =>
-                                window.open(
-                                    'https://khf.tj/announcements',
-                                    '_blank',
-                                ),
-                        },
+                        ...(r.public_url
+                            ? [
+                                  {
+                                      label: 'Открыть на сайте',
+                                      icon: <Eye size={15} strokeWidth={1.5} />,
+                                      onSelect: () =>
+                                          window.open(r.public_url!, '_blank'),
+                                  },
+                              ]
+                            : []),
                         ...(can('announcements.create')
                             ? [
                                   {
@@ -431,7 +438,7 @@ export default function AnnouncementsIndex({
                 title="Снять объявление с публикации?"
                 body={
                     unpublishTarget
-                        ? `Объявление «${unpublishTarget.title}» будет убрано с сайта и отправлено в архив.`
+                        ? `Объявление «${unpublishTarget.title}» будет убрано с сайта и вернётся в черновики.`
                         : ''
                 }
                 confirmLabel="Снять с публикации"

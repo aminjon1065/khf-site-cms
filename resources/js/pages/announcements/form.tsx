@@ -1,14 +1,10 @@
 import { useForm } from '@inertiajs/react';
-import {
-    FileText,
-    Sliders,
-    Wand2,
-    X,
-} from 'lucide-react';
+import { FileText, Sliders, Wand2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
 import { index, store, update } from '@/routes/announcements';
@@ -126,20 +122,20 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
     let score = 0;
 
     if (hasTitle) {
-score += 30;
-}
+        score += 30;
+    }
 
     if (hasBody) {
-score += 30;
-}
+        score += 30;
+    }
 
     if (hasDeadline) {
-score += 15;
-}
+        score += 15;
+    }
 
     if (hasKind) {
-score += 10;
-}
+        score += 10;
+    }
 
     if (hasBilingual) {
         score += 15;
@@ -173,7 +169,10 @@ score += 10;
         },
     ];
 
-    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
+    const publicSiteUrl = usePublicSiteUrl();
+    const permalinkPrefix = displayUrl(
+        siteUrl(publicSiteUrl, '/announcements/', lang),
+    );
 
     const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
         form.transform((d) => ({
@@ -226,7 +225,7 @@ score += 10;
                             : 'Показать панель настроек'
                     }
                 >
-                    Панель настроек
+                    <span className="wp-topbar-label">Настройки</span>
                 </Button>
             }
             autosave={{
@@ -403,8 +402,7 @@ score += 10;
 
                                         <div className="wp-permalink-preview">
                                             <span className="wp-permalink-prefix">
-                                                khf.tj/{localeUrlSegment}
-                                                /announcements/
+                                                {permalinkPrefix}
                                             </span>
                                             <span className="wp-permalink-slug">
                                                 {data.slug || 'announcement'}

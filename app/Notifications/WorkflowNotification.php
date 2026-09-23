@@ -14,12 +14,14 @@ class WorkflowNotification extends Notification implements ShouldQueue
 
     /**
      * @param  Model  $subject  The content model the transition happened on
+     * @param  string|null  $url  Where the recipient acts on it; defaults to the material's editor
      */
     public function __construct(
         public Model $subject,
         public string $title,
         public string $message,
         public string $tone = 'info',
+        public ?string $url = null,
     ) {
         $this->onQueue((string) config('queue.names.notifications'));
         $this->afterCommit();
@@ -47,7 +49,7 @@ class WorkflowNotification extends Notification implements ShouldQueue
             'tone' => $this->tone,
             'subject_type' => $this->subject->getMorphClass(),
             'subject_id' => $this->subject->getKey(),
-            'url' => $baseRoute !== null ? $baseRoute.'/'.$this->subject->getKey().'/edit' : null,
+            'url' => $this->url ?? ($baseRoute !== null ? $baseRoute.'/'.$this->subject->getKey().'/edit' : null),
         ];
     }
 }

@@ -11,6 +11,11 @@ import { useState } from 'react';
 import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentController';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
+import {
+    publicSectionPath,
+    siteUrl,
+    usePublicSiteUrl,
+} from '@/lib/public-site';
 import { StatusBadge, Tag } from '@/ui/Badge';
 import { IconButton, LinkButton } from '@/ui/Button';
 import { DataTable, Pagination } from '@/ui/DataTable';
@@ -112,6 +117,7 @@ export default function DocumentsIndex({
     options,
 }: Props) {
     const can = useCan();
+    const publicSiteUrl = usePublicSiteUrl();
     const [deleteTarget, setDeleteTarget] = useState<DocumentRow | null>(null);
     const [unpublishTarget, setUnpublishTarget] = useState<DocumentRow | null>(
         null,
@@ -244,15 +250,27 @@ export default function DocumentsIndex({
                             onSelect: () =>
                                 router.visit(DocumentController.edit.url(r.id)),
                         },
-                        {
-                            label: 'Открыть на сайте',
-                            icon: <Download size={15} strokeWidth={1.5} />,
-                            onSelect: () =>
-                                window.open(
-                                    'https://khf.tj/documents',
-                                    '_blank',
-                                ),
-                        },
+                        ...(r.status === 'published' || r.status === 'updated'
+                            ? [
+                                  {
+                                      label: 'Открыть на сайте',
+                                      icon: (
+                                          <Download
+                                              size={15}
+                                              strokeWidth={1.5}
+                                          />
+                                      ),
+                                      onSelect: () =>
+                                          window.open(
+                                              siteUrl(
+                                                  publicSiteUrl,
+                                                  publicSectionPath('document'),
+                                              ),
+                                              '_blank',
+                                          ),
+                                  },
+                              ]
+                            : []),
                         ...(can('documents.create')
                             ? [
                                   {
@@ -453,7 +471,7 @@ export default function DocumentsIndex({
                 title="Снять документ с публикации?"
                 body={
                     unpublishTarget
-                        ? `Документ «${unpublishTarget.name}» будет убран с сайта и отправлен в архив.`
+                        ? `Документ «${unpublishTarget.name}» будет убран с сайта и вернётся в черновики.`
                         : ''
                 }
                 confirmLabel="Снять с публикации"

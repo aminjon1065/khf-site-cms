@@ -25,6 +25,8 @@ interface ProjectRow {
     id: number;
     title: string;
     slug: string | null;
+    /** Null while the item isn't visible on the public site. */
+    public_url: string | null;
     status: ContentStatus;
     lifecycle_status: string;
     lifecycle_label: string;
@@ -197,15 +199,16 @@ export default function ProjectsIndex({
                             onSelect: () =>
                                 router.visit(ProjectController.edit.url(r.id)),
                         },
-                        {
-                            label: 'Предпросмотр',
-                            icon: <Eye size={15} strokeWidth={1.5} />,
-                            onSelect: () =>
-                                window.open(
-                                    'https://khf.tj/projects',
-                                    '_blank',
-                                ),
-                        },
+                        ...(r.public_url
+                            ? [
+                                  {
+                                      label: 'Открыть на сайте',
+                                      icon: <Eye size={15} strokeWidth={1.5} />,
+                                      onSelect: () =>
+                                          window.open(r.public_url!, '_blank'),
+                                  },
+                              ]
+                            : []),
                         ...(can('projects.create')
                             ? [
                                   {
@@ -396,7 +399,7 @@ export default function ProjectsIndex({
                 title="Снять проект с публикации?"
                 body={
                     unpublishTarget
-                        ? `Проект «${unpublishTarget.title}» будет убран с сайта и отправлен в архив.`
+                        ? `Проект «${unpublishTarget.title}» будет убран с сайта и вернётся в черновики.`
                         : ''
                 }
                 confirmLabel="Снять с публикации"

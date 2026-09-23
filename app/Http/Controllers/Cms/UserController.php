@@ -215,7 +215,6 @@ class UserController extends Controller
             'region_id' => $user->region_id,
             'position' => $user->position,
             'department' => $user->department,
-            'interface_locale' => $user->interface_locale,
             'is_active' => $user->is_active,
             'is_self' => $request->user()?->id === $user->id,
         ];
@@ -236,10 +235,6 @@ class UserController extends Controller
             'roles' => $roles,
             'regions' => Region::query()->orderBy('sort')->get()
                 ->map(fn (Region $r): array => ['value' => $r->id, 'label' => $r->getTranslation('name', 'ru')])->all(),
-            'locales' => [
-                ['value' => 'ru', 'label' => 'Русский'],
-                ['value' => 'tg', 'label' => 'Тоҷикӣ'],
-            ],
         ];
     }
 }

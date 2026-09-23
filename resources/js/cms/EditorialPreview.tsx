@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import type { ContentLocale } from '@/lib/domain';
+import { displayUrl, usePublicSiteUrl } from '@/lib/public-site';
 import {
     missingVersionNotice,
     previewLocale,
@@ -63,6 +64,7 @@ export function EditorialPreview({
         chosenLocale ?? previewLocale(preview.locales, initialLocale);
     const selected = preview.locales[locale];
     const available = selected.title.trim() !== '';
+    const siteHost = displayUrl(usePublicSiteUrl());
 
     const close = () => {
         setChosenLocale(null);
@@ -152,7 +154,7 @@ export function EditorialPreview({
                                 />
                             )}
                             <div>
-                                <span>khf.tj</span>
+                                <span>{siteHost}</span>
                                 <strong>
                                     {selected.seoTitle || selected.title}
                                 </strong>

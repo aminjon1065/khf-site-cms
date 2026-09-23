@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\WorkflowService;
 use App\Support\EditorialContent;
 use App\Support\RichText;
+use App\Support\SaveOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -171,7 +172,7 @@ class ProjectController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($project, ContentStatus::Archived, $request->user(), $validated['comment']);
+        $this->workflow->transition($project, ContentStatus::Draft, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Проект снят с публикации.');
     }
@@ -482,21 +483,18 @@ class ProjectController extends Controller
      */
     private function redirectAfterSave(Project $project, ProjectRequest $request): RedirectResponse
     {
-        $message = $this->savedMessage($request);
+        $message = $this->savedMessage($project, $request);
 
         return $request->boolean('stay')
             ? redirect("/projects/{$project->id}/edit")->with('success', $message)
             : redirect('/projects')->with('success', $message);
     }
 
-    private function savedMessage(ProjectRequest $request): string
+    private function savedMessage(Project $project, ProjectRequest $request): string
     {
-        if ($request->input('action') !== 'submit') {
-            return 'Черновик сохранён.';
-        }
-
-        return $request->input('publish_mode') === 'now'
-            ? 'Проект опубликован.'
-            : 'Проект отправлен на согласование.';
+        return SaveOutcome::message($project, $request->input('action') === 'submit', [
+            'published' => 'Проект опубликован.',
+            'review' => 'Проект отправлен на согласование.',
+        ]);
     }
 }

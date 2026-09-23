@@ -133,8 +133,10 @@ it('blocks publication while no language version is complete', function () {
 
     expect($items->firstWhere('key', 'translation_any'))
         ->toMatchArray(['ok' => false, 'blocking' => true])
+        // Title and lead of three required fields (title, lead, text); the
+        // optional search snippet doesn't count.
         ->and($items->firstWhere('key', 'translation_ru')['detail'])
-        ->toBe('Заполнена на 80%.');
+        ->toBe('Заполнена на 67%.');
 
     expect(fn () => app(PublicationChecklist::class)->ensurePublishable($news))
         ->toThrow(ValidationException::class);
@@ -226,3 +228,26 @@ it('wires locale, mobile, desktop, OG and checklist preview into every form', fu
     'announcements',
     'documents',
 ]);
+
+it('does not list an untouched English version, and marks a started one optional', function () {
+    $bilingual = News::factory()->create([
+        'title' => ['ru' => 'Заголовок', 'tg' => 'Сарлавҳа', 'en' => ''],
+        'summary' => ['ru' => 'Лид', 'tg' => 'Лид', 'en' => ''],
+        'body' => ['ru' => '<p>Текст</p>', 'tg' => '<p>Матн</p>', 'en' => ''],
+    ]);
+    $withEnglish = News::factory()->create([
+        'title' => ['ru' => 'Заголовок', 'tg' => 'Сарлавҳа', 'en' => 'Title'],
+        'summary' => ['ru' => 'Лид', 'tg' => 'Лид', 'en' => ''],
+        'body' => ['ru' => '<p>Текст</p>', 'tg' => '<p>Матн</p>', 'en' => ''],
+    ]);
+
+    $checklist = app(PublicationChecklist::class);
+
+    expect(collect($checklist->inspect($bilingual))->firstWhere('key', 'translation_en'))->toBeNull()
+        ->and(collect($checklist->inspect($withEnglish))->firstWhere('key', 'translation_en'))
+        ->toMatchArray([
+            'label' => 'Английская версия заполнена (необязательно)',
+            'ok' => false,
+            'blocking' => false,
+        ]);
+});

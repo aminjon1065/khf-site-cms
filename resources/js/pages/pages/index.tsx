@@ -23,6 +23,12 @@ interface PageRow {
     id: number;
     title: string;
     slug: string;
+    /** Where the page lives on the site: a section (`/leadership`) or `/pages/{slug}`. */
+    public_path: string;
+    /** Null while the page isn't visible on the site. */
+    public_url: string | null;
+    /** The site depends on this page's slug: it can't be renamed or deleted. */
+    is_system: boolean;
     status: ContentStatus;
     parent: string | null;
     languages: Record<string, number>;
@@ -106,8 +112,18 @@ export default function PagesIndex({
                             color: 'var(--color-neutral-500)',
                         }}
                     >
-                        <span className="ui-mono">/{r.slug}</span>
+                        <span className="ui-mono">{r.public_path}</span>
                         {r.parent ? ` · ${r.parent}` : ''}
+                        {r.is_system && (
+                            <>
+                                {' · '}
+                                <span title="Адрес закреплён за сайтом: страницу нельзя переименовать или удалить">
+                                    {r.public_path.startsWith('/pages/')
+                                        ? 'ссылка в подвале сайта'
+                                        : 'раздел сайта'}
+                                </span>
+                            </>
+                        )}
                     </div>
                     <div className="wp-row-actions">
                         <Link
@@ -116,15 +132,19 @@ export default function PagesIndex({
                         >
                             Изменить
                         </Link>
-                        <span className="wp-row-action-sep">|</span>
-                        <a
-                            href={`https://khf.tj/ru/${r.slug}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            На сайте
-                        </a>
+                        {r.public_url && (
+                            <>
+                                <span className="wp-row-action-sep">|</span>
+                                <a
+                                    href={r.public_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    На сайте
+                                </a>
+                            </>
+                        )}
                     </div>
                 </div>
             ),
@@ -198,7 +218,7 @@ export default function PagesIndex({
                                   },
                               ]
                             : []),
-                        ...(can('pages.delete')
+                        ...(can('pages.delete') && !r.is_system
                             ? [
                                   { separator: true },
                                   {
@@ -349,7 +369,7 @@ export default function PagesIndex({
                 title="Снять страницу с публикации?"
                 body={
                     unpublishTarget
-                        ? `Страница «${unpublishTarget.title}» будет убрана с сайта и отправлена в архив.`
+                        ? `Страница «${unpublishTarget.title}» будет убрана с сайта и вернётся в черновики.`
                         : ''
                 }
                 confirmLabel="Снять с публикации"

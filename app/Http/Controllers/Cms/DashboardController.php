@@ -15,6 +15,7 @@ use App\Models\Page;
 use App\Models\Project;
 use App\Models\Region;
 use App\Models\User;
+use App\Support\ContentLocales;
 use App\Support\ContentTitle;
 use App\Support\ContentTypes;
 use Illuminate\Database\Eloquent\Builder;
@@ -64,7 +65,7 @@ class DashboardController extends Controller
         $incompleteTranslations = $this->alertQuery($user)
             ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
             ->get()
-            ->filter(fn (Alert $a): bool => collect($a->languageCompleteness())->contains(fn (int $p): bool => $p < 100))
+            ->filter(fn (Alert $a): bool => ContentLocales::missingRequired($a->languageCompleteness()) !== [])
             ->count();
 
         // D-6 (CMS_AUDIT.md P2): drafts/review/published_month/translations
@@ -80,15 +81,19 @@ class DashboardController extends Controller
                 'drafts' => $this->alertQuery($user)->where('status', ContentStatus::Draft->value)->count(),
                 'review' => $this->alertQuery($user)->whereIn('status', ['review', 'translation_check'])->count(),
                 'scheduled' => $this->alertQuery($user)->where('status', 'scheduled')->count(),
-                'published_month' => $this->alertQuery($user)->whereMonth('published_at', now()->month)->count(),
+                'published_month' => $this->alertQuery($user)->whereYear('published_at', now()->year)->whereMonth('published_at', now()->month)->count(),
                 'translations' => $incompleteTranslations,
             ],
             'news' => [
                 'drafts' => $this->newsQuery($user)->where('status', 'draft')->count(),
                 'review' => $this->newsQuery($user)->where('status', 'review')->count(),
                 'scheduled' => $this->newsQuery($user)->where('status', 'scheduled')->count(),
-                'published_month' => $this->newsQuery($user)->where('status', 'published')->whereMonth('published_at', now()->month)->count(),
-                'translations' => 0,
+                'published_month' => $this->newsQuery($user)->where('status', 'published')->whereYear('published_at', now()->year)->whereMonth('published_at', now()->month)->count(),
+                'translations' => $this->newsQuery($user)
+                    ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
+                    ->get()
+                    ->filter(fn (News $n): bool => ContentLocales::missingRequired($n->languageCompleteness()) !== [])
+                    ->count(),
             ],
         ];
 
@@ -102,7 +107,7 @@ class DashboardController extends Controller
                 $translations = $modelClass::query()->accessibleTo($user)
                     ->whereIn('status', ['published', 'review', 'scheduled', 'updated'])
                     ->get()
-                    ->filter(fn (Model $m): bool => collect($m->languageCompleteness())->contains(fn (int $p): bool => $p < 100))
+                    ->filter(fn (Model $m): bool => ContentLocales::missingRequired($m->languageCompleteness()) !== [])
                     ->count();
             }
 
@@ -110,7 +115,7 @@ class DashboardController extends Controller
                 'drafts' => $modelClass::query()->accessibleTo($user)->where('status', ContentStatus::Draft->value)->count(),
                 'review' => $modelClass::query()->accessibleTo($user)->whereIn('status', [ContentStatus::Review->value, ContentStatus::TranslationCheck->value])->count(),
                 'scheduled' => 0,
-                'published_month' => $modelClass::query()->accessibleTo($user)->where('status', ContentStatus::Published->value)->whereMonth('published_at', now()->month)->count(),
+                'published_month' => $modelClass::query()->accessibleTo($user)->where('status', ContentStatus::Published->value)->whereYear('published_at', now()->year)->whereMonth('published_at', now()->month)->count(),
                 'translations' => $translations,
             ];
         }

@@ -15,7 +15,7 @@ import { useAppearance } from '@/hooks/use-appearance';
 import { useAuth, useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { CREATE_ITEMS, NAV, navItemAllowed } from '@/lib/navigation';
-import { locale as localeRoute } from '@/routes';
+import { usePublicSiteUrl } from '@/lib/public-site';
 import { Button, IconButton } from '@/ui/Button';
 import { Avatar } from '@/ui/Feedback';
 import { Dropdown } from '@/ui/Overlay';
@@ -31,7 +31,8 @@ export function TopBar({
     onOpenNotifications: () => void;
     onOpenSidebar: () => void;
 }) {
-    const { t, locale } = useT();
+    const { t } = useT();
+    const publicSiteUrl = usePublicSiteUrl();
     const can = useCan();
     const user = useAuth();
     const url = usePage().url;
@@ -44,16 +45,6 @@ export function TopBar({
             onSelect: () => router.visit(i.href),
         }),
     );
-
-    const switchLocale = (next: 'ru' | 'tg') => {
-        if (next !== locale) {
-            router.post(
-                localeRoute.url(),
-                { locale: next },
-                { preserveScroll: true },
-            );
-        }
-    };
 
     return (
         <header className="ui-topbar">
@@ -159,25 +150,8 @@ export function TopBar({
                 )}
             </IconButton>
 
-            <div className="ui-seg cms-desktop-only" style={{ minHeight: 32 }}>
-                <button
-                    type="button"
-                    className={`ui-seg-opt ${locale === 'ru' ? 'is-active' : ''}`}
-                    onClick={() => switchLocale('ru')}
-                >
-                    РУ
-                </button>
-                <button
-                    type="button"
-                    className={`ui-seg-opt ${locale === 'tg' ? 'is-active' : ''}`}
-                    onClick={() => switchLocale('tg')}
-                >
-                    ТҶ
-                </button>
-            </div>
-
             <a
-                href="https://khf.tj"
+                href={publicSiteUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="ui-btn ui-btn-ghost ui-btn-icon cms-desktop-only"

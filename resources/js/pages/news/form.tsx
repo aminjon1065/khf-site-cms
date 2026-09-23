@@ -245,12 +245,10 @@ export default function NewsForm({ news, reference }: Props) {
         coverPreview ??
         (news?.cover_url && !data.cover_remove ? news.cover_url : null);
 
+    // Required fields only (title, lead, text), the same as
+    // News::languageCompleteness(): the search snippet is optional.
     const completeness = (locale: ContentLocale): number => {
-        const values = [
-            ...CONTENT_FIELDS.map((field) => data[field][locale]),
-            data.seo[locale].title,
-            data.seo[locale].description,
-        ];
+        const values = CONTENT_FIELDS.map((field) => data[field][locale]);
         const filled = values.filter((value) => value.trim() !== '').length;
 
         return Math.round((filled / values.length) * 100);
@@ -318,7 +316,10 @@ export default function NewsForm({ news, reference }: Props) {
         form.post(isEdit ? update.url(news!.id) : store.url(), {
             forceFormData: true,
             preserveScroll: true,
-            preserveState: stay,
+            // Keep what the editor typed when validation fails (the page
+            // would otherwise remount from server data and drop the errors);
+            // a successful save leaving the editor starts clean.
+            preserveState: stay ? true : 'errors',
         });
     };
 
@@ -412,7 +413,7 @@ export default function NewsForm({ news, reference }: Props) {
                             : 'Показать панель настроек'
                     }
                 >
-                    Панель настроек
+                    <span className="wp-topbar-label">Настройки</span>
                 </Button>
             }
         >

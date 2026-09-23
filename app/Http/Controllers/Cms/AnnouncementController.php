@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\WorkflowService;
 use App\Support\ContentTitle;
 use App\Support\EditorialContent;
+use App\Support\SaveOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -93,7 +94,7 @@ class AnnouncementController extends Controller
     {
         $this->authorize('create', Announcement::class);
 
-        DB::transaction(function () use ($request): void {
+        $announcement = DB::transaction(function () use ($request): Announcement {
             $announcement = new Announcement;
             $this->fill($announcement, $request);
             $announcement->author_id = $request->user()?->id;
@@ -101,9 +102,11 @@ class AnnouncementController extends Controller
             $announcement->save();
 
             $this->runPublishAction($announcement, $request);
+
+            return $announcement;
         });
 
-        return redirect('/announcements')->with('success', $this->savedMessage($request));
+        return redirect('/announcements')->with('success', $this->savedMessage($announcement, $request));
     }
 
     public function update(AnnouncementRequest $request, Announcement $announcement): RedirectResponse
@@ -117,7 +120,7 @@ class AnnouncementController extends Controller
             $this->runPublishAction($announcement, $request);
         });
 
-        return redirect('/announcements')->with('success', $this->savedMessage($request));
+        return redirect('/announcements')->with('success', $this->savedMessage($announcement, $request));
     }
 
     public function destroy(Announcement $announcement): RedirectResponse
@@ -158,7 +161,7 @@ class AnnouncementController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($announcement, ContentStatus::Archived, $request->user(), $validated['comment']);
+        $this->workflow->transition($announcement, ContentStatus::Draft, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Объявление снято с публикации.');
     }
@@ -338,14 +341,11 @@ class AnnouncementController extends Controller
         }
     }
 
-    private function savedMessage(AnnouncementRequest $request): string
+    private function savedMessage(Announcement $announcement, AnnouncementRequest $request): string
     {
-        if ($request->input('action') !== 'submit') {
-            return 'Черновик сохранён.';
-        }
-
-        return $request->input('publish_mode') === 'now'
-            ? 'Объявление опубликовано.'
-            : 'Объявление отправлено на согласование.';
+        return SaveOutcome::message($announcement, $request->input('action') === 'submit', [
+            'published' => 'Объявление опубликовано.',
+            'review' => 'Объявление отправлено на согласование.',
+        ]);
     }
 }

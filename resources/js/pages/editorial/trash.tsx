@@ -152,7 +152,7 @@ export default function EditorialTrash({ items, meta, filters, types }: Props) {
                 rows={items}
                 rowKey={(item) => item.key}
                 emptyTitle="Корзина пуста"
-                emptyHint="Удалённые редакционные материалы появятся здесь и сохранят свой workflow-статус."
+                emptyHint="Удалённые материалы появятся здесь — их можно будет вернуть."
                 emptyAction={<Trash2 size={18} aria-hidden />}
             />
 

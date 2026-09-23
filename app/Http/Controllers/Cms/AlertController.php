@@ -15,6 +15,7 @@ use App\Models\Instruction;
 use App\Models\Region;
 use App\Models\User;
 use App\Services\WorkflowService;
+use App\Support\SaveOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -96,7 +97,7 @@ class AlertController extends Controller
     {
         $this->authorize('create', Alert::class);
 
-        DB::transaction(function () use ($request): void {
+        $alert = DB::transaction(function () use ($request): Alert {
             $alert = new Alert;
             $this->fill($alert, $request);
             $alert->author_id = $request->user()?->id;
@@ -105,9 +106,11 @@ class AlertController extends Controller
 
             $this->syncRelations($alert, $request);
             $this->runPublishAction($alert, $request);
+
+            return $alert;
         });
 
-        return redirect('/alerts')->with('success', $this->savedMessage($request));
+        return redirect('/alerts')->with('success', $this->savedMessage($alert, $request));
     }
 
     public function update(AlertRequest $request, Alert $alert): RedirectResponse
@@ -121,7 +124,7 @@ class AlertController extends Controller
             $this->runPublishAction($alert, $request);
         });
 
-        return redirect('/alerts')->with('success', $this->savedMessage($request));
+        return redirect('/alerts')->with('success', $this->savedMessage($alert, $request));
     }
 
     public function destroy(Alert $alert): RedirectResponse
@@ -436,7 +439,11 @@ class AlertController extends Controller
 
         match ($mode) {
             'now' => $this->authorizeAndPublish($alert, $user),
-            'schedule' => $this->workflow->transition($alert, ContentStatus::Scheduled, $user),
+            // Scheduling is a publication decision: without the publish
+            // permission the alert goes to approval instead.
+            'schedule' => $user && $user->can('publish', $alert)
+                ? $this->workflow->transition($alert, ContentStatus::Scheduled, $user)
+                : $this->workflow->transition($alert, ContentStatus::Review, $user),
             default => $this->workflow->transition($alert, ContentStatus::Review, $user),
         };
     }
@@ -450,16 +457,12 @@ class AlertController extends Controller
         }
     }
 
-    private function savedMessage(AlertRequest $request): string
+    private function savedMessage(Alert $alert, AlertRequest $request): string
     {
-        if ($request->input('action') !== 'submit') {
-            return 'Черновик сохранён.';
-        }
-
-        return match ($request->input('publish_mode')) {
-            'now' => 'Предупреждение опубликовано.',
-            'schedule' => 'Предупреждение запланировано к публикации.',
-            default => 'Предупреждение отправлено на согласование.',
-        };
+        return SaveOutcome::message($alert, $request->input('action') === 'submit', [
+            'published' => 'Предупреждение опубликовано.',
+            'review' => 'Предупреждение отправлено на согласование.',
+            'scheduled' => 'Предупреждение запланировано к публикации.',
+        ]);
     }
 }

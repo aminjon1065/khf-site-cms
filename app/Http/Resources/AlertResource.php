@@ -3,6 +3,7 @@
 namespace App\Http\Resources;
 
 use App\Models\Alert;
+use App\Support\PublicSite;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -26,6 +27,7 @@ class AlertResource extends JsonResource
             'hazard_icon' => $this->hazard_type->icon(),
             'severity' => $this->severity->value,
             'status' => $this->status->value,
+            'public_url' => PublicSite::urlFor($this->resource),
             'territory_type' => $this->territory_type,
             'regions' => $this->whenLoaded('regions', fn () => $this->regions->map(fn ($r) => [
                 'id' => $r->id,

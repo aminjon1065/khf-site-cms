@@ -3,6 +3,7 @@
 use App\Models\MediaAsset;
 use App\Models\News;
 use App\Models\User;
+use App\Support\MediaUrl;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -125,6 +126,33 @@ it('finds direct rich-text references to a library image', function () {
         ->assertOk()
         ->assertJsonPath('data.0.id', $news->id)
         ->assertJsonPath('data.0.edit_url', "/news/{$news->id}/edit");
+});
+
+it('finds an image the editor inserted by its root-relative path', function () {
+    // Редактор хранит в тексте путь без домена (MediaUrl::toRelative), а не
+    // полный URL: поиск только по полному адресу объявлял такую картинку
+    // свободной — её можно было удалить, и через 30 дней файл стирался.
+    // В проде файлы отдаются с отдельного хоста (MEDIA_PUBLIC_URL).
+    Storage::fake('public', ['url' => 'https://media.khf.tj/storage']);
+    $source = mediaLifecycleAsset();
+    $path = MediaUrl::toRelative($source->getUrl());
+    $news = News::factory()->create([
+        'body' => [
+            'ru' => '<p><img src="'.$path.'" alt="Фото" data-media-id="'.$source->id.'"></p>',
+            'tg' => '',
+            'en' => '',
+        ],
+    ]);
+
+    actingAs(mediaLifecycleUser('editor'))
+        ->getJson("/media/{$source->id}/usages")
+        ->assertOk()
+        ->assertJsonPath('data.0.id', $news->id);
+
+    actingAs(mediaLifecycleUser('admin'))
+        ->delete("/media/{$source->id}")
+        ->assertRedirect()
+        ->assertSessionHas('error');
 });
 
 it('keeps finding a rich-text reference after the image itself is edited', function () {

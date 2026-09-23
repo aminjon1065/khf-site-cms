@@ -5,6 +5,7 @@ import { useCan } from '@/lib/auth';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
+import { FormErrorSummary } from '@/ui/Feedback';
 import { Checkbox, Field, Input } from '@/ui/Field';
 import { PageHeader } from '@/ui/PageHeader';
 
@@ -60,7 +61,7 @@ export default function HomeBlocksIndex({ blocks }: Props) {
             })),
         })),
     });
-    const { data, setData, processing } = form;
+    const { data, setData, processing, errors } = form;
 
     const updateItem = (
         blockIndex: number,
@@ -113,6 +114,8 @@ export default function HomeBlocksIndex({ blocks }: Props) {
                     )
                 }
             />
+
+            <FormErrorSummary errors={errors} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 {data.blocks.map((block, i) => (

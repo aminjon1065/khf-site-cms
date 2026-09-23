@@ -36,6 +36,8 @@ return [
     ],
 
     'frontend' => [
+        // Public site base URL for "view on site" links (no trailing slash).
+        'url' => env('FRONTEND_URL', 'https://khf.tj'),
         'revalidation_url' => env('FRONTEND_REVALIDATION_URL'),
         'revalidation_secret' => env('FRONTEND_REVALIDATION_SECRET'),
         'rum_secret' => env('RUM_INGEST_SECRET'),

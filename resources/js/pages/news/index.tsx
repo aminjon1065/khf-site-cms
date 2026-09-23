@@ -30,6 +30,8 @@ interface NewsRow {
     id: number;
     title: string;
     slug: string | null;
+    /** Null while the item isn't visible on the public site. */
+    public_url: string | null;
     status: ContentStatus;
     category: string | null;
     category_id?: number | null;
@@ -114,18 +116,18 @@ export default function NewsIndex({
         title: string;
         slug: string;
         category_id: string;
-        status: ContentStatus;
         is_pinned: boolean;
         show_on_home: boolean;
         published_at: string;
+        updated_at: string | null;
     }>({
         title: '',
         slug: '',
         category_id: '',
-        status: 'draft',
         is_pinned: false,
         show_on_home: true,
         published_at: '',
+        updated_at: null,
     });
     const [quickSaving, setQuickSaving] = useState(false);
     const [quickError, setQuickError] = useState<string | null>(null);
@@ -137,10 +139,10 @@ export default function NewsIndex({
             title: r.title === '— без заголовка —' ? '' : r.title,
             slug: r.slug ?? '',
             category_id: r.category_id ? String(r.category_id) : '',
-            status: r.status,
             is_pinned: r.is_pinned,
             show_on_home: r.show_on_home,
             published_at: r.published_at ? r.published_at.slice(0, 16) : '',
+            updated_at: r.updated_at,
         });
     };
 
@@ -163,10 +165,14 @@ export default function NewsIndex({
                 category_id: quickData.category_id
                     ? Number(quickData.category_id)
                     : null,
-                status: quickData.status,
                 is_pinned: quickData.is_pinned,
                 show_on_home: quickData.show_on_home,
-                published_at: quickData.published_at || null,
+                // The publication date is a publishing decision: only people
+                // allowed to publish can move it.
+                ...(can('news.publish')
+                    ? { published_at: quickData.published_at || null }
+                    : {}),
+                _editorial_version: quickData.updated_at,
             });
 
             if (res.news) {
@@ -256,7 +262,7 @@ export default function NewsIndex({
                         >
                             Изменить
                         </Link>
-                        {can('news.update') && (
+                        {can('news.edit') && (
                             <>
                                 <span className="wp-row-action-sep">|</span>
                                 <button
@@ -270,15 +276,19 @@ export default function NewsIndex({
                                 </button>
                             </>
                         )}
-                        <span className="wp-row-action-sep">|</span>
-                        <a
-                            href={`https://khf.tj/ru/news/${r.slug || r.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            На сайте
-                        </a>
+                        {r.public_url && (
+                            <>
+                                <span className="wp-row-action-sep">|</span>
+                                <a
+                                    href={r.public_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    На сайте
+                                </a>
+                            </>
+                        )}
                     </div>
                 </div>
             ),
@@ -367,13 +377,17 @@ export default function NewsIndex({
                             onSelect: () =>
                                 router.visit(NewsController.edit.url(r.id)),
                         },
-                        {
-                            label: 'Предпросмотр',
-                            icon: <Eye size={15} strokeWidth={1.5} />,
-                            onSelect: () =>
-                                window.open('https://khf.tj/news', '_blank'),
-                        },
-                        ...(can('news.update')
+                        ...(r.public_url
+                            ? [
+                                  {
+                                      label: 'Открыть на сайте',
+                                      icon: <Eye size={15} strokeWidth={1.5} />,
+                                      onSelect: () =>
+                                          window.open(r.public_url!, '_blank'),
+                                  },
+                              ]
+                            : []),
+                        ...(can('news.edit')
                             ? [
                                   {
                                       label: 'Свойства (быстро)',
@@ -446,7 +460,9 @@ export default function NewsIndex({
                         marginBottom: 10,
                     }}
                 >
-                    <strong style={{ fontSize: 13, color: 'var(--color-text)' }}>
+                    <strong
+                        style={{ fontSize: 13, color: 'var(--color-text)' }}
+                    >
                         Быстрое редактирование: {r.title}
                     </strong>
                     <span
@@ -474,7 +490,10 @@ export default function NewsIndex({
                 <div className="wp-quick-edit-grid">
                     {/* Колонка 1: Заголовок, Slug, Дата */}
                     <div>
-                        <Field label="Заголовок" htmlFor={`quick-title-${r.id}`}>
+                        <Field
+                            label="Заголовок"
+                            htmlFor={`quick-title-${r.id}`}
+                        >
                             <Input
                                 id={`quick-title-${r.id}`}
                                 value={quickData.title}
@@ -489,7 +508,7 @@ export default function NewsIndex({
                         </Field>
 
                         <Field
-                            label="Ярлык (slug)"
+                            label="Адрес ссылки"
                             htmlFor={`quick-slug-${r.id}`}
                             className="mt-2"
                         >
@@ -526,31 +545,31 @@ export default function NewsIndex({
                             </div>
                         </Field>
 
-                        <Field
-                            label="Дата публикации"
-                            htmlFor={`quick-date-${r.id}`}
-                            className="mt-2"
-                        >
-                            <Input
-                                id={`quick-date-${r.id}`}
-                                type="datetime-local"
-                                value={quickData.published_at}
-                                onChange={(e) =>
-                                    setQuickData((d) => ({
-                                        ...d,
-                                        published_at: e.target.value,
-                                    }))
-                                }
-                            />
-                        </Field>
+                        {can('news.publish') && (
+                            <Field
+                                label="Дата публикации (время Душанбе)"
+                                htmlFor={`quick-date-${r.id}`}
+                                className="mt-2"
+                            >
+                                <Input
+                                    id={`quick-date-${r.id}`}
+                                    type="datetime-local"
+                                    value={quickData.published_at}
+                                    onChange={(e) =>
+                                        setQuickData((d) => ({
+                                            ...d,
+                                            published_at: e.target.value,
+                                        }))
+                                    }
+                                />
+                            </Field>
+                        )}
                     </div>
 
-                    {/* Колонка 2: Рубрика и Статус */}
+                    {/* Колонка 2: Рубрика. Статус меняется только кнопками
+                        публикации — через согласование и проверки. */}
                     <div>
-                        <Field
-                            label="Рубрика"
-                            htmlFor={`quick-cat-${r.id}`}
-                        >
+                        <Field label="Рубрика" htmlFor={`quick-cat-${r.id}`}>
                             <Select
                                 id={`quick-cat-${r.id}`}
                                 value={quickData.category_id}
@@ -564,27 +583,6 @@ export default function NewsIndex({
                                 options={options.categories.map((c) => ({
                                     value: String(c.value),
                                     label: c.label,
-                                }))}
-                            />
-                        </Field>
-
-                        <Field
-                            label="Статус"
-                            htmlFor={`quick-status-${r.id}`}
-                            className="mt-2"
-                        >
-                            <Select
-                                id={`quick-status-${r.id}`}
-                                value={quickData.status}
-                                onChange={(e) =>
-                                    setQuickData((d) => ({
-                                        ...d,
-                                        status: e.target.value as ContentStatus,
-                                    }))
-                                }
-                                options={options.statuses.map((s) => ({
-                                    value: String(s.value),
-                                    label: s.label,
                                 }))}
                             />
                         </Field>
@@ -603,7 +601,13 @@ export default function NewsIndex({
                         >
                             Отображение
                         </span>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                        <div
+                            style={{
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: 8,
+                            }}
+                        >
                             <Checkbox
                                 label="Закрепить запись"
                                 checked={quickData.is_pinned}
@@ -795,7 +799,7 @@ export default function NewsIndex({
                 title="Снять новость с публикации?"
                 body={
                     unpublishTarget
-                        ? `Новость «${unpublishTarget.title}» будет убрана с сайта и отправлена в архив.`
+                        ? `Новость «${unpublishTarget.title}» будет убрана с сайта и вернётся в черновики.`
                         : ''
                 }
                 confirmLabel="Снять с публикации"

@@ -10,10 +10,8 @@ import {
 const only = (title: string) => ({ tg: title, ru: '', en: '' });
 
 test('a material filled in one language passes the blocking check', () => {
-    const [anyVersion, tg, ru, en] = languageChecks(
-        { tg: 100, ru: 0, en: 0 },
-        only('Сарлавҳа'),
-    );
+    const checks = languageChecks({ tg: 100, ru: 0, en: 0 }, only('Сарлавҳа'));
+    const [anyVersion, tg, ru] = checks;
 
     assert.deepEqual(anyVersion, {
         label: 'Хотя бы одна языковая версия заполнена',
@@ -27,10 +25,20 @@ test('a material filled in one language passes the blocking check', () => {
         ru.detail,
         'Нет заголовка — на русской версии сайта материал не появится.',
     );
-    assert.equal(
-        en.detail,
-        'Нет заголовка — на английской версии сайта материал не появится.',
+    // English is optional: an untouched English version is not a check.
+    assert.equal(checks.length, 3);
+});
+
+test('a started English version is reported as optional', () => {
+    const [, , , en] = languageChecks(
+        { tg: 100, ru: 100, en: 50 },
+        { tg: 'Сарлавҳа', ru: 'Заголовок', en: 'Title' },
     );
+
+    assert.equal(en.label, 'Английская версия заполнена (необязательно)');
+    assert.equal(en.ok, false);
+    assert.equal(en.blocking, undefined);
+    assert.equal(en.detail, 'Заполнена на 50%.');
 });
 
 test('publication is blocked until some language version is complete', () => {

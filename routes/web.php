@@ -14,7 +14,6 @@ use App\Http\Controllers\Cms\EmergencyContactController;
 use App\Http\Controllers\Cms\HomeBlockController;
 use App\Http\Controllers\Cms\InstructionController;
 use App\Http\Controllers\Cms\LeaderController;
-use App\Http\Controllers\Cms\LocaleController;
 use App\Http\Controllers\Cms\MediaController;
 use App\Http\Controllers\Cms\MenuController;
 use App\Http\Controllers\Cms\NewsController;
@@ -37,9 +36,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => Auth::check()
     ? redirect('/dashboard')
     : redirect()->route('login'))->name('home');
-
-// Interface language toggle (available to guests on the login screen).
-Route::post('locale', LocaleController::class)->name('locale');
 
 // Private draft/review media previews: a valid signature alone is not enough;
 // the controller also requires an authenticated user with media.view.
@@ -88,7 +84,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::post('news', [NewsController::class, 'store'])->name('news.store');
     Route::get('news/{news}/edit', [NewsController::class, 'edit'])->name('news.edit');
     Route::put('news/{news}', [NewsController::class, 'update'])->middleware('editorial.version')->name('news.update');
-    Route::patch('news/{news}/quick-update', [NewsController::class, 'quickUpdate'])->name('news.quick-update');
+    Route::patch('news/{news}/quick-update', [NewsController::class, 'quickUpdate'])->middleware('editorial.version')->name('news.quick-update');
     Route::delete('news/{news}', [NewsController::class, 'destroy'])->name('news.destroy');
     Route::post('news/{news}/duplicate', [NewsController::class, 'duplicate'])->name('news.duplicate');
     Route::post('news/{news}/publish', [NewsController::class, 'publish'])->name('news.publish');

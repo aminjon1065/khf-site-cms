@@ -1,14 +1,14 @@
-import { usePage } from '@inertiajs/react';
 import { createContext, useCallback, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 
-export type Locale = 'ru' | 'tg';
-
 /**
- * Flat key → string dictionaries. `ru` is the complete reference; `tg` (тоҷикӣ)
- * overrides where a genuine Tajik term exists and otherwise falls back to `ru`.
- * Domain vocabulary (severities, statuses, hazards) is provided in both.
+ * The staff interface is Russian-only (owner decision, 2026-09-23); content
+ * itself is still written in ru/tg/en. The dictionary keeps labels in one
+ * place.
  */
+export type Locale = 'ru';
+
+/** Flat key → string dictionary. */
 const ru: Record<string, string> = {
     'app.name': 'КЧС РТ · CMS',
     'app.tagline': 'Комитет по чрезвычайным ситуациям и гражданской обороне',
@@ -200,163 +200,6 @@ const ru: Record<string, string> = {
     'lang.en_full': 'English',
 };
 
-const tg: Record<string, string> = {
-    'app.name': 'КҲӢ ҶТ · CMS',
-    'app.tagline': 'Кумитаи ҳолатҳои фавқулодда ва мудофиаи граждании ҶТ',
-
-    'action.create': 'Эҷод',
-    'action.save': 'Захира',
-    'action.save_draft': 'Захираи сиёҳнавис',
-    'action.cancel': 'Бекор',
-    'action.close': 'Пӯшидан',
-    'action.delete': 'Нест кардан',
-    'action.edit': 'Таҳрир',
-    'action.open': 'Кушодан',
-    'action.preview': 'Пешнамоиш',
-    'action.duplicate': 'Нусхабардорӣ',
-    'action.history': 'Таърих',
-    'action.back': 'Бозгашт',
-    'action.next': 'Оянда',
-    'action.submit': 'Фиристодан',
-    'action.publish': 'Нашр кардан',
-    'action.unpublish': 'Аз нашр гирифтан',
-    'action.approve': 'Тасдиқ',
-    'action.return': 'Баргардонидан барои такмил',
-    'action.send_review': 'Фиристодан ба санҷиш',
-    'action.search': 'Ҷустуҷӯ',
-    'action.filter': 'Филтр',
-    'action.reset': 'Аз нав',
-    'action.apply': 'Татбиқ',
-    'action.export': 'Содирот',
-    'action.export_csv': 'Содироти CSV',
-    'action.upload': 'Боркунӣ',
-    'action.replace': 'Иваз кардан',
-    'action.invite': 'Даъват',
-    'action.deactivate': 'Ғайрифаъол',
-    'action.activate': 'Фаъол',
-    'action.copy_from_ru': 'Нусха аз русӣ',
-    'action.mark_all_read': 'Ҳамаро хондашуда қайд кунед',
-    'action.open_site': 'Кушодани сайт',
-    'action.confirm': 'Тасдиқ',
-    'action.select': 'Интихоб',
-    'action.add': 'Илова',
-    'action.remove': 'Хориҷ',
-    'action.logout': 'Баромадан',
-
-    'common.title': 'Номгӯй',
-    'common.status': 'Ҳолат',
-    'common.author': 'Муаллиф',
-    'common.date': 'Сана',
-    'common.region': 'Минтақа',
-    'common.regions': 'Минтақаҳо',
-    'common.type': 'Навъ',
-    'common.severity': 'Дараҷа',
-    'common.language': 'Забон',
-    'common.languages': 'Забонҳо',
-    'common.published': 'Нашр',
-    'common.deadline': 'Мӯҳлат',
-    'common.actions': 'Амалҳо',
-    'common.all': 'Ҳама',
-    'common.loading': 'Боркунӣ…',
-    'common.saving': 'Захира шуда истодааст…',
-    'common.saved': 'Захира шуд',
-    'common.unsaved': 'Тағйироти захиранашуда мавҷуд аст',
-    'common.role': 'Нақш',
-    'common.email': 'Почтаи электронӣ',
-    'common.phone': 'Телефон',
-    'common.name': 'Ном',
-    'common.position': 'Вазифа',
-    'common.last_login': 'Вуруди охирин',
-    'common.channels': 'Каналҳо',
-    'common.contacts': 'Тамосҳо',
-
-    'nav.group.overview': 'Шарҳи умумӣ',
-    'nav.group.operational': 'Кори оперативӣ',
-    'nav.group.collections': 'Коллексияҳо',
-    'nav.group.navigation': 'Навигатсия',
-    'nav.group.assets': 'Медиа',
-    'nav.group.content': 'Коллексияҳо',
-    'nav.group.management': 'Навигатсия',
-    'nav.group.system': 'Система',
-
-    'nav.dashboard': 'Дашборд',
-    'nav.control_center': 'Маркази назорат',
-    'nav.alerts': 'Огоҳиномаҳо',
-    'nav.approvals': 'Маркази мувофиқа',
-    'nav.news': 'Хабарҳо',
-    'nav.instructions': 'Дастурҳо ба аҳолӣ',
-    'nav.documents': 'Ҳуҷҷатҳо',
-    'nav.pages': 'Саҳифаҳо',
-    'nav.announcements': 'Эълонҳо',
-    'nav.media': 'Китобхонаи медиа',
-    'nav.home_blocks': 'Саҳифаи асосӣ',
-    'nav.users': 'Корбарон',
-    'nav.roles': 'Нақшҳо ва ҳуқуқҳо',
-    'nav.activity': 'Журнали амалҳо',
-    'nav.settings': 'Танзимот',
-    'nav.profile': 'Профил',
-    'nav.notifications': 'Огоҳиномаҳо',
-    'nav.search': 'Ҷустуҷӯ',
-
-    'auth.login_title': 'Вуруд ба система',
-    'auth.login_sub': 'Системаи ягонаи идораи мундариҷаи КҲӢ ҶТ',
-    'auth.email': 'Почтаи электронӣ',
-    'auth.password': 'Рамз',
-    'auth.remember': 'Ин дастгоҳро дар хотир доред',
-    'auth.forgot': 'Рамзро фаромӯш кардед?',
-    'auth.sign_in': 'Ворид шудан',
-    'auth.security_notice':
-        'Дастрасӣ танҳо барои кормандони ваколатдор. Ҳама амалҳо сабт мешаванд.',
-    'auth.2fa_title': 'Аутентификатсияи дуомила',
-    'auth.2fa_sub': 'Рамзи 6-рақамаро аз барнома ворид кунед',
-    'auth.2fa_recovery': 'Истифодаи рамзи барқарорсозӣ',
-    'auth.2fa_verify': 'Тасдиқ',
-    'auth.interface_lang': 'Забони интерфейс',
-
-    'severity.info': 'Иттилоот',
-    'severity.attention': 'Диққат',
-    'severity.warning': 'Огоҳӣ',
-    'severity.danger': 'Хатар',
-    'severity.critical': 'Бӯҳронӣ',
-
-    'status.draft': 'Сиёҳнавис',
-    'status.review': 'Дар санҷиш',
-    'status.translation_check': 'Санҷиши тарҷума',
-    'status.approved': 'Тасдиқшуда',
-    'status.scheduled': 'Ба нақша гирифташуда',
-    'status.published': 'Нашршуда',
-    'status.updated': 'Навшуда',
-    'status.completed': 'Анҷомёфта',
-    'status.cancelled': 'Бекоршуда',
-    'status.returned': 'Баргардонидашуда',
-    'status.archived': 'Дар бойгонӣ',
-
-    'hazard.mudflow': 'Сел',
-    'hazard.earthquake': 'Заминҷунбӣ',
-    'hazard.flood': 'Обхезӣ',
-    'hazard.avalanche': 'Тарма',
-    'hazard.fire': 'Сӯхтор',
-    'hazard.wind': 'Шамоли сахт',
-    'hazard.heat': 'Гармӣ',
-    'hazard.frost': 'Сармо',
-    'hazard.landslide': 'Ярч',
-    'hazard.storm': 'Раъду барқ',
-
-    'channel.site': 'Сайт',
-    'channel.sos_app': 'Барномаи SOS',
-    'channel.rss': 'RSS',
-    'channel.sms': 'СМС',
-
-    'lang.tg': 'ТҶ',
-    'lang.ru': 'РУ',
-    'lang.en': 'EN',
-    'lang.tg_full': 'Тоҷикӣ',
-    'lang.ru_full': 'Русский',
-    'lang.en_full': 'English',
-};
-
-const dictionaries: Record<Locale, Record<string, string>> = { ru, tg };
-
 type Translator = (
     key: string,
     params?: Record<string, string | number>,
@@ -381,20 +224,14 @@ function interpolate(
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
-    const page = usePage<{ locale?: Locale }>();
-    const locale: Locale = page.props.locale === 'tg' ? 'tg' : 'ru';
+    const locale: Locale = 'ru';
 
     const t = useCallback<Translator>(
-        (key, params) => {
-            const value =
-                dictionaries[locale][key] ?? dictionaries.ru[key] ?? key;
-
-            return interpolate(value, params);
-        },
-        [locale],
+        (key, params) => interpolate(ru[key] ?? key, params),
+        [],
     );
 
-    const value = useMemo(() => ({ locale, t }), [locale, t]);
+    const value = useMemo(() => ({ locale, t }), [t]);
 
     return (
         <I18nContext.Provider value={value}>{children}</I18nContext.Provider>

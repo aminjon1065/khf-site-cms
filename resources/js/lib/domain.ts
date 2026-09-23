@@ -61,6 +61,17 @@ export const toneColor: Record<StatusTone, string> = {
 export const LOCALES = ['tg', 'ru', 'en'] as const;
 export type ContentLocale = (typeof LOCALES)[number];
 
+/**
+ * Languages every material is expected in. English is optional (owner
+ * decision, 2026-09-23): an empty English version is not a warning. Mirrors
+ * App\Support\ContentLocales::REQUIRED.
+ */
+export const REQUIRED_LOCALES: readonly ContentLocale[] = ['tg', 'ru'];
+
+export function isRequiredLocale(locale: ContentLocale): boolean {
+    return REQUIRED_LOCALES.includes(locale);
+}
+
 export const localeShort: Record<ContentLocale, string> = {
     tg: 'ТҶ',
     ru: 'РУ',

@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\News;
 use App\Support\ContentTitle;
+use App\Support\PublicSite;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,7 @@ class NewsResource extends JsonResource
             'id' => $this->id,
             'title' => ContentTitle::of($this->resource) ?: '— без заголовка —',
             'slug' => $this->slug,
+            'public_url' => PublicSite::urlFor($this->resource),
             'status' => $this->status->value,
             'category' => $this->whenLoaded('category', fn () => $this->category?->getTranslation('name', 'ru')),
             'category_id' => $this->category_id,

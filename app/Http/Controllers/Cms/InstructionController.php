@@ -14,6 +14,7 @@ use App\Services\WorkflowService;
 use App\Support\EditorialContent;
 use App\Support\FileSize;
 use App\Support\RichText;
+use App\Support\SaveOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -177,7 +178,7 @@ class InstructionController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($instruction, ContentStatus::Archived, $request->user(), $validated['comment']);
+        $this->workflow->transition($instruction, ContentStatus::Draft, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Инструкция снята с публикации.');
     }
@@ -464,22 +465,19 @@ class InstructionController extends Controller
      */
     private function redirectAfterSave(Instruction $instruction, InstructionRequest $request): RedirectResponse
     {
-        $message = $this->savedMessage($request);
+        $message = $this->savedMessage($instruction, $request);
 
         return $request->boolean('stay')
             ? redirect("/instructions/{$instruction->id}/edit")->with('success', $message)
             : redirect('/instructions')->with('success', $message);
     }
 
-    private function savedMessage(InstructionRequest $request): string
+    private function savedMessage(Instruction $instruction, InstructionRequest $request): string
     {
-        if ($request->input('action') !== 'submit') {
-            return 'Черновик сохранён.';
-        }
-
-        return $request->input('publish_mode') === 'now'
-            ? 'Инструкция опубликована.'
-            : 'Инструкция отправлена на согласование.';
+        return SaveOutcome::message($instruction, $request->input('action') === 'submit', [
+            'published' => 'Инструкция опубликована.',
+            'review' => 'Инструкция отправлена на согласование.',
+        ]);
     }
 
     /**

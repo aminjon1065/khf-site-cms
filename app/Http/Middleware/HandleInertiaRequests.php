@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use App\Enums\RoleName;
 use App\Models\User;
 use App\Support\NavBadges;
+use App\Support\PublicSite;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
@@ -66,7 +67,8 @@ class HandleInertiaRequests extends Middleware
                 ? Inertia::once(fn (): array => ['user' => $this->userPayload($user)])
                     ->until(now()->addMinutes(5))
                 : ['user' => null],
-            'locale' => $this->resolveLocale($request),
+            'locale' => 'ru',
+            'public_site_url' => PublicSite::baseUrl(),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),
@@ -104,16 +106,7 @@ class HandleInertiaRequests extends Middleware
             'permissions' => $user->getAllPermissions()->pluck('name')->all(),
             'is_super' => $user->hasRole(RoleName::Superadmin->value),
             'two_factor_enabled' => $user->hasTwoFactorEnabled(),
-            'interface_locale' => $user->interface_locale,
         ];
-    }
-
-    protected function resolveLocale(Request $request): string
-    {
-        /** @var string $locale */
-        $locale = $request->session()->get('locale', config('app.locale', 'ru'));
-
-        return in_array($locale, ['ru', 'tg'], true) ? $locale : 'ru';
     }
 
     /**

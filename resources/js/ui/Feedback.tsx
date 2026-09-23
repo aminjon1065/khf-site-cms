@@ -222,3 +222,41 @@ export function ActivityFeed({ items }: { items: ActivityEntry[] }) {
         </div>
     );
 }
+
+/**
+ * Validation errors of a whole form, shown above it. Long forms (site
+ * settings, home page blocks) used to fail silently: the save simply didn't
+ * happen and nothing said why.
+ */
+export function FormErrorSummary({
+    errors,
+}: {
+    errors: Record<string, string | undefined>;
+}) {
+    const messages = [
+        ...new Set(
+            Object.values(errors).filter((message): message is string =>
+                Boolean(message),
+            ),
+        ),
+    ];
+
+    if (messages.length === 0) {
+        return null;
+    }
+
+    return (
+        <div
+            className="editorial-form-errors"
+            role="alert"
+            aria-live="assertive"
+        >
+            <strong>Не сохранено — проверьте поля ({messages.length})</strong>
+            <ul>
+                {messages.map((message) => (
+                    <li key={message}>{message}</li>
+                ))}
+            </ul>
+        </div>
+    );
+}

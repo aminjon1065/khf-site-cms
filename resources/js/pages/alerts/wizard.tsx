@@ -1,12 +1,13 @@
 import { Head, router, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
 import type { ContentLocale } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
+import { FormErrorSummary } from '@/ui/Feedback';
 import { Stepper } from '@/ui/Nav';
 import { Step1 } from './wizard/Step1';
 import { Step2 } from './wizard/Step2';
@@ -107,46 +108,15 @@ export default function AlertWizard({ alert, reference }: Props) {
         en: completeness('en'),
     };
 
-    // Autosave draft every 30s in edit mode.
-    const dirty = useRef(false);
-    useEffect(() => {
-        dirty.current = true;
-    }, [data]);
-    useEffect(() => {
-        if (!alert) {
-            return;
-        }
-
-        const timer = setInterval(() => {
-            if (!dirty.current) {
-                return;
-            }
-
-            dirty.current = false;
-            router.put(
-                AlertController.update.url(alert.id),
-                { ...data, action: 'draft' },
-                {
-                    preserveScroll: true,
-                    preserveState: true,
-                    only: [],
-                    onSuccess: () =>
-                        setSavedAt(
-                            new Date().toLocaleTimeString('ru-RU', {
-                                hour: '2-digit',
-                                minute: '2-digit',
-                            }),
-                        ),
-                },
-            );
-        }, 30000);
-
-        return () => clearInterval(timer);
-    }, [alert, data]);
-
+    // There is no timed server autosave here on purpose: it saved through the
+    // regular update, which redirected the operator out of the wizard every
+    // 30 seconds and, on a published alert, put half-edited text live.
+    // Submitting through the form keeps validation errors and the busy state
+    // (a second click can't create a duplicate alert).
     const submit = (action: 'draft' | 'submit') => {
-        const payload = { ...data, action, publish_mode: publishMode };
+        form.transform((d) => ({ ...d, action, publish_mode: publishMode }));
         const opts = {
+            preserveScroll: true,
             onSuccess: () =>
                 setSavedAt(
                     new Date().toLocaleTimeString('ru-RU', {
@@ -157,9 +127,9 @@ export default function AlertWizard({ alert, reference }: Props) {
         };
 
         if (alert) {
-            router.put(AlertController.update.url(alert.id), payload, opts);
+            form.put(AlertController.update.url(alert.id), opts);
         } else {
-            router.post(AlertController.store.url(), payload, opts);
+            form.post(AlertController.store.url(), opts);
         }
     };
 
@@ -254,6 +224,8 @@ export default function AlertWizard({ alert, reference }: Props) {
                           : 'Не сохранён'}
                 </Tag>
             </div>
+
+            <FormErrorSummary errors={errors} />
 
             <Blueprint style={{ padding: '16px 18px', marginBottom: 20 }}>
                 <Stepper steps={STEPS} current={step} onStep={setStep} />

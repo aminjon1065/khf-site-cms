@@ -59,7 +59,7 @@ export function AppSidebar({
                     />
                     <span className="brand-text">
                         <span className="brand-name">КЧС</span>
-                        <span className="brand-sub">Control Panel</span>
+                        <span className="brand-sub">Панель управления</span>
                     </span>
                 </div>
 

@@ -10,7 +10,9 @@ use App\Models\Page;
 use App\Models\User;
 use App\Services\WorkflowService;
 use App\Support\EditorialContent;
+use App\Support\PublicSite;
 use App\Support\RichText;
+use App\Support\SaveOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -89,7 +91,7 @@ class PageController extends Controller
     {
         $this->authorize('create', Page::class);
 
-        DB::transaction(function () use ($request): void {
+        $page = DB::transaction(function () use ($request): Page {
             $page = new Page;
             $this->fill($page, $request);
             $page->author_id = $request->user()?->id;
@@ -97,9 +99,11 @@ class PageController extends Controller
             $page->save();
 
             $this->runPublishAction($page, $request);
+
+            return $page;
         });
 
-        return redirect('/pages')->with('success', $this->savedMessage($request));
+        return redirect('/pages')->with('success', $this->savedMessage($page, $request));
     }
 
     public function update(PageRequest $request, Page $page): RedirectResponse
@@ -113,12 +117,17 @@ class PageController extends Controller
             $this->runPublishAction($page, $request);
         });
 
-        return redirect('/pages')->with('success', $this->savedMessage($request));
+        return redirect('/pages')->with('success', $this->savedMessage($page, $request));
     }
 
     public function destroy(Page $page): RedirectResponse
     {
         $this->authorize('delete', $page);
+
+        if (PublicSite::isSystemPage($page->slug)) {
+            return back()->with('error', 'Эту страницу нельзя удалить: её выводит раздел сайта. Если она не нужна, снимите её с публикации.');
+        }
+
         $page->delete();
 
         return back()->with('success', 'Страница удалена.');
@@ -155,7 +164,7 @@ class PageController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($page, ContentStatus::Archived, $request->user(), $validated['comment']);
+        $this->workflow->transition($page, ContentStatus::Draft, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Страница снята с публикации.');
     }
@@ -257,6 +266,8 @@ class PageController extends Controller
             'seo_title' => $page->getTranslations('seo_title'),
             'seo_description' => $page->getTranslations('seo_description'),
             'slug' => $page->slug,
+            'public_path' => PublicSite::pagePath($page->slug),
+            'is_system' => PublicSite::isSystemPage($page->slug),
             'status' => $page->status->value,
             'parent_id' => $page->parent_id,
             'sort' => $page->sort,
@@ -314,14 +325,11 @@ class PageController extends Controller
         }
     }
 
-    private function savedMessage(PageRequest $request): string
+    private function savedMessage(Page $page, PageRequest $request): string
     {
-        if ($request->input('action') !== 'submit') {
-            return 'Черновик сохранён.';
-        }
-
-        return $request->input('publish_mode') === 'now'
-            ? 'Страница опубликована.'
-            : 'Страница отправлена на согласование.';
+        return SaveOutcome::message($page, $request->input('action') === 'submit', [
+            'published' => 'Страница опубликована.',
+            'review' => 'Страница отправлена на согласование.',
+        ]);
     }
 }

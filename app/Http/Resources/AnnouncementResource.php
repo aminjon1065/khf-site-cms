@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Announcement;
 use App\Support\ContentTitle;
+use App\Support\PublicSite;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -27,6 +28,7 @@ class AnnouncementResource extends JsonResource
             'kind_label' => $this->kind->label(),
             'org' => $this->org,
             'slug' => $this->slug,
+            'public_url' => PublicSite::urlFor($this->resource),
             'status' => $this->status->value,
             'is_open' => $this->isOpen(),
             'languages' => $this->languageCompleteness(),

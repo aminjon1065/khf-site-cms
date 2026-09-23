@@ -39,12 +39,15 @@ class WorkflowService
         'translation_check' => ['approved', 'review', 'returned'],
         'approved' => ['published', 'scheduled', 'returned'],
         'scheduled' => ['published', 'cancelled', 'draft'],
-        'published' => ['updated', 'completed', 'cancelled', 'archived'],
-        'updated' => ['completed', 'cancelled', 'archived'],
+        // «Снять с публикации» returns a material to drafts (as in WordPress),
+        // so it can be fixed and published again under the same address.
+        'published' => ['updated', 'completed', 'cancelled', 'archived', 'draft'],
+        'updated' => ['completed', 'cancelled', 'archived', 'draft'],
         'returned' => ['draft', 'review'],
         'completed' => ['updated'],
         'cancelled' => ['draft'],
-        'archived' => [],
+        // Legacy: materials unpublished before drafts took over can be revived.
+        'archived' => ['draft'],
     ];
 
     /**
@@ -78,14 +81,15 @@ class WorkflowService
             ]);
         }
 
-        if ($to === ContentStatus::Published) {
-            if (! $force) {
-                $this->publicationChecklist->ensurePublishable($subject);
-            }
+        if ($to === ContentStatus::Published && ! $force) {
+            $this->publicationChecklist->ensurePublishable($subject);
+        }
 
-            if ($subject instanceof Alert && $actor !== null) {
-                $this->guardCriticalPublish($subject, $actor);
-            }
+        // Scheduling a critical alert is publishing it later: the scheduler
+        // runs without a person, so the role check happens when it's planned.
+        if (in_array($to, [ContentStatus::Published, ContentStatus::Scheduled], true)
+            && $subject instanceof Alert && $actor !== null) {
+            $this->guardCriticalPublish($subject, $actor);
         }
 
         $transition = DB::transaction(function () use ($subject, $from, $to, $actor, $comment): WorkflowTransition {
@@ -104,18 +108,20 @@ class WorkflowService
             ]);
 
             $this->logActivity($subject, $from, $to, $actor, $comment);
-            $this->notify($subject, $to, $actor);
+            $this->notify($subject, $to, $actor, $comment);
 
             return $transition;
         });
 
-        if (in_array($to, [
+        $changesSite = $from->isPublic() || in_array($to, [
             ContentStatus::Published,
             ContentStatus::Updated,
             ContentStatus::Completed,
             ContentStatus::Cancelled,
             ContentStatus::Archived,
-        ], true) && config('services.frontend.revalidation_url') && config('services.frontend.revalidation_secret')) {
+        ], true);
+
+        if ($changesSite && config('services.frontend.revalidation_url') && config('services.frontend.revalidation_secret')) {
             $payload = FrontendRevalidation::forContent($subject, $to->value);
 
             if ($payload !== null) {
@@ -211,18 +217,22 @@ class WorkflowService
         ], true) || $subject->severity === Severity::Critical;
     }
 
-    private function notify(Model&Workflowable $subject, ContentStatus $to, ?User $actor): void
+    private function notify(Model&Workflowable $subject, ContentStatus $to, ?User $actor, ?string $comment = null): void
     {
         $title = $this->subjectTitle($subject);
 
         if ($to === ContentStatus::Returned) {
             $author = $this->relatedUser($subject->getAttribute('author_id'));
 
+            // The reviewer's comment is the whole point of a return: the
+            // author must see what to fix without hunting for it.
             if ($author && $author->isNot($actor)) {
                 $author->notify(new WorkflowNotification(
                     $subject,
                     'Материал возвращён на доработку',
-                    "«{$title}» возвращён вам со статусом «Возвращено».",
+                    filled($comment)
+                        ? "«{$title}» возвращён вам на доработку. Комментарий: {$comment}"
+                        : "«{$title}» возвращён вам на доработку.",
                     'danger',
                 ));
             }
@@ -242,11 +252,14 @@ class WorkflowService
                     continue;
                 }
 
+                // Approvers act in the approval center; the editor itself is
+                // closed to reviewers without the edit permission (403).
                 $recipient->notify(new WorkflowNotification(
                     $subject,
                     'Материал ожидает согласования',
                     "«{$title}» ожидает вашего решения.",
                     'warn',
+                    route('approvals', [], false),
                 ));
             }
         }

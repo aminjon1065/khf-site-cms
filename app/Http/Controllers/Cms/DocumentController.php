@@ -12,6 +12,7 @@ use App\Models\Document;
 use App\Models\User;
 use App\Services\WorkflowService;
 use App\Support\EditorialContent;
+use App\Support\SaveOutcome;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -101,7 +102,7 @@ class DocumentController extends Controller
     {
         $this->authorize('create', Document::class);
 
-        DB::transaction(function () use ($request): void {
+        $document = DB::transaction(function () use ($request): Document {
             $document = new Document;
             $this->fill($document, $request);
             $document->author_id = $request->user()?->id;
@@ -110,9 +111,11 @@ class DocumentController extends Controller
 
             $this->syncFiles($document, $request);
             $this->runPublishAction($document, $request);
+
+            return $document;
         });
 
-        return redirect('/documents')->with('success', $this->savedMessage($request));
+        return redirect('/documents')->with('success', $this->savedMessage($document, $request));
     }
 
     public function update(DocumentRequest $request, Document $document): RedirectResponse
@@ -127,7 +130,7 @@ class DocumentController extends Controller
             $this->runPublishAction($document, $request);
         });
 
-        return redirect('/documents')->with('success', $this->savedMessage($request));
+        return redirect('/documents')->with('success', $this->savedMessage($document, $request));
     }
 
     public function destroy(Document $document): RedirectResponse
@@ -168,7 +171,7 @@ class DocumentController extends Controller
         $validated = $request->validate(['comment' => ['required', 'string', 'min:3']], [
             'comment.required' => 'Укажите причину снятия с публикации.',
         ]);
-        $this->workflow->transition($document, ContentStatus::Archived, $request->user(), $validated['comment']);
+        $this->workflow->transition($document, ContentStatus::Draft, $request->user(), $validated['comment']);
 
         return back()->with('success', 'Документ снят с публикации.');
     }
@@ -376,14 +379,11 @@ class DocumentController extends Controller
         }
     }
 
-    private function savedMessage(DocumentRequest $request): string
+    private function savedMessage(Document $document, DocumentRequest $request): string
     {
-        if ($request->input('action') !== 'submit') {
-            return 'Черновик сохранён.';
-        }
-
-        return $request->input('publish_mode') === 'now'
-            ? 'Документ опубликован.'
-            : 'Документ отправлен на согласование.';
+        return SaveOutcome::message($document, $request->input('action') === 'submit', [
+            'published' => 'Документ опубликован.',
+            'review' => 'Документ отправлен на согласование.',
+        ]);
     }
 }

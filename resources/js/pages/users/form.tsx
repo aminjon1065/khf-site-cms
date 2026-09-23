@@ -21,14 +21,13 @@ interface UserData {
     region_id: number | null;
     position: string | null;
     department: string | null;
-    interface_locale: string;
     is_active: boolean;
     is_self: boolean;
 }
 
 interface Props {
     user: UserData | null;
-    reference: { roles: Option[]; regions: Option[]; locales: Option[] };
+    reference: { roles: Option[]; regions: Option[] };
 }
 
 export default function UserForm({ user, reference }: Props) {
@@ -41,11 +40,12 @@ export default function UserForm({ user, reference }: Props) {
         email: user?.email ?? '',
         password: '',
         password_confirmation: '',
-        role: user?.role ?? reference.roles[0]?.value ?? 'viewer',
+        // No default role: a new account must get its access level on purpose
+        // (the first option used to be «Суперадминистратор»).
+        role: user?.role ?? '',
         region_id: (user?.region_id ?? '') as number | '',
         position: user?.position ?? '',
         department: user?.department ?? '',
-        interface_locale: user?.interface_locale ?? 'ru',
         is_active: user?.is_active ?? true,
     });
     const { data, setData, processing, errors } = form;
@@ -177,6 +177,7 @@ export default function UserForm({ user, reference }: Props) {
                     <Field label="Роль" required error={fieldError('role')}>
                         <Select
                             value={data.role}
+                            placeholder="Выберите роль"
                             options={reference.roles.map((r) => ({
                                 value: String(r.value),
                                 label: r.label,
@@ -217,18 +218,6 @@ export default function UserForm({ user, reference }: Props) {
                                         ? ''
                                         : Number(e.target.value),
                                 )
-                            }
-                        />
-                    </Field>
-                    <Field label="Язык интерфейса">
-                        <Select
-                            value={data.interface_locale}
-                            options={reference.locales.map((l) => ({
-                                value: String(l.value),
-                                label: l.label,
-                            }))}
-                            onChange={(e) =>
-                                setData('interface_locale', e.target.value)
                             }
                         />
                     </Field>

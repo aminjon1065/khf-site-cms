@@ -11,6 +11,7 @@ use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
 use App\Models\User;
+use App\Support\ContentLocales;
 use App\Support\EditorialContent;
 use App\Support\TranslationQueueRow;
 use Carbon\CarbonInterface;
@@ -37,12 +38,12 @@ class TranslationQueueController extends Controller
         'news' => [
             'label' => 'Новости',
             'title_attribute' => 'title',
-            'fields' => ['title', 'summary', 'body', 'seo.title', 'seo.description'],
+            'fields' => ['title', 'summary', 'body'],
         ],
         'pages' => [
             'label' => 'Страницы',
             'title_attribute' => 'title',
-            'fields' => ['title', 'body', 'seo_title', 'seo_description'],
+            'fields' => ['title', 'body'],
         ],
         'projects' => [
             'label' => 'Проекты',
@@ -93,7 +94,9 @@ class TranslationQueueController extends Controller
         $selectedLocale = in_array($requestedLocale, self::LOCALES, true)
             ? $requestedLocale
             : '';
-        $locales = $selectedLocale === '' ? self::LOCALES : [$selectedLocale];
+        // By default the queue holds the required languages only; English is
+        // optional and shows up when it's picked explicitly.
+        $locales = $selectedLocale === '' ? ContentLocales::REQUIRED : [$selectedLocale];
         $paginator = $this->queueQuery($selectedTypes, $locales, $user)
             ->orderByRaw("CASE status WHEN 'translation_check' THEN 0 WHEN 'returned' THEN 1 WHEN 'review' THEN 2 ELSE 3 END")
             ->orderBy('updated_at')
@@ -108,7 +111,7 @@ class TranslationQueueController extends Controller
 
         return Inertia::render('editorial/translations', [
             'items' => array_map(
-                fn (TranslationQueueRow $item): array => $this->presentRow($item, $models, $user),
+                fn (TranslationQueueRow $item): array => $this->presentRow($item, $models, $user, $locales),
                 $rows,
             ),
             'meta' => $this->paginationMeta($paginator),
@@ -126,7 +129,7 @@ class TranslationQueueController extends Controller
             'locales' => [
                 ['value' => 'tg', 'label' => 'Тоҷикӣ'],
                 ['value' => 'ru', 'label' => 'Русский'],
-                ['value' => 'en', 'label' => 'English'],
+                ['value' => 'en', 'label' => 'English (необязательно)'],
             ],
         ]);
     }
@@ -219,9 +222,10 @@ class TranslationQueueController extends Controller
 
     /**
      * @param  Collection<string, Model>  $models
+     * @param  list<string>  $locales  Languages the queue is showing (missing ones are listed)
      * @return array<string, mixed>
      */
-    private function presentRow(TranslationQueueRow $item, Collection $models, User $user): array
+    private function presentRow(TranslationQueueRow $item, Collection $models, User $user, array $locales): array
     {
         $type = $item->contentType;
         $model = $models->get("{$type}-{$item->id}");
@@ -239,9 +243,9 @@ class TranslationQueueController extends Controller
             'title' => $this->localizedTitle($item->titleData),
             'status' => ContentStatus::tryFrom($item->status)?->label() ?? $item->status,
             'languages' => $languages,
-            'missing_locales' => array_keys(array_filter(
-                $languages,
-                fn (int $percent): bool => $percent < 100,
+            'missing_locales' => array_values(array_filter(
+                $locales,
+                fn (string $locale): bool => ($languages[$locale] ?? 0) < 100,
             )),
             'updated_at' => $updatedAt instanceof CarbonInterface
                 ? $updatedAt->format('d.m.Y H:i')

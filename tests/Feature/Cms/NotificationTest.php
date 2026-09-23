@@ -1,12 +1,17 @@
 <?php
 
+use App\Enums\ContentStatus;
 use App\Models\News;
 use App\Models\User;
 use App\Notifications\WorkflowNotification;
+use App\Services\WorkflowService;
+use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
+use function Pest\Laravel\seed;
 
 it('shows the authenticated users notifications and can mark them read', function () {
     $user = User::factory()->create();
@@ -65,4 +70,36 @@ it('includes a direct editor URL in workflow notification data', function () {
             'subject_id' => $news->id,
             'url' => "/news/{$news->id}/edit",
         ]);
+});
+
+it('sends approvers to the approval center and authors the reviewer comment', function () {
+    Notification::fake();
+    seed(RolePermissionSeeder::class);
+
+    $author = User::factory()->create();
+    $author->assignRole('editor');
+    $approver = User::factory()->create();
+    $approver->assignRole('approver');
+    $news = News::factory()->create([
+        'author_id' => $author->id,
+        'status' => ContentStatus::Draft,
+    ]);
+    $workflow = app(WorkflowService::class);
+
+    $workflow->transition($news, ContentStatus::Review, $author);
+
+    Notification::assertSentTo(
+        $approver,
+        WorkflowNotification::class,
+        fn (WorkflowNotification $notification): bool => $notification->toArray($approver)['url'] === '/approvals',
+    );
+
+    $workflow->transition($news->fresh(), ContentStatus::Returned, $approver, 'Уточните дату учений.');
+
+    Notification::assertSentTo(
+        $author,
+        WorkflowNotification::class,
+        fn (WorkflowNotification $notification): bool => str_contains($notification->message, 'Комментарий: Уточните дату учений.')
+            && $notification->toArray($author)['url'] === "/news/{$news->id}/edit",
+    );
 });

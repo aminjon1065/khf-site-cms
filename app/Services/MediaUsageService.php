@@ -9,6 +9,7 @@ use App\Models\MediaAsset;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
+use App\Support\MediaUrl;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
@@ -88,16 +89,23 @@ class MediaUsageService
         // полному URL означало бы, что любая правка самого файла (подпись,
         // alt, фокус) делает ссылку невидимой — и файл, стоящий в статье,
         // начинает считаться свободным, то есть его разрешено удалить.
+        //
+        // The editor stores root-relative paths (`/storage/12/photo.jpg`, see
+        // MediaUrl::toRelative), so search for the path: it also matches older
+        // bodies that still hold the absolute URL. Searching for the absolute
+        // URL alone reported images used inside articles as free to delete.
         $url = Str::before($media->getUrl(), '?');
         if ($url === '') {
             return array_values($usages);
         }
 
+        $path = MediaUrl::toRelative($url);
+
         foreach (self::CONTENT as $modelClass => $config) {
             $modelClass::query()
-                ->where(function ($query) use ($config, $url): void {
+                ->where(function ($query) use ($config, $path): void {
                     foreach ($config['fields'] as $field) {
-                        $query->orWhere($field, 'like', "%{$url}%");
+                        $query->orWhere($field, 'like', "%{$path}%");
                     }
                 })
                 ->get()

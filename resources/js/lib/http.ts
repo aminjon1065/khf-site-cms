@@ -9,14 +9,38 @@ function xsrfToken(): string {
     return match ? decodeURIComponent(match[1]) : '';
 }
 
-/** Читает сообщение об ошибке из JSON-ответа Laravel, если оно есть. */
+/**
+ * Понятные сотруднику причины вместо «HTTP 413» и английских системных фраз
+ * («This action is unauthorized.»).
+ */
+const STATUS_MESSAGES: Record<number, string> = {
+    403: 'Недостаточно прав для этого действия.',
+    404: 'Не найдено — возможно, материал уже удалили.',
+    413: 'Файл слишком большой для загрузки.',
+    419: 'Сессия устарела — обновите страницу и повторите.',
+    429: 'Слишком много запросов подряд — подождите минуту.',
+};
+
+/**
+ * Сообщение об ошибке для человека: у ошибок проверки (422) — текст первой
+ * ошибки из ответа Laravel, у остальных — объяснение по коду ответа.
+ */
 async function errorMessage(res: Response): Promise<string> {
+    if (res.status !== 422) {
+        return (
+            STATUS_MESSAGES[res.status] ??
+            (res.status >= 500
+                ? 'Ошибка на сервере — повторите попытку позже.'
+                : `Не удалось выполнить запрос (код ${res.status}).`)
+        );
+    }
+
     try {
         const body = (await res.json()) as { message?: string };
 
-        return body.message ?? `HTTP ${res.status}`;
+        return body.message ?? 'Проверьте заполненные поля.';
     } catch {
-        return `HTTP ${res.status}`;
+        return 'Проверьте заполненные поля.';
     }
 }
 
@@ -92,4 +116,3 @@ export async function patchJson<T>(url: string, data: unknown): Promise<T> {
 
     return res.json() as Promise<T>;
 }
-

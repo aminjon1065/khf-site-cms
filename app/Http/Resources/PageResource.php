@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Page;
 use App\Support\ContentTitle;
+use App\Support\PublicSite;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -23,6 +24,9 @@ class PageResource extends JsonResource
             'id' => $this->id,
             'title' => ContentTitle::of($this->resource) ?: '— без заголовка —',
             'slug' => $this->slug,
+            'public_path' => PublicSite::pagePath($this->slug),
+            'public_url' => PublicSite::urlFor($this->resource),
+            'is_system' => PublicSite::isSystemPage($this->slug),
             'status' => $this->status->value,
             'parent' => $this->whenLoaded('parent', fn () => $this->parent ? ContentTitle::of($this->parent) : null),
             'languages' => $this->languageCompleteness(),

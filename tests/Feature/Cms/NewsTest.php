@@ -259,14 +259,29 @@ it('publishes via the publish endpoint and the item becomes public', function ()
         ->assertJsonPath('data.title', 'Виден в публичном API');
 });
 
-it('unpublishes a published item to the archive', function () {
+it('unpublishes a published item back into drafts', function () {
     $news = News::factory()->published()->create();
 
     actingAs(newsUser('chief_editor'))
         ->post("/news/{$news->id}/unpublish", ['comment' => 'Материал устарел'])
         ->assertRedirect();
 
-    expect($news->fresh()->status)->toBe(ContentStatus::Archived);
+    expect($news->fresh()->status)->toBe(ContentStatus::Draft);
+});
+
+it('republishes an unpublished item under the same address', function () {
+    $news = News::factory()->published()->create(['slug' => 'same-address']);
+    $editor = newsUser('chief_editor');
+
+    actingAs($editor)
+        ->post("/news/{$news->id}/unpublish", ['comment' => 'Уточняем данные'])
+        ->assertRedirect();
+
+    actingAs($editor)->post("/news/{$news->id}/publish")->assertRedirect();
+
+    expect($news->fresh())
+        ->status->toBe(ContentStatus::Published)
+        ->slug->toBe('same-address');
 });
 
 it('forbids a viewer from deleting news', function () {
@@ -429,4 +444,123 @@ it('preserves image srcset and sizes for responsive images', function () {
         ->toContain('sizes=')
         ->toContain('data-media-id="42"')
         ->toContain('size-medium');
+});
+
+it('never publishes through quick edit, even when asked to', function () {
+    $news = News::factory()->create(['status' => ContentStatus::Draft]);
+
+    actingAs(newsUser('translator'))
+        ->patchJson("/news/{$news->id}/quick-update", [
+            'title' => 'Перевод заголовка',
+            'status' => 'published',
+        ])
+        ->assertOk();
+
+    expect($news->fresh()->status)->toBe(ContentStatus::Draft);
+});
+
+it('lets only publishers move the publication date in quick edit', function () {
+    $news = News::factory()->published()->create();
+
+    actingAs(newsUser('translator'))
+        ->patchJson("/news/{$news->id}/quick-update", [
+            'title' => 'Заголовок',
+            'published_at' => now()->addWeek()->format('Y-m-d\TH:i'),
+        ])
+        ->assertForbidden();
+
+    actingAs(newsUser('editor'))
+        ->patchJson("/news/{$news->id}/quick-update", [
+            'title' => 'Заголовок',
+            'published_at' => '2026-09-01T09:00',
+        ])
+        ->assertOk();
+
+    expect($news->fresh()->published_at->format('Y-m-d H:i'))->toBe('2026-09-01 09:00');
+});
+
+it('accepts an unchanged publication date from users who cannot publish', function () {
+    $news = News::factory()->published()->create(['published_at' => '2026-09-10 08:30:00']);
+
+    actingAs(newsUser('translator'))
+        ->patchJson("/news/{$news->id}/quick-update", [
+            'title' => 'Уточнённый заголовок',
+            'published_at' => '2026-09-10T08:30',
+        ])
+        ->assertOk();
+
+    expect($news->fresh()->getTranslation('title', 'ru'))->toBe('Уточнённый заголовок');
+});
+
+it('keeps a quick-edited title in the language it is written in', function () {
+    $news = News::factory()->create([
+        'title' => ['tg' => 'Сарлавҳаи тоҷикӣ'],
+        'status' => ContentStatus::Draft,
+    ]);
+
+    actingAs(newsUser('editor'))
+        ->patchJson("/news/{$news->id}/quick-update", ['title' => 'Сарлавҳаи нав'])
+        ->assertOk();
+
+    $news->refresh();
+
+    expect($news->getTranslation('title', 'tg'))->toBe('Сарлавҳаи нав')
+        ->and($news->getTranslation('title', 'ru', false))->toBe('');
+});
+
+it('rejects a quick edit made on a stale copy', function () {
+    $news = News::factory()->create(['status' => ContentStatus::Draft]);
+    $staleVersion = $news->updated_at->toIso8601String();
+    $this->travel(1)->minutes();
+    $news->forceFill(['is_pinned' => true])->save();
+
+    actingAs(newsUser('editor'))
+        ->patchJson("/news/{$news->id}/quick-update", [
+            'title' => 'Заголовок',
+            '_editorial_version' => $staleVersion,
+        ])
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('editorial_conflict');
+});
+
+it('sends a schedule request from someone who cannot publish to approval', function () {
+    actingAs(newsUser('regional_editor'))->post('/news', [
+        'title' => ['ru' => 'Региональная новость', 'tg' => '', 'en' => ''],
+        'action' => 'submit',
+        'publish_mode' => 'schedule',
+        'scheduled_at' => now()->addDay()->toDateTimeString(),
+    ])
+        ->assertRedirect('/news')
+        ->assertSessionHas('success', 'Новость отправлена на согласование.');
+
+    expect(News::query()->sole()->status)->toBe(ContentStatus::Review);
+});
+
+it('tells the author the news went to approval when they cannot publish', function () {
+    actingAs(newsUser('regional_editor'))->post('/news', [
+        'title' => ['ru' => 'Новость без права публикации', 'tg' => '', 'en' => ''],
+        'summary' => ['ru' => 'Лид.', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => '<p>Текст.</p>', 'tg' => '', 'en' => ''],
+        'action' => 'submit',
+        'publish_mode' => 'now',
+    ])
+        ->assertRedirect('/news')
+        ->assertSessionHas('success', 'Новость отправлена на согласование.');
+
+    expect(News::query()->sole()->status)->toBe(ContentStatus::Review);
+});
+
+it('publishes news without filling the optional search snippet', function () {
+    actingAs(newsUser('chief_editor'))->post('/news', [
+        'title' => ['ru' => 'Новость без SEO', 'tg' => '', 'en' => ''],
+        'summary' => ['ru' => 'Краткое описание.', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => '<p>Текст публикации.</p>', 'tg' => '', 'en' => ''],
+        'action' => 'submit',
+        'publish_mode' => 'now',
+    ])
+        ->assertRedirect('/news')
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('success', 'Новость опубликована.');
+
+    expect(News::query()->sole()->status)->toBe(ContentStatus::Published);
 });

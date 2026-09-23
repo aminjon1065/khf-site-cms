@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Contracts\Workflowable;
 use App\Models\News;
+use App\Support\ContentLocales;
 use App\Support\ContentTitle;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
@@ -136,15 +137,23 @@ class PublicationChecklist
 
         foreach (self::LANGUAGE_VERSIONS as $locale => [$version, $siteVersion]) {
             $percent = (int) ($completeness[$locale] ?? 0);
+            $required = ContentLocales::isRequired($locale);
+            $hasTitle = ContentTitle::in($subject, $locale) !== '';
+
+            // English is optional: an untouched English version is not a
+            // checklist item at all, only a started one is reported.
+            if (! $required && ! $hasTitle) {
+                continue;
+            }
 
             $items[] = [
                 'key' => "translation_{$locale}",
-                'label' => "{$version} версия заполнена",
+                'label' => $required ? "{$version} версия заполнена" : "{$version} версия заполнена (необязательно)",
                 'ok' => $percent === 100,
                 'blocking' => false,
                 'detail' => match (true) {
                     $percent === 100 => null,
-                    ContentTitle::in($subject, $locale) === '' => "{$missingTitle} — на {$siteVersion} версии сайта материал не появится.",
+                    ! $hasTitle => "{$missingTitle} — на {$siteVersion} версии сайта материал не появится.",
                     default => "Заполнена на {$percent}%.",
                 },
             ];

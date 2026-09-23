@@ -197,7 +197,10 @@ export default function ProjectForm({ project, reference }: Props) {
         form.post(isEdit ? update.url(project!.id) : store.url(), {
             forceFormData: true,
             preserveScroll: true,
-            preserveState: stay,
+            // Keep what the editor typed when validation fails (the page
+            // would otherwise remount from server data and drop the errors);
+            // a successful save leaving the editor starts clean.
+            preserveState: stay ? true : 'errors',
         });
     };
 

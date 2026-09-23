@@ -4,6 +4,7 @@ import SettingController from '@/actions/App/Http/Controllers/Cms/SettingControl
 import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
+import { FormErrorSummary } from '@/ui/Feedback';
 import { Field, Input, Textarea } from '@/ui/Field';
 import { PageHeader } from '@/ui/PageHeader';
 
@@ -37,7 +38,11 @@ export default function SettingsIndex({ sections }: Props) {
     });
 
     const form = useForm({ settings: initial });
-    const { data, setData, processing } = form;
+    const { data, setData, processing, errors } = form;
+    const fieldError = (group: string, key: string): string | undefined =>
+        (errors as Record<string, string | undefined>)[
+            `settings.${group}.${key}`
+        ];
 
     const update = (group: string, key: string, value: string) =>
         setData('settings', {
@@ -68,6 +73,8 @@ export default function SettingsIndex({ sections }: Props) {
                 }
             />
 
+            <FormErrorSummary errors={errors} />
+
             <div
                 className="cms-two-col"
                 style={{
@@ -86,7 +93,11 @@ export default function SettingsIndex({ sections }: Props) {
                             {section.label}
                         </h3>
                         {section.fields.map((field) => (
-                            <Field key={field.key} label={field.label}>
+                            <Field
+                                key={field.key}
+                                label={field.label}
+                                error={fieldError(section.group, field.key)}
+                            >
                                 {field.type === 'textarea' ? (
                                     <Textarea
                                         value={

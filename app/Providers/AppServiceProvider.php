@@ -131,7 +131,6 @@ class AppServiceProvider extends ServiceProvider
         Event::listen(Login::class, function (Login $event): void {
             if ($event->user instanceof User) {
                 $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
-                session(['locale' => $event->user->interface_locale]);
             }
         });
     }

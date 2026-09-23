@@ -1,6 +1,6 @@
 import { Check } from 'lucide-react';
 import type { ReactNode } from 'react';
-import { localeShort } from '@/lib/domain';
+import { isRequiredLocale, localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
 import { cn } from '@/lib/utils';
 
@@ -125,8 +125,14 @@ export function LanguageTabs({
                             className={cn(
                                 'pct',
                                 pct >= 100 && 'full',
-                                pct === 0 && 'empty',
+                                // English is optional: empty isn't a warning.
+                                pct === 0 && isRequiredLocale(l) && 'empty',
                             )}
+                            title={
+                                isRequiredLocale(l)
+                                    ? undefined
+                                    : 'Английская версия — по желанию'
+                            }
                         >
                             {pct}%
                         </span>

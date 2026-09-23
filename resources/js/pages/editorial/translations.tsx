@@ -77,14 +77,12 @@ export default function TranslationQueue({
         },
         {
             key: 'status',
-            header: 'Workflow',
+            header: 'Статус',
             width: 150,
             render: (item) => (
                 <Tag
                     tone={
-                        item.status === 'Проверка переводов'
-                            ? 'warn'
-                            : 'neutral'
+                        item.status === 'Проверка перевода' ? 'warn' : 'neutral'
                     }
                 >
                     {item.status}
@@ -140,7 +138,7 @@ export default function TranslationQueue({
             <PageHeader
                 eyebrow="Редакционные материалы"
                 title="Очередь переводов"
-                subtitle="Неполные локали собраны в одном месте. Сначала показаны материалы на проверке переводов и давно не обновлявшиеся записи."
+                subtitle="Материалы, у которых не заполнена таджикская или русская версия. Английская — по желанию: выберите её в фильтре языков."
             />
 
             <FilterBar>

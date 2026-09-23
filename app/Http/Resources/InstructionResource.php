@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Instruction;
 use App\Support\ContentTitle;
+use App\Support\PublicSite;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,7 @@ class InstructionResource extends JsonResource
             'id' => $this->id,
             'name' => ContentTitle::of($this->resource) ?: '— без названия —',
             'slug' => $this->slug,
+            'public_url' => PublicSite::urlFor($this->resource),
             'status' => $this->status->value,
             'hazard_type' => $this->hazard_type?->value,
             'hazard_label' => $this->hazard_type?->label(),

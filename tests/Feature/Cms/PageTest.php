@@ -115,14 +115,14 @@ it('keeps the slug stable on update when the slug field is left blank', function
         ->and($page->getTranslation('title', 'ru'))->toBe('Новое название');
 });
 
-it('unpublishes a page into the archive', function () {
+it('unpublishes a page back into drafts', function () {
     $page = Page::factory()->published()->create();
 
     actingAs(pageUser('admin'))->post("/pages/{$page->id}/unpublish", [
         'comment' => 'Устаревшая информация.',
     ])->assertRedirect();
 
-    expect($page->refresh()->status)->toBe(ContentStatus::Archived);
+    expect($page->refresh()->status)->toBe(ContentStatus::Draft);
 });
 
 it('soft-deletes a page', function () {
@@ -183,4 +183,88 @@ it('re-seeds pages idempotently even after one was soft-deleted', function () {
 
     expect($about)->not->toBeNull()
         ->and($about->status)->toBe(ContentStatus::Published);
+});
+
+it('keeps the address of a page the public site depends on', function () {
+    $page = Page::factory()->published()->create(['slug' => 'leadership']);
+
+    actingAs(pageUser('admin'))->put("/pages/{$page->id}", [
+        'title' => ['ru' => 'Руководство Комитета'],
+        'body' => ['ru' => '<p>Вводный текст раздела.</p>'],
+        'slug' => 'rukovodstvo',
+        'action' => 'draft',
+    ])->assertSessionHasErrors('slug');
+
+    expect($page->refresh()->slug)->toBe('leadership');
+});
+
+it('saves a site-section page when its address is left unchanged', function () {
+    $page = Page::factory()->published()->create(['slug' => 'structure']);
+
+    actingAs(pageUser('admin'))->put("/pages/{$page->id}", [
+        'title' => ['ru' => 'Структура Комитета'],
+        'body' => ['ru' => '<p>Новый вводный текст.</p>'],
+        'slug' => 'structure',
+        'action' => 'draft',
+    ])->assertSessionHasNoErrors();
+
+    expect($page->refresh()->getTranslation('body', 'ru'))->toBe('<p>Новый вводный текст.</p>');
+});
+
+it('refuses to delete a page the public site depends on', function (string $slug) {
+    $page = Page::factory()->published()->create(['slug' => $slug]);
+
+    actingAs(pageUser('admin'))->delete("/pages/{$page->id}")
+        ->assertRedirect()
+        ->assertSessionHas('error');
+
+    expect($page->refresh()->trashed())->toBeFalse();
+})->with(['about', 'symbols', 'privacy']);
+
+it('links pages to their real address on the public site', function () {
+    config(['services.frontend.url' => 'https://staging.khf.tj']);
+    Page::factory()->published()->create([
+        'slug' => 'symbols',
+        'title' => ['ru' => 'Государственные символы Республики Таджикистан'],
+    ]);
+    Page::factory()->published()->create([
+        'slug' => 'history',
+        'title' => ['ru' => 'История'],
+    ]);
+    Page::factory()->create([
+        'slug' => 'draft-page',
+        'title' => ['ru' => 'Черновик'],
+        'status' => ContentStatus::Draft,
+    ]);
+
+    actingAs(pageUser('admin'))->get('/pages')
+        ->assertInertia(fn ($inertia) => $inertia
+            ->where('public_site_url', 'https://staging.khf.tj')
+            ->where('pages', function ($pages): bool {
+                $bySlug = collect($pages)->keyBy('slug');
+
+                return $bySlug['symbols']['public_url'] === 'https://staging.khf.tj/ru/symbols'
+                    && $bySlug['symbols']['is_system'] === true
+                    && $bySlug['history']['public_url'] === 'https://staging.khf.tj/ru/pages/history'
+                    && $bySlug['history']['is_system'] === false
+                    && $bySlug['draft-page']['public_url'] === null;
+            }));
+});
+
+it('aligns untouched seeded texts of linked pages and keeps edited ones', function () {
+    $page = Page::factory()->published()->create([
+        'slug' => 'structure',
+        'body' => [
+            'ru' => '<p>В структуру Комитета входят центральный аппарат, центр управления в кризисных ситуациях, спасательные подразделения, гражданская оборона, подразделения предупреждения ЧС, учебный центр и региональные управления.</p>',
+            'tg' => '<p>Матни таҳриршудаи муҳаррир.</p>',
+        ],
+    ]);
+
+    (require database_path('migrations/2026_09_23_164743_align_linked_page_texts_with_site_sections.php'))->up();
+
+    $page->refresh();
+
+    expect($page->getTranslation('body', 'ru'))
+        ->toBe('<p>Центральный аппарат, специализированные службы и региональные управления образуют единую государственную систему предупреждения и ликвидации чрезвычайных ситуаций.</p>')
+        ->and($page->getTranslation('body', 'tg'))->toBe('<p>Матни таҳриршудаи муҳаррир.</p>');
 });

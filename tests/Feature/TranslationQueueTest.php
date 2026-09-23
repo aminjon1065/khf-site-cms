@@ -37,7 +37,7 @@ it('lists only incomplete materials the translator is allowed to edit', function
     $news = News::factory()->create([
         'title' => completeTranslations('Новость'),
         'summary' => completeTranslations('Кратко'),
-        'body' => ['tg' => 'Матн', 'ru' => 'Текст', 'en' => ''],
+        'body' => ['tg' => '', 'ru' => 'Текст', 'en' => 'Text'],
         'seo' => [
             'tg' => ['title' => 'SEO', 'description' => 'SEO'],
             'ru' => ['title' => 'SEO', 'description' => 'SEO'],
@@ -62,7 +62,7 @@ it('lists only incomplete materials the translator is allowed to edit', function
             ->has('items', 1)
             ->where('items.0.id', $news->id)
             ->where('items.0.type', 'news')
-            ->where('items.0.missing_locales', ['en'])
+            ->where('items.0.missing_locales', ['tg'])
             ->where('items.0.edit_url', "/news/{$news->id}/edit")
             ->where('meta.total', 1)
             ->where('types', fn ($types) => collect($types)->pluck('value')->contains('documents') === false),
@@ -105,10 +105,13 @@ it('filters by the locale that still needs translation', function () {
 
 it('prioritizes translation check over older workflow states', function () {
     $editor = translationQueueUser('editor');
+    $tajikMissing = ['tg' => '', 'ru' => 'Текст', 'en' => ''];
     $draft = News::factory()->create([
+        'body' => $tajikMissing,
         'updated_at' => now()->subDay(),
     ]);
     $translationCheck = News::factory()->create([
+        'body' => $tajikMissing,
         'status' => ContentStatus::TranslationCheck,
         'updated_at' => now(),
     ]);
@@ -141,8 +144,9 @@ it('limits regional editors to their own incomplete materials', function () {
         'region_id' => $region->id,
     ]);
     $otherEditor = translationQueueUser('editor');
-    $ownNews = News::factory()->create(['author_id' => $regionalEditor->id]);
-    News::factory()->create(['author_id' => $otherEditor->id]);
+    $tajikMissing = ['tg' => '', 'ru' => 'Текст', 'en' => ''];
+    $ownNews = News::factory()->create(['author_id' => $regionalEditor->id, 'body' => $tajikMissing]);
+    News::factory()->create(['author_id' => $otherEditor->id, 'body' => $tajikMissing]);
 
     actingAs($regionalEditor)
         ->get('/editorial/translations?type=news')
@@ -150,5 +154,28 @@ it('limits regional editors to their own incomplete materials', function () {
         ->assertInertia(fn ($inertia) => $inertia
             ->has('items', 1)
             ->where('items.0.id', $ownNews->id),
+        );
+});
+
+it('does not treat a missing English version as translation work by default', function () {
+    $translator = translationQueueUser('translator');
+    $englishOnlyMissing = News::factory()->create([
+        'title' => ['tg' => 'Хабар', 'ru' => 'Новость', 'en' => ''],
+        'summary' => ['tg' => 'Мухтасар', 'ru' => 'Кратко', 'en' => ''],
+        'body' => ['tg' => 'Матн', 'ru' => 'Текст', 'en' => ''],
+    ]);
+
+    actingAs($translator)
+        ->get('/editorial/translations?type=news')
+        ->assertOk()
+        ->assertInertia(fn ($inertia) => $inertia->has('items', 0));
+
+    actingAs($translator)
+        ->get('/editorial/translations?type=news&locale=en')
+        ->assertOk()
+        ->assertInertia(fn ($inertia) => $inertia
+            ->has('items', 1)
+            ->where('items.0.id', $englishOnlyMissing->id)
+            ->where('items.0.missing_locales', ['en']),
         );
 });

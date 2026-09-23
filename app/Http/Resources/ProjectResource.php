@@ -4,6 +4,7 @@ namespace App\Http\Resources;
 
 use App\Models\Project;
 use App\Support\ContentTitle;
+use App\Support\PublicSite;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -24,6 +25,7 @@ class ProjectResource extends JsonResource
             'id' => $this->id,
             'title' => ContentTitle::of($this->resource) ?: '— без названия —',
             'slug' => $this->slug,
+            'public_url' => PublicSite::urlFor($this->resource),
             'status' => $this->status->value,
             'lifecycle_status' => $this->lifecycle_status->value,
             'lifecycle_label' => $this->lifecycle_status->label(),

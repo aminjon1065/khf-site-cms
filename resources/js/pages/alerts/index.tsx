@@ -29,6 +29,8 @@ interface AlertRow {
     hazard_label: string;
     severity: Severity;
     status: ContentStatus;
+    /** Null while the alert isn't visible on the public site. */
+    public_url: string | null;
     regions: { name: string }[];
     languages: Record<string, number>;
     author: string | null;
@@ -237,12 +239,16 @@ export default function AlertsIndex({
                             onSelect: () =>
                                 router.visit(AlertController.edit.url(r.id)),
                         },
-                        {
-                            label: t('action.preview'),
-                            icon: <Eye size={15} strokeWidth={1.5} />,
-                            onSelect: () =>
-                                window.open('https://khf.tj', '_blank'),
-                        },
+                        ...(r.public_url
+                            ? [
+                                  {
+                                      label: 'Открыть на сайте',
+                                      icon: <Eye size={15} strokeWidth={1.5} />,
+                                      onSelect: () =>
+                                          window.open(r.public_url!, '_blank'),
+                                  },
+                              ]
+                            : []),
                         ...(can('alerts.create')
                             ? [
                                   {

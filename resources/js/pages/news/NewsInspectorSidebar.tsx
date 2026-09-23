@@ -14,8 +14,11 @@ import {
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import type { RefObject } from 'react';
+import { quickCategory } from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
+import { useCan } from '@/lib/auth';
 import type { ContentLocale } from '@/lib/domain';
 import { postJson } from '@/lib/http';
+import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { slugify } from '@/lib/slugify';
 import { AttachmentsField } from '@/ui/AttachmentsField';
 import { Button } from '@/ui/Button';
@@ -86,6 +89,8 @@ export function NewsInspectorSidebar({
     toggleTag,
     setSeoField,
 }: Props) {
+    const can = useCan();
+    const publicSiteUrl = usePublicSiteUrl();
     const [addedCategories, setAddedCategories] = useState<Option[]>([]);
     const [showAddCat, setShowAddCat] = useState(false);
     const [newCatName, setNewCatName] = useState('');
@@ -106,17 +111,17 @@ export function NewsInspectorSidebar({
         setCatError(null);
 
         try {
-            const res = await postJson<{ data: { id: number; name: string } }>(
-                '/cms/categories',
+            const created = await postJson<{ id: number; name: string }>(
+                quickCategory.url(),
                 { name: newCatName.trim() },
             );
             const newCat: Option = {
-                value: res.data.id,
-                label: res.data.name,
+                value: created.id,
+                label: created.name,
             };
 
             setAddedCategories((prev) => [...prev, newCat]);
-            setData('category_id', res.data.id);
+            setData('category_id', created.id);
             setNewCatName('');
             setShowAddCat(false);
         } catch (e: unknown) {
@@ -150,7 +155,10 @@ export function NewsInspectorSidebar({
     const hasTitle = titleText.length > 0;
 
     const bodyHtml = data.body[lang] || '';
-    const bodyText = bodyHtml.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    const bodyText = bodyHtml
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
     const wordCount = bodyText ? bodyText.split(' ').length : 0;
     const hasBody = wordCount >= 20;
 
@@ -166,28 +174,28 @@ export function NewsInspectorSidebar({
     let score = 0;
 
     if (hasTitle) {
-score += 20;
-}
+        score += 20;
+    }
 
     if (hasBody) {
-score += 25;
-}
+        score += 25;
+    }
 
     if (hasCover) {
-score += 15;
-}
+        score += 15;
+    }
 
     if (hasCoverAlt) {
-score += 10;
-}
+        score += 10;
+    }
 
     if (hasCategory) {
-score += 10;
-}
+        score += 10;
+    }
 
     if (hasSummary) {
-score += 10;
-}
+        score += 10;
+    }
 
     if (hasBilingual) {
         score += 10;
@@ -231,7 +239,7 @@ score += 10;
         },
     ];
 
-    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
+    const permalinkPrefix = displayUrl(siteUrl(publicSiteUrl, '/news/', lang));
 
     return (
         <aside className="wp-inspector" aria-label="Панель настроек">
@@ -278,10 +286,7 @@ score += 10;
                 {tab === 'post' ? (
                     <div className="wp-inspector-sections">
                         {/* 0. Оценка готовности (WordPress-like Traffic Light / Checklist) */}
-                        <ReadinessWidget
-                            score={score}
-                            items={readinessItems}
-                        />
+                        <ReadinessWidget score={score} items={readinessItems} />
 
                         {/* 1. Публикация и видимость */}
                         <section className="wp-inspector-section">
@@ -321,7 +326,7 @@ score += 10;
 
                                 <div className="wp-permalink-preview">
                                     <span className="wp-permalink-prefix">
-                                        khf.tj/{localeUrlSegment}/news/
+                                        {permalinkPrefix}
                                     </span>
                                     <span className="wp-permalink-slug">
                                         {data.slug || 'novost-slug'}
@@ -528,72 +533,83 @@ score += 10;
                                     />
                                 </Field>
 
-                                <div className="wp-quick-category">
-                                    {!showAddCat ? (
-                                        <button
-                                            type="button"
-                                            className="wp-quick-category-toggle"
-                                            onClick={() => setShowAddCat(true)}
-                                        >
-                                            <Plus size={13} strokeWidth={2} />
-                                            <span>+ Добавить новую рубрику</span>
-                                        </button>
-                                    ) : (
-                                        <div className="wp-quick-category-form">
-                                            <Input
-                                                value={newCatName}
-                                                onChange={(e) =>
-                                                    setNewCatName(
-                                                        e.target.value,
-                                                    )
+                                {can('taxonomy.create') && (
+                                    <div className="wp-quick-category">
+                                        {!showAddCat ? (
+                                            <button
+                                                type="button"
+                                                className="wp-quick-category-toggle"
+                                                onClick={() =>
+                                                    setShowAddCat(true)
                                                 }
-                                                placeholder="Новая рубрика"
-                                                disabled={isCreatingCat}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter') {
-                                                        e.preventDefault();
-                                                        handleCreateCategory();
+                                            >
+                                                <Plus
+                                                    size={13}
+                                                    strokeWidth={2}
+                                                />
+                                                <span>
+                                                    + Добавить новую рубрику
+                                                </span>
+                                            </button>
+                                        ) : (
+                                            <div className="wp-quick-category-form">
+                                                <Input
+                                                    value={newCatName}
+                                                    onChange={(e) =>
+                                                        setNewCatName(
+                                                            e.target.value,
+                                                        )
                                                     }
-                                                }}
-                                            />
-                                            {catError && (
-                                                <div className="wp-field-error text-xs">
-                                                    {catError}
-                                                </div>
-                                            )}
-                                            <div className="wp-btn-row">
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="secondary"
-                                                    disabled={
-                                                        isCreatingCat ||
-                                                        !newCatName.trim()
-                                                    }
-                                                    onClick={
-                                                        handleCreateCategory
-                                                    }
-                                                >
-                                                    {isCreatingCat
-                                                        ? 'Сохранение…'
-                                                        : 'Добавить'}
-                                                </Button>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    onClick={() => {
-                                                        setShowAddCat(false);
-                                                        setNewCatName('');
-                                                        setCatError(null);
+                                                    placeholder="Новая рубрика"
+                                                    disabled={isCreatingCat}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter') {
+                                                            e.preventDefault();
+                                                            handleCreateCategory();
+                                                        }
                                                     }}
-                                                >
-                                                    Отмена
-                                                </Button>
+                                                />
+                                                {catError && (
+                                                    <div className="wp-field-error text-xs">
+                                                        {catError}
+                                                    </div>
+                                                )}
+                                                <div className="wp-btn-row">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        disabled={
+                                                            isCreatingCat ||
+                                                            !newCatName.trim()
+                                                        }
+                                                        onClick={
+                                                            handleCreateCategory
+                                                        }
+                                                    >
+                                                        {isCreatingCat
+                                                            ? 'Сохранение…'
+                                                            : 'Добавить'}
+                                                    </Button>
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="ghost"
+                                                        onClick={() => {
+                                                            setShowAddCat(
+                                                                false,
+                                                            );
+                                                            setNewCatName('');
+                                                            setCatError(null);
+                                                        }}
+                                                    >
+                                                        Отмена
+                                                    </Button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    )}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
 
                                 {reference.tags.length > 0 && (
                                     <Field
@@ -702,7 +718,10 @@ score += 10;
                             <div className="wp-inspector-section-content">
                                 <div className="wp-seo-preview-card mb-3">
                                     <div className="wp-seo-preview-url">
-                                        khf.tj &rsaquo; {localeUrlSegment} &rsaquo; news &rsaquo; {data.slug || 'novost'}
+                                        {`${permalinkPrefix}${data.slug || 'novost'}`
+                                            .split('/')
+                                            .filter(Boolean)
+                                            .join(' › ')}
                                     </div>
                                     <div className="wp-seo-preview-title">
                                         {data.seo[lang].title.trim() ||

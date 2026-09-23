@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
+import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
 import { index, store, update } from '@/routes/pages';
@@ -27,6 +28,10 @@ interface PageData {
     seo_title: LocaleMap;
     seo_description: LocaleMap;
     slug: string;
+    /** Where the page lives on the site: a section (`/leadership`) or `/pages/{slug}`. */
+    public_path: string;
+    /** The site depends on this page's slug: it can't be changed. */
+    is_system: boolean;
     status: ContentStatus;
     parent_id: number | null;
     sort: number;
@@ -46,8 +51,16 @@ export default function PageForm({ page, reference }: Props) {
     const isEdit = !!page;
     const [lang, setLang] = useState<ContentLocale>('ru');
     const [sidebarOpen, setSidebarOpen] = useState(true);
-    const [sidebarTab, setSidebarTab] = useState<'document' | 'seo'>('document');
+    const [sidebarTab, setSidebarTab] = useState<'document' | 'seo'>(
+        'document',
+    );
     const titleRef = useRef<HTMLTextAreaElement>(null);
+    const publicSiteUrl = usePublicSiteUrl();
+    const slugLocked = page?.is_system ?? false;
+    // A new page's address follows its Russian title until the editor types
+    // one; an existing page never changes address on its own (links to it
+    // would break).
+    const [slugTouched, setSlugTouched] = useState(isEdit);
 
     const form = useForm({
         title: { ...EMPTY, ...page?.title } as LocaleMap,
@@ -73,22 +86,16 @@ export default function PageForm({ page, reference }: Props) {
         }
     }, [data.title, lang]);
 
+    // Completeness counts the required fields only (title + text), the same
+    // as Page::languageCompleteness(): the search snippet is optional and is
+    // built from the title and text when left empty.
+    const completenessOf = (locale: ContentLocale): number =>
+        (data.title[locale].trim() !== '' ? 50 : 0) +
+        (data.body[locale].trim() !== '' ? 50 : 0);
     const compAll = {
-        tg:
-            (data.title.tg.trim() !== '' ? 25 : 0) +
-            (data.body.tg.trim() !== '' ? 25 : 0) +
-            (data.seo_title.tg.trim() !== '' ? 25 : 0) +
-            (data.seo_description.tg.trim() !== '' ? 25 : 0),
-        ru:
-            (data.title.ru.trim() !== '' ? 25 : 0) +
-            (data.body.ru.trim() !== '' ? 25 : 0) +
-            (data.seo_title.ru.trim() !== '' ? 25 : 0) +
-            (data.seo_description.ru.trim() !== '' ? 25 : 0),
-        en:
-            (data.title.en.trim() !== '' ? 25 : 0) +
-            (data.body.en.trim() !== '' ? 25 : 0) +
-            (data.seo_title.en.trim() !== '' ? 25 : 0) +
-            (data.seo_description.en.trim() !== '' ? 25 : 0),
+        tg: completenessOf('tg'),
+        ru: completenessOf('ru'),
+        en: completenessOf('en'),
     };
 
     const setLocaleField = (
@@ -131,42 +138,16 @@ export default function PageForm({ page, reference }: Props) {
         })),
     ];
 
-    // Readiness score calculation
+    // Readiness: what a page needs before it goes out. The address is
+    // generated automatically and the search snippet is optional, so neither
+    // is a readiness step.
     const hasTitle = data.title[lang]?.trim().length > 0;
     const hasBody = data.body[lang]?.trim().length > 30;
-    const hasSlug = Boolean(data.slug?.trim());
-    const hasSeoTitle = Boolean(data.seo_title[lang]?.trim());
-    const hasSeoDesc = Boolean(data.seo_description[lang]?.trim());
     const hasBilingual = Boolean(
         data.title.tg?.trim() && data.title.ru?.trim(),
     );
-
-    let readinessScore = 0;
-
-    if (hasTitle) {
-readinessScore += 30;
-}
-
-    if (hasBody) {
-readinessScore += 25;
-}
-
-    if (hasSlug) {
-readinessScore += 15;
-}
-
-    if (hasSeoTitle) {
-readinessScore += 10;
-}
-
-    if (hasSeoDesc) {
-readinessScore += 10;
-}
-
-    if (hasBilingual) {
-        readinessScore += 10;
-    }
-
+    const readinessScore =
+        (hasTitle ? 40 : 0) + (hasBody ? 40 : 0) + (hasBilingual ? 20 : 0);
     const readinessItems = [
         {
             id: 'title',
@@ -179,23 +160,16 @@ readinessScore += 10;
             done: hasBody,
         },
         {
-            id: 'slug',
-            label: 'Адрес (Slug)',
-            done: hasSlug,
-        },
-        {
-            id: 'seo',
-            label: 'Метатеги SEO',
-            done: hasSeoTitle && hasSeoDesc,
-        },
-        {
             id: 'bilingual',
-            label: 'Двуязычие (TG + RU)',
+            label: 'Двуязычие (ТҶ + РУ)',
             done: hasBilingual,
         },
     ];
 
-    const localeUrlSegment = lang === 'tg' ? 'tj' : lang;
+    const publicPath = slugLocked
+        ? page!.public_path
+        : `/pages/${data.slug || '…'}`;
+    const permalink = siteUrl(publicSiteUrl, publicPath, lang);
 
     const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
         form.transform((d) => ({
@@ -248,7 +222,7 @@ readinessScore += 10;
                             : 'Показать панель настроек'
                     }
                 >
-                    Панель настроек
+                    <span className="wp-topbar-label">Настройки</span>
                 </Button>
             }
             autosave={{
@@ -284,7 +258,7 @@ readinessScore += 10;
                 checklist: [
                     ...languageChecks(compAll, data.title),
                     {
-                        label: 'SEO snippet заполнен',
+                        label: 'Описание для поисковиков заполнено (необязательно)',
                         ok: (['tg', 'ru', 'en'] as ContentLocale[]).some(
                             (locale) =>
                                 data.seo_title[locale].trim() !== '' &&
@@ -309,7 +283,7 @@ readinessScore += 10;
                                 onChange={(e) => {
                                     setLocaleField('title', e.target.value);
 
-                                    if (!data.slug && lang === 'ru') {
+                                    if (!slugTouched && lang === 'ru') {
                                         setData((prev) => ({
                                             ...prev,
                                             slug: slugify(e.target.value),
@@ -423,14 +397,13 @@ readinessScore += 10;
                                                 Ссылка на сайте:
                                             </div>
                                             <a
-                                                href={`https://khf.tj/${localeUrlSegment}/${data.slug || '...'}`}
+                                                href={permalink}
                                                 target="_blank"
                                                 rel="noreferrer"
                                                 className="wp-permalink-link"
                                             >
                                                 <span>
-                                                    khf.tj/{localeUrlSegment}/
-                                                    {data.slug || '...'}
+                                                    {displayUrl(permalink)}
                                                 </span>
                                                 <ExternalLink
                                                     size={12}
@@ -438,35 +411,52 @@ readinessScore += 10;
                                                 />
                                             </a>
                                         </div>
-                                        <div
-                                            style={{
-                                                display: 'flex',
-                                                gap: 6,
-                                                marginTop: 8,
-                                            }}
-                                        >
-                                            <Input
-                                                value={data.slug}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        'slug',
-                                                        e.target.value,
-                                                    )
-                                                }
-                                                placeholder="about"
-                                                className="ui-mono"
-                                                style={{ fontSize: 12.5 }}
-                                            />
-                                            <button
-                                                type="button"
-                                                className="wp-quick-slug-btn"
-                                                onClick={handleAutoSlug}
-                                                title="Сгенерировать slug из заголовка"
+                                        {slugLocked ? (
+                                            <p
+                                                style={{
+                                                    margin: '8px 0 0',
+                                                    fontSize: 12.5,
+                                                    color: 'var(--color-neutral-600)',
+                                                }}
                                             >
-                                                <Sparkles size={14} />
-                                                <span>Авто</span>
-                                            </button>
-                                        </div>
+                                                Адрес закреплён за сайтом и не
+                                                меняется: заголовок, текст и
+                                                описание этой страницы выводятся
+                                                по ссылке выше.
+                                            </p>
+                                        ) : (
+                                            <div
+                                                style={{
+                                                    display: 'flex',
+                                                    gap: 6,
+                                                    marginTop: 8,
+                                                }}
+                                            >
+                                                <Input
+                                                    value={data.slug}
+                                                    onChange={(e) => {
+                                                        setSlugTouched(true);
+                                                        setData(
+                                                            'slug',
+                                                            e.target.value,
+                                                        );
+                                                    }}
+                                                    placeholder="about"
+                                                    className="ui-mono"
+                                                    style={{ fontSize: 12.5 }}
+                                                    aria-label="Адрес страницы"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    className="wp-quick-slug-btn"
+                                                    onClick={handleAutoSlug}
+                                                    title="Составить адрес из заголовка"
+                                                >
+                                                    <Sparkles size={14} />
+                                                    <span>Авто</span>
+                                                </button>
+                                            </div>
+                                        )}
                                         {fieldError('slug') && (
                                             <div className="wp-field-error">
                                                 {fieldError('slug')}
@@ -496,7 +486,8 @@ readinessScore += 10;
                                                     onChange={(e) =>
                                                         setData(
                                                             'parent_id',
-                                                            e.target.value === ''
+                                                            e.target.value ===
+                                                                ''
                                                                 ? ''
                                                                 : Number(
                                                                       e.target
@@ -514,7 +505,7 @@ readinessScore += 10;
                                         >
                                             <Field
                                                 label="Порядок сортировки"
-                                                hint="Меньше — выше в меню"
+                                                hint="Меньше — выше в списке страниц"
                                                 error={fieldError('sort')}
                                             >
                                                 <Input
@@ -545,8 +536,9 @@ readinessScore += 10;
                                     {/* Google SERP Snippet Preview */}
                                     <div className="wp-seo-preview-card">
                                         <div className="wp-seo-preview-url">
-                                            khf.tj &gt; {localeUrlSegment} &gt;{' '}
-                                            {data.slug || 'page'}
+                                            {displayUrl(permalink)
+                                                .split('/')
+                                                .join(' › ')}
                                         </div>
                                         <div className="wp-seo-preview-title">
                                             {data.seo_title[lang]?.trim() ||

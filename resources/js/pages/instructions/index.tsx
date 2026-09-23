@@ -25,6 +25,8 @@ interface InstructionRow {
     id: number;
     name: string;
     slug: string | null;
+    /** Null while the item isn't visible on the public site. */
+    public_url: string | null;
     status: ContentStatus;
     hazard_type: string | null;
     hazard_label: string | null;
@@ -144,15 +146,19 @@ export default function InstructionsIndex({
                         >
                             Изменить
                         </Link>
-                        <span className="wp-row-action-sep">|</span>
-                        <a
-                            href={`https://khf.tj/ru/instructions/${r.slug || r.id}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            На сайте
-                        </a>
+                        {r.public_url && (
+                            <>
+                                <span className="wp-row-action-sep">|</span>
+                                <a
+                                    href={r.public_url}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    На сайте
+                                </a>
+                            </>
+                        )}
                     </div>
                 </div>
             ),
@@ -231,12 +237,16 @@ export default function InstructionsIndex({
                                     InstructionController.edit.url(r.id),
                                 ),
                         },
-                        {
-                            label: 'Предпросмотр',
-                            icon: <Eye size={15} strokeWidth={1.5} />,
-                            onSelect: () =>
-                                window.open('https://khf.tj/guides', '_blank'),
-                        },
+                        ...(r.public_url
+                            ? [
+                                  {
+                                      label: 'Открыть на сайте',
+                                      icon: <Eye size={15} strokeWidth={1.5} />,
+                                      onSelect: () =>
+                                          window.open(r.public_url!, '_blank'),
+                                  },
+                              ]
+                            : []),
                         ...(can('instructions.create')
                             ? [
                                   {
@@ -427,7 +437,7 @@ export default function InstructionsIndex({
                 title="Снять инструкцию с публикации?"
                 body={
                     unpublishTarget
-                        ? `Инструкция «${unpublishTarget.name}» будет убрана с сайта и отправлена в архив.`
+                        ? `Инструкция «${unpublishTarget.name}» будет убрана с сайта и вернётся в черновики.`
                         : ''
                 }
                 confirmLabel="Снять с публикации"

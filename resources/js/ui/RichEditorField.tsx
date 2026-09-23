@@ -5,7 +5,7 @@ import { Color, TextStyle } from '@tiptap/extension-text-style';
 import { Underline } from '@tiptap/extension-underline';
 import { Youtube } from '@tiptap/extension-youtube';
 import type { EditorView } from '@tiptap/pm/view';
-import { EditorContent, useEditor, useEditorState } from '@tiptap/react';
+import { EditorContent, useEditor } from '@tiptap/react';
 import type { Editor } from '@tiptap/react';
 import { BubbleMenu, FloatingMenu } from '@tiptap/react/menus';
 import { StarterKit } from '@tiptap/starter-kit';
@@ -463,11 +463,11 @@ export function RichEditorField({
         onBlur: () => setFocused(false),
     });
 
-    const snapshot =
-        useEditorState({
-            editor,
-            selector: ({ editor: instance }) => editorSnapshot(instance),
-        }) ?? editorSnapshot(editor);
+    // The editor re-renders this component on every transaction
+    // (shouldRerenderOnTransaction), so derive the counters straight from it.
+    // A useEditorState selector kept the snapshot taken before the editor
+    // existed: an opened 356-word article showed «0 слов».
+    const snapshot = editorSnapshot(editor);
 
     useEffect(() => {
         if (!focusMode) {
@@ -687,7 +687,10 @@ export function RichEditorField({
                 />
             ) : (
                 <RichGalleryContext.Provider value={galleryContext ?? null}>
-                    <EditorContent editor={editor} className="re-content-wrap" />
+                    <EditorContent
+                        editor={editor}
+                        className="re-content-wrap"
+                    />
                 </RichGalleryContext.Provider>
             )}
 

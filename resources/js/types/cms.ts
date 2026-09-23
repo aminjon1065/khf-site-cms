@@ -13,7 +13,6 @@ export interface AuthUser {
     permissions: string[];
     is_super: boolean;
     two_factor_enabled: boolean;
-    interface_locale: string;
 }
 
 export interface NavBadges {
@@ -50,6 +49,8 @@ export interface SharedProps {
     nav_badges: NavBadges;
     notification_unread: number;
     notifications?: { unread: number; items: AppNotification[] };
+    /** Base URL of the public site (FRONTEND_URL), without a trailing slash. */
+    public_site_url: string;
     [key: string]: unknown;
 }
 

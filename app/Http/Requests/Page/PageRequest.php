@@ -4,6 +4,7 @@ namespace App\Http\Requests\Page;
 
 use App\Models\Page;
 use App\Rules\FilledInAnyLocale;
+use App\Support\PublicSite;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -67,6 +68,12 @@ class PageRequest extends FormRequest
         return [function (Validator $validator): void {
             /** @var Page|null $page */
             $page = $this->route('page');
+            $slug = trim((string) $this->input('slug', ''));
+
+            if ($page !== null && PublicSite::isSystemPage($page->slug) && $slug !== '' && $slug !== $page->slug) {
+                $validator->errors()->add('slug', 'Адрес этой страницы закреплён за разделом сайта и не меняется.');
+            }
+
             $parentId = $this->integer('parent_id');
 
             if ($page === null || $parentId === 0) {

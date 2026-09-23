@@ -12,6 +12,14 @@ export type TitleWord = 'заголовка' | 'названия';
 
 const LOCALES: ContentLocale[] = ['tg', 'ru', 'en'];
 
+/**
+ * English is optional (REQUIRED_LOCALES in lib/domain). Kept local because
+ * this module is unit-tested under plain Node, without the `@/` alias.
+ */
+const REQUIRED: ContentLocale[] = ['tg', 'ru'];
+const isRequiredLocale = (locale: ContentLocale): boolean =>
+    REQUIRED.includes(locale);
+
 /** Order in which a filled language is picked when the preferred one is empty. */
 const FIRST_FILLED_ORDER: ContentLocale[] = ['ru', 'tg', 'en'];
 
@@ -68,11 +76,17 @@ export function languageChecks(
                 ? null
                 : 'Заполните все поля материала хотя бы на одном языке.',
         },
-        ...LOCALES.map((locale): PublicationCheck => {
+        // English is optional: an untouched English version isn't listed.
+        ...LOCALES.filter(
+            (locale) =>
+                isRequiredLocale(locale) || titles[locale].trim() !== '',
+        ).map((locale): PublicationCheck => {
             const percent = completeness[locale];
 
             return {
-                label: `${VERSIONS[locale].label} версия заполнена`,
+                label: isRequiredLocale(locale)
+                    ? `${VERSIONS[locale].label} версия заполнена`
+                    : `${VERSIONS[locale].label} версия заполнена (необязательно)`,
                 ok: percent === 100,
                 detail:
                     percent === 100

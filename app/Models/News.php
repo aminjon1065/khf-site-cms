@@ -104,15 +104,15 @@ class News extends Model implements HasMedia, Workflowable
     }
 
     /**
-     * News SEO is locale-aware but stored as a structured JSON object rather
-     * than a Spatie translatable attribute, so include it explicitly in the
-     * workflow completeness score.
+     * Completeness counts the fields a language version needs: title, lead and
+     * text. The SEO snippet is stored separately and is optional — the site
+     * builds it from the title and lead — so it must not hold back
+     * publication (see TracksTranslationCompleteness).
      *
      * @return array<string, int>
      */
     public function languageCompleteness(): array
     {
-        $seo = is_array($this->seo) ? $this->seo : [];
         $result = [];
 
         foreach (self::CONTENT_LOCALES as $locale) {
@@ -120,8 +120,6 @@ class News extends Model implements HasMedia, Workflowable
                 $this->getTranslations('title')[$locale] ?? '',
                 $this->getTranslations('summary')[$locale] ?? '',
                 $this->getTranslations('body')[$locale] ?? '',
-                data_get($seo, "{$locale}.title", ''),
-                data_get($seo, "{$locale}.description", ''),
             ];
             $filled = count(array_filter($fields, fn (mixed $value): bool => trim((string) $value) !== ''));
             $result[$locale] = (int) round($filled / count($fields) * 100);

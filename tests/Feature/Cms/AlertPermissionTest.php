@@ -1,10 +1,14 @@
 <?php
 
+use App\Enums\ContentStatus;
+use App\Enums\Severity;
 use App\Models\Alert;
 use App\Models\Region;
 use App\Models\User;
+use App\Services\WorkflowService;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Validation\ValidationException;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -146,4 +150,37 @@ it('requires a future publication time for a scheduled alert', function () {
         'publish_mode' => 'schedule',
         'scheduled_at' => now()->subMinute()->toDateTimeString(),
     ])->assertSessionHasErrors('scheduled_at');
+});
+
+it('sends an alert scheduled by someone who cannot publish to approval', function () {
+    $region = Region::query()->where('code', 'khatlon')->firstOrFail();
+
+    actingAs(userWithRole('editor'))->post('/alerts', [
+        'internal_title' => 'Плановое предупреждение редактора',
+        'hazard_type' => 'mudflow',
+        'severity' => 'warning',
+        'territory_type' => 'regions',
+        'regions' => [$region->id],
+        'title' => ['ru' => 'Заголовок'],
+        'action' => 'submit',
+        'publish_mode' => 'schedule',
+        'scheduled_at' => now()->addDay()->toDateTimeString(),
+    ])
+        ->assertRedirect('/alerts')
+        ->assertSessionHas('success', 'Предупреждение отправлено на согласование.');
+
+    expect(Alert::query()->where('internal_title', 'Плановое предупреждение редактора')->sole()->status)
+        ->toBe(ContentStatus::Review);
+});
+
+it('checks who may release a critical alert when it is scheduled', function () {
+    $alert = Alert::factory()->create([
+        'severity' => Severity::Critical,
+        'status' => ContentStatus::Draft,
+    ]);
+
+    expect(fn () => app(WorkflowService::class)->transition($alert, ContentStatus::Scheduled, userWithRole('approver')))
+        ->toThrow(ValidationException::class);
+
+    expect($alert->fresh()->status)->toBe(ContentStatus::Draft);
 });

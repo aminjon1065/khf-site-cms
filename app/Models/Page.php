@@ -46,6 +46,15 @@ class Page extends Model implements Workflowable
     public array $translatable = ['title', 'body', 'seo_title', 'seo_description'];
 
     /**
+     * The search snippet is optional: the site falls back to the title and
+     * text, so it must not hold back publication (see
+     * TracksTranslationCompleteness).
+     *
+     * @var list<string>
+     */
+    public array $completenessOptional = ['seo_title', 'seo_description'];
+
+    /**
      * @var list<string>
      */
     protected $fillable = ['title', 'body', 'seo_title', 'seo_description', 'slug', 'status', 'published_at', 'parent_id', 'sort', 'author_id'];
