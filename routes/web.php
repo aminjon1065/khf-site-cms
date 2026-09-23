@@ -32,10 +32,17 @@ use App\Http\Controllers\Cms\UsabilityController;
 use App\Http\Controllers\Cms\UserController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use Laravel\Fortify\Http\Controllers\PasswordResetLinkController;
 
 Route::get('/', fn () => Auth::check()
     ? redirect('/dashboard')
     : redirect()->route('login'))->name('home');
+
+// Fortify's password-reset-link route has no rate limit of its own; the same
+// URI registered here (after Fortify) replaces it with a throttled one.
+Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+    ->middleware(['guest:'.config('fortify.guard'), 'throttle:password-reset'])
+    ->name('password.email');
 
 // Private draft/review media previews: a valid signature alone is not enough;
 // the controller also requires an authenticated user with media.view.
@@ -211,6 +218,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
     Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
     Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    Route::post('users/{user}/two-factor/reset', [UserController::class, 'resetTwoFactor'])->name('users.two-factor.reset');
     Route::get('roles', [RoleController::class, 'index'])->name('roles');
     Route::get('usability', [UsabilityController::class, 'index'])->name('usability');
     Route::post('usability', [UsabilityController::class, 'store'])->name('usability.store');

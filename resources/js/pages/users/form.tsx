@@ -1,10 +1,12 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { ArrowLeft, Save, ShieldOff } from 'lucide-react';
+import { useState } from 'react';
 import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
 import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, LinkButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select } from '@/ui/Field';
+import { ConfirmDialog } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
 interface Option {
@@ -23,6 +25,7 @@ interface UserData {
     department: string | null;
     is_active: boolean;
     is_self: boolean;
+    two_factor_enabled: boolean;
 }
 
 interface Props {
@@ -34,6 +37,8 @@ export default function UserForm({ user, reference }: Props) {
     const can = useCan();
     const isEdit = !!user;
     const isSelf = user?.is_self ?? false;
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetting, setResetting] = useState(false);
 
     const form = useForm({
         name: user?.name ?? '',
@@ -278,7 +283,60 @@ export default function UserForm({ user, reference }: Props) {
                         />
                     </Field>
                 </Blueprint>
+
+                {isEdit && !isSelf && can('users.edit') && (
+                    <Blueprint style={{ padding: 20 }}>
+                        <h3 className="ui-card-title" style={{ marginTop: 0 }}>
+                            Двухфакторная аутентификация
+                        </h3>
+                        <p
+                            style={{
+                                margin: '0 0 12px',
+                                fontSize: 13,
+                                color: 'var(--color-neutral-600)',
+                            }}
+                        >
+                            {user!.two_factor_enabled
+                                ? 'Включена. Если сотрудник потерял или сменил телефон, сбросьте её — при следующем входе он настроит её заново.'
+                                : 'Не настроена.'}
+                        </p>
+                        {user!.two_factor_enabled && (
+                            <Button
+                                variant="secondary"
+                                icon={
+                                    <ShieldOff size={15} strokeWidth={1.75} />
+                                }
+                                onClick={() => setResetOpen(true)}
+                            >
+                                Сбросить двухфакторную аутентификацию
+                            </Button>
+                        )}
+                    </Blueprint>
+                )}
             </div>
+
+            <ConfirmDialog
+                open={resetOpen}
+                onClose={() => setResetOpen(false)}
+                loading={resetting}
+                title="Сбросить двухфакторную аутентификацию?"
+                body={`Коды из приложения ${user?.name ?? ''} перестанут работать, все его сеансы завершатся. Действие попадёт в журнал.`}
+                confirmLabel="Сбросить"
+                onConfirm={() => {
+                    setResetting(true);
+                    router.post(
+                        UserController.resetTwoFactor.url(user!.id),
+                        {},
+                        {
+                            preserveScroll: true,
+                            onFinish: () => {
+                                setResetting(false);
+                                setResetOpen(false);
+                            },
+                        },
+                    );
+                }}
+            />
 
             <div className="news-form-actions">
                 <LinkButton href={UserController.index.url()} variant="ghost">

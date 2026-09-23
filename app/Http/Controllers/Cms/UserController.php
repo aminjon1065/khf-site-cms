@@ -5,11 +5,13 @@ namespace App\Http\Controllers\Cms;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\User\UserRequest;
+use App\Models\Activity;
 use App\Models\Region;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -182,6 +184,42 @@ class UserController extends Controller
     /**
      * Only a superadmin may modify or remove another superadmin.
      */
+    /**
+     * A lost or replaced phone must not require a developer editing the
+     * database: an administrator switches the employee's two-factor
+     * authentication off, and — where it's mandatory for the role — the
+     * employee sets it up again at the next sign-in. Their open sessions end,
+     * so a stolen session can't outlive the reset.
+     */
+    public function resetTwoFactor(Request $request, User $user): RedirectResponse
+    {
+        $this->authorize('update', $user);
+        $this->guardTarget($request, $user);
+
+        if ($request->user()?->is($user)) {
+            return back()->with('error', 'Свою двухфакторную аутентификацию меняйте в профиле: «Безопасность».');
+        }
+
+        $user->forceFill([
+            'two_factor_secret' => null,
+            'two_factor_recovery_codes' => null,
+            'two_factor_confirmed_at' => null,
+        ])->save();
+
+        DB::table('sessions')->where('user_id', $user->id)->delete();
+
+        activity('users')
+            ->performedOn($user)
+            ->causedBy($request->user())
+            ->event('two_factor_reset')
+            ->tap(function (Activity $activity): void {
+                $activity->is_critical = true;
+            })
+            ->log('Двухфакторная аутентификация сброшена администратором');
+
+        return back()->with('success', "Двухфакторная аутентификация для {$user->name} сброшена. При следующем входе сотрудник настроит её заново.");
+    }
+
     private function guardTarget(Request $request, User $target): void
     {
         if ($target->hasRole(RoleName::Superadmin->value) && ! $this->actorIsSuperadmin($request)) {
@@ -217,6 +255,7 @@ class UserController extends Controller
             'department' => $user->department,
             'is_active' => $user->is_active,
             'is_self' => $request->user()?->id === $user->id,
+            'two_factor_enabled' => $user->hasTwoFactorEnabled(),
         ];
     }
 

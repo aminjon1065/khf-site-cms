@@ -105,5 +105,12 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($throttleKey);
         });
 
+        // Password reset links go out by e-mail: without a limit the form can
+        // flood staff mailboxes (audit J-10). Per IP and per address.
+        RateLimiter::for('password-reset', fn (Request $request): array => [
+            Limit::perMinute(5)->by('ip:'.$request->ip()),
+            Limit::perHour(5)->by('email:'.Str::lower((string) $request->input('email'))),
+        ]);
+
     }
 }

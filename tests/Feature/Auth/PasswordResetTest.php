@@ -76,3 +76,13 @@ test('password cannot be reset with invalid token', function () {
 
     $response->assertSessionHasErrors('email');
 });
+
+test('password reset link requests are rate limited', function () {
+    Notification::fake();
+
+    foreach (range(1, 5) as $attempt) {
+        $this->post(route('password.email'), ['email' => "nobody{$attempt}@khf.tj"])->assertStatus(302);
+    }
+
+    $this->post(route('password.email'), ['email' => 'nobody6@khf.tj'])->assertTooManyRequests();
+});

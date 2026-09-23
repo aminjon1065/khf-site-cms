@@ -7,11 +7,18 @@ use App\Models\Region;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use RuntimeException;
 
 class UserSeeder extends Seeder
 {
     public function run(): void
     {
+        // Every demo account shares the password «password»; a stray
+        // `db:seed --class=UserSeeder --force` must not open production.
+        if (app()->isProduction()) {
+            throw new RuntimeException('UserSeeder создаёт демо-учётки с известным паролем и в продакшене не запускается. Администратора создайте командой php artisan cms:create-admin.');
+        }
+
         /** @var array<string, int> $regionIds */
         $regionIds = Region::query()->pluck('id', 'code')->all();
 

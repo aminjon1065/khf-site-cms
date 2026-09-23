@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\Activity;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 use function Pest\Laravel\actingAs;
@@ -172,4 +174,47 @@ it('explains standard validation errors in Russian, even when APP_LOCALE is Engl
         ->assertSessionHasErrors([
             'position' => 'Поле «Должность» не может быть длиннее 255 символов.',
         ]);
+});
+
+it('lets an administrator reset a colleague\'s two-factor authentication', function () {
+    $admin = asRole('admin');
+    $editor = asRole('editor');
+    $editor->forceFill([
+        'two_factor_secret' => encrypt('secret'),
+        'two_factor_recovery_codes' => encrypt(json_encode(['code'])),
+        'two_factor_confirmed_at' => now(),
+    ])->save();
+    DB::table('sessions')->insert([
+        'id' => 'editor-session', 'user_id' => $editor->id, 'ip_address' => '127.0.0.1',
+        'user_agent' => 'test', 'payload' => '', 'last_activity' => now()->timestamp,
+    ]);
+
+    actingAs($admin)
+        ->post("/users/{$editor->id}/two-factor/reset")
+        ->assertRedirect()
+        ->assertSessionHas('success');
+
+    $editor->refresh();
+
+    expect($editor->two_factor_secret)->toBeNull()
+        ->and($editor->two_factor_confirmed_at)->toBeNull()
+        ->and(DB::table('sessions')->where('user_id', $editor->id)->exists())->toBeFalse()
+        ->and(Activity::query()->where('event', 'two_factor_reset')->sole()->is_critical)->toBeTrue();
+});
+
+it('does not let an editor reset anyone\'s two-factor authentication', function () {
+    $target = asRole('editor');
+
+    actingAs(asRole('editor'))
+        ->post("/users/{$target->id}/two-factor/reset")
+        ->assertForbidden();
+});
+
+it('sends administrators to their profile to change their own two-factor authentication', function () {
+    $admin = asRole('admin');
+
+    actingAs($admin)
+        ->post("/users/{$admin->id}/two-factor/reset")
+        ->assertRedirect()
+        ->assertSessionHas('error');
 });
