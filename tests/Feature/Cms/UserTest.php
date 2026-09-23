@@ -156,3 +156,20 @@ it('allows an active user to log in', function () {
 
     $this->assertAuthenticated();
 });
+
+it('explains standard validation errors in Russian, even when APP_LOCALE is English', function () {
+    config(['app.locale' => 'en']);
+
+    actingAs(asRole('admin'))
+        ->post('/users', [
+            'name' => 'Сотрудник',
+            'email' => 'staff@khf.tj',
+            'password' => 'Secret12345',
+            'password_confirmation' => 'Secret12345',
+            'role' => 'editor',
+            'position' => str_repeat('д', 300),
+        ])
+        ->assertSessionHasErrors([
+            'position' => 'Поле «Должность» не может быть длиннее 255 символов.',
+        ]);
+});
