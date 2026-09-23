@@ -24,7 +24,7 @@ class PublicInstructionResource extends JsonResource
     /**
      * @var list<string>
      */
-    private const SECTIONS = ['before', 'during', 'after', 'prohibited'];
+    private const SECTIONS = Instruction::STEP_SECTIONS;
 
     public bool $withSections = false;
 

@@ -101,6 +101,19 @@ export default function AnnouncementForm({
             (data.body.en.trim() !== '' ? 50 : 0),
     };
 
+    // A language version for the preview and the language checks: the site
+    // shows it only with its title and text (PublicLocale).
+    const versionOf = (locale: ContentLocale) => ({
+        title: data.title[locale],
+        body: data.body[locale],
+        hasText: data.body[locale].trim() !== '',
+    });
+    const versions = {
+        tg: versionOf('tg'),
+        ru: versionOf('ru'),
+        en: versionOf('en'),
+    };
+
     const setLocaleField = (field: 'title' | 'body', value: string) =>
         setData(field, { ...data[field], [lang]: value });
 
@@ -252,14 +265,10 @@ export default function AnnouncementForm({
                     form.setData({ ...data, ...recovered }),
             }}
             preview={{
-                locales: {
-                    tg: { title: data.title.tg, body: data.body.tg },
-                    ru: { title: data.title.ru, body: data.body.ru },
-                    en: { title: data.title.en, body: data.body.en },
-                },
+                locales: versions,
                 signedUrl: announcement?.preview_url,
                 checklist: [
-                    ...languageChecks(compAll, data.title),
+                    ...languageChecks(compAll, versions),
                     {
                         label: 'Срок указан',
                         ok: data.deadline !== '',

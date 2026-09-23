@@ -808,6 +808,7 @@
         "name": "locale",
         "in": "query",
         "required": false,
+        "description": "Content language. A material is returned only in the languages where it has its public title and text; alerts, documents and categories need only the title. Another language is never substituted.",
         "schema": {
           "type": "string",
           "enum": [
@@ -1124,7 +1125,7 @@
                 "en"
               ]
             },
-            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+            "description": "API locales the material is published in (it has its public title and text there; alerts need only the title). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "title": {
             "type": "string"
@@ -1274,7 +1275,7 @@
                 "en"
               ]
             },
-            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+            "description": "API locales the material is published in (it has its public title and text there; alerts need only the title). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "title": {
             "type": "string"
@@ -1569,7 +1570,7 @@
                 "en"
               ]
             },
-            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+            "description": "API locales the material is published in (it has its public title and text there; alerts need only the title). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "title": {
             "type": "string"
@@ -1741,7 +1742,7 @@
                 "en"
               ]
             },
-            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+            "description": "API locales the material is published in (it has its public title and text there; alerts need only the title). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "kind": {
             "type": "string",
@@ -1879,7 +1880,7 @@
                 "en"
               ]
             },
-            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+            "description": "API locales the material is published in (it has its public title and text there; alerts need only the title). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "level": {
             "type": "string",
@@ -2528,7 +2529,7 @@
                 "en"
               ]
             },
-            "description": "API locales the material is published in (its public title exists there). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
+            "description": "API locales the material is published in (it has its public title and text there; alerts need only the title). Detail responses only; announcements carry it in lists too. The site builds hreflang and the «no translation» notice from it."
           },
           "title": {
             "type": "string"

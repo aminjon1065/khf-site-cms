@@ -55,6 +55,7 @@ it('serves the same rows as the matching list endpoint', function (string $type)
 it('hides materials that have no title in the requested locale', function () {
     $translated = News::factory()->published()->create([
         'title' => ['ru' => 'Есть перевод', 'en' => 'Translated'],
+        'body' => ['ru' => '<p>Текст</p>', 'en' => '<p>Text</p>'],
     ]);
     $russianOnly = News::factory()->published()->create([
         'title' => ['ru' => 'Только по-русски'],

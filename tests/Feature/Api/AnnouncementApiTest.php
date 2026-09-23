@@ -86,6 +86,7 @@ it('localizes kind and deadline labels', function () {
         'kind' => AnnouncementKind::Vacancy,
         'deadline' => $deadline,
         'title' => ['ru' => 'Вакансия', 'tg' => 'Ҷойи корӣ', 'en' => 'Vacancy'],
+        'body' => ['ru' => 'Условия', 'tg' => 'Шартҳо', 'en' => 'Terms'],
     ]);
 
     $tg = $this->getJson('/api/v1/announcements?locale=tg')->assertOk()->json('data.0');

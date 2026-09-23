@@ -40,7 +40,7 @@ class InstructionController extends Controller
     /**
      * @var list<string>
      */
-    private const SECTIONS = ['before', 'during', 'after', 'prohibited'];
+    private const SECTIONS = Instruction::STEP_SECTIONS;
 
     /**
      * @var list<string>

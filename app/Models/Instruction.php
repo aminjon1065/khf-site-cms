@@ -53,6 +53,14 @@ class Instruction extends Model implements HasMedia, Workflowable
     use ProtectsUnpublishedMedia;
 
     /**
+     * Sections of steps (`sections.<section>.<locale>` lists), in the order
+     * the site shows them.
+     *
+     * @var list<string>
+     */
+    public const STEP_SECTIONS = ['before', 'during', 'after', 'prohibited'];
+
+    /**
      * @var list<string>
      */
     public array $translatable = ['name', 'summary', 'key_point', 'body'];
@@ -118,17 +126,27 @@ class Instruction extends Model implements HasMedia, Workflowable
      */
     protected function completenessExtras(string $locale): array
     {
-        foreach (is_array($this->sections) ? $this->sections : [] as $section) {
-            $steps = is_array($section) ? ($section[$locale] ?? []) : [];
+        return [$this->hasStepsIn($locale)];
+    }
+
+    /**
+     * Whether the instruction has at least one step in this language.
+     */
+    public function hasStepsIn(string $locale): bool
+    {
+        $sections = is_array($this->sections) ? $this->sections : [];
+
+        foreach (self::STEP_SECTIONS as $section) {
+            $steps = $sections[$section][$locale] ?? [];
 
             foreach (is_array($steps) ? $steps : [] as $step) {
                 if (is_string($step) && trim($step) !== '') {
-                    return [true];
+                    return true;
                 }
             }
         }
 
-        return [false];
+        return false;
     }
 
     protected static function booted(): void

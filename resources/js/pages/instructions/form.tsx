@@ -20,7 +20,7 @@ import {
     siteUrl,
     usePublicSiteUrl,
 } from '@/lib/public-site';
-import { languageChecks } from '@/lib/publication-languages';
+import { hasRichText, languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
 import { index, store, unpublish, update } from '@/routes/instructions';
 import { AttachmentsField } from '@/ui/AttachmentsField';
@@ -161,17 +161,45 @@ export default function InstructionForm({
             ? instruction.image_url
             : null);
 
-    const completeness = (locale: ContentLocale): number => {
-        const filled = (['name', 'summary'] as const).filter(
-            (f) => (data[f][locale] ?? '').trim() !== '',
-        ).length;
+    // Filled steps of one language across all sections.
+    const stepsIn = (locale: ContentLocale): number =>
+        reference.sectionKeys.reduce(
+            (acc, { key }) =>
+                acc +
+                (data.sections[key]?.[locale]?.filter(
+                    (s) => s.trim().length > 0,
+                ).length || 0),
+            0,
+        );
 
-        return Math.round((filled / 2) * 100);
+    // Required: name, summary and at least one step, the same as
+    // Instruction::languageCompleteness(); the key point and text are optional.
+    const completeness = (locale: ContentLocale): number => {
+        const filled =
+            (['name', 'summary'] as const).filter(
+                (f) => (data[f][locale] ?? '').trim() !== '',
+            ).length + (stepsIn(locale) > 0 ? 1 : 0);
+
+        return Math.round((filled / 3) * 100);
     };
     const compAll = {
         tg: completeness('tg'),
         ru: completeness('ru'),
         en: completeness('en'),
+    };
+
+    // A language version for the preview and the language checks: the site
+    // shows it only with its name and steps or text (PublicLocale).
+    const versionOf = (locale: ContentLocale) => ({
+        title: data.name[locale],
+        summary: data.summary[locale],
+        body: data.body[locale],
+        hasText: stepsIn(locale) > 0 || hasRichText(data.body[locale] ?? ''),
+    });
+    const versions = {
+        tg: versionOf('tg'),
+        ru: versionOf('ru'),
+        en: versionOf('en'),
     };
 
     const setLocaleField = (
@@ -244,13 +272,7 @@ export default function InstructionForm({
     const hasName = data.name[lang]?.trim().length > 0;
     const hasSummary = data.summary[lang]?.trim().length > 0;
     const hasKeyPoint = data.key_point[lang]?.trim().length > 0;
-    const totalSteps = reference.sectionKeys.reduce(
-        (acc, { key }) =>
-            acc +
-            (data.sections[key]?.[lang]?.filter((s) => s.trim().length > 0)
-                .length || 0),
-        0,
-    );
+    const totalSteps = stepsIn(lang);
     const hasSteps = totalSteps > 0;
     const hasHazard = Boolean(data.hazard_type);
     const hasBilingual = Boolean(data.name.tg?.trim() && data.name.ru?.trim());
@@ -398,28 +420,18 @@ export default function InstructionForm({
                     form.setData({ ...data, ...recovered }),
             }}
             preview={{
-                locales: {
-                    tg: {
-                        title: data.name.tg,
-                        summary: data.summary.tg,
-                        body: data.body.tg,
-                    },
-                    ru: {
-                        title: data.name.ru,
-                        summary: data.summary.ru,
-                        body: data.body.ru,
-                    },
-                    en: {
-                        title: data.name.en,
-                        summary: data.summary.en,
-                        body: data.body.en,
-                    },
-                },
+                locales: versions,
                 titleWord: 'названия',
+                textWord: 'ни шагов, ни текста',
                 imageUrl: imageSrc,
                 signedUrl: instruction?.preview_url,
                 checklist: [
-                    ...languageChecks(compAll, data.name, 'названия'),
+                    ...languageChecks(
+                        compAll,
+                        versions,
+                        'названия',
+                        'ни шагов, ни текста',
+                    ),
                     {
                         label: 'Тип опасности выбран',
                         ok: data.hazard_type !== '',

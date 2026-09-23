@@ -36,6 +36,7 @@ it('localizes lifecycle labels without changing the status code', function () {
     Project::factory()->published()->create([
         'lifecycle_status' => ProjectStatus::Completed,
         'title' => ['ru' => 'Завершённый проект', 'tg' => 'Лоиҳаи анҷомёфта', 'en' => 'Completed project'],
+        'summary' => ['ru' => 'Кратко', 'tg' => 'Мухтасар', 'en' => 'In short'],
     ]);
 
     $tg = $this->getJson('/api/v1/projects?locale=tg')->assertOk()->json('data.0');

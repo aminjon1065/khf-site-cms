@@ -2,7 +2,11 @@ import { Head } from '@inertiajs/react';
 import { CheckCircle2, TriangleAlert } from 'lucide-react';
 import type { ContentLocale } from '@/lib/domain';
 import { missingVersionNotice } from '@/lib/publication-languages';
-import type { TitleWord } from '@/lib/publication-languages';
+import type {
+    MissingPart,
+    TextWord,
+    TitleWord,
+} from '@/lib/publication-languages';
 
 interface PreviewData {
     locale: ContentLocale;
@@ -10,7 +14,10 @@ interface PreviewData {
     body: string;
     image: string | null;
     available: boolean;
+    /** What keeps this language version off the site, when it is off. */
+    missing: MissingPart | null;
     title_word: TitleWord;
+    text_word: TextWord;
     checklist: {
         key: string;
         label: string;
@@ -51,6 +58,8 @@ export default function SignedEditorialPreview({
                         {missingVersionNotice(
                             preview.locale,
                             preview.title_word,
+                            preview.missing ?? 'title',
+                            preview.text_word,
                         )}
                     </p>
                 )}

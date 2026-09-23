@@ -5,7 +5,7 @@ import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { languageChecks } from '@/lib/publication-languages';
+import { hasRichText, languageChecks } from '@/lib/publication-languages';
 import { index, store, unpublish, update } from '@/routes/news';
 import { Button } from '@/ui/Button';
 import { MediaPicker } from '@/ui/MediaPicker';
@@ -274,17 +274,37 @@ export default function NewsForm({
         (news?.cover_url && !data.cover_remove ? news.cover_url : null);
 
     // Required fields only (title, lead, text), the same as
-    // News::languageCompleteness(): the search snippet is optional.
+    // News::languageCompleteness(): the search snippet is optional. A text
+    // cleared in the editor stays as `<p></p>`, which the server drops.
     const completeness = (locale: ContentLocale): number => {
-        const values = CONTENT_FIELDS.map((field) => data[field][locale]);
-        const filled = values.filter((value) => value.trim() !== '').length;
+        const filled = CONTENT_FIELDS.filter((field) =>
+            field === 'body'
+                ? hasRichText(data.body[locale])
+                : data[field][locale].trim() !== '',
+        ).length;
 
-        return Math.round((filled / values.length) * 100);
+        return Math.round((filled / CONTENT_FIELDS.length) * 100);
     };
     const compAll = {
         tg: completeness('tg'),
         ru: completeness('ru'),
         en: completeness('en'),
+    };
+
+    // A language version for the preview and the language checks: the site
+    // shows it only with its title and text (PublicLocale).
+    const versionOf = (locale: ContentLocale) => ({
+        title: data.title[locale],
+        summary: data.summary[locale],
+        body: data.body[locale],
+        seoTitle: data.seo[locale].title,
+        seoDescription: data.seo[locale].description,
+        hasText: hasRichText(data.body[locale]),
+    });
+    const versions = {
+        tg: versionOf('tg'),
+        ru: versionOf('ru'),
+        en: versionOf('en'),
     };
 
     const setLocaleField = (
@@ -391,34 +411,12 @@ export default function NewsForm({
                     form.setData({ ...data, ...recovered }),
             }}
             preview={{
-                locales: {
-                    tg: {
-                        title: data.title.tg,
-                        summary: data.summary.tg,
-                        body: data.body.tg,
-                        seoTitle: data.seo.tg.title,
-                        seoDescription: data.seo.tg.description,
-                    },
-                    ru: {
-                        title: data.title.ru,
-                        summary: data.summary.ru,
-                        body: data.body.ru,
-                        seoTitle: data.seo.ru.title,
-                        seoDescription: data.seo.ru.description,
-                    },
-                    en: {
-                        title: data.title.en,
-                        summary: data.summary.en,
-                        body: data.body.en,
-                        seoTitle: data.seo.en.title,
-                        seoDescription: data.seo.en.description,
-                    },
-                },
+                locales: versions,
                 imageUrl: coverSrc,
                 imageAlt: data.cover_alt,
                 signedUrl: news?.preview_url,
                 checklist: [
-                    ...languageChecks(compAll, data.title),
+                    ...languageChecks(compAll, versions),
                     {
                         label: 'Описание обложки',
                         ok: !coverSrc || data.cover_alt.trim() !== '',

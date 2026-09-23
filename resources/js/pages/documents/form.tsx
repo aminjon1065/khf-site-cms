@@ -94,6 +94,13 @@ export default function DocumentForm({
         en: data.name.en.trim() !== '' ? 100 : 0,
     };
 
+    // A document appears on the site by its name alone: its content is the file.
+    const versions = {
+        tg: { title: data.name.tg },
+        ru: { title: data.name.ru },
+        en: { title: data.name.en },
+    };
+
     const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
         form.transform((d) => ({
             ...d,
@@ -145,15 +152,11 @@ export default function DocumentForm({
                     form.setData({ ...data, ...recovered }),
             }}
             preview={{
-                locales: {
-                    tg: { title: data.name.tg },
-                    ru: { title: data.name.ru },
-                    en: { title: data.name.en },
-                },
+                locales: versions,
                 titleWord: 'названия',
                 signedUrl: document?.preview_url,
                 checklist: [
-                    ...languageChecks(compAll, data.name, 'названия'),
+                    ...languageChecks(compAll, versions, 'названия'),
                     {
                         label: 'Реквизиты документа указаны',
                         ok:

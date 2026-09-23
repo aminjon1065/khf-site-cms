@@ -9,7 +9,8 @@ use Illuminate\Translation\PotentiallyTranslatedString;
 /**
  * A translatable field must be filled in at least one content language. A
  * material may exist in Tajik, Russian or English alone — the public site
- * lists it only on the language versions where its title exists.
+ * lists it only on the language versions that have its title and text
+ * (PublicLocale).
  */
 class FilledInAnyLocale implements ValidationRule
 {

@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Cms;
 
 use App\Contracts\Workflowable;
 use App\Http\Controllers\Controller;
+use App\Models\Instruction;
 use App\Services\PublicationChecklist;
 use App\Support\ContentTitle;
 use App\Support\EditorialContent;
+use App\Support\PublicLocale;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\MediaLibrary\HasMedia;
@@ -20,9 +22,9 @@ class EditorialPreviewController extends Controller
     ) {}
 
     /**
-     * Shows one language version exactly as the public site would: without a
-     * title in that language the material is not published there, so nothing
-     * from another language is substituted.
+     * Shows one language version exactly as the public site would: without
+     * its title or text in that language the material is not published there
+     * (PublicLocale), so nothing from another language is substituted.
      */
     public function __invoke(
         Request $request,
@@ -36,8 +38,9 @@ class EditorialPreviewController extends Controller
         $requested = $request->string('locale')->toString();
         $locale = in_array($requested, ['tg', 'ru', 'en'], true)
             ? $requested
-            : ContentTitle::firstLocale($model) ?? 'ru';
+            : PublicLocale::firstPublishedLocale($model) ?? ContentTitle::firstLocale($model) ?? 'ru';
         $title = ContentTitle::in($model, $locale);
+        $available = PublicLocale::isPublishedIn($model, $locale);
         $snapshot = $this->content->snapshot($model);
         $bodyMap = $snapshot['body'] ?? $snapshot['summary'] ?? [];
         $image = null;
@@ -50,10 +53,16 @@ class EditorialPreviewController extends Controller
             'preview' => [
                 'locale' => $locale,
                 'title' => $title,
-                'body' => $title === '' ? '' : $this->localizedValue($bodyMap, $locale),
+                'body' => $available ? $this->localizedValue($bodyMap, $locale) : '',
                 'image' => $image,
-                'available' => $title !== '',
+                'available' => $available,
+                'missing' => match (true) {
+                    $available => null,
+                    $title === '' => 'title',
+                    default => 'text',
+                },
                 'title_word' => ContentTitle::field($model) === 'name' ? 'названия' : 'заголовка',
+                'text_word' => $model instanceof Instruction ? 'ни шагов, ни текста' : 'текста',
                 'checklist' => $this->checklist->inspect($model),
             ],
         ])->toResponse($request);

@@ -6,7 +6,11 @@ import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
+import {
+    hasAnyTranslation,
+    hasRichText,
+    languageChecks,
+} from '@/lib/publication-languages';
 import { index, store, unpublish, update } from '@/routes/projects';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
@@ -134,9 +138,12 @@ export default function ProjectForm({
         coverPreview ??
         (project?.cover_url && !data.cover_remove ? project.cover_url : null);
 
+    // A text cleared in the editor stays as `<p></p>`, which the server drops.
     const completeness = (locale: ContentLocale): number => {
-        const filled = CONTENT_FIELDS.filter(
-            (f) => (data[f][locale] ?? '').trim() !== '',
+        const filled = CONTENT_FIELDS.filter((f) =>
+            f === 'body'
+                ? hasRichText(data.body[locale] ?? '')
+                : (data[f][locale] ?? '').trim() !== '',
         ).length;
 
         return Math.round((filled / CONTENT_FIELDS.length) * 100);
@@ -145,6 +152,22 @@ export default function ProjectForm({
         tg: completeness('tg'),
         ru: completeness('ru'),
         en: completeness('en'),
+    };
+
+    // A language version for the preview and the language checks: the site
+    // shows it only with its title and a summary or text (PublicLocale).
+    const versionOf = (locale: ContentLocale) => ({
+        title: data.title[locale],
+        summary: data.summary[locale],
+        body: data.body[locale],
+        hasText:
+            (data.summary[locale] ?? '').trim() !== '' ||
+            hasRichText(data.body[locale] ?? ''),
+    });
+    const versions = {
+        tg: versionOf('tg'),
+        ru: versionOf('ru'),
+        en: versionOf('en'),
     };
 
     const setLocaleField = (
@@ -248,27 +271,11 @@ export default function ProjectForm({
                     form.setData({ ...data, ...recovered }),
             }}
             preview={{
-                locales: {
-                    tg: {
-                        title: data.title.tg,
-                        summary: data.summary.tg,
-                        body: data.body.tg,
-                    },
-                    ru: {
-                        title: data.title.ru,
-                        summary: data.summary.ru,
-                        body: data.body.ru,
-                    },
-                    en: {
-                        title: data.title.en,
-                        summary: data.summary.en,
-                        body: data.body.en,
-                    },
-                },
+                locales: versions,
                 imageUrl: coverSrc,
                 signedUrl: project?.preview_url,
                 checklist: [
-                    ...languageChecks(compAll, data.title),
+                    ...languageChecks(compAll, versions),
                     {
                         label: 'Период проекта указан',
                         ok: data.years.trim() !== '',

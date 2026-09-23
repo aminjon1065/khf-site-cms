@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Contracts\Workflowable;
+use App\Models\Instruction;
 use App\Models\News;
 use App\Support\ContentLocales;
 use App\Support\ContentTitle;
+use App\Support\PublicLocale;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\HasMedia;
@@ -115,9 +117,9 @@ class PublicationChecklist
 
     /**
      * A material may be published in a single language: the public site lists
-     * it only on the language versions where its title exists (PublicLocale),
-     * so a missing translation is reported, not enforced. Publication needs at
-     * least one version filled completely.
+     * it only on the language versions that have its title and text
+     * (PublicLocale), so a missing translation is reported, not enforced.
+     * Publication needs at least one version filled completely.
      *
      * @param  array<string, int>  $completeness
      * @return list<array{key: string, label: string, ok: bool, blocking: bool, detail: string|null}>
@@ -126,6 +128,7 @@ class PublicationChecklist
     {
         $anyComplete = in_array(100, array_map('intval', $completeness), true);
         $missingTitle = ContentTitle::field($subject) === 'name' ? 'Нет названия' : 'Нет заголовка';
+        $missingText = $subject instanceof Instruction ? 'Нет ни шагов, ни текста' : 'Нет текста';
 
         $items = [[
             'key' => 'translation_any',
@@ -154,6 +157,7 @@ class PublicationChecklist
                 'detail' => match (true) {
                     $percent === 100 => null,
                     ! $hasTitle => "{$missingTitle} — на {$siteVersion} версии сайта материал не появится.",
+                    ! PublicLocale::hasText($subject, $locale) => "{$missingText} — на {$siteVersion} версии сайта материал не появится.",
                     default => "Заполнена на {$percent}%.",
                 },
             ];

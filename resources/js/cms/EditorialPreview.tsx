@@ -10,10 +10,15 @@ import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
 import { displayUrl, usePublicSiteUrl } from '@/lib/public-site';
 import {
+    missingPart,
     missingVersionNotice,
     previewLocale,
 } from '@/lib/publication-languages';
-import type { TitleWord } from '@/lib/publication-languages';
+import type {
+    LanguageVersion,
+    TextWord,
+    TitleWord,
+} from '@/lib/publication-languages';
 import { Button } from '@/ui/Button';
 import { EmptyState } from '@/ui/Feedback';
 import { Modal } from '@/ui/Overlay';
@@ -25,8 +30,7 @@ export interface PublicationCheck {
     detail?: string | null;
 }
 
-interface LocalePreview {
-    title: string;
+interface LocalePreview extends LanguageVersion {
     summary?: string;
     body?: string;
     seoTitle?: string;
@@ -37,6 +41,8 @@ export interface EditorialPreviewConfig {
     locales: Record<ContentLocale, LocalePreview>;
     /** How the notice names a missing title; documents and instructions have a name. */
     titleWord?: TitleWord;
+    /** How the notice names a missing text; an instruction's text is its steps or body. */
+    textWord?: TextWord;
     imageUrl?: string | null;
     imageAlt?: string | null;
     signedUrl?: string | null;
@@ -70,7 +76,7 @@ export function EditorialPreview({
     const locale =
         chosenLocale ?? previewLocale(preview.locales, initialLocale);
     const selected = preview.locales[locale];
-    const available = selected.title.trim() !== '';
+    const missing = missingPart(selected);
     const siteHost = displayUrl(usePublicSiteUrl());
 
     const close = () => {
@@ -135,9 +141,14 @@ export function EditorialPreview({
                 )}
             </div>
 
-            {!available && (
+            {missing !== null && (
                 <div className="editorial-preview-fallback" role="status">
-                    {missingVersionNotice(locale, preview.titleWord)}
+                    {missingVersionNotice(
+                        locale,
+                        preview.titleWord,
+                        missing,
+                        preview.textWord,
+                    )}
                 </div>
             )}
 
@@ -146,7 +157,7 @@ export function EditorialPreview({
                     className={`editorial-preview-canvas is-${mode}`}
                     aria-label={PREVIEW_MODE_LABELS[mode]}
                 >
-                    {!available ? (
+                    {missing !== null ? (
                         <EmptyState
                             icon={<Languages size={28} strokeWidth={1.25} />}
                             title="Этой языковой версии нет"

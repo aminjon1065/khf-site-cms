@@ -199,9 +199,26 @@ it('does not ask to translate the optional detailed text of an instruction', fun
         'name' => ['ru' => 'Паводок', 'tg' => 'Обхезӣ', 'en' => ''],
         'summary' => ['ru' => 'Что делать', 'tg' => 'Чӣ бояд кард', 'en' => ''],
         'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'sections' => ['before' => ['ru' => ['Поднимитесь выше'], 'tg' => ['Ба баландӣ бароед']]],
     ]);
 
     actingAs(translationQueueUser('editor'))
         ->get('/editorial/translations?type=instructions')
         ->assertInertia(fn ($inertia) => $inertia->has('items', 0));
+});
+
+it('asks to translate the steps of an instruction', function () {
+    $instruction = Instruction::factory()->create([
+        'name' => ['ru' => 'Паводок', 'tg' => 'Обхезӣ', 'en' => ''],
+        'summary' => ['ru' => 'Что делать', 'tg' => 'Чӣ бояд кард', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'sections' => ['before' => ['ru' => ['Поднимитесь выше']], 'during' => ['tg' => []]],
+    ]);
+
+    actingAs(translationQueueUser('editor'))
+        ->get('/editorial/translations?type=instructions')
+        ->assertInertia(fn ($inertia) => $inertia
+            ->has('items', 1)
+            ->where('items.0.id', $instruction->id)
+            ->where('items.0.missing_locales', ['tg']));
 });

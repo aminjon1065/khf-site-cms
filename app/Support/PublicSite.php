@@ -128,8 +128,9 @@ final class PublicSite
 
     /**
      * Public URL of a record, or null while it isn't visible on the site in
-     * that language (not published, or no title in that locale). Without a
-     * locale, the first language the record is written in is used.
+     * that language (not published, or that language version lacks its title
+     * or text — PublicLocale). Without a locale, the first language the record
+     * appears in is used.
      */
     public static function urlFor(Model&Workflowable $subject, ?string $contentLocale = null): ?string
     {
@@ -137,13 +138,13 @@ final class PublicSite
             return null;
         }
 
-        $contentLocale ??= ContentTitle::firstLocale($subject) ?? 'ru';
+        $contentLocale ??= PublicLocale::firstPublishedLocale($subject) ?? 'ru';
 
         $type = ContentTypes::slugFor($subject);
         $slug = $subject->getAttribute('slug');
         $path = $type !== null ? self::pathFor($type, is_string($slug) ? $slug : null) : null;
 
-        if ($path === null || ContentTitle::in($subject, $contentLocale) === '') {
+        if ($path === null || ! PublicLocale::isPublishedIn($subject, $contentLocale)) {
             return null;
         }
 

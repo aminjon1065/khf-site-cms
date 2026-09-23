@@ -7,7 +7,7 @@ import { useCan } from '@/lib/auth';
 import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
-import { languageChecks } from '@/lib/publication-languages';
+import { hasRichText, languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
 import { index, store, unpublish, update } from '@/routes/pages';
 import { Button } from '@/ui/Button';
@@ -88,14 +88,30 @@ export default function PageForm({
 
     // Completeness counts the required fields only (title + text), the same
     // as Page::languageCompleteness(): the search snippet is optional and is
-    // built from the title and text when left empty.
+    // built from the title and text when left empty. A text cleared in the
+    // editor stays as `<p></p>`, which the server drops.
     const completenessOf = (locale: ContentLocale): number =>
         (data.title[locale].trim() !== '' ? 50 : 0) +
-        (data.body[locale].trim() !== '' ? 50 : 0);
+        (hasRichText(data.body[locale]) ? 50 : 0);
     const compAll = {
         tg: completenessOf('tg'),
         ru: completenessOf('ru'),
         en: completenessOf('en'),
+    };
+
+    // A language version for the preview and the language checks: the site
+    // shows it only with its title and text (PublicLocale).
+    const versionOf = (locale: ContentLocale) => ({
+        title: data.title[locale],
+        body: data.body[locale],
+        seoTitle: data.seo_title[locale],
+        seoDescription: data.seo_description[locale],
+        hasText: hasRichText(data.body[locale]),
+    });
+    const versions = {
+        tg: versionOf('tg'),
+        ru: versionOf('ru'),
+        en: versionOf('en'),
     };
 
     const setLocaleField = (
@@ -229,29 +245,10 @@ export default function PageForm({
                     form.setData({ ...data, ...recovered }),
             }}
             preview={{
-                locales: {
-                    tg: {
-                        title: data.title.tg,
-                        body: data.body.tg,
-                        seoTitle: data.seo_title.tg,
-                        seoDescription: data.seo_description.tg,
-                    },
-                    ru: {
-                        title: data.title.ru,
-                        body: data.body.ru,
-                        seoTitle: data.seo_title.ru,
-                        seoDescription: data.seo_description.ru,
-                    },
-                    en: {
-                        title: data.title.en,
-                        body: data.body.en,
-                        seoTitle: data.seo_title.en,
-                        seoDescription: data.seo_description.en,
-                    },
-                },
+                locales: versions,
                 signedUrl: page?.preview_url,
                 checklist: [
-                    ...languageChecks(compAll, data.title),
+                    ...languageChecks(compAll, versions),
                     {
                         label: 'Описание для поисковиков заполнено (необязательно)',
                         ok: (['tg', 'ru', 'en'] as ContentLocale[]).some(

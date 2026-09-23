@@ -38,10 +38,11 @@ it('returns attachments of a news item with type and human size', function () {
 });
 
 it('formats the size for the requested locale', function () {
-    // Название на обоих языках: без английского перевода публичный запрос
-    // с ?locale=en вернул бы 404, а не пустую выдачу.
+    // Название и текст на обоих языках: без английской версии публичный
+    // запрос с ?locale=en вернул бы 404, а не пустую выдачу.
     $instruction = Instruction::factory()->published()->create([
         'name' => ['ru' => 'Землетрясение', 'tg' => 'Заминҷунбӣ', 'en' => 'Earthquake'],
+        'body' => ['ru' => '<p>Текст</p>', 'tg' => '<p>Матн</p>', 'en' => '<p>Text</p>'],
     ]);
     $instruction->addMedia(attachmentFile('leaflet.pdf', 1200))
         ->usingName('Leaflet')

@@ -51,11 +51,12 @@ class TranslationQueueController extends Controller
             'fields' => ['title', 'summary', 'body'],
         ],
         // «Подробное описание» инструкции необязательно (см. Instruction::
-        // $completenessOptional); шаги хранятся не по колонкам языков.
+        // $completenessOptional). Шаги обязательны: без них на языке
+        // инструкции нет ни полноты, ни версии на сайте.
         'instructions' => [
             'label' => 'Инструкции',
             'title_attribute' => 'name',
-            'fields' => ['name', 'summary'],
+            'fields' => ['name', 'summary', self::STEPS],
         ],
         'announcements' => [
             'label' => 'Объявления',
@@ -73,6 +74,12 @@ class TranslationQueueController extends Controller
      * @var list<string>
      */
     private const LOCALES = ['tg', 'ru', 'en'];
+
+    /**
+     * Instruction steps: stored per language inside `sections`, not in a
+     * translatable column.
+     */
+    private const STEPS = 'steps';
 
     public function __construct(private readonly EditorialContent $content) {}
 
@@ -157,6 +164,12 @@ class TranslationQueueController extends Controller
             $query->where(function (EloquentBuilder $missing) use ($meta, $locales): void {
                 foreach ($locales as $locale) {
                     foreach ($meta['fields'] as $field) {
+                        if ($field === self::STEPS) {
+                            $missing->orWhere(fn (EloquentBuilder $noSteps) => $this->whereNoSteps($noSteps, $locale));
+
+                            continue;
+                        }
+
                         $path = $this->databaseJsonPath($field, $locale);
                         $missing->orWhereNull($path)->orWhere($path, '');
                     }
@@ -190,6 +203,17 @@ class TranslationQueueController extends Controller
             'documents' => Document::query()->accessibleTo($user),
             default => abort(404),
         };
+    }
+
+    /**
+     * @param  EloquentBuilder<covariant Model>  $query
+     */
+    private function whereNoSteps(EloquentBuilder $query, string $locale): void
+    {
+        foreach (Instruction::STEP_SECTIONS as $section) {
+            $path = "sections->{$section}->{$locale}";
+            $query->where(fn (EloquentBuilder $empty) => $empty->whereNull($path)->orWhereJsonLength($path, 0));
+        }
     }
 
     private function databaseJsonPath(string $field, string $locale): string

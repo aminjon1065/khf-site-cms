@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\ContentStatus;
+use App\Models\Instruction;
 use App\Models\News;
 use App\Models\User;
 use App\Services\PublicationChecklist;
@@ -80,7 +81,41 @@ it('does not substitute another language when the preview locale has no title', 
             ->where('preview.title', '')
             ->where('preview.body', '')
             ->where('preview.available', false)
+            ->where('preview.missing', 'title')
             ->where('preview.title_word', 'заголовка'));
+});
+
+it('does not show a language version that has no text', function () {
+    $editor = previewUser();
+    $instruction = Instruction::factory()->create([
+        'name' => ['ru' => 'Землетрясение', 'tg' => 'Заминҷунбӣ', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '<p>Матн</p>', 'en' => ''],
+        'sections' => ['before' => ['ru' => [], 'tg' => ['Қадам']]],
+    ]);
+    $url = URL::temporarySignedRoute('editorial.preview', now()->addMinute(), [
+        'contentType' => 'instructions',
+        'contentId' => $instruction->id,
+        'locale' => 'ru',
+    ]);
+
+    actingAs($editor)
+        ->get($url)
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('preview.locale', 'ru')
+            ->where('preview.available', false)
+            ->where('preview.missing', 'text')
+            ->where('preview.body', '')
+            ->where('preview.text_word', 'ни шагов, ни текста'));
+
+    // Without a requested language the preview opens the one on the site.
+    actingAs($editor)
+        ->get(app(EditorialContent::class)->previewUrl($instruction))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('preview.locale', 'tg')
+            ->where('preview.available', true)
+            ->where('preview.missing', null));
 });
 
 it('opens the signed preview in the language a material is written in', function () {
@@ -126,20 +161,39 @@ it('lets a single-language material pass the checklist and reports the missing v
 it('blocks publication while no language version is complete', function () {
     $news = News::factory()->create([
         'title' => ['ru' => 'Заголовок', 'tg' => '', 'en' => ''],
-        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'summary' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'body' => ['ru' => '<p>Текст</p>', 'tg' => '', 'en' => ''],
     ]);
 
     $items = collect(app(PublicationChecklist::class)->inspect($news));
 
     expect($items->firstWhere('key', 'translation_any'))
         ->toMatchArray(['ok' => false, 'blocking' => true])
-        // Title and lead of three required fields (title, lead, text); the
+        // Title and text of three required fields (title, lead, text); the
         // optional search snippet doesn't count.
         ->and($items->firstWhere('key', 'translation_ru')['detail'])
         ->toBe('Заполнена на 67%.');
 
     expect(fn () => app(PublicationChecklist::class)->ensurePublishable($news))
         ->toThrow(ValidationException::class);
+});
+
+it('warns that a language version without its text stays off the site', function () {
+    $news = News::factory()->create([
+        'title' => ['ru' => 'Заголовок', 'tg' => 'Сарлавҳа', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '<p>Матн</p>', 'en' => ''],
+    ]);
+    $instruction = Instruction::factory()->create([
+        'name' => ['ru' => 'Землетрясение', 'tg' => 'Заминҷунбӣ', 'en' => ''],
+        'body' => ['ru' => '', 'tg' => '', 'en' => ''],
+        'sections' => ['before' => ['tg' => ['Қадам'], 'ru' => []]],
+    ]);
+
+    $newsRu = collect(app(PublicationChecklist::class)->inspect($news))->firstWhere('key', 'translation_ru');
+    $instructionRu = collect(app(PublicationChecklist::class)->inspect($instruction))->firstWhere('key', 'translation_ru');
+
+    expect($newsRu['detail'])->toBe('Нет текста — на русской версии сайта материал не появится.')
+        ->and($instructionRu['detail'])->toBe('Нет ни шагов, ни текста — на русской версии сайта материал не появится.');
 });
 
 it('blocks publication when a cover has no alt text', function () {
