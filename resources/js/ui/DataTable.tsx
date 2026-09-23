@@ -6,7 +6,7 @@ import {
     ChevronsUpDown,
 } from 'lucide-react';
 import { Fragment } from 'react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 import { Blueprint } from './Blueprint';
 import { EmptyState, Skeleton } from './Feedback';
@@ -27,6 +27,14 @@ export interface Column<T> {
      */
     optional?: 1 | 2;
 }
+
+/**
+ * The title column has no width of its own and takes what the fixed columns
+ * leave; on a phone they left it nothing. A narrow table keeps it this much
+ * room and scrolls sideways instead (`--ui-table-min-width`, components.css).
+ */
+const FLEXIBLE_COLUMN_MIN_WIDTH = 200;
+const CHECK_COLUMN_WIDTH = 36;
 
 export interface SortState {
     key: string;
@@ -78,6 +86,17 @@ export function DataTable<T>({
     renderSubRow,
 }: DataTableProps<T>) {
     const allKeys = rows.map(rowKey);
+    // Optional columns collapse on narrow tables, so they don't count.
+    const shownColumns = columns.filter((col) => !col.optional);
+    const minTableWidth = shownColumns.some(
+        (col) => typeof col.width !== 'number',
+    )
+        ? shownColumns.reduce(
+              (sum, col) =>
+                  typeof col.width === 'number' ? sum + col.width : sum,
+              (selectable ? CHECK_COLUMN_WIDTH : 0) + FLEXIBLE_COLUMN_MIN_WIDTH,
+          )
+        : undefined;
     const allSelected =
         allKeys.length > 0 && allKeys.every((k) => selected.has(k));
 
@@ -138,7 +157,16 @@ export function DataTable<T>({
                 className="ui-scroll ui-table-container"
                 style={{ overflow: 'auto', maxHeight: maxBodyHeight }}
             >
-                <table className="ui-table">
+                <table
+                    className="ui-table"
+                    style={
+                        minTableWidth === undefined
+                            ? undefined
+                            : ({
+                                  '--ui-table-min-width': `${minTableWidth}px`,
+                              } as CSSProperties)
+                    }
+                >
                     <thead>
                         <tr>
                             {selectable && (

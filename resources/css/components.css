@@ -633,6 +633,14 @@ h6 {
         white-space: nowrap;
     }
 }
+/* On a phone the fixed columns alone are wider than the screen: the table
+   keeps room for its title column and scrolls sideways (DataTable sets
+   --ui-table-min-width). Wider tables keep their layout. */
+@container (max-width: 640px) {
+    .ui-table {
+        min-width: var(--ui-table-min-width, 0);
+    }
+}
 .ui-table thead th {
     text-align: left;
     font-family: var(--font-body);
