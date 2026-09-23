@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cms;
 
+use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Page\PageRequest;
@@ -22,6 +23,15 @@ use Inertia\Response;
 
 class PageController extends Controller
 {
+    use HandlesPendingChanges;
+
+    /**
+     * Form keys that upload, pick or remove photos and files.
+     *
+     * @var list<string>
+     */
+    private const MEDIA_INPUTS = [];
+
     public function __construct(
         private readonly WorkflowService $workflow,
         private readonly EditorialContent $editorialContent,
@@ -74,14 +84,17 @@ class PageController extends Controller
         ]);
     }
 
-    public function edit(Page $page): Response
+    public function edit(Request $request, Page $page): Response
     {
         $this->authorize('update', $page);
 
         $page->load('author');
 
+        $pending = $this->pendingChangeProps($page, $request->user());
+
         return Inertia::render('pages/form', [
             'page' => $this->formPayload($page),
+            ...$pending,
         ]);
     }
 
@@ -108,12 +121,27 @@ class PageController extends Controller
     {
         $this->authorize('update', $page);
 
+        $proposal = $this->proposeInsteadOfSaving(
+            $page,
+            $request,
+            fn () => $this->fill($page, $request),
+            [],
+            self::MEDIA_INPUTS,
+            "/pages/{$page->id}/edit",
+        );
+
+        if ($proposal !== null) {
+            return $proposal;
+        }
+
         DB::transaction(function () use ($page, $request): void {
             $this->fill($page, $request);
             $page->save();
 
             $this->runPublishAction($page, $request);
         });
+
+        $this->refreshSiteIfLive($page);
 
         return redirect('/pages')->with('success', $this->savedMessage($page, $request));
     }
@@ -294,7 +322,8 @@ class PageController extends Controller
 
     private function runPublishAction(Page $page, PageRequest $request): void
     {
-        if ($request->input('action') !== 'submit') {
+        // A live material was just updated in place: nothing to publish.
+        if ($request->input('action') !== 'submit' || $page->getWorkflowStatus()->isPublic()) {
             return;
         }
 

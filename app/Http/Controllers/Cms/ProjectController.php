@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cms;
 
+use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Enums\ProjectStatus;
 use App\Enums\RoleName;
@@ -24,6 +25,15 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class ProjectController extends Controller
 {
+    use HandlesPendingChanges;
+
+    /**
+     * Form keys that upload, pick or remove photos and files.
+     *
+     * @var list<string>
+     */
+    private const MEDIA_INPUTS = ['cover', 'cover_media_id', 'cover_remove'];
+
     /**
      * @var list<string>
      */
@@ -86,15 +96,18 @@ class ProjectController extends Controller
         ]);
     }
 
-    public function edit(Project $project): Response
+    public function edit(Request $request, Project $project): Response
     {
         $this->authorize('update', $project);
 
         $project->load(['author', 'media']);
 
+        $pending = $this->pendingChangeProps($project, $request->user());
+
         return Inertia::render('projects/form', [
             'project' => $this->formPayload($project),
             'reference' => $this->reference(),
+            ...$pending,
         ]);
     }
 
@@ -122,6 +135,19 @@ class ProjectController extends Controller
     {
         $this->authorize('update', $project);
 
+        $proposal = $this->proposeInsteadOfSaving(
+            $project,
+            $request,
+            fn () => $this->fill($project, $request),
+            [],
+            self::MEDIA_INPUTS,
+            "/projects/{$project->id}/edit",
+        );
+
+        if ($proposal !== null) {
+            return $proposal;
+        }
+
         DB::transaction(function () use ($project, $request): void {
             $this->fill($project, $request);
             $project->save();
@@ -129,6 +155,8 @@ class ProjectController extends Controller
             $this->syncMedia($project, $request);
             $this->runPublishAction($project, $request);
         });
+
+        $this->refreshSiteIfLive($project);
 
         return $this->redirectAfterSave($project, $request);
     }
@@ -455,7 +483,8 @@ class ProjectController extends Controller
 
     private function runPublishAction(Project $project, ProjectRequest $request): void
     {
-        if ($request->input('action') !== 'submit') {
+        // A live material was just updated in place: nothing to publish.
+        if ($request->input('action') !== 'submit' || $project->getWorkflowStatus()->isPublic()) {
             return;
         }
 

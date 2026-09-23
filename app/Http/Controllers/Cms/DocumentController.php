@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cms;
 
+use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Enums\DocType;
 use App\Enums\RoleName;
@@ -22,6 +23,15 @@ use Inertia\Response;
 
 class DocumentController extends Controller
 {
+    use HandlesPendingChanges;
+
+    /**
+     * Form keys that upload, pick or remove photos and files.
+     *
+     * @var list<string>
+     */
+    private const MEDIA_INPUTS = ['file_ru', 'file_tg', 'file_en', 'file_ru_remove', 'file_tg_remove', 'file_en_remove'];
+
     /**
      * @var list<string>
      */
@@ -86,15 +96,18 @@ class DocumentController extends Controller
         ]);
     }
 
-    public function edit(Document $document): Response
+    public function edit(Request $request, Document $document): Response
     {
         $this->authorize('update', $document);
 
         $document->load(['author', 'media']);
 
+        $pending = $this->pendingChangeProps($document, $request->user());
+
         return Inertia::render('documents/form', [
             'document' => $this->formPayload($document),
             'reference' => $this->reference(),
+            ...$pending,
         ]);
     }
 
@@ -122,6 +135,19 @@ class DocumentController extends Controller
     {
         $this->authorize('update', $document);
 
+        $proposal = $this->proposeInsteadOfSaving(
+            $document,
+            $request,
+            fn () => $this->fill($document, $request),
+            [],
+            self::MEDIA_INPUTS,
+            "/documents/{$document->id}/edit",
+        );
+
+        if ($proposal !== null) {
+            return $proposal;
+        }
+
         DB::transaction(function () use ($document, $request): void {
             $this->fill($document, $request);
             $document->save();
@@ -129,6 +155,8 @@ class DocumentController extends Controller
             $this->syncFiles($document, $request);
             $this->runPublishAction($document, $request);
         });
+
+        $this->refreshSiteIfLive($document);
 
         return redirect('/documents')->with('success', $this->savedMessage($document, $request));
     }
@@ -358,7 +386,8 @@ class DocumentController extends Controller
 
     private function runPublishAction(Document $document, DocumentRequest $request): void
     {
-        if ($request->input('action') !== 'submit') {
+        // A live material was just updated in place: nothing to publish.
+        if ($request->input('action') !== 'submit' || $document->getWorkflowStatus()->isPublic()) {
             return;
         }
 

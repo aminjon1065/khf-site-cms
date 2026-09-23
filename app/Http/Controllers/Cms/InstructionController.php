@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cms;
 
+use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
 use App\Enums\RoleName;
@@ -27,6 +28,15 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class InstructionController extends Controller
 {
+    use HandlesPendingChanges;
+
+    /**
+     * Form keys that upload, pick or remove photos and files.
+     *
+     * @var list<string>
+     */
+    private const MEDIA_INPUTS = ['image', 'image_media_id', 'image_remove', 'attachments', 'attachments_remove'];
+
     /**
      * @var list<string>
      */
@@ -91,15 +101,18 @@ class InstructionController extends Controller
         ]);
     }
 
-    public function edit(Instruction $instruction): Response
+    public function edit(Request $request, Instruction $instruction): Response
     {
         $this->authorize('update', $instruction);
 
         $instruction->load(['author', 'media']);
 
+        $pending = $this->pendingChangeProps($instruction, $request->user());
+
         return Inertia::render('instructions/form', [
             'instruction' => $this->formPayload($instruction),
             'reference' => $this->reference(),
+            ...$pending,
         ]);
     }
 
@@ -127,6 +140,19 @@ class InstructionController extends Controller
     {
         $this->authorize('update', $instruction);
 
+        $proposal = $this->proposeInsteadOfSaving(
+            $instruction,
+            $request,
+            fn () => $this->fill($instruction, $request),
+            [],
+            self::MEDIA_INPUTS,
+            "/instructions/{$instruction->id}/edit",
+        );
+
+        if ($proposal !== null) {
+            return $proposal;
+        }
+
         DB::transaction(function () use ($instruction, $request): void {
             $this->fill($instruction, $request);
             $instruction->save();
@@ -134,6 +160,8 @@ class InstructionController extends Controller
             $this->syncMedia($instruction, $request);
             $this->runPublishAction($instruction, $request);
         });
+
+        $this->refreshSiteIfLive($instruction);
 
         return $this->redirectAfterSave($instruction, $request);
     }
@@ -437,7 +465,8 @@ class InstructionController extends Controller
 
     private function runPublishAction(Instruction $instruction, InstructionRequest $request): void
     {
-        if ($request->input('action') !== 'submit') {
+        // A live material was just updated in place: nothing to publish.
+        if ($request->input('action') !== 'submit' || $instruction->getWorkflowStatus()->isPublic()) {
             return;
         }
 

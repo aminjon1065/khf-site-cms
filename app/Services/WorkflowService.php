@@ -268,7 +268,7 @@ class WorkflowService
     /**
      * @return EloquentCollection<int, User>
      */
-    private function approversFor(Model&Workflowable $subject): EloquentCollection
+    public function approversFor(Model&Workflowable $subject): EloquentCollection
     {
         $type = ContentTypes::slugFor($subject);
         if ($type === null) {

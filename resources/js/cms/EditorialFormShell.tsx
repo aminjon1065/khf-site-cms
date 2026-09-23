@@ -21,7 +21,7 @@ import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { StatusBadge } from '@/ui/Badge';
 import { Button, LinkButton } from '@/ui/Button';
 import { LanguageTabs } from '@/ui/Nav';
-import { Dropdown } from '@/ui/Overlay';
+import { ConfirmDialog, Dropdown } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
 interface LanguageSwitcher {
@@ -52,6 +52,21 @@ interface EditorialFormShellProps<T extends object> {
     children: ReactNode;
     variant?: 'default' | 'gutenberg';
     onCopyLocale?: (from: ContentLocale, to: ContentLocale) => void;
+    /** Where «Снять с публикации» posts (the material's unpublish route). */
+    unpublishUrl?: string;
+    /** A proposal waiting for approval on this live material, if any. */
+    pendingChange?: PendingChangeInfo | null;
+    /** The server turns this user's saves into proposals (live material, no publish right). */
+    changesNeedApproval?: boolean;
+    /** The user may apply proposals (sees the link to the approval center). */
+    canApprove?: boolean;
+}
+
+export interface PendingChangeInfo {
+    id: number;
+    author: string | null;
+    created_at: string | null;
+    is_mine: boolean;
 }
 
 export function EditorialFormShell<T extends object>({
@@ -75,6 +90,10 @@ export function EditorialFormShell<T extends object>({
     extraActions,
     variant = 'default',
     onCopyLocale,
+    unpublishUrl,
+    pendingChange = null,
+    changesNeedApproval = false,
+    canApprove = false,
     children,
 }: EditorialFormShellProps<T>) {
     const errorEntries = Object.entries(errors).filter(
@@ -109,6 +128,20 @@ export function EditorialFormShell<T extends object>({
     };
 
     useSaveShortcut(() => submit(onSaveShortcut ?? onSaveDraft), !processing);
+
+    const [unpublishOpen, setUnpublishOpen] = useState(false);
+    const [unpublishing, setUnpublishing] = useState(false);
+    const publishActionProps: Omit<PublishActionsProps, 'compact'> = {
+        status,
+        canPublish,
+        changesNeedApproval,
+        processing,
+        onSave: () => submit(onSaveDraft),
+        onPublishNow: () => publish(onPublishNow),
+        onSchedule: onSchedule ? () => publish(onSchedule) : undefined,
+        onSubmitReview: () => submit(onSubmitReview),
+        onUnpublish: unpublishUrl ? () => setUnpublishOpen(true) : undefined,
+    };
 
     const languageTabsNode = (
         <LanguageTabs
@@ -196,96 +229,7 @@ export function EditorialFormShell<T extends object>({
                                 Предпросмотр
                             </span>
                         </Button>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={<Save size={15} strokeWidth={1.75} />}
-                            loading={processing}
-                            onClick={() => submit(onSaveDraft)}
-                            title="Сохранить черновик (Ctrl+S)"
-                        >
-                            <span className="wp-topbar-label">
-                                Сохранить черновик
-                            </span>
-                        </Button>
-
-                        {canPublish ? (
-                            <Dropdown
-                                align="right"
-                                placement="bottom"
-                                trigger={({ open, toggle }) => (
-                                    <div className="ui-splitbtn">
-                                        <Button
-                                            variant="primary"
-                                            size="sm"
-                                            loading={processing}
-                                            onClick={() =>
-                                                publish(onPublishNow)
-                                            }
-                                        >
-                                            Опубликовать
-                                        </Button>
-                                        <Button
-                                            variant="primary"
-                                            size="sm"
-                                            className="ui-splitbtn-chevron"
-                                            aria-label="Другие варианты публикации"
-                                            aria-haspopup="menu"
-                                            aria-expanded={open}
-                                            disabled={processing}
-                                            onClick={toggle}
-                                        >
-                                            <ChevronDown
-                                                size={15}
-                                                strokeWidth={2}
-                                                style={{
-                                                    transform: open
-                                                        ? 'rotate(180deg)'
-                                                        : undefined,
-                                                    transition:
-                                                        'transform 0.15s ease',
-                                                }}
-                                            />
-                                        </Button>
-                                    </div>
-                                )}
-                                items={[
-                                    {
-                                        label: 'Опубликовать сейчас',
-                                        description: 'Сразу появится на сайте',
-                                        onSelect: () => publish(onPublishNow),
-                                    },
-                                    ...(onSchedule
-                                        ? [
-                                              {
-                                                  label: 'Запланировать',
-                                                  description:
-                                                      'Выйдет в дату из блока «Публикация»',
-                                                  onSelect: () =>
-                                                      publish(onSchedule),
-                                              },
-                                          ]
-                                        : []),
-                                    { separator: true },
-                                    {
-                                        label: 'Отправить на согласование',
-                                        description:
-                                            'Сначала проверит руководитель',
-                                        onSelect: () => submit(onSubmitReview),
-                                    },
-                                ]}
-                            />
-                        ) : (
-                            <Button
-                                variant="primary"
-                                size="sm"
-                                icon={<Send size={15} strokeWidth={1.75} />}
-                                loading={processing}
-                                onClick={() => submit(onSubmitReview)}
-                            >
-                                На проверку
-                            </Button>
-                        )}
+                        <PublishActions compact {...publishActionProps} />
 
                         {extraActions}
                     </div>
@@ -328,6 +272,72 @@ export function EditorialFormShell<T extends object>({
                         {languageTabsNode}
                     </div>
                 </>
+            )}
+
+            {(pendingChange || changesNeedApproval) && (
+                <div className="editorial-pending" role="status">
+                    {pendingChange ? (
+                        <>
+                            <strong>
+                                {pendingChange.is_mine
+                                    ? 'Ваши изменения ждут согласования'
+                                    : `${pendingChange.author ?? 'Сотрудник'} предложил изменения — они ждут согласования`}
+                            </strong>
+                            <span>
+                                {pendingChange.created_at
+                                    ? `Отправлены ${pendingChange.created_at}. `
+                                    : ''}
+                                На сайте пока прежняя версия.
+                                {pendingChange.is_mine
+                                    ? ' Ниже — ваша версия: её можно поправить и отправить снова.'
+                                    : ''}
+                            </span>
+                            {canApprove && !pendingChange.is_mine && (
+                                <Link
+                                    href={`/approvals?change=${pendingChange.id}`}
+                                >
+                                    Открыть в центре согласования →
+                                </Link>
+                            )}
+                        </>
+                    ) : (
+                        <>
+                            <strong>Материал опубликован</strong>
+                            <span>
+                                Ваши изменения появятся на сайте после
+                                согласования. Фото и файлы опубликованного
+                                материала меняет сотрудник с правом публикации.
+                            </span>
+                        </>
+                    )}
+                </div>
+            )}
+
+            {unpublishUrl && (
+                <ConfirmDialog
+                    open={unpublishOpen}
+                    onClose={() => setUnpublishOpen(false)}
+                    loading={unpublishing}
+                    title="Снять с публикации?"
+                    body="Материал уберут с сайта и вернут в черновики — его можно будет поправить и опубликовать снова по тому же адресу."
+                    confirmLabel="Снять с публикации"
+                    requireComment
+                    onConfirm={(comment) => {
+                        allowNextVisit.current = true;
+                        setUnpublishing(true);
+                        router.post(
+                            unpublishUrl,
+                            { comment },
+                            {
+                                preserveScroll: true,
+                                onFinish: () => {
+                                    setUnpublishing(false);
+                                    setUnpublishOpen(false);
+                                },
+                            },
+                        );
+                    }}
+                />
             )}
 
             {errorEntries.length > 0 && (
@@ -509,86 +519,7 @@ export function EditorialFormShell<T extends object>({
                         </Button>
                     )}
                     <div className="editorial-form-actions-spacer" />
-                    <Button
-                        variant="secondary"
-                        icon={<Save size={15} strokeWidth={1.75} />}
-                        loading={processing}
-                        onClick={() => submit(onSaveDraft)}
-                    >
-                        Сохранить черновик
-                    </Button>
-                    {canPublish ? (
-                        <Dropdown
-                            align="right"
-                            placement="top"
-                            trigger={({ open, toggle }) => (
-                                <div className="ui-splitbtn">
-                                    <Button
-                                        variant="primary"
-                                        loading={processing}
-                                        onClick={() => publish(onPublishNow)}
-                                    >
-                                        Опубликовать
-                                    </Button>
-                                    <Button
-                                        variant="primary"
-                                        className="ui-splitbtn-chevron"
-                                        aria-label="Другие варианты публикации"
-                                        aria-haspopup="menu"
-                                        aria-expanded={open}
-                                        disabled={processing}
-                                        onClick={toggle}
-                                    >
-                                        <ChevronDown
-                                            size={16}
-                                            strokeWidth={2}
-                                            style={{
-                                                transform: open
-                                                    ? 'rotate(180deg)'
-                                                    : undefined,
-                                                transition:
-                                                    'transform 0.15s ease',
-                                            }}
-                                        />
-                                    </Button>
-                                </div>
-                            )}
-                            items={[
-                                {
-                                    label: 'Опубликовать сейчас',
-                                    description: 'Сразу появится на сайте',
-                                    onSelect: () => publish(onPublishNow),
-                                },
-                                ...(onSchedule
-                                    ? [
-                                          {
-                                              label: 'Запланировать',
-                                              description:
-                                                  'Выйдет в дату из блока «Публикация»',
-                                              onSelect: () =>
-                                                  publish(onSchedule),
-                                          },
-                                      ]
-                                    : []),
-                                { separator: true },
-                                {
-                                    label: 'Отправить на согласование',
-                                    description:
-                                        'Сначала проверит руководитель',
-                                    onSelect: () => submit(onSubmitReview),
-                                },
-                            ]}
-                        />
-                    ) : (
-                        <Button
-                            variant="primary"
-                            icon={<Send size={15} strokeWidth={1.75} />}
-                            loading={processing}
-                            onClick={() => submit(onSubmitReview)}
-                        >
-                            Отправить на проверку
-                        </Button>
-                    )}
+                    <PublishActions {...publishActionProps} />
                 </div>
             )}
         </>
@@ -669,4 +600,274 @@ function useUnsavedChangesGuard(
             removeInertiaListener();
         };
     }, [active, allowNextVisit]);
+}
+
+interface PublishActionsProps {
+    /** The editor top bar: small buttons, secondary labels collapse to icons. */
+    compact?: boolean;
+    status?: ContentStatus;
+    canPublish: boolean;
+    changesNeedApproval: boolean;
+    processing: boolean;
+    onSave: () => void;
+    onPublishNow: () => void;
+    onSchedule?: () => void;
+    onSubmitReview: () => void;
+    onUnpublish?: () => void;
+}
+
+const LIVE_STATUSES: ContentStatus[] = ['published', 'updated', 'completed'];
+
+/**
+ * The publish box, WordPress-style: what the buttons do depends on where the
+ * material is. A draft is saved or published; a live material is updated in
+ * place (or, without the publish right, its changes go to approval); a
+ * scheduled one can go out now or be taken off the schedule.
+ */
+function PublishActions({
+    compact = false,
+    status,
+    canPublish,
+    changesNeedApproval,
+    processing,
+    onSave,
+    onPublishNow,
+    onSchedule,
+    onSubmitReview,
+    onUnpublish,
+}: PublishActionsProps) {
+    const size = compact ? 'sm' : undefined;
+    const label = (text: string) =>
+        compact ? <span className="wp-topbar-label">{text}</span> : text;
+    const isLive = status !== undefined && LIVE_STATUSES.includes(status);
+    const inReview = status === 'review' || status === 'translation_check';
+
+    if (changesNeedApproval) {
+        return (
+            <Button
+                variant="primary"
+                size={size}
+                icon={<Send size={15} strokeWidth={1.75} />}
+                loading={processing}
+                onClick={onSave}
+                title="Изменения появятся на сайте после согласования"
+            >
+                Отправить изменения на согласование
+            </Button>
+        );
+    }
+
+    if (isLive && canPublish) {
+        return (
+            <SplitAction
+                size={size}
+                processing={processing}
+                label="Обновить"
+                title="Сохранить изменения — они сразу появятся на сайте"
+                onClick={onSave}
+                items={
+                    onUnpublish
+                        ? [
+                              {
+                                  label: 'Снять с публикации…',
+                                  description:
+                                      'Убрать с сайта и вернуть в черновики',
+                                  danger: true,
+                                  onSelect: onUnpublish,
+                              },
+                          ]
+                        : []
+                }
+            />
+        );
+    }
+
+    if (status === 'scheduled' && canPublish) {
+        return (
+            <>
+                <Button
+                    variant="secondary"
+                    size={size}
+                    icon={<Save size={15} strokeWidth={1.75} />}
+                    loading={processing}
+                    onClick={onSave}
+                    title="Сохранить (выйдет в назначенное время)"
+                >
+                    {label('Сохранить')}
+                </Button>
+                <SplitAction
+                    size={size}
+                    processing={processing}
+                    label="Опубликовать сейчас"
+                    onClick={onPublishNow}
+                    items={
+                        onUnpublish
+                            ? [
+                                  {
+                                      label: 'Отменить планирование…',
+                                      description: 'Вернуть в черновики',
+                                      danger: true,
+                                      onSelect: onUnpublish,
+                                  },
+                              ]
+                            : []
+                    }
+                />
+            </>
+        );
+    }
+
+    const saveButton = (
+        <Button
+            variant="secondary"
+            size={size}
+            icon={<Save size={15} strokeWidth={1.75} />}
+            loading={processing}
+            onClick={onSave}
+            title={
+                inReview ? 'Сохранить (Ctrl+S)' : 'Сохранить черновик (Ctrl+S)'
+            }
+        >
+            {label(inReview ? 'Сохранить' : 'Сохранить черновик')}
+        </Button>
+    );
+
+    if (inReview && !canPublish) {
+        return saveButton;
+    }
+
+    if (!canPublish) {
+        return (
+            <>
+                {saveButton}
+                <Button
+                    variant="primary"
+                    size={size}
+                    icon={<Send size={15} strokeWidth={1.75} />}
+                    loading={processing}
+                    onClick={onSubmitReview}
+                >
+                    Отправить на согласование
+                </Button>
+            </>
+        );
+    }
+
+    return (
+        <>
+            {saveButton}
+            <SplitAction
+                size={size}
+                processing={processing}
+                label="Опубликовать"
+                onClick={onPublishNow}
+                items={[
+                    {
+                        label: 'Опубликовать сейчас',
+                        description: 'Сразу появится на сайте',
+                        onSelect: onPublishNow,
+                    },
+                    ...(onSchedule
+                        ? [
+                              {
+                                  label: 'Запланировать',
+                                  description:
+                                      'Выйдет в дату из блока «Публикация»',
+                                  onSelect: onSchedule,
+                              },
+                          ]
+                        : []),
+                    ...(inReview
+                        ? []
+                        : [
+                              { separator: true as const },
+                              {
+                                  label: 'Отправить на согласование',
+                                  description: 'Сначала проверит руководитель',
+                                  onSelect: onSubmitReview,
+                              },
+                          ]),
+                ]}
+            />
+        </>
+    );
+}
+
+type SplitItem =
+    | { separator: true }
+    | {
+          label: string;
+          description?: string;
+          danger?: boolean;
+          onSelect: () => void;
+      };
+
+function SplitAction({
+    size,
+    processing,
+    label,
+    title,
+    onClick,
+    items,
+}: {
+    size?: 'sm';
+    processing: boolean;
+    label: string;
+    title?: string;
+    onClick: () => void;
+    items: SplitItem[];
+}) {
+    if (items.length === 0) {
+        return (
+            <Button
+                variant="primary"
+                size={size}
+                loading={processing}
+                onClick={onClick}
+                title={title}
+            >
+                {label}
+            </Button>
+        );
+    }
+
+    return (
+        <Dropdown
+            align="right"
+            placement={size === 'sm' ? 'bottom' : 'top'}
+            trigger={({ open, toggle }) => (
+                <div className="ui-splitbtn">
+                    <Button
+                        variant="primary"
+                        size={size}
+                        loading={processing}
+                        onClick={onClick}
+                        title={title}
+                    >
+                        {label}
+                    </Button>
+                    <Button
+                        variant="primary"
+                        size={size}
+                        className="ui-splitbtn-chevron"
+                        aria-label="Другие действия"
+                        aria-haspopup="menu"
+                        aria-expanded={open}
+                        disabled={processing}
+                        onClick={toggle}
+                    >
+                        <ChevronDown
+                            size={15}
+                            strokeWidth={2}
+                            style={{
+                                transform: open ? 'rotate(180deg)' : undefined,
+                                transition: 'transform 0.15s ease',
+                            }}
+                        />
+                    </Button>
+                </div>
+            )}
+            items={items}
+        />
+    );
 }

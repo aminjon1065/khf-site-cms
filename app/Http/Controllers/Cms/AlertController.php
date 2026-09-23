@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cms;
 
+use App\Concerns\HandlesPendingChanges;
 use App\Enums\Channel;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
@@ -25,6 +26,15 @@ use Inertia\Response;
 
 class AlertController extends Controller
 {
+    use HandlesPendingChanges;
+
+    /**
+     * Form keys that upload, pick or remove photos and files.
+     *
+     * @var list<string>
+     */
+    private const MEDIA_INPUTS = [];
+
     public function __construct(private readonly WorkflowService $workflow) {}
 
     public function index(Request $request): Response
@@ -87,9 +97,12 @@ class AlertController extends Controller
 
         $alert->load(['regions', 'districts', 'relatedInstructions', 'author', 'approver']);
 
+        $pending = $this->pendingChangeProps($alert, $request->user());
+
         return Inertia::render('alerts/wizard', [
             'alert' => $this->wizardPayload($alert),
             'reference' => $this->reference($request->user()),
+            ...$pending,
         ]);
     }
 
@@ -117,12 +130,31 @@ class AlertController extends Controller
     {
         $this->authorize('update', $alert);
 
+        $proposal = $this->proposeInsteadOfSaving(
+            $alert,
+            $request,
+            fn () => $this->fill($alert, $request),
+            [
+                'regions' => array_values(array_map('intval', (array) $request->input('regions', []))),
+                'districts' => array_values(array_map('intval', (array) $request->input('districts', []))),
+                'relatedInstructions' => array_values(array_map('intval', (array) $request->input('related_instructions', []))),
+            ],
+            self::MEDIA_INPUTS,
+            "/alerts/{$alert->id}/edit",
+        );
+
+        if ($proposal !== null) {
+            return $proposal;
+        }
+
         DB::transaction(function () use ($alert, $request): void {
             $this->fill($alert, $request);
             $alert->save();
             $this->syncRelations($alert, $request);
             $this->runPublishAction($alert, $request);
         });
+
+        $this->refreshSiteIfLive($alert);
 
         return redirect('/alerts')->with('success', $this->savedMessage($alert, $request));
     }
@@ -430,7 +462,8 @@ class AlertController extends Controller
 
     private function runPublishAction(Alert $alert, AlertRequest $request): void
     {
-        if ($request->input('action') !== 'submit') {
+        // A live material was just updated in place: nothing to publish.
+        if ($request->input('action') !== 'submit' || $alert->getWorkflowStatus()->isPublic()) {
             return;
         }
 

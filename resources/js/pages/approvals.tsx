@@ -1,9 +1,11 @@
 import { Head, router } from '@inertiajs/react';
-import { CheckCircle2, ClipboardCheck } from 'lucide-react';
+import { CheckCircle2, ClipboardCheck, ExternalLink, Eye } from 'lucide-react';
 import { useState } from 'react';
 import ApprovalController from '@/actions/App/Http/Controllers/Cms/ApprovalController';
+import { DiffSegments } from '@/cms/DiffSegments';
 import type { ContentStatus, Severity } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
+import { diffLines } from '@/lib/text-diff';
 import { LanguageBadges, SeverityBadge, StatusBadge, Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, LinkButton } from '@/ui/Button';
@@ -13,6 +15,8 @@ import { ConfirmDialog } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
 
 interface QueueItem {
+    /** Set for changes proposed to a published material. */
+    change_id: number | null;
     type: string;
     id: number;
     title: string;
@@ -24,7 +28,19 @@ interface QueueItem {
     urgent: boolean;
 }
 
+interface DiffRow {
+    field: string;
+    label: string;
+    before: string;
+    after: string;
+}
+
 interface Detail {
+    /** Set for changes proposed to a published material. */
+    change_id: number | null;
+    diff: DiffRow[];
+    public_url: string | null;
+    preview_url: string | null;
     type: string;
     id: number;
     title: string;
@@ -55,7 +71,9 @@ export default function Approvals({
     const select = (item: QueueItem) => {
         router.get(
             ApprovalController.index.url(),
-            { type: item.type, id: item.id },
+            item.change_id !== null
+                ? { change: item.change_id }
+                : { type: item.type, id: item.id },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     };
@@ -66,6 +84,17 @@ export default function Approvals({
         }
 
         setProcessing(true);
+
+        if (detail.change_id !== null) {
+            router.post(
+                ApprovalController.applyChange.url(detail.change_id),
+                {},
+                { onFinish: () => setProcessing(false) },
+            );
+
+            return;
+        }
+
         router.post(
             ApprovalController.approve.url(),
             { type: detail.type, id: detail.id },
@@ -79,24 +108,38 @@ export default function Approvals({
         }
 
         setProcessing(true);
+        const done = {
+            onFinish: () => {
+                setProcessing(false);
+                setReturnOpen(false);
+            },
+        };
+
+        if (detail.change_id !== null) {
+            router.post(
+                ApprovalController.rejectChange.url(detail.change_id),
+                { comment },
+                done,
+            );
+
+            return;
+        }
+
         router.post(
             ApprovalController.returnToAuthor.url(),
             { type: detail.type, id: detail.id, comment },
-            {
-                onFinish: () => {
-                    setProcessing(false);
-                    setReturnOpen(false);
-                },
-            },
+            done,
         );
     };
+
+    const isChange = detail?.change_id != null;
 
     return (
         <>
             <Head title={t('nav.approvals')} />
             <PageHeader
                 title="Центр согласования"
-                subtitle={`${queue.length} материала ожидают вашего решения · срочные — первыми`}
+                subtitle={`${queue.length} ${plural(queue.length, 'материал ожидает', 'материала ожидают', 'материалов ожидают')} вашего решения · срочные — первыми`}
             />
 
             {queue.length === 0 ? (
@@ -126,12 +169,19 @@ export default function Approvals({
                     <Blueprint style={{ padding: 0, alignSelf: 'flex-start' }}>
                         {queue.map((item) => {
                             const active =
-                                detail?.type === item.type &&
-                                detail?.id === item.id;
+                                item.change_id !== null
+                                    ? detail?.change_id === item.change_id
+                                    : detail?.change_id === null &&
+                                      detail?.type === item.type &&
+                                      detail?.id === item.id;
 
                             return (
                                 <button
-                                    key={`${item.type}-${item.id}`}
+                                    key={
+                                        item.change_id !== null
+                                            ? `change-${item.change_id}`
+                                            : `${item.type}-${item.id}`
+                                    }
                                     type="button"
                                     onClick={() => select(item)}
                                     style={{
@@ -252,6 +302,44 @@ export default function Approvals({
                                     </p>
                                 )}
 
+                                {isChange && (
+                                    <div style={{ marginBottom: 14 }}>
+                                        {detail.diff.length === 0 ? (
+                                            <p
+                                                style={{
+                                                    fontSize: 13,
+                                                    color: 'var(--color-neutral-600)',
+                                                }}
+                                            >
+                                                Изменения касаются только
+                                                оформления текста.
+                                            </p>
+                                        ) : (
+                                            detail.diff.map((row) => (
+                                                <section
+                                                    key={row.label}
+                                                    style={{ marginBottom: 12 }}
+                                                >
+                                                    <h4
+                                                        className="ui-card-title"
+                                                        style={{
+                                                            margin: '0 0 6px',
+                                                        }}
+                                                    >
+                                                        {row.label}
+                                                    </h4>
+                                                    <DiffSegments
+                                                        segments={diffLines(
+                                                            row.before,
+                                                            row.after,
+                                                        )}
+                                                    />
+                                                </section>
+                                            ))
+                                        )}
+                                    </div>
+                                )}
+
                                 {detail.meta.length > 0 && (
                                     <div
                                         style={{
@@ -303,7 +391,9 @@ export default function Approvals({
                                                 }
                                                 onClick={approve}
                                             >
-                                                Согласовать и опубликовать
+                                                {isChange
+                                                    ? 'Применить изменения'
+                                                    : 'Согласовать и опубликовать'}
                                             </Button>
                                             <Button
                                                 variant="danger-outline"
@@ -311,56 +401,87 @@ export default function Approvals({
                                                     setReturnOpen(true)
                                                 }
                                             >
-                                                Вернуть на доработку…
+                                                {isChange
+                                                    ? 'Отклонить…'
+                                                    : 'Вернуть на доработку…'}
                                             </Button>
                                         </>
+                                    )}
+                                    {detail.preview_url && (
+                                        <a
+                                            href={detail.preview_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="ui-btn ui-btn-ghost"
+                                        >
+                                            <Eye size={15} strokeWidth={1.75} />
+                                            Предпросмотр целиком
+                                        </a>
+                                    )}
+                                    {detail.public_url && (
+                                        <a
+                                            href={detail.public_url}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="ui-btn ui-btn-ghost"
+                                        >
+                                            <ExternalLink
+                                                size={15}
+                                                strokeWidth={1.75}
+                                            />
+                                            Сейчас на сайте
+                                        </a>
                                     )}
                                     <LinkButton
                                         href={detail.route}
                                         variant="ghost"
                                     >
-                                        Открыть полностью
+                                        Открыть в редакторе
                                     </LinkButton>
                                 </div>
                             </Blueprint>
 
-                            <div>
-                                <h3
-                                    style={{
-                                        fontFamily: 'var(--font-heading)',
-                                        fontWeight: 600,
-                                        fontSize: 15,
-                                        marginBottom: 10,
-                                    }}
-                                >
-                                    Редакционный процесс
-                                </h3>
-                                <Blueprint style={{ padding: 16 }}>
-                                    <WorkflowTimeline
-                                        steps={detail.timeline.map(
-                                            (s): TimelineStep => ({
-                                                title: s.title,
-                                                meta: s.meta,
-                                                state: s.state as TimelineStep['state'],
-                                            }),
+                            {(detail.timeline.length > 0 || detail.comment) && (
+                                <div>
+                                    <h3
+                                        style={{
+                                            fontFamily: 'var(--font-heading)',
+                                            fontWeight: 600,
+                                            fontSize: 15,
+                                            marginBottom: 10,
+                                        }}
+                                    >
+                                        {isChange
+                                            ? 'Обратите внимание'
+                                            : 'Редакционный процесс'}
+                                    </h3>
+                                    <Blueprint style={{ padding: 16 }}>
+                                        <WorkflowTimeline
+                                            steps={detail.timeline.map(
+                                                (s): TimelineStep => ({
+                                                    title: s.title,
+                                                    meta: s.meta,
+                                                    state: s.state as TimelineStep['state'],
+                                                }),
+                                            )}
+                                        />
+                                        {detail.comment && (
+                                            <div
+                                                style={{
+                                                    marginTop: 10,
+                                                    paddingTop: 10,
+                                                    borderTop:
+                                                        '1px solid var(--color-divider)',
+                                                    fontSize: 13,
+                                                    color: 'var(--color-neutral-700)',
+                                                }}
+                                            >
+                                                {detail.comment}
+                                            </div>
                                         )}
-                                    />
-                                    {detail.comment && (
-                                        <div
-                                            style={{
-                                                marginTop: 10,
-                                                paddingTop: 10,
-                                                borderTop:
-                                                    '1px solid var(--color-divider)',
-                                                fontSize: 13,
-                                                color: 'var(--color-neutral-700)',
-                                            }}
-                                        >
-                                            {detail.comment}
-                                        </div>
-                                    )}
-                                </Blueprint>
-                            </div>
+                                    </Blueprint>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <Blueprint>
@@ -383,16 +504,35 @@ export default function Approvals({
                 open={returnOpen}
                 onClose={() => setReturnOpen(false)}
                 loading={processing}
-                title="Вернуть на доработку?"
+                title={
+                    isChange ? 'Отклонить изменения?' : 'Вернуть на доработку?'
+                }
                 body={
                     detail
-                        ? `Материал «${detail.title}» вернётся автору со статусом «Возвращено». Укажите, что нужно исправить.`
+                        ? isChange
+                            ? `Изменения «${detail.title}» не попадут на сайт. Напишите автору, почему.`
+                            : `Материал «${detail.title}» вернётся автору со статусом «Возвращено». Укажите, что нужно исправить.`
                         : ''
                 }
-                confirmLabel="Вернуть автору"
+                confirmLabel={isChange ? 'Отклонить' : 'Вернуть автору'}
                 requireComment
                 onConfirm={submitReturn}
             />
         </>
     );
+}
+
+function plural(count: number, one: string, few: string, many: string): string {
+    const mod10 = count % 10;
+    const mod100 = count % 100;
+
+    if (mod10 === 1 && mod100 !== 11) {
+        return one;
+    }
+
+    if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+        return few;
+    }
+
+    return many;
 }

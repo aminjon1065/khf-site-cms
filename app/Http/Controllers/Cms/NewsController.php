@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cms;
 
+use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
@@ -34,6 +35,19 @@ use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class NewsController extends Controller
 {
+    use HandlesPendingChanges;
+
+    /**
+     * Form keys that upload, pick or remove photos and files.
+     *
+     * @var list<string>
+     */
+    private const MEDIA_INPUTS = [
+        'cover', 'cover_media_id', 'cover_remove',
+        'gallery', 'gallery_media_ids', 'gallery_remove',
+        'attachments', 'attachments_remove',
+    ];
+
     public function __construct(
         private readonly WorkflowService $workflow,
         private readonly EditorialContent $editorialContent,
@@ -88,15 +102,17 @@ class NewsController extends Controller
         ]);
     }
 
-    public function edit(News $news): Response
+    public function edit(Request $request, News $news): Response
     {
         $this->authorize('update', $news);
 
         $news->load(['category', 'tags', 'author', 'media']);
+        $pending = $this->pendingChangeProps($news, $request->user());
 
         return Inertia::render('news/form', [
             'news' => $this->formPayload($news),
             'reference' => $this->reference(),
+            ...$pending,
         ]);
     }
 
@@ -126,6 +142,19 @@ class NewsController extends Controller
     {
         $this->authorize('update', $news);
 
+        $proposal = $this->proposeInsteadOfSaving(
+            $news,
+            $request,
+            fn () => $this->fill($news, $request),
+            ['tags' => array_values(array_map('intval', (array) $request->input('tags', [])))],
+            self::MEDIA_INPUTS,
+            "/news/{$news->id}/edit",
+        );
+
+        if ($proposal !== null) {
+            return $proposal;
+        }
+
         DB::transaction(function () use ($news, $request): void {
             $this->fill($news, $request);
             $news->save();
@@ -135,6 +164,7 @@ class NewsController extends Controller
         });
 
         $this->runPublishAction($news, $request);
+        $this->refreshSiteIfLive($news);
 
         return $this->redirectAfterSave($news, $request);
     }
@@ -559,7 +589,9 @@ class NewsController extends Controller
 
     private function runPublishAction(News $news, NewsRequest $request, ?string $errorRedirect = null): void
     {
-        if ($request->input('action') !== 'submit') {
+        // A live news item was just updated in place: there is nothing to
+        // publish or send for approval.
+        if ($request->input('action') !== 'submit' || $news->getWorkflowStatus()->isPublic()) {
             return;
         }
 

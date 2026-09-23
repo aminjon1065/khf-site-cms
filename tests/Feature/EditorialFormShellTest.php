@@ -42,8 +42,11 @@ it('keeps all editorial forms on one shell contract', function (string $type) {
 it('provides one accessible error language action and dirty-state experience', function () {
     $source = editorialSource('cms/EditorialFormShell.tsx');
     $cancel = strpos($source, 'Отмена');
-    $save = strpos($source, 'Сохранить черновик');
-    $publish = strpos($source, 'Опубликовать');
+    // Top bar: «Отмена» sits before the publish box.
+    $actions = strpos($source, '<PublishActions compact');
+    // In the draft publish box «Сохранить черновик» comes before «Опубликовать».
+    $save = strpos($source, '{saveButton}');
+    $publish = strpos($source, 'label="Опубликовать"');
 
     expect(substr_count($source, '<LanguageTabs'))->toBe(1)
         ->and($source)->toContain(
@@ -52,14 +55,18 @@ it('provides one accessible error language action and dirty-state experience', f
             "router.on('before'",
             "'beforeunload'",
             'useSaveShortcut',
-            'Отправить на проверку',
+            'Отправить на согласование',
+            'Отправить изменения на согласование',
+            'Снять с публикации…',
             'ui-splitbtn',
-            'Другие варианты публикации',
-            'placement="top"',
+            'Другие действия',
+            "? 'bottom' : 'top'",
         )
+        ->and($source)->not->toContain('На проверку', 'Отправить на проверку')
         ->and($cancel)->toBeInt()
+        ->and($actions)->toBeInt()
         ->and($save)->toBeInt()
         ->and($publish)->toBeInt()
-        ->and($cancel)->toBeLessThan($save)
+        ->and($cancel)->toBeLessThan($actions)
         ->and($save)->toBeLessThan($publish);
 });

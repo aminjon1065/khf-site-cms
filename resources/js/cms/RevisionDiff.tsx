@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { show as showRevision } from '@/actions/App/Http/Controllers/Cms/EditorialAutosaveController';
+import { DiffSegments } from '@/cms/DiffSegments';
 import { diffLines, fieldChanged, normalizeField } from '@/lib/text-diff';
-import { Blueprint } from '@/ui/Blueprint';
 import { Modal } from '@/ui/Overlay';
 
 interface Props {
@@ -148,42 +148,7 @@ export function RevisionDiff({ revisionId, onClose }: Props) {
                                 >
                                     {section.label}
                                 </h4>
-                                <Blueprint
-                                    style={{ padding: '8px 0', fontSize: 12.5 }}
-                                >
-                                    {section.segments.map((segment, i) => (
-                                        <pre
-                                            key={i}
-                                            className="rev-diff-line"
-                                            data-diff={segment.type}
-                                            style={{
-                                                margin: 0,
-                                                padding: '1px 12px',
-                                                whiteSpace: 'pre-wrap',
-                                                wordBreak: 'break-word',
-                                                fontFamily: 'inherit',
-                                                color:
-                                                    segment.type === 'context'
-                                                        ? 'var(--color-neutral-600)'
-                                                        : 'var(--color-text)',
-                                                background:
-                                                    segment.type === 'added'
-                                                        ? 'color-mix(in srgb, var(--ok) 12%, transparent)'
-                                                        : segment.type ===
-                                                            'removed'
-                                                          ? 'color-mix(in srgb, var(--danger) 12%, transparent)'
-                                                          : 'transparent',
-                                            }}
-                                        >
-                                            {segment.type === 'added'
-                                                ? '+ '
-                                                : segment.type === 'removed'
-                                                  ? '− '
-                                                  : '  '}
-                                            {segment.lines.join('\n')}
-                                        </pre>
-                                    ))}
-                                </Blueprint>
+                                <DiffSegments segments={section.segments} />
                             </section>
                         ))
                     )}

@@ -12,12 +12,16 @@ use App\Models\Document;
 use App\Models\Instruction;
 use App\Models\News;
 use App\Models\Page;
+use App\Models\PendingChange;
 use App\Models\Project;
 use App\Models\User;
 use App\Models\WorkflowTransition;
+use App\Services\PendingChangeService;
 use App\Services\WorkflowService;
 use App\Support\ContentTitle;
 use App\Support\ContentTypes;
+use App\Support\EditorialContent;
+use App\Support\PublicSite;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,7 +31,11 @@ use Inertia\Response;
 
 class ApprovalController extends Controller
 {
-    public function __construct(private readonly WorkflowService $workflow) {}
+    public function __construct(
+        private readonly WorkflowService $workflow,
+        private readonly PendingChangeService $pendingChanges,
+        private readonly EditorialContent $editorialContent,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -36,13 +44,30 @@ class ApprovalController extends Controller
 
         $queue = $this->buildQueue($user);
 
+        // Changes to published materials («изменения на согласовании»).
+        $requestedChange = $request->integer('change');
+        $changeSelected = $requestedChange > 0
+            || ($request->string('type')->toString() === '' && ($queue[0]['change_id'] ?? null) !== null);
+
+        if ($changeSelected) {
+            $changeId = $requestedChange > 0 ? $requestedChange : (int) $queue[0]['change_id'];
+            abort_unless(collect($queue)->contains(fn (array $item): bool => $item['change_id'] === $changeId), 404);
+
+            $change = PendingChange::query()->with(['changeable', 'author'])->findOrFail($changeId);
+
+            return Inertia::render('approvals', [
+                'queue' => $queue,
+                'detail' => $this->changeDetail($change, $user),
+            ]);
+        }
+
         $selectedType = $request->string('type')->toString() ?: (string) ($queue[0]['type'] ?? '');
         $selectedId = (int) ($request->integer('id') ?: ($queue[0]['id'] ?? 0));
 
         $detail = null;
         if ($selectedType !== '' && $selectedId > 0) {
             abort_unless(collect($queue)->contains(
-                fn (array $item): bool => $item['type'] === $selectedType && $item['id'] === $selectedId,
+                fn (array $item): bool => $item['change_id'] === null && $item['type'] === $selectedType && $item['id'] === $selectedId,
             ), 404);
 
             $model = ContentTypes::resolve($selectedType, $selectedId);
@@ -84,7 +109,80 @@ class ApprovalController extends Controller
         return redirect('/approvals')->with('success', 'Материал возвращён на доработку.');
     }
 
+    public function applyChange(Request $request, PendingChange $pendingChange): RedirectResponse
+    {
+        $subject = $this->changeSubject($pendingChange);
+        $this->authorize('approve', $subject);
+        abort_unless($pendingChange->isPending(), 409, 'Это предложение уже рассмотрено.');
+
+        $this->pendingChanges->apply($pendingChange, $request->user());
+
+        return redirect('/approvals')->with('success', 'Изменения применены — они уже на сайте.');
+    }
+
+    public function rejectChange(Request $request, PendingChange $pendingChange): RedirectResponse
+    {
+        $subject = $this->changeSubject($pendingChange);
+        $this->authorize('approve', $subject);
+        abort_unless($pendingChange->isPending(), 409, 'Это предложение уже рассмотрено.');
+
+        $validated = $request->validate([
+            'comment' => ['required', 'string', 'min:3'],
+        ], [
+            'comment.required' => 'Напишите автору, почему изменения не приняты.',
+        ]);
+
+        $this->pendingChanges->reject($pendingChange, $request->user(), $validated['comment']);
+
+        return redirect('/approvals')->with('success', 'Изменения отклонены, автор получил комментарий.');
+    }
+
     // ---------------------------------------------------------------- helpers
+
+    private function changeSubject(PendingChange $change): Model&Workflowable
+    {
+        $subject = $change->changeable;
+        abort_unless($subject instanceof Model && $subject instanceof Workflowable, 404);
+
+        return $subject;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function changeDetail(PendingChange $change, User $user): array
+    {
+        $subject = $this->changeSubject($change);
+        $this->authorize('approve', $subject);
+        $type = (string) ContentTypes::slugFor($subject);
+        $liveVersion = $subject->getAttribute('updated_at');
+
+        return [
+            'change_id' => $change->id,
+            'type' => $type,
+            'id' => $subject->getKey(),
+            'title' => $this->title($subject),
+            'kind' => 'Изменения: '.mb_strtolower(ContentTypes::label($type)),
+            'subkind' => $this->subkind($subject),
+            'severity' => $subject instanceof Alert ? $subject->severity->value : null,
+            'status' => $subject->getWorkflowStatus()->value,
+            'body' => '',
+            'meta' => [
+                ['label' => 'Предложил', 'value' => $change->author->name ?? '—'],
+                ['label' => 'Отправлено', 'value' => $change->created_at?->isoFormat('D MMMM, HH:mm') ?? '—'],
+            ],
+            'languages' => null,
+            'timeline' => [],
+            'comment' => $change->base_updated_at !== null && $liveVersion !== null && ! $liveVersion->equalTo($change->base_updated_at)
+                ? 'Опубликованную версию изменили после отправки предложения: применяются только поля из сравнения ниже, остальное останется как на сайте сейчас.'
+                : null,
+            'diff' => $this->pendingChanges->diff($change),
+            'route' => (ContentTypes::META[$type]['route'] ?? '/').'/'.$subject->getKey().'/edit',
+            'public_url' => PublicSite::urlFor($subject),
+            'preview_url' => null,
+            'can_approve' => $user->can('approve', $subject),
+        ];
+    }
 
     private function resolveOrFail(Request $request): Model&Workflowable
     {
@@ -125,6 +223,29 @@ class ApprovalController extends Controller
             }
         }
 
+        foreach (PendingChange::query()->pending()->with(['changeable', 'author'])->get() as $change) {
+            $subject = $change->changeable;
+
+            if (! $subject instanceof Model || ! $subject instanceof Workflowable || ! $user->can('approve', $subject)) {
+                continue;
+            }
+
+            $type = (string) ContentTypes::slugFor($subject);
+            $items[] = [
+                'change_id' => $change->id,
+                'type' => $type,
+                'id' => $subject->getKey(),
+                'title' => $this->title($subject),
+                'kind' => 'Изменения: '.mb_strtolower(ContentTypes::label($type)),
+                'subkind' => $this->subkind($subject),
+                'severity' => $subject instanceof Alert ? $subject->severity->value : null,
+                'author' => $change->author->name ?? '—',
+                'submitted' => $change->created_at?->isoFormat('D MMMM, HH:mm') ?? '',
+                'submitted_ts' => $change->created_at->timestamp ?? 0,
+                'urgent' => $type === 'alert',
+            ];
+        }
+
         usort($items, fn (array $a, array $b): int => [$b['urgent'], $b['submitted_ts']] <=> [$a['urgent'], $a['submitted_ts']]);
 
         return $items;
@@ -147,6 +268,7 @@ class ApprovalController extends Controller
     private function queueItem(Model&Workflowable $model, string $type, bool $urgent = false): array
     {
         return [
+            'change_id' => null,
             'type' => $type,
             'id' => $model->getKey(),
             'title' => $this->title($model),
@@ -179,6 +301,12 @@ class ApprovalController extends Controller
             'timeline' => $this->timeline($model),
             'comment' => $this->latestComment($model),
             'route' => (ContentTypes::META[$type]['route'] ?? '/').'/'.$model->getKey().'/edit',
+            'change_id' => null,
+            'diff' => [],
+            'public_url' => null,
+            // The approver reads the whole material as it will look on the
+            // site, not only its title and lead.
+            'preview_url' => $this->editorialContent->supports($model) ? $this->editorialContent->previewUrl($model) : null,
             'can_approve' => $user !== null && $user->can('approve', $model),
         ];
     }

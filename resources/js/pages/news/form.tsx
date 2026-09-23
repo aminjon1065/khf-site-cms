@@ -2,10 +2,11 @@ import { useForm } from '@inertiajs/react';
 import { Sliders } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
+import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { languageChecks } from '@/lib/publication-languages';
-import { index, store, update } from '@/routes/news';
+import { index, store, unpublish, update } from '@/routes/news';
 import { Button } from '@/ui/Button';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
@@ -55,6 +56,10 @@ interface Props {
         tags: Option[];
         authors: Option[];
     };
+    /** A proposal waiting for approval on this live material. */
+    pending_change?: PendingChangeInfo | null;
+    /** Saves of this user become proposals (live material, no publish right). */
+    changes_need_approval?: boolean;
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
@@ -65,7 +70,12 @@ const CONTENT_FIELDS: ('title' | 'summary' | 'body')[] = [
     'body',
 ];
 
-export default function NewsForm({ news, reference }: Props) {
+export default function NewsForm({
+    news,
+    reference,
+    pending_change = null,
+    changes_need_approval = false,
+}: Props) {
     const can = useCan();
     const isEdit = !!news;
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -325,6 +335,10 @@ export default function NewsForm({ news, reference }: Props) {
 
     return (
         <EditorialFormShell
+            unpublishUrl={isEdit ? unpublish.url(news!.id) : undefined}
+            pendingChange={pending_change}
+            changesNeedApproval={changes_need_approval}
+            canApprove={can('news.approve')}
             variant="gutenberg"
             onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование новости' : 'Новая новость'}

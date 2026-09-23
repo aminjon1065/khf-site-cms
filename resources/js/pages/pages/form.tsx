@@ -2,12 +2,13 @@ import { useForm } from '@inertiajs/react';
 import { ExternalLink, Sliders, Sparkles, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
+import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
-import { index, store, update } from '@/routes/pages';
+import { index, store, unpublish, update } from '@/routes/pages';
 import { Button } from '@/ui/Button';
 import { Field, Input, Textarea } from '@/ui/Field';
 import { ReadinessWidget } from '@/ui/ReadinessWidget';
@@ -34,11 +35,19 @@ interface PageData {
 
 interface Props {
     page: PageData | null;
+    /** A proposal waiting for approval on this live material. */
+    pending_change?: PendingChangeInfo | null;
+    /** Saves of this user become proposals (live material, no publish right). */
+    changes_need_approval?: boolean;
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
 
-export default function PageForm({ page }: Props) {
+export default function PageForm({
+    page,
+    pending_change = null,
+    changes_need_approval = false,
+}: Props) {
     const can = useCan();
     const isEdit = !!page;
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -173,6 +182,10 @@ export default function PageForm({ page }: Props) {
 
     return (
         <EditorialFormShell
+            unpublishUrl={isEdit ? unpublish.url(page!.id) : undefined}
+            pendingChange={pending_change}
+            changesNeedApproval={changes_need_approval}
+            canApprove={can('pages.approve')}
             variant="gutenberg"
             onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование страницы' : 'Новая страница'}

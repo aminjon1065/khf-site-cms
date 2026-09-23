@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Cms;
 
+use App\Concerns\HandlesPendingChanges;
 use App\Enums\AnnouncementKind;
 use App\Enums\ContentStatus;
 use App\Enums\RoleName;
@@ -24,6 +25,15 @@ use Inertia\Response;
 
 class AnnouncementController extends Controller
 {
+    use HandlesPendingChanges;
+
+    /**
+     * Form keys that upload, pick or remove photos and files.
+     *
+     * @var list<string>
+     */
+    private const MEDIA_INPUTS = [];
+
     public function __construct(
         private readonly WorkflowService $workflow,
         private readonly EditorialContent $editorialContent,
@@ -78,15 +88,18 @@ class AnnouncementController extends Controller
         ]);
     }
 
-    public function edit(Announcement $announcement): Response
+    public function edit(Request $request, Announcement $announcement): Response
     {
         $this->authorize('update', $announcement);
 
         $announcement->load('author');
 
+        $pending = $this->pendingChangeProps($announcement, $request->user());
+
         return Inertia::render('announcements/form', [
             'announcement' => $this->formPayload($announcement),
             'reference' => $this->reference(),
+            ...$pending,
         ]);
     }
 
@@ -113,12 +126,27 @@ class AnnouncementController extends Controller
     {
         $this->authorize('update', $announcement);
 
+        $proposal = $this->proposeInsteadOfSaving(
+            $announcement,
+            $request,
+            fn () => $this->fill($announcement, $request),
+            [],
+            self::MEDIA_INPUTS,
+            "/announcements/{$announcement->id}/edit",
+        );
+
+        if ($proposal !== null) {
+            return $proposal;
+        }
+
         DB::transaction(function () use ($announcement, $request): void {
             $this->fill($announcement, $request);
             $announcement->save();
 
             $this->runPublishAction($announcement, $request);
         });
+
+        $this->refreshSiteIfLive($announcement);
 
         return redirect('/announcements')->with('success', $this->savedMessage($announcement, $request));
     }
@@ -320,7 +348,8 @@ class AnnouncementController extends Controller
 
     private function runPublishAction(Announcement $announcement, AnnouncementRequest $request): void
     {
-        if ($request->input('action') !== 'submit') {
+        // A live material was just updated in place: nothing to publish.
+        if ($request->input('action') !== 'submit' || $announcement->getWorkflowStatus()->isPublic()) {
             return;
         }
 

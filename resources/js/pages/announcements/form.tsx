@@ -2,12 +2,13 @@ import { useForm } from '@inertiajs/react';
 import { FileText, Sliders, Wand2, X } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
+import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
-import { index, store, update } from '@/routes/announcements';
+import { index, store, unpublish, update } from '@/routes/announcements';
 import { Button } from '@/ui/Button';
 import { DatePicker, Field, Input, Select, Textarea } from '@/ui/Field';
 import { ReadinessWidget } from '@/ui/ReadinessWidget';
@@ -43,11 +44,20 @@ interface Props {
         authors: Option[];
         projects: Option[];
     };
+    /** A proposal waiting for approval on this live material. */
+    pending_change?: PendingChangeInfo | null;
+    /** Saves of this user become proposals (live material, no publish right). */
+    changes_need_approval?: boolean;
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
 
-export default function AnnouncementForm({ announcement, reference }: Props) {
+export default function AnnouncementForm({
+    announcement,
+    reference,
+    pending_change = null,
+    changes_need_approval = false,
+}: Props) {
     const can = useCan();
     const isEdit = !!announcement;
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -195,6 +205,10 @@ export default function AnnouncementForm({ announcement, reference }: Props) {
 
     return (
         <EditorialFormShell
+            unpublishUrl={isEdit ? unpublish.url(announcement!.id) : undefined}
+            pendingChange={pending_change}
+            changesNeedApproval={changes_need_approval}
+            canApprove={can('announcements.approve')}
             variant="gutenberg"
             onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование объявления' : 'Новое объявление'}

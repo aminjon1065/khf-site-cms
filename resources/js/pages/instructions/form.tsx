@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
+import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import {
@@ -20,7 +21,7 @@ import {
 } from '@/lib/public-site';
 import { languageChecks } from '@/lib/publication-languages';
 import { slugify } from '@/lib/slugify';
-import { index, store, update } from '@/routes/instructions';
+import { index, store, unpublish, update } from '@/routes/instructions';
 import { AttachmentsField } from '@/ui/AttachmentsField';
 import { Button, IconButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
@@ -66,6 +67,10 @@ interface Props {
         authors: Option[];
         sectionKeys: { key: SectionKey; label: string }[];
     };
+    /** A proposal waiting for approval on this live material. */
+    pending_change?: PendingChangeInfo | null;
+    /** Saves of this user become proposals (live material, no publish right). */
+    changes_need_approval?: boolean;
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
@@ -79,7 +84,12 @@ function emptySections(): Sections {
     };
 }
 
-export default function InstructionForm({ instruction, reference }: Props) {
+export default function InstructionForm({
+    instruction,
+    reference,
+    pending_change = null,
+    changes_need_approval = false,
+}: Props) {
     const can = useCan();
     const isEdit = !!instruction;
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -340,6 +350,10 @@ export default function InstructionForm({ instruction, reference }: Props) {
 
     return (
         <EditorialFormShell
+            unpublishUrl={isEdit ? unpublish.url(instruction!.id) : undefined}
+            pendingChange={pending_change}
+            changesNeedApproval={changes_need_approval}
+            canApprove={can('instructions.approve')}
             variant="gutenberg"
             onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование инструкции' : 'Новая инструкция'}

@@ -2,6 +2,7 @@ import { Head, router, useForm } from '@inertiajs/react';
 import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
+import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import type { ContentLocale } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
 import { Tag } from '@/ui/Badge';
@@ -45,6 +46,10 @@ interface WizardAlert {
 interface Props {
     alert: WizardAlert | null;
     reference: Reference;
+    /** A proposal waiting for approval on this live alert. */
+    pending_change?: PendingChangeInfo | null;
+    /** Saves of this user become proposals (live alert, no publish right). */
+    changes_need_approval?: boolean;
 }
 
 const STEPS = [
@@ -57,7 +62,12 @@ const STEPS = [
 
 const CONTENT_FIELDS = ['title', 'summary', 'body', 'instructions'] as const;
 
-export default function AlertWizard({ alert, reference }: Props) {
+export default function AlertWizard({
+    alert,
+    reference,
+    pending_change = null,
+    changes_need_approval = false,
+}: Props) {
     const { t } = useT();
     const [step, setStep] = useState(0);
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -224,6 +234,23 @@ export default function AlertWizard({ alert, reference }: Props) {
                           : 'Не сохранён'}
                 </Tag>
             </div>
+
+            {(pending_change || changes_need_approval) && (
+                <div className="editorial-pending" role="status">
+                    <strong>
+                        {pending_change
+                            ? pending_change.is_mine
+                                ? 'Ваши изменения ждут согласования'
+                                : `${pending_change.author ?? 'Сотрудник'} предложил изменения — они ждут согласования`
+                            : 'Предупреждение опубликовано'}
+                    </strong>
+                    <span>
+                        {pending_change
+                            ? 'На сайте пока прежняя версия.'
+                            : 'Ваши изменения появятся на сайте после согласования.'}
+                    </span>
+                </div>
+            )}
 
             <FormErrorSummary errors={errors} />
 

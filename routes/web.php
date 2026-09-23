@@ -225,6 +225,8 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::get('approvals', [ApprovalController::class, 'index'])->name('approvals');
     Route::post('approvals/approve', [ApprovalController::class, 'approve'])->name('approvals.approve');
     Route::post('approvals/return', [ApprovalController::class, 'returnToAuthor'])->name('approvals.return');
+    Route::post('approvals/changes/{pendingChange}/apply', [ApprovalController::class, 'applyChange'])->name('approvals.changes.apply');
+    Route::post('approvals/changes/{pendingChange}/reject', [ApprovalController::class, 'rejectChange'])->name('approvals.changes.reject');
 
     // Activity log
     Route::get('activity', [ActivityController::class, 'index'])->name('activity');

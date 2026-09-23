@@ -2,10 +2,11 @@ import { useForm } from '@inertiajs/react';
 import { FileText } from 'lucide-react';
 import { useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
+import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
-import { index, store, update } from '@/routes/documents';
+import { index, store, unpublish, update } from '@/routes/documents';
 import { Blueprint } from '@/ui/Blueprint';
 import { Checkbox, DatePicker, Field, Input, Select } from '@/ui/Field';
 
@@ -44,6 +45,10 @@ interface Props {
         sections: string[];
         authors: Option[];
     };
+    /** A proposal waiting for approval on this live material. */
+    pending_change?: PendingChangeInfo | null;
+    /** Saves of this user become proposals (live material, no publish right). */
+    changes_need_approval?: boolean;
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
@@ -53,7 +58,12 @@ const FILE_LOCALES: { key: FileLocale; label: string }[] = [
     { key: 'en', label: 'Английский (EN)' },
 ];
 
-export default function DocumentForm({ document, reference }: Props) {
+export default function DocumentForm({
+    document,
+    reference,
+    pending_change = null,
+    changes_need_approval = false,
+}: Props) {
     const can = useCan();
     const isEdit = !!document;
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -105,6 +115,10 @@ export default function DocumentForm({ document, reference }: Props) {
 
     return (
         <EditorialFormShell
+            unpublishUrl={isEdit ? unpublish.url(document!.id) : undefined}
+            pendingChange={pending_change}
+            changesNeedApproval={changes_need_approval}
+            canApprove={can('documents.approve')}
             title={isEdit ? 'Редактирование документа' : 'Новый документ'}
             subtitle="Укажите название и реквизиты, прикрепите файлы на нужных языках."
             backLabel="Документы"

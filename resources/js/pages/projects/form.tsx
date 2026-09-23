@@ -2,10 +2,11 @@ import { useForm } from '@inertiajs/react';
 import { Images, Plus, Upload, X } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
+import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { hasAnyTranslation, languageChecks } from '@/lib/publication-languages';
-import { index, store, update } from '@/routes/projects';
+import { index, store, unpublish, update } from '@/routes/projects';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
 import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
@@ -52,6 +53,10 @@ interface Props {
         lifecycles: Option[];
         authors: Option[];
     };
+    /** A proposal waiting for approval on this live material. */
+    pending_change?: PendingChangeInfo | null;
+    /** Saves of this user become proposals (live material, no publish right). */
+    changes_need_approval?: boolean;
 }
 
 const EMPTY: LocaleMap = { ru: '', tg: '', en: '' };
@@ -71,7 +76,12 @@ function emptyGoals(): GoalMap {
     return { ru: [], tg: [], en: [] };
 }
 
-export default function ProjectForm({ project, reference }: Props) {
+export default function ProjectForm({
+    project,
+    reference,
+    pending_change = null,
+    changes_need_approval = false,
+}: Props) {
     const can = useCan();
     const isEdit = !!project;
     const [lang, setLang] = useState<ContentLocale>('ru');
@@ -206,6 +216,10 @@ export default function ProjectForm({ project, reference }: Props) {
 
     return (
         <EditorialFormShell
+            unpublishUrl={isEdit ? unpublish.url(project!.id) : undefined}
+            pendingChange={pending_change}
+            changesNeedApproval={changes_need_approval}
+            canApprove={can('projects.approve')}
             title={isEdit ? 'Редактирование проекта' : 'Новый проект'}
             subtitle="Опишите проект, цели, ход реализации и контакты дирекции."
             backLabel="Проекты"
