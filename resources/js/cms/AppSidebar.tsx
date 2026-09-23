@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
-import { ChevronsLeft, Search } from 'lucide-react';
+import { ChevronDown, ChevronsLeft, Search } from 'lucide-react';
+import { useOpenNavGroups } from '@/hooks/use-open-nav-groups';
 import { useCan } from '@/lib/auth';
 import { useT } from '@/lib/i18n';
 import { NAV, navItemAllowed } from '@/lib/navigation';
@@ -25,6 +26,7 @@ export function AppSidebar({
     const { t } = useT();
     const can = useCan();
     const url = usePage().url;
+    const [openGroups, toggleGroup] = useOpenNavGroups();
 
     const isActive = (item: NavItem) => {
         const base = item.href.split('?')[0];
@@ -85,51 +87,91 @@ export function AppSidebar({
                             return null;
                         }
 
+                        // The group of the current page stays open; an
+                        // icon-only sidebar shows every item.
+                        const hasActive = items.some(isActive);
+                        const folded =
+                            Boolean(group.collapsible) &&
+                            !collapsed &&
+                            !hasActive &&
+                            !openGroups.includes(group.labelKey);
+                        const listId = `nav-${group.labelKey.replace(/\W+/g, '-')}`;
+
                         return (
                             <div key={group.labelKey}>
-                                <div className="ui-nav-group">
-                                    {t(group.labelKey)}
-                                </div>
-                                {items.map((item) => {
-                                    const Icon = item.icon;
-                                    const badge = item.badge
-                                        ? badges[item.badge]
-                                        : undefined;
-
-                                    return (
-                                        <Link
-                                            key={item.key}
-                                            href={item.href}
-                                            onClick={onCloseMobile}
+                                {group.collapsible ? (
+                                    <button
+                                        type="button"
+                                        className="ui-nav-group ui-nav-group-toggle"
+                                        aria-expanded={!folded}
+                                        aria-controls={listId}
+                                        disabled={hasActive}
+                                        onClick={() =>
+                                            toggleGroup(group.labelKey)
+                                        }
+                                    >
+                                        <span>{t(group.labelKey)}</span>
+                                        <ChevronDown
+                                            size={14}
+                                            strokeWidth={1.75}
+                                            aria-hidden
                                             className={cn(
-                                                'ui-nav-item',
-                                                isActive(item) && 'is-active',
+                                                'chevron',
+                                                folded && 'is-folded',
                                             )}
-                                            title={
-                                                collapsed
-                                                    ? t(item.labelKey)
-                                                    : undefined
-                                            }
-                                        >
-                                            <Icon size={17} strokeWidth={1.5} />
-                                            <span className="label">
-                                                {t(item.labelKey)}
-                                            </span>
-                                            {badge ? (
-                                                <span
-                                                    className={cn(
-                                                        'ui-nav-badge',
-                                                        item.badge ===
-                                                            'alerts' &&
-                                                            'is-warn',
-                                                    )}
-                                                >
-                                                    {badge}
+                                        />
+                                    </button>
+                                ) : (
+                                    <div className="ui-nav-group">
+                                        {t(group.labelKey)}
+                                    </div>
+                                )}
+                                <div id={listId} hidden={folded}>
+                                    {items.map((item) => {
+                                        const Icon = item.icon;
+                                        const badge = item.badge
+                                            ? badges[item.badge]
+                                            : undefined;
+
+                                        return (
+                                            <Link
+                                                key={item.key}
+                                                href={item.href}
+                                                onClick={onCloseMobile}
+                                                className={cn(
+                                                    'ui-nav-item',
+                                                    isActive(item) &&
+                                                        'is-active',
+                                                )}
+                                                title={
+                                                    collapsed
+                                                        ? t(item.labelKey)
+                                                        : undefined
+                                                }
+                                            >
+                                                <Icon
+                                                    size={17}
+                                                    strokeWidth={1.5}
+                                                />
+                                                <span className="label">
+                                                    {t(item.labelKey)}
                                                 </span>
-                                            ) : null}
-                                        </Link>
-                                    );
-                                })}
+                                                {badge ? (
+                                                    <span
+                                                        className={cn(
+                                                            'ui-nav-badge',
+                                                            item.badge ===
+                                                                'alerts' &&
+                                                                'is-warn',
+                                                        )}
+                                                    >
+                                                        {badge}
+                                                    </span>
+                                                ) : null}
+                                            </Link>
+                                        );
+                                    })}
+                                </div>
                             </div>
                         );
                     })}

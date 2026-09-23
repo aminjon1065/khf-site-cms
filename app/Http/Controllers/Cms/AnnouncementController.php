@@ -74,7 +74,7 @@ class AnnouncementController extends Controller
                 'dir' => $request->string('dir', 'desc')->toString(),
             ],
             'savedViews' => $this->savedViewCounts($request),
-            'options' => ['statuses' => ContentStatus::options(), 'kinds' => AnnouncementKind::options()],
+            'options' => ['statuses' => ContentStatus::editorialOptions(), 'kinds' => AnnouncementKind::options()],
         ]);
     }
 
@@ -224,7 +224,7 @@ class AnnouncementController extends Controller
             });
         }
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $query->whereIn('status', ContentStatus::filterValues($status));
         }
         if ($kind = $request->string('kind')->toString()) {
             $query->where('kind', $kind);

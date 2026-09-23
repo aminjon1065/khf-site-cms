@@ -1088,6 +1088,33 @@ h6 {
     text-transform: uppercase;
     color: var(--chrome-muted);
 }
+.ui-nav-group-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    border: 0;
+    background: transparent;
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+.ui-nav-group-toggle:hover:not(:disabled),
+.ui-nav-group-toggle:focus-visible {
+    color: #fff;
+}
+.ui-nav-group-toggle:disabled {
+    cursor: default;
+}
+.ui-nav-group-toggle .chevron {
+    transition: transform 0.15s ease;
+}
+.ui-nav-group-toggle .chevron.is-folded {
+    transform: rotate(-90deg);
+}
+.ui-nav-group-toggle:disabled .chevron {
+    visibility: hidden;
+}
 .ui-nav-item {
     display: flex;
     align-items: center;

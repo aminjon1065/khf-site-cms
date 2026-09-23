@@ -138,7 +138,7 @@ export default function Approvals({
         <>
             <Head title={t('nav.approvals')} />
             <PageHeader
-                title="Центр согласования"
+                title="Согласование"
                 subtitle={`${queue.length} ${plural(queue.length, 'материал ожидает', 'материала ожидают', 'материалов ожидают')} вашего решения · срочные — первыми`}
             />
 

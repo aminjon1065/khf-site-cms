@@ -42,8 +42,9 @@ interface Props {
         affected_regions: number;
     };
     alerts: ActiveAlert[];
-    web_vitals: WebVitalsReport;
-    operations: OperationalReport;
+    /** Техническое состояние: только у администраторов, иначе null. */
+    web_vitals: WebVitalsReport | null;
+    operations: OperationalReport | null;
     pending_migrations: string[];
 }
 
@@ -192,10 +193,10 @@ export default function ControlCenter({
 
     return (
         <>
-            <Head title="Центр контроля" />
+            <Head title="Оперативная обстановка" />
             <PageHeader
-                title="Центр контроля"
-                subtitle="Оперативная обстановка по действующим предупреждениям и регионам"
+                title="Оперативная обстановка"
+                subtitle="Действующие предупреждения и регионы, которых они касаются"
                 actions={
                     <Tag tone={state === 'calm' ? 'ok' : 'danger'}>
                         {state === 'calm'
@@ -327,303 +328,316 @@ export default function ControlCenter({
                 </Blueprint>
             </div>
 
-            <section aria-labelledby="operations-heading" className="mt-5">
-                <div className="mb-4">
-                    <h2
-                        id="operations-heading"
-                        className="m-0 text-xl font-semibold"
-                    >
-                        Надёжность API и очередей
-                    </h2>
-                    <span className="mt-1 block text-sm text-(--color-neutral-600)">
-                        {sampleWindow(operations.api.window)} · последние 200
-                        sampled/slow/error запросов и заданий без URL,
-                        содержимого и персональных данных. Доля попаданий в кэш
-                        считается по всем запросам за сутки, а не по этой
-                        выборке — иначе медленные ответы перевесили бы
-                    </span>
-                </div>
-
-                <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-                    {[
-                        {
-                            label: 'API p95',
-                            value:
-                                operations.api.p95_ms === null
-                                    ? '—'
-                                    : `${operations.api.p95_ms} мс`,
-                        },
-                        {
-                            label: 'Отказы сервера (5xx)',
-                            value: operations.api.server_errors,
-                        },
-                        {
-                            label: 'Ответы 4xx',
-                            value: operations.api.client_errors,
-                        },
-                        {
-                            label: 'Очередь p95',
-                            value:
-                                operations.queue.p95_ms === null
-                                    ? '—'
-                                    : `${operations.queue.p95_ms} мс`,
-                        },
-                        {
-                            label: 'Ошибки очереди',
-                            value: operations.queue.failures,
-                        },
-                        {
-                            label: 'Попаданий в кэш за сутки',
-                            value:
-                                operations.cache.hit_rate === null
-                                    ? '—'
-                                    : `${Math.round(operations.cache.hit_rate * 100)}%`,
-                        },
-                    ].map((metric) => (
-                        <Blueprint key={metric.label} className="p-4">
-                            <strong className="block font-mono text-2xl font-semibold">
-                                {metric.value}
-                            </strong>
-                            <span className="mt-1 block text-xs text-(--color-neutral-600)">
-                                {metric.label}
-                            </span>
-                        </Blueprint>
-                    ))}
-                </div>
-
-                {operations.api.routes.length > 0 && (
-                    <Blueprint className="mt-4 overflow-x-auto p-0">
-                        <table className="w-full min-w-[560px] border-collapse text-left text-sm">
-                            <caption className="sr-only">
-                                p95 и ошибки публичного API по именованным
-                                маршрутам
-                            </caption>
-                            <thead>
-                                <tr className="border-b border-(--color-divider) text-xs text-(--color-neutral-600)">
-                                    <th scope="col" className="px-4 py-3">
-                                        Маршрут
-                                    </th>
-                                    <th scope="col" className="px-4 py-3">
-                                        p95
-                                    </th>
-                                    <th scope="col" className="px-4 py-3">
-                                        5xx / 4xx
-                                    </th>
-                                    <th
-                                        scope="col"
-                                        className="px-4 py-3 text-right"
-                                    >
-                                        Выборка
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {operations.api.routes.map((route) => (
-                                    <tr
-                                        key={route.route}
-                                        className="border-b border-(--color-divider) last:border-0"
-                                    >
-                                        <th
-                                            scope="row"
-                                            className="px-4 py-3 font-mono text-xs"
-                                        >
-                                            {route.route}
-                                        </th>
-                                        <td className="px-4 py-3 font-mono">
-                                            {route.p95_ms === null
-                                                ? '—'
-                                                : `${route.p95_ms} мс`}
-                                        </td>
-                                        <td className="px-4 py-3 font-mono">
-                                            {route.server_errors} /{' '}
-                                            {route.client_errors}
-                                        </td>
-                                        <td className="px-4 py-3 text-right font-mono">
-                                            {route.samples}
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </Blueprint>
-                )}
-            </section>
-
-            <section aria-labelledby="rum-heading" className="mt-5">
-                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-                    <span>
+            {/* Техническое состояние — только администраторам. */}
+            {operations && (
+                <section aria-labelledby="operations-heading" className="mt-5">
+                    <div className="mb-4">
                         <h2
-                            id="rum-heading"
+                            id="operations-heading"
                             className="m-0 text-xl font-semibold"
                         >
-                            Скорость сайта у посетителей
+                            Надёжность API и очередей
                         </h2>
                         <span className="mt-1 block text-sm text-(--color-neutral-600)">
-                            Core Web Vitals, p75 за {webVitals.period_days} дней
-                            · без IP, user-agent и идентификаторов сессии
+                            {sampleWindow(operations.api.window)} · последние
+                            200 sampled/slow/error запросов и заданий без URL,
+                            содержимого и персональных данных. Доля попаданий в
+                            кэш считается по всем запросам за сутки, а не по
+                            этой выборке — иначе медленные ответы перевесили бы
                         </span>
-                    </span>
-                    <Tag
-                        tone={
-                            webVitals.total_samples > 0 ? 'accent' : 'neutral'
-                        }
-                    >
-                        {webVitals.total_samples} измерений
-                    </Tag>
-                </div>
+                    </div>
 
-                <div className="grid gap-4 md:grid-cols-3">
-                    {webVitals.metrics.map((metric) => (
-                        <Blueprint
-                            key={metric.metric}
-                            className="flex items-start gap-3 p-4"
-                        >
-                            <Gauge
-                                aria-hidden="true"
-                                size={22}
-                                strokeWidth={1.4}
-                                className="mt-1 text-(--brand-700)"
-                            />
-                            <span className="min-w-0 flex-1">
-                                <span className="flex flex-wrap items-center justify-between gap-2">
-                                    <strong className="font-mono text-sm">
-                                        {metric.metric} p75
-                                    </strong>
-                                    <Tag tone={ratingTone[metric.rating]}>
-                                        {ratingLabel[metric.rating]}
-                                    </Tag>
-                                </span>
-                                <strong className="mt-2 block font-mono text-2xl font-semibold">
-                                    {formatVital(metric)}
+                    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                        {[
+                            {
+                                label: 'API p95',
+                                value:
+                                    operations.api.p95_ms === null
+                                        ? '—'
+                                        : `${operations.api.p95_ms} мс`,
+                            },
+                            {
+                                label: 'Отказы сервера (5xx)',
+                                value: operations.api.server_errors,
+                            },
+                            {
+                                label: 'Ответы 4xx',
+                                value: operations.api.client_errors,
+                            },
+                            {
+                                label: 'Очередь p95',
+                                value:
+                                    operations.queue.p95_ms === null
+                                        ? '—'
+                                        : `${operations.queue.p95_ms} мс`,
+                            },
+                            {
+                                label: 'Ошибки очереди',
+                                value: operations.queue.failures,
+                            },
+                            {
+                                label: 'Попаданий в кэш за сутки',
+                                value:
+                                    operations.cache.hit_rate === null
+                                        ? '—'
+                                        : `${Math.round(operations.cache.hit_rate * 100)}%`,
+                            },
+                        ].map((metric) => (
+                            <Blueprint key={metric.label} className="p-4">
+                                <strong className="block font-mono text-2xl font-semibold">
+                                    {metric.value}
                                 </strong>
                                 <span className="mt-1 block text-xs text-(--color-neutral-600)">
-                                    {metric.samples} измерений
-                                    {metric.provisional && metric.samples > 0
-                                        ? ' · предварительно (нужно 75)'
-                                        : ''}
+                                    {metric.label}
                                 </span>
-                            </span>
-                        </Blueprint>
-                    ))}
-                </div>
+                            </Blueprint>
+                        ))}
+                    </div>
 
-                <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
-                    <Blueprint className="overflow-x-auto p-0">
-                        <table className="w-full min-w-[620px] border-collapse text-left text-sm">
-                            <caption className="sr-only">
-                                Значения p75 Core Web Vitals по маршрутам
-                            </caption>
-                            <thead>
-                                <tr className="border-b border-(--color-divider) text-xs text-(--color-neutral-600)">
-                                    <th scope="col" className="px-4 py-3">
-                                        Маршрут
-                                    </th>
-                                    {webVitals.metrics.map((metric) => (
-                                        <th
-                                            key={metric.metric}
-                                            scope="col"
-                                            className="px-3 py-3 font-mono"
-                                        >
-                                            {metric.metric}
+                    {operations.api.routes.length > 0 && (
+                        <Blueprint className="mt-4 overflow-x-auto p-0">
+                            <table className="w-full min-w-[560px] border-collapse text-left text-sm">
+                                <caption className="sr-only">
+                                    p95 и ошибки публичного API по именованным
+                                    маршрутам
+                                </caption>
+                                <thead>
+                                    <tr className="border-b border-(--color-divider) text-xs text-(--color-neutral-600)">
+                                        <th scope="col" className="px-4 py-3">
+                                            Маршрут
                                         </th>
-                                    ))}
-                                    <th
-                                        scope="col"
-                                        className="px-4 py-3 text-right"
-                                    >
-                                        Измерения
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {webVitals.routes.length === 0 ? (
-                                    <tr>
-                                        <td
-                                            colSpan={5}
-                                            className="px-4 py-8 text-center text-(--color-neutral-600)"
+                                        <th scope="col" className="px-4 py-3">
+                                            p95
+                                        </th>
+                                        <th scope="col" className="px-4 py-3">
+                                            5xx / 4xx
+                                        </th>
+                                        <th
+                                            scope="col"
+                                            className="px-4 py-3 text-right"
                                         >
-                                            Данные появятся после реальных
-                                            посещений публичного сайта.
-                                        </td>
+                                            Выборка
+                                        </th>
                                     </tr>
-                                ) : (
-                                    webVitals.routes.map((route) => (
+                                </thead>
+                                <tbody>
+                                    {operations.api.routes.map((route) => (
                                         <tr
                                             key={route.route}
                                             className="border-b border-(--color-divider) last:border-0"
                                         >
                                             <th
                                                 scope="row"
-                                                className="max-w-[300px] truncate px-4 py-3 font-mono text-xs font-medium"
+                                                className="px-4 py-3 font-mono text-xs"
                                             >
                                                 {route.route}
                                             </th>
-                                            {route.metrics.map((metric) => (
-                                                <td
-                                                    key={metric.metric}
-                                                    className="px-3 py-3 font-mono"
-                                                >
-                                                    {formatVital(metric)}
-                                                </td>
-                                            ))}
+                                            <td className="px-4 py-3 font-mono">
+                                                {route.p95_ms === null
+                                                    ? '—'
+                                                    : `${route.p95_ms} мс`}
+                                            </td>
+                                            <td className="px-4 py-3 font-mono">
+                                                {route.server_errors} /{' '}
+                                                {route.client_errors}
+                                            </td>
                                             <td className="px-4 py-3 text-right font-mono">
                                                 {route.samples}
                                             </td>
                                         </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </Blueprint>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </Blueprint>
+                    )}
+                </section>
+            )}
 
-                    <Blueprint className="overflow-hidden p-0">
-                        <div className="flex items-center gap-2 border-b border-(--color-divider) px-4 py-3">
-                            <MonitorSmartphone
-                                aria-hidden="true"
-                                size={18}
-                                strokeWidth={1.4}
-                                className="text-(--brand-700)"
-                            />
-                            <h3 className="ui-card-title m-0">
-                                По устройствам
-                            </h3>
-                        </div>
-                        {webVitals.devices.length === 0 ? (
-                            <EmptyState
-                                title="Пока нет выборки"
-                                hint="RUM не влияет на работу сайта и заполнится автоматически."
-                            />
-                        ) : (
-                            webVitals.devices.map((device) => (
-                                <div
-                                    key={device.device}
-                                    className="border-b border-(--color-divider) px-4 py-3 last:border-0"
-                                >
-                                    <span className="flex items-center justify-between gap-3">
-                                        <strong className="text-sm font-medium capitalize">
-                                            {device.device}
+            {webVitals && (
+                <section aria-labelledby="rum-heading" className="mt-5">
+                    <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                        <span>
+                            <h2
+                                id="rum-heading"
+                                className="m-0 text-xl font-semibold"
+                            >
+                                Скорость сайта у посетителей
+                            </h2>
+                            <span className="mt-1 block text-sm text-(--color-neutral-600)">
+                                Core Web Vitals, p75 за {webVitals.period_days}{' '}
+                                дней · без IP, user-agent и идентификаторов
+                                сессии
+                            </span>
+                        </span>
+                        <Tag
+                            tone={
+                                webVitals.total_samples > 0
+                                    ? 'accent'
+                                    : 'neutral'
+                            }
+                        >
+                            {webVitals.total_samples} измерений
+                        </Tag>
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {webVitals.metrics.map((metric) => (
+                            <Blueprint
+                                key={metric.metric}
+                                className="flex items-start gap-3 p-4"
+                            >
+                                <Gauge
+                                    aria-hidden="true"
+                                    size={22}
+                                    strokeWidth={1.4}
+                                    className="mt-1 text-(--brand-700)"
+                                />
+                                <span className="min-w-0 flex-1">
+                                    <span className="flex flex-wrap items-center justify-between gap-2">
+                                        <strong className="font-mono text-sm">
+                                            {metric.metric} p75
                                         </strong>
-                                        <span className="font-mono text-xs text-(--color-neutral-600)">
-                                            {device.samples}
-                                        </span>
+                                        <Tag tone={ratingTone[metric.rating]}>
+                                            {ratingLabel[metric.rating]}
+                                        </Tag>
                                     </span>
-                                    <span className="mt-2 flex flex-wrap gap-2">
-                                        {device.metrics.map((metric) => (
-                                            <Tag
+                                    <strong className="mt-2 block font-mono text-2xl font-semibold">
+                                        {formatVital(metric)}
+                                    </strong>
+                                    <span className="mt-1 block text-xs text-(--color-neutral-600)">
+                                        {metric.samples} измерений
+                                        {metric.provisional &&
+                                        metric.samples > 0
+                                            ? ' · предварительно (нужно 75)'
+                                            : ''}
+                                    </span>
+                                </span>
+                            </Blueprint>
+                        ))}
+                    </div>
+
+                    <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(0,1.35fr)_minmax(300px,.65fr)]">
+                        <Blueprint className="overflow-x-auto p-0">
+                            <table className="w-full min-w-[620px] border-collapse text-left text-sm">
+                                <caption className="sr-only">
+                                    Значения p75 Core Web Vitals по маршрутам
+                                </caption>
+                                <thead>
+                                    <tr className="border-b border-(--color-divider) text-xs text-(--color-neutral-600)">
+                                        <th scope="col" className="px-4 py-3">
+                                            Маршрут
+                                        </th>
+                                        {webVitals.metrics.map((metric) => (
+                                            <th
                                                 key={metric.metric}
-                                                tone={ratingTone[metric.rating]}
+                                                scope="col"
+                                                className="px-3 py-3 font-mono"
                                             >
-                                                {metric.metric}:{' '}
-                                                {formatVital(metric)}
-                                            </Tag>
+                                                {metric.metric}
+                                            </th>
                                         ))}
-                                    </span>
-                                </div>
-                            ))
-                        )}
-                    </Blueprint>
-                </div>
-            </section>
+                                        <th
+                                            scope="col"
+                                            className="px-4 py-3 text-right"
+                                        >
+                                            Измерения
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {webVitals.routes.length === 0 ? (
+                                        <tr>
+                                            <td
+                                                colSpan={5}
+                                                className="px-4 py-8 text-center text-(--color-neutral-600)"
+                                            >
+                                                Данные появятся после реальных
+                                                посещений публичного сайта.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        webVitals.routes.map((route) => (
+                                            <tr
+                                                key={route.route}
+                                                className="border-b border-(--color-divider) last:border-0"
+                                            >
+                                                <th
+                                                    scope="row"
+                                                    className="max-w-[300px] truncate px-4 py-3 font-mono text-xs font-medium"
+                                                >
+                                                    {route.route}
+                                                </th>
+                                                {route.metrics.map((metric) => (
+                                                    <td
+                                                        key={metric.metric}
+                                                        className="px-3 py-3 font-mono"
+                                                    >
+                                                        {formatVital(metric)}
+                                                    </td>
+                                                ))}
+                                                <td className="px-4 py-3 text-right font-mono">
+                                                    {route.samples}
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </Blueprint>
+
+                        <Blueprint className="overflow-hidden p-0">
+                            <div className="flex items-center gap-2 border-b border-(--color-divider) px-4 py-3">
+                                <MonitorSmartphone
+                                    aria-hidden="true"
+                                    size={18}
+                                    strokeWidth={1.4}
+                                    className="text-(--brand-700)"
+                                />
+                                <h3 className="ui-card-title m-0">
+                                    По устройствам
+                                </h3>
+                            </div>
+                            {webVitals.devices.length === 0 ? (
+                                <EmptyState
+                                    title="Пока нет выборки"
+                                    hint="RUM не влияет на работу сайта и заполнится автоматически."
+                                />
+                            ) : (
+                                webVitals.devices.map((device) => (
+                                    <div
+                                        key={device.device}
+                                        className="border-b border-(--color-divider) px-4 py-3 last:border-0"
+                                    >
+                                        <span className="flex items-center justify-between gap-3">
+                                            <strong className="text-sm font-medium capitalize">
+                                                {device.device}
+                                            </strong>
+                                            <span className="font-mono text-xs text-(--color-neutral-600)">
+                                                {device.samples}
+                                            </span>
+                                        </span>
+                                        <span className="mt-2 flex flex-wrap gap-2">
+                                            {device.metrics.map((metric) => (
+                                                <Tag
+                                                    key={metric.metric}
+                                                    tone={
+                                                        ratingTone[
+                                                            metric.rating
+                                                        ]
+                                                    }
+                                                >
+                                                    {metric.metric}:{' '}
+                                                    {formatVital(metric)}
+                                                </Tag>
+                                            ))}
+                                        </span>
+                                    </div>
+                                ))
+                            )}
+                        </Blueprint>
+                    </div>
+                </section>
+            )}
         </>
     );
 }

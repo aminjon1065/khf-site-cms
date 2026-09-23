@@ -25,7 +25,7 @@ enum ContentStatus: string
             self::Draft => 'Черновик',
             self::Review => 'На согласовании',
             self::TranslationCheck => 'Проверка перевода',
-            self::Approved => 'Одобрено',
+            self::Approved => 'Согласовано',
             self::Scheduled => 'Запланировано',
             self::Published => 'Опубликовано',
             self::Updated => 'Обновлено',
@@ -56,9 +56,10 @@ enum ContentStatus: string
     }
 
     /**
+     * @param  list<self>|null  $cases
      * @return array<int, array{value: string, label: string, tone: string}>
      */
-    public static function options(): array
+    public static function options(?array $cases = null): array
     {
         return array_map(
             fn (self $case): array => [
@@ -66,7 +67,40 @@ enum ContentStatus: string
                 'label' => $case->label(),
                 'tone' => $case->tone(),
             ],
-            self::cases(),
+            $cases ?? self::cases(),
         );
+    }
+
+    /**
+     * Statuses a news item, page, project, instruction, announcement or
+     * document goes through. «Проверка перевода» and «Согласовано» are steps
+     * of approval, listed under «На согласовании»; «Обновлено», «Завершено»
+     * and «Отменено» belong to alerts.
+     *
+     * @return array<int, array{value: string, label: string, tone: string}>
+     */
+    public static function editorialOptions(): array
+    {
+        return self::options([
+            self::Draft,
+            self::Review,
+            self::Returned,
+            self::Scheduled,
+            self::Published,
+            self::Archived,
+        ]);
+    }
+
+    /**
+     * Stored statuses a list filter value stands for: «На согласовании»
+     * includes the approval steps after it.
+     *
+     * @return list<string>
+     */
+    public static function filterValues(string $status): array
+    {
+        return $status === self::Review->value
+            ? [self::Review->value, self::TranslationCheck->value, self::Approved->value]
+            : [$status];
     }
 }

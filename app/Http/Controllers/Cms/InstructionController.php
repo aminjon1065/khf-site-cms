@@ -87,7 +87,7 @@ class InstructionController extends Controller
                 'dir' => $request->string('dir', 'desc')->toString(),
             ],
             'savedViews' => $this->savedViewCounts($request),
-            'options' => ['statuses' => ContentStatus::options(), 'hazards' => HazardType::options()],
+            'options' => ['statuses' => ContentStatus::editorialOptions(), 'hazards' => HazardType::options()],
         ]);
     }
 
@@ -242,7 +242,7 @@ class InstructionController extends Controller
             });
         }
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $query->whereIn('status', ContentStatus::filterValues($status));
         }
         if ($hazard = $request->string('hazard')->toString()) {
             $query->where('hazard_type', $hazard);

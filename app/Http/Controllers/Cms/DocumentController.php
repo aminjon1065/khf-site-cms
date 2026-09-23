@@ -79,7 +79,7 @@ class DocumentController extends Controller
             ],
             'savedViews' => $this->savedViewCounts($request),
             'options' => [
-                'statuses' => ContentStatus::options(),
+                'statuses' => ContentStatus::editorialOptions(),
                 'types' => DocType::options(),
                 'sections' => $this->sections(),
             ],
@@ -234,7 +234,7 @@ class DocumentController extends Controller
             });
         }
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $query->whereIn('status', ContentStatus::filterValues($status));
         }
         if ($type = $request->string('type')->toString()) {
             $query->where('doc_type', $type);

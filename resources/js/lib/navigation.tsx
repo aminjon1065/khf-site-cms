@@ -1,6 +1,5 @@
 import {
     Activity,
-    Bell,
     BookOpen,
     Building2,
     ClipboardCheck,
@@ -39,7 +38,6 @@ import LeaderController from '@/actions/App/Http/Controllers/Cms/LeaderControlle
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
 import MenuController from '@/actions/App/Http/Controllers/Cms/MenuController';
 import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
-import NotificationController from '@/actions/App/Http/Controllers/Cms/NotificationController';
 import PageController from '@/actions/App/Http/Controllers/Cms/PageController';
 import ProjectController from '@/actions/App/Http/Controllers/Cms/ProjectController';
 import RegionController from '@/actions/App/Http/Controllers/Cms/RegionController';
@@ -64,6 +62,11 @@ export interface NavItem {
 
 export interface NavGroup {
     labelKey: string;
+    /**
+     * Sections staff open now and then: folded until opened, and always open
+     * while one of them is the current page.
+     */
+    collapsible?: boolean;
     items: NavItem[];
 }
 
@@ -84,22 +87,20 @@ const CONTENT_MODULES = [
 
 export { navItemAllowed } from '@/lib/permissions';
 
+/**
+ * The sidebar. Daily work first — what needs attention, then the materials
+ * of the site; settings of the site itself and administration are folded.
+ * Notifications live behind the bell in the top bar.
+ */
 export const NAV: NavGroup[] = [
     {
-        labelKey: 'nav.group.overview',
+        labelKey: 'nav.group.work',
         items: [
             {
                 key: 'dashboard',
                 labelKey: 'nav.dashboard',
                 href: dashboard.url(),
                 icon: LayoutDashboard,
-            },
-            {
-                key: 'control',
-                labelKey: 'nav.control_center',
-                href: control.url(),
-                icon: Gauge,
-                permission: 'alerts.view',
             },
             {
                 key: 'approvals',
@@ -109,11 +110,6 @@ export const NAV: NavGroup[] = [
                 badge: 'approval',
                 permission: CONTENT_MODULES.map((m) => `${m}.approve`),
             },
-        ],
-    },
-    {
-        labelKey: 'nav.group.operational',
-        items: [
             {
                 key: 'alerts',
                 labelKey: 'nav.alerts',
@@ -123,10 +119,11 @@ export const NAV: NavGroup[] = [
                 permission: 'alerts.view',
             },
             {
-                key: 'notify',
-                labelKey: 'nav.notifications',
-                href: NotificationController.index.url(),
-                icon: Bell,
+                key: 'control',
+                labelKey: 'nav.control_center',
+                href: control.url(),
+                icon: Gauge,
+                permission: 'alerts.view',
             },
             {
                 key: 'submissions',
@@ -138,7 +135,7 @@ export const NAV: NavGroup[] = [
         ],
     },
     {
-        labelKey: 'nav.group.collections',
+        labelKey: 'nav.group.content',
         items: [
             {
                 key: 'news',
@@ -153,13 +150,6 @@ export const NAV: NavGroup[] = [
                 href: InstructionController.index.url(),
                 icon: BookOpen,
                 permission: 'instructions.view',
-            },
-            {
-                key: 'pages',
-                labelKey: 'nav.pages',
-                href: PageController.index.url(),
-                icon: FileText,
-                permission: 'pages.view',
             },
             {
                 key: 'documents',
@@ -183,6 +173,20 @@ export const NAV: NavGroup[] = [
                 permission: 'projects.view',
             },
             {
+                key: 'pages',
+                labelKey: 'nav.pages',
+                href: PageController.index.url(),
+                icon: FileText,
+                permission: 'pages.view',
+            },
+            {
+                key: 'media',
+                labelKey: 'nav.media',
+                href: MediaController.index.url(),
+                icon: Image,
+                permission: 'media.view',
+            },
+            {
                 key: 'editorial-translations',
                 labelKey: 'Очередь переводов',
                 href: TranslationQueueController.index.url(),
@@ -199,15 +203,9 @@ export const NAV: NavGroup[] = [
         ],
     },
     {
-        labelKey: 'nav.group.navigation',
+        labelKey: 'nav.group.site',
+        collapsible: true,
         items: [
-            {
-                key: 'menu',
-                labelKey: 'Меню сайта',
-                href: MenuController.index.url(),
-                icon: Map,
-                permission: 'settings.view',
-            },
             {
                 key: 'home',
                 labelKey: 'nav.home_blocks',
@@ -216,18 +214,11 @@ export const NAV: NavGroup[] = [
                 permission: 'home.view',
             },
             {
-                key: 'taxonomy',
-                labelKey: 'Категории и теги',
-                href: TaxonomyController.index.url(),
-                icon: Tags,
-                permission: 'taxonomy.view',
-            },
-            {
-                key: 'regions',
-                labelKey: 'Регионы и районы',
-                href: RegionController.index.url(),
-                icon: Building2,
-                permission: 'regions.view',
+                key: 'menu',
+                labelKey: 'Меню сайта',
+                href: MenuController.index.url(),
+                icon: Map,
+                permission: 'settings.view',
             },
             {
                 key: 'leadership',
@@ -243,22 +234,25 @@ export const NAV: NavGroup[] = [
                 icon: Network,
                 permission: 'structure.view',
             },
-        ],
-    },
-    {
-        labelKey: 'nav.group.assets',
-        items: [
             {
-                key: 'media',
-                labelKey: 'nav.media',
-                href: MediaController.index.url(),
-                icon: Image,
-                permission: 'media.view',
+                key: 'regions',
+                labelKey: 'Регионы и районы',
+                href: RegionController.index.url(),
+                icon: Building2,
+                permission: 'regions.view',
+            },
+            {
+                key: 'taxonomy',
+                labelKey: 'Рубрики и метки',
+                href: TaxonomyController.index.url(),
+                icon: Tags,
+                permission: 'taxonomy.view',
             },
         ],
     },
     {
-        labelKey: 'nav.group.system',
+        labelKey: 'nav.group.admin',
+        collapsible: true,
         items: [
             {
                 key: 'users',
@@ -275,6 +269,13 @@ export const NAV: NavGroup[] = [
                 permission: 'users.view',
             },
             {
+                key: 'settings',
+                labelKey: 'nav.settings',
+                href: SettingController.index.url(),
+                icon: Settings,
+                permission: 'settings.view',
+            },
+            {
                 key: 'activity',
                 labelKey: 'nav.activity',
                 href: ActivityController.index.url(),
@@ -282,18 +283,13 @@ export const NAV: NavGroup[] = [
                 permission: 'users.view',
             },
             {
+                // A research tool for testing the CMS with staff, not a
+                // working screen: administrators only.
                 key: 'usability',
                 labelKey: 'Проверка удобства',
                 href: usability.url(),
                 icon: ClipboardList,
-                permission: 'users.view',
-            },
-            {
-                key: 'settings',
-                labelKey: 'nav.settings',
-                href: SettingController.index.url(),
-                icon: Settings,
-                permission: 'settings.view',
+                permission: 'settings.edit',
             },
         ],
     },

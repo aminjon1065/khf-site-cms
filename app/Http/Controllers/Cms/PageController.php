@@ -71,7 +71,7 @@ class PageController extends Controller
                 'dir' => $request->string('dir', 'desc')->toString(),
             ],
             'savedViews' => $this->savedViewCounts($request),
-            'options' => ['statuses' => ContentStatus::options()],
+            'options' => ['statuses' => ContentStatus::editorialOptions()],
         ]);
     }
 
@@ -225,7 +225,7 @@ class PageController extends Controller
             });
         }
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $query->whereIn('status', ContentStatus::filterValues($status));
         }
     }
 

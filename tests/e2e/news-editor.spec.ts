@@ -81,7 +81,7 @@ test('news editor inserts a library photo, a youtube video and can delete a tabl
     await page
         .getByRole('button', { name: 'Изображение из медиатеки' })
         .click();
-    const media = page.getByRole('dialog', { name: 'Медиабиблиотека' });
+    const media = page.getByRole('dialog', { name: 'Медиатека' });
     await expect(media).toBeVisible();
     await media.locator('.media-tile-main').first().click();
     await expect(media).toBeHidden();

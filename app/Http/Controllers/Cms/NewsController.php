@@ -334,7 +334,7 @@ class NewsController extends Controller
             });
         }
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $query->whereIn('status', ContentStatus::filterValues($status));
         }
         if ($category = $request->string('category')->toString()) {
             $query->where('category_id', $category);
@@ -385,7 +385,7 @@ class NewsController extends Controller
     private function filterOptions(): array
     {
         return [
-            'statuses' => ContentStatus::options(),
+            'statuses' => ContentStatus::editorialOptions(),
             'categories' => $this->newsCategories(),
         ];
     }

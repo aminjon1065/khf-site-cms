@@ -131,9 +131,9 @@ export default function TaxonomyIndex({ categories, tags }: Props) {
 
     return (
         <>
-            <Head title="Категории и теги" />
+            <Head title="Рубрики и метки" />
             <PageHeader
-                title="Категории и теги"
+                title="Рубрики и метки"
                 subtitle="Рубрики новостей и словарь тегов · пустой адрес заполняется автоматически"
                 actions={
                     editable && (

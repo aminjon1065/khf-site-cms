@@ -479,14 +479,6 @@ export default function NewsIndex({
                     >
                         Быстрое редактирование: {r.title}
                     </strong>
-                    <span
-                        style={{
-                            fontSize: 11.5,
-                            color: 'var(--color-neutral-500)',
-                        }}
-                    >
-                        ID: {r.id}
-                    </span>
                 </div>
 
                 {needsApproval && (

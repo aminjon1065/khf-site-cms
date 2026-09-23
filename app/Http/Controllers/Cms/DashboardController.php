@@ -394,7 +394,7 @@ class DashboardController extends Controller
             if ($user->can(ContentTypes::module($type).'.approve')) {
                 return [
                     'href' => route('approvals', [], false),
-                    'label' => 'Центр согласования',
+                    'label' => 'Согласование',
                 ];
             }
         }

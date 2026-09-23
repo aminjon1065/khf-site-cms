@@ -80,7 +80,7 @@ class ProjectController extends Controller
             ],
             'savedViews' => $this->savedViewCounts($request),
             'options' => [
-                'statuses' => ContentStatus::options(),
+                'statuses' => ContentStatus::editorialOptions(),
                 'lifecycles' => ProjectStatus::options(),
             ],
         ]);
@@ -235,7 +235,7 @@ class ProjectController extends Controller
             });
         }
         if ($status = $request->string('status')->toString()) {
-            $query->where('status', $status);
+            $query->whereIn('status', ContentStatus::filterValues($status));
         }
         if ($lifecycle = $request->string('lifecycle')->toString()) {
             $query->where('lifecycle_status', $lifecycle);

@@ -196,8 +196,12 @@ function resolveCrumb(
         }
     }
 
+    if (path.startsWith('/notifications')) {
+        return { group: t('nav.group.work'), label: t('nav.notifications') };
+    }
+
     if (path.startsWith('/profile')) {
-        return { group: t('nav.group.system'), label: t('nav.profile') };
+        return { group: t('nav.group.account'), label: t('nav.profile') };
     }
 
     return { group: t('app.name'), label: '—' };

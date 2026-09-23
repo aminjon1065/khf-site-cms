@@ -26,6 +26,7 @@ class ControlController extends Controller
     {
         $user = $request->user();
         abort_unless($user instanceof User && $user->can('alerts.view'), 403);
+        $technical = $user->can('settings.edit');
 
         $snapshot = $this->map->snapshot('ru', $user);
         $alerts = Alert::query()->accessibleTo($user)
@@ -54,9 +55,11 @@ class ControlController extends Controller
                 'ends_at' => $alert->ends_at?->isoFormat('D MMMM, HH:mm'),
                 'url' => "/alerts/{$alert->id}/edit",
             ])->values()->all(),
-            'web_vitals' => $this->webVitals->summary(),
-            'operations' => $this->telemetry->summary(),
-            'pending_migrations' => $this->pendingMigrations->names(),
+            // Technical state of the system is for administrators: an alert
+            // operator needs the situation, not API percentiles.
+            'web_vitals' => $technical ? $this->webVitals->summary() : null,
+            'operations' => $technical ? $this->telemetry->summary() : null,
+            'pending_migrations' => $technical ? $this->pendingMigrations->names() : [],
         ]);
     }
 }

@@ -67,11 +67,22 @@ export function NotificationCenter({
             width={390}
             title={t('nav.notifications')}
             footer={
-                (notifications?.items.length ?? 0) > 0 ? (
-                    <Button variant="ghost" onClick={markAll}>
-                        {t('action.mark_all_read')}
+                <>
+                    <Button
+                        variant="ghost"
+                        onClick={() => {
+                            onClose();
+                            router.visit(NotificationController.index.url());
+                        }}
+                    >
+                        Все уведомления
                     </Button>
-                ) : undefined
+                    {(notifications?.items.length ?? 0) > 0 && (
+                        <Button variant="ghost" onClick={markAll}>
+                            {t('action.mark_all_read')}
+                        </Button>
+                    )}
+                </>
             }
         >
             {loading && !notifications ? (

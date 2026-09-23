@@ -18,7 +18,7 @@ class UsabilityController extends Controller
     public function index(Request $request, UsabilityReportService $report): Response
     {
         $user = $request->user();
-        abort_unless($user instanceof User && $user->can('users.view'), 403);
+        abort_unless($user instanceof User && $user->can('settings.edit'), 403);
 
         return Inertia::render('usability/index', [
             'tasks' => collect(UsabilityStudy::TASKS)

@@ -65,9 +65,11 @@ it('renders the anonymous field study for authorized facilitators', function () 
             ->has('sessions', 0));
 });
 
-it('forbids users without users view permission', function () {
-    actingAs(usabilityUser('editor'))->get('/usability')->assertForbidden();
-    actingAs(usabilityUser('editor'))->post('/usability', validUsabilityPayload())->assertForbidden();
+it('keeps the usability study to administrators', function () {
+    foreach (['editor', 'chief_editor'] as $role) {
+        actingAs(usabilityUser($role))->get('/usability')->assertForbidden();
+        actingAs(usabilityUser($role))->post('/usability', validUsabilityPayload())->assertForbidden();
+    }
 });
 
 it('stores a complete anonymous session and calculates standard SUS', function () {

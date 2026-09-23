@@ -195,7 +195,7 @@ export function MediaPicker({
             <Modal
                 open={open}
                 onClose={handleClose}
-                title="Медиабиблиотека"
+                title="Медиатека"
                 width={720}
                 footer={
                     <>

@@ -11,9 +11,9 @@ test('editor dashboard links to the translation queue instead of an inaccessible
     });
 
     await expect(taskCenter).toBeVisible();
-    await expect(
-        main.getByRole('link', { name: 'Центр согласования' }),
-    ).toHaveCount(0);
+    await expect(main.getByRole('link', { name: 'Согласование' })).toHaveCount(
+        0,
+    );
 
     await taskCenter.click();
     await expect(page).toHaveURL(/\/editorial\/translations$/);

@@ -65,7 +65,7 @@ class TaxonomyController extends Controller
 
         RevalidateFrontend::forPayload(FrontendRevalidation::forReference('category'));
 
-        return back()->with('success', 'Категории и теги сохранены.');
+        return back()->with('success', 'Рубрики и метки сохранены.');
     }
 
     public function quickCategory(Request $request): JsonResponse

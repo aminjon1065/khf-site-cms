@@ -579,3 +579,22 @@ it('publishes news without filling the optional search snippet', function () {
 
     expect(News::query()->sole()->status)->toBe(ContentStatus::Published);
 });
+
+it('offers only the statuses a news item goes through', function () {
+    actingAs(newsUser('editor'))->get('/news')
+        ->assertInertia(fn (Assert $page) => $page->where(
+            'options.statuses',
+            fn ($statuses): bool => collect($statuses)->pluck('value')->all() === ['draft', 'review', 'returned', 'scheduled', 'published', 'archived']
+                && collect($statuses)->firstWhere('value', 'review')['label'] === 'На согласовании',
+        ));
+});
+
+it('lists every approval step under «На согласовании»', function () {
+    News::factory()->create(['status' => ContentStatus::Review]);
+    News::factory()->create(['status' => ContentStatus::TranslationCheck]);
+    News::factory()->create(['status' => ContentStatus::Approved]);
+    News::factory()->create(['status' => ContentStatus::Draft]);
+
+    actingAs(newsUser('editor'))->get('/news?status=review')
+        ->assertInertia(fn (Assert $page) => $page->has('news', 3));
+});

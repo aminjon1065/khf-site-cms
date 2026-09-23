@@ -13,7 +13,7 @@ class StoreUsabilitySessionRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('users.view') === true;
+        return $this->user()?->can('settings.edit') === true;
     }
 
     /**

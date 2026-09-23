@@ -221,9 +221,9 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
 
     return (
         <>
-            <Head title="Медиабиблиотека" />
+            <Head title="Медиатека" />
             <PageHeader
-                title="Медиабиблиотека"
+                title="Медиатека"
                 subtitle={`Всего файлов: ${stats.total} · изображений: ${stats.images} · в библиотеке: ${stats.library} · в корзине: ${stats.trash}`}
                 actions={
                     can('media.create') && (

@@ -35,7 +35,25 @@ it('renders a live control center instead of a section stub', function () {
             ->component('control/index')
             ->where('metrics.active', 1)
             ->has('alerts', 1)
-            ->has('regions')
+            ->has('regions'));
+});
+
+it('shows the technical state of the system to administrators only', function () {
+    $operator = User::factory()->withTwoFactor()->create();
+    $operator->assignRole('alert_operator');
+    $admin = User::factory()->withTwoFactor()->create();
+    $admin->assignRole('admin');
+
+    actingAs($operator)->get('/control')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('web_vitals', null)
+            ->where('operations', null)
+            ->where('pending_migrations', []));
+
+    actingAs($admin)->get('/control')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
             ->has('web_vitals.metrics', 3)
             ->where('web_vitals.total_samples', 0)
             ->has('operations.api')
