@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import DocumentController from '@/actions/App/Http/Controllers/Cms/DocumentController';
+import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import {
@@ -46,6 +47,7 @@ interface Option {
 }
 
 interface Props {
+    trash_count: number;
     documents: DocumentRow[];
     meta: {
         from: number | null;
@@ -111,6 +113,7 @@ function FileLangs({ files }: { files: DocumentRow['files'] }) {
 }
 
 export default function DocumentsIndex({
+    trash_count,
     documents,
     meta,
     filters,
@@ -342,6 +345,11 @@ export default function DocumentsIndex({
                 views={savedViews}
                 active={filters.view}
                 onChange={(view) => reload({ view })}
+                trailing={
+                    trash_count > 0 && (
+                        <TrashLink type="documents" count={trash_count} />
+                    )
+                }
             />
 
             <FilterBar>

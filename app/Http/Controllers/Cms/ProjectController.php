@@ -59,6 +59,8 @@ class ProjectController extends Controller
         $projects = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('projects/index', [
+            // «Корзина (N)» next to the list's tabs, as in WordPress.
+            'trash_count' => $this->editorialContent->trashCount('projects', $request->user()),
             'projects' => ProjectResource::collection($projects->items())->resolve(),
             'meta' => [
                 'from' => $projects->firstItem(),

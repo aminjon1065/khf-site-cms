@@ -598,3 +598,16 @@ it('lists every approval step under «На согласовании»', function
     actingAs(newsUser('editor'))->get('/news?status=review')
         ->assertInertia(fn (Assert $page) => $page->has('news', 3));
 });
+
+it('counts the trash beside the list the way the trash page does', function () {
+    $regional = newsUser('regional_editor');
+    News::factory()->create(['author_id' => $regional->id])->delete();
+    News::factory()->create()->delete();
+
+    actingAs(newsUser('editor'))->get('/news')
+        ->assertInertia(fn (Assert $page) => $page->where('trash_count', 2));
+
+    // A regional editor finds only their own materials in the trash.
+    actingAs($regional)->get('/news')
+        ->assertInertia(fn (Assert $page) => $page->where('trash_count', 1));
+});

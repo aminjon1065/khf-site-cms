@@ -39,12 +39,15 @@ export function SavedViews({
     views,
     active,
     onChange,
+    trailing,
 }: {
     views: SavedView[];
     active: string;
     onChange: (key: string) => void;
+    /** A link beside the tabs (e.g. «Корзина (3)»), outside the tab list. */
+    trailing?: ReactNode;
 }) {
-    return (
+    const tabs = (
         <div className="ui-savedviews ui-scroll" role="tablist">
             {views.map((v) => (
                 <button
@@ -64,6 +67,17 @@ export function SavedViews({
                     )}
                 </button>
             ))}
+        </div>
+    );
+
+    if (!trailing) {
+        return tabs;
+    }
+
+    return (
+        <div className="ui-savedviews-row">
+            {tabs}
+            <div className="ui-savedviews-trailing">{trailing}</div>
         </div>
     );
 }

@@ -54,6 +54,8 @@ class AnnouncementController extends Controller
         $announcements = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('announcements/index', [
+            // «Корзина (N)» next to the list's tabs, as in WordPress.
+            'trash_count' => $this->editorialContent->trashCount('announcements', $request->user()),
             'announcements' => AnnouncementResource::collection($announcements->items())->resolve(),
             'meta' => [
                 'from' => $announcements->firstItem(),

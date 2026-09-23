@@ -67,6 +67,8 @@ class InstructionController extends Controller
         $instructions = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('instructions/index', [
+            // «Корзина (N)» next to the list's tabs, as in WordPress.
+            'trash_count' => $this->editorialContent->trashCount('instructions', $request->user()),
             'instructions' => InstructionResource::collection($instructions->items())->resolve(),
             'meta' => [
                 'from' => $instructions->firstItem(),

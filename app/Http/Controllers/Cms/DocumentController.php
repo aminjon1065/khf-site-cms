@@ -57,6 +57,8 @@ class DocumentController extends Controller
         $documents = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('documents/index', [
+            // «Корзина (N)» next to the list's tabs, as in WordPress.
+            'trash_count' => $this->editorialContent->trashCount('documents', $request->user()),
             'documents' => DocumentResource::collection($documents->items())->resolve(),
             'meta' => [
                 'from' => $documents->firstItem(),

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import PageController from '@/actions/App/Http/Controllers/Cms/PageController';
+import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge } from '@/ui/Badge';
@@ -43,6 +44,7 @@ interface Option {
 }
 
 interface Props {
+    trash_count: number;
     pages: PageRow[];
     meta: {
         from: number | null;
@@ -64,6 +66,7 @@ interface Props {
 }
 
 export default function PagesIndex({
+    trash_count,
     pages,
     meta,
     filters,
@@ -260,6 +263,11 @@ export default function PagesIndex({
                 views={savedViews}
                 active={filters.view}
                 onChange={(view) => reload({ view })}
+                trailing={
+                    trash_count > 0 && (
+                        <TrashLink type="pages" count={trash_count} />
+                    )
+                }
             />
 
             <FilterBar>

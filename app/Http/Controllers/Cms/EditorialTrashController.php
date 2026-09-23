@@ -105,14 +105,10 @@ class EditorialTrashController extends Controller
 
         foreach ($types as $type) {
             $titleAttribute = self::TYPE_META[$type]['title_attribute'];
-            $query = $this->content->trashedQuery($type)
+            $query = $this->content->trashedQueryFor($type, $user)
                 ->select(['id', 'status', 'deleted_at', 'author_id'])
                 ->selectRaw('? as content_type', [$type])
                 ->selectRaw("{$titleAttribute} as title_data");
-
-            if ($user->hasRole('regional_editor')) {
-                $query->where('author_id', $user->id);
-            }
 
             $queries[] = $query->toBase();
         }

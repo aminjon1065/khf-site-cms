@@ -52,6 +52,8 @@ class PageController extends Controller
         $pages = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('pages/index', [
+            // «Корзина (N)» next to the list's tabs, as in WordPress.
+            'trash_count' => $this->editorialContent->trashCount('pages', $request->user()),
             'pages' => PageResource::collection($pages->items())->resolve(),
             'meta' => [
                 'from' => $pages->firstItem(),

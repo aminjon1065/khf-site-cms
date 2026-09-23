@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import NewsController from '@/actions/App/Http/Controllers/Cms/NewsController';
+import { TrashLink } from '@/cms/TrashLink';
 import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
 import { LIVE_STATUSES } from '@/lib/domain';
@@ -54,6 +55,7 @@ interface Option {
 }
 
 interface Props {
+    trash_count: number;
     news: NewsRow[];
     meta: {
         from: number | null;
@@ -91,6 +93,7 @@ function fmt(date: string | null): string {
 }
 
 export default function NewsIndex({
+    trash_count,
     news,
     meta,
     filters,
@@ -706,6 +709,11 @@ export default function NewsIndex({
                 views={savedViews}
                 active={filters.view}
                 onChange={changeView}
+                trailing={
+                    trash_count > 0 && (
+                        <TrashLink type="news" count={trash_count} />
+                    )
+                }
             />
 
             <FilterBar>

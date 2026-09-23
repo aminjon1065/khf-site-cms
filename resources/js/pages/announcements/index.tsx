@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import AnnouncementController from '@/actions/App/Http/Controllers/Cms/AnnouncementController';
+import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
@@ -43,6 +44,7 @@ interface Option {
 }
 
 interface Props {
+    trash_count: number;
     announcements: AnnouncementRow[];
     meta: {
         from: number | null;
@@ -78,6 +80,7 @@ function fmt(date: string | null): string {
 }
 
 export default function AnnouncementsIndex({
+    trash_count,
     announcements,
     meta,
     filters,
@@ -319,6 +322,11 @@ export default function AnnouncementsIndex({
                 views={savedViews}
                 active={filters.view}
                 onChange={(view) => reload({ view })}
+                trailing={
+                    trash_count > 0 && (
+                        <TrashLink type="announcements" count={trash_count} />
+                    )
+                }
             />
 
             <FilterBar>

@@ -69,6 +69,8 @@ class NewsController extends Controller
         $news = $query->paginate($perPage)->withQueryString();
 
         return Inertia::render('news/index', [
+            // «Корзина (N)» next to the list's tabs, as in WordPress.
+            'trash_count' => $this->editorialContent->trashCount('news', $request->user()),
             'news' => NewsResource::collection($news->items())->resolve(),
             'meta' => [
                 'from' => $news->firstItem(),

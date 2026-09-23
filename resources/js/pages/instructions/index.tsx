@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import InstructionController from '@/actions/App/Http/Controllers/Cms/InstructionController';
+import { TrashLink } from '@/cms/TrashLink';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
 import { LanguageBadges, StatusBadge, Tag } from '@/ui/Badge';
@@ -44,6 +45,7 @@ interface Option {
 }
 
 interface Props {
+    trash_count: number;
     instructions: InstructionRow[];
     meta: {
         from: number | null;
@@ -79,6 +81,7 @@ function fmt(date: string | null): string {
 }
 
 export default function InstructionsIndex({
+    trash_count,
     instructions,
     meta,
     filters,
@@ -319,6 +322,11 @@ export default function InstructionsIndex({
                 views={savedViews}
                 active={filters.view}
                 onChange={(view) => reload({ view })}
+                trailing={
+                    trash_count > 0 && (
+                        <TrashLink type="instructions" count={trash_count} />
+                    )
+                }
             />
 
             <FilterBar>

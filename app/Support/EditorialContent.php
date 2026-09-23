@@ -8,6 +8,7 @@ use App\Models\Instruction;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
+use App\Models\User;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
 use Illuminate\Database\Eloquent\Model;
@@ -64,6 +65,33 @@ class EditorialContent
     {
         return self::MODELS[$type]
             ?? throw new InvalidArgumentException("Unsupported editorial content type [{$type}].");
+    }
+
+    /**
+     * The trash of a type as this user sees it: a regional editor only their
+     * own materials. Shared by the trash page and the «Корзина (N)» link of
+     * each list, so the two never disagree.
+     *
+     * @return EloquentBuilder<covariant Model>
+     */
+    public function trashedQueryFor(string $type, User $user): EloquentBuilder
+    {
+        $query = $this->trashedQuery($type);
+
+        if ($user->hasRole('regional_editor')) {
+            $query->where('author_id', $user->id);
+        }
+
+        return $query;
+    }
+
+    /**
+     * How many materials of the type are in this user's trash; 0 without
+     * access to the type.
+     */
+    public function trashCount(string $type, User $user): int
+    {
+        return $user->can("{$type}.view") ? $this->trashedQueryFor($type, $user)->count() : 0;
     }
 
     public function resolve(string $type, int $id, bool $lockForUpdate = false): Model

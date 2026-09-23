@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import ProjectController from '@/actions/App/Http/Controllers/Cms/ProjectController';
+import { TrashLink } from '@/cms/TrashLink';
 import { useRememberedView } from '@/hooks/use-remembered-view';
 import { useCan } from '@/lib/auth';
 import type { ContentStatus } from '@/lib/domain';
@@ -45,6 +46,7 @@ interface Option {
 }
 
 interface Props {
+    trash_count: number;
     projects: ProjectRow[];
     meta: {
         from: number | null;
@@ -76,6 +78,7 @@ const TONE_TO_TAG: Record<string, 'ok' | 'info' | 'neutral'> = {
 };
 
 export default function ProjectsIndex({
+    trash_count,
     projects,
     meta,
     filters,
@@ -280,6 +283,11 @@ export default function ProjectsIndex({
                 views={savedViews}
                 active={filters.view}
                 onChange={changeView}
+                trailing={
+                    trash_count > 0 && (
+                        <TrashLink type="projects" count={trash_count} />
+                    )
+                }
             />
 
             <FilterBar>
