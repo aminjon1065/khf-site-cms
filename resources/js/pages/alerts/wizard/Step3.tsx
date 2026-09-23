@@ -111,7 +111,7 @@ export function Step3({
                     <Field
                         label="Краткое описание"
                         required
-                        hint="Для карточки на главной и push-уведомлений"
+                        hint="Для карточки на главной и уведомлений в приложении"
                     >
                         <Textarea
                             value={data.summary[lang] ?? ''}

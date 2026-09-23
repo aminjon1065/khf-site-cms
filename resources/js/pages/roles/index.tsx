@@ -49,7 +49,7 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                     </Link>
                 }
                 title="Роли и права"
-                subtitle="Матрица прав доступа. Роли заданы в системе и не редактируются вручную."
+                subtitle="Таблица прав доступа. Роли заданы в системе и не редактируются вручную."
             />
 
             <div

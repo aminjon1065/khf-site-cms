@@ -39,7 +39,7 @@ export function Step4({
             >
                 <Field label="Изображение">
                     <div className="ui-dropzone">
-                        Перетащите файл или выберите из медиабиблиотеки
+                        Перетащите файл или выберите из медиатеки
                     </div>
                 </Field>
                 <Field label="Документы">

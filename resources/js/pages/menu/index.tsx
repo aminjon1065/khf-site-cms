@@ -669,8 +669,11 @@ function MenuItemRow({
                         value={row.url}
                         onChange={(e) => onChange({ url: e.target.value })}
                         placeholder={
-                            depth === 0 ? '/news или пусто для группы' : '/news'
+                            depth === 0
+                                ? 'Ссылка, например /news (пусто — группа)'
+                                : 'Ссылка, например /news'
                         }
+                        aria-label="Ссылка пункта меню"
                         disabled={!editable}
                         style={{ fontSize: 13 }}
                         className="ui-mono"
@@ -680,7 +683,7 @@ function MenuItemRow({
                         }
                     />
                     <Checkbox
-                        label="Вкл."
+                        label="Показывать"
                         checked={row.enabled}
                         disabled={!editable}
                         onChange={(e) =>

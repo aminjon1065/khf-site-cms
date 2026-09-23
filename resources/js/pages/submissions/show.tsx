@@ -108,7 +108,7 @@ export default function SubmissionShow({ submission, reference }: Props) {
                     </Link>
                 }
                 title={
-                    submission.tracking_number ?? `Обращение #${submission.id}`
+                    submission.tracking_number ?? `Обращение № ${submission.id}`
                 }
                 subtitle={submission.name}
             />
