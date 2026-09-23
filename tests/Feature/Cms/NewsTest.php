@@ -5,6 +5,7 @@ use App\Models\News;
 use App\Models\PendingChange;
 use App\Models\Region;
 use App\Models\User;
+use App\Support\Slug;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Http\UploadedFile;
@@ -70,6 +71,16 @@ it('generates a unique slug when titles collide', function () {
 
     expect($slugs)->toHaveCount(2)
         ->and($slugs->unique())->toHaveCount(2);
+});
+
+it('refuses a typed address longer than the site can hold', function () {
+    actingAs(newsUser('editor'))->post('/news', [
+        'title' => ['ru' => 'Учения', 'tg' => '', 'en' => ''],
+        'slug' => str_repeat('a', Slug::MAX_LENGTH + 1),
+        'action' => 'draft',
+    ])->assertSessionHasErrors('slug');
+
+    expect(News::query()->count())->toBe(0);
 });
 
 it('requires a title in at least one language', function () {

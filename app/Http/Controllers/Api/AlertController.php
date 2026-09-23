@@ -7,6 +7,7 @@ use App\Http\Resources\Api\PublicAlertResource;
 use App\Models\Alert;
 use App\Services\AlertMapService;
 use App\Support\PublicLocale;
+use App\Support\PublicSlug;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -83,12 +84,11 @@ class AlertController extends Controller
                 'ends_at',
             ])
             ->public()
-            ->with('regions:id,code,name')
-            ->where('slug', $slug);
+            ->with('regions:id,code,name');
 
         PublicLocale::available($query, 'title');
 
-        $alert = $query->firstOrFail();
+        $alert = PublicSlug::find($query, $slug);
 
         return (new PublicAlertResource($alert))->withDetail();
     }

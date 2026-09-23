@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicAnnouncementResource;
 use App\Models\Announcement;
 use App\Support\PublicLocale;
+use App\Support\PublicSlug;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -40,12 +41,11 @@ class AnnouncementController extends Controller
             ->public()
             // Проект нужен только на детальной странице: в списке связь не
             // выводится, и грузить её на каждую строку незачем.
-            ->with(['project:id,slug,title'])
-            ->where('slug', $slug);
+            ->with(['project:id,slug,title']);
 
         PublicLocale::available($query, 'title');
 
-        $announcement = $query->firstOrFail();
+        $announcement = PublicSlug::find($query, $slug);
 
         return new PublicAnnouncementResource($announcement);
     }

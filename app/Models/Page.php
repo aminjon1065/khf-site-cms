@@ -4,9 +4,11 @@ namespace App\Models;
 
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
+use App\Concerns\RemembersOldSlugs;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
+use App\Support\Slug;
 use Database\Factories\PageFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -36,7 +38,7 @@ use Spatie\Translatable\HasTranslations;
 class Page extends Model implements Workflowable
 {
     /** @use HasFactory<PageFactory> */
-    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, SoftDeletes, TracksTranslationCompleteness;
+    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness;
 
     use HasTranslations;
 
@@ -134,21 +136,13 @@ class Page extends Model implements Workflowable
 
     public static function uniqueSlug(string $source, ?int $ignoreId = null): string
     {
-        $base = Str::slug($source, '-', 'ru');
+        $base = Slug::fromTitle($source);
 
         if ($base === '') {
             $base = 'page-'.Str::lower(Str::random(6));
         }
 
-        $slug = $base;
-        $suffix = 2;
-
-        while (self::slugExists($slug, $ignoreId)) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
+        return Slug::unique($base, fn (string $slug): bool => self::slugExists($slug, $ignoreId));
     }
 
     private static function slugExists(string $slug, ?int $ignoreId): bool

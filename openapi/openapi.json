@@ -77,6 +77,9 @@
               }
             }
           },
+          "301": {
+            "$ref": "#/components/responses/MovedPermanently"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
@@ -132,6 +135,9 @@
                 }
               }
             }
+          },
+          "301": {
+            "$ref": "#/components/responses/MovedPermanently"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -284,6 +290,9 @@
               }
             }
           },
+          "301": {
+            "$ref": "#/components/responses/MovedPermanently"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
@@ -390,6 +399,9 @@
               }
             }
           },
+          "301": {
+            "$ref": "#/components/responses/MovedPermanently"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
@@ -446,6 +458,9 @@
               }
             }
           },
+          "301": {
+            "$ref": "#/components/responses/MovedPermanently"
+          },
           "404": {
             "$ref": "#/components/responses/NotFound"
           }
@@ -501,6 +516,9 @@
                 }
               }
             }
+          },
+          "301": {
+            "$ref": "#/components/responses/MovedPermanently"
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
@@ -847,6 +865,17 @@
     "responses": {
       "NotFound": {
         "description": "Resource not found"
+      },
+      "MovedPermanently": {
+        "description": "The slug is a former address of the material (it was renamed). `Location` is this endpoint under the current slug, relative, with the same query string; the site follows it and sends the visitor to the canonical page.",
+        "headers": {
+          "Location": {
+            "description": "Relative URL of the same endpoint under the material's current slug.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
       },
       "ValidationError": {
         "description": "Validation failed",

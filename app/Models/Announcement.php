@@ -4,10 +4,12 @@ namespace App\Models;
 
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
+use App\Concerns\RemembersOldSlugs;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\AnnouncementKind;
 use App\Enums\ContentStatus;
+use App\Support\Slug;
 use Database\Factories\AnnouncementFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -37,7 +39,7 @@ use Spatie\Translatable\HasTranslations;
 class Announcement extends Model implements Workflowable
 {
     /** @use HasFactory<AnnouncementFactory> */
-    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, SoftDeletes, TracksTranslationCompleteness;
+    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness;
 
     use HasTranslations;
 
@@ -78,19 +80,12 @@ class Announcement extends Model implements Workflowable
 
     public static function uniqueSlug(string $source, ?int $ignoreId = null): string
     {
-        $base = Str::slug($source, '-', 'ru') ?: 'announcement-'.Str::lower(Str::random(6));
-        $slug = $base;
-        $suffix = 2;
+        $base = Slug::fromTitle($source) ?: 'announcement-'.Str::lower(Str::random(6));
 
-        while (self::withTrashed()
+        return Slug::unique($base, fn (string $slug): bool => self::withTrashed()
             ->where('slug', $slug)
             ->when($ignoreId !== null, fn (Builder $query) => $query->whereKeyNot($ignoreId))
-            ->exists()) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
+            ->exists());
     }
 
     public function getActivitylogOptions(): LogOptions

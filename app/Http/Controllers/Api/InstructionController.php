@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicInstructionResource;
 use App\Models\Instruction;
 use App\Support\PublicLocale;
+use App\Support\PublicSlug;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -46,12 +47,11 @@ class InstructionController extends Controller
         $query = Instruction::query()
             ->select(['id', 'slug', 'name', 'summary', 'key_point', 'hazard_type', 'is_priority', 'sections', 'body'])
             ->public()
-            ->with('media')
-            ->where('slug', $slug);
+            ->with('media');
 
         PublicLocale::available($query, 'name');
 
-        $instruction = $query->firstOrFail();
+        $instruction = PublicSlug::find($query, $slug);
 
         return (new PublicInstructionResource($instruction))->withSections();
     }

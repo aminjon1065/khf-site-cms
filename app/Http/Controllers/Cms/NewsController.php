@@ -19,6 +19,7 @@ use App\Support\FileSize;
 use App\Support\PublicSite;
 use App\Support\RichText;
 use App\Support\SaveOutcome;
+use App\Support\Slug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -184,7 +185,7 @@ class NewsController extends Controller
         $validated = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'slug' => [
-                'nullable', 'string', 'max:255', 'alpha_dash',
+                'nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash',
                 Rule::unique('news', 'slug')->ignore($news->id),
             ],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],

@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicNewsResource;
 use App\Models\News;
 use App\Support\PublicLocale;
+use App\Support\PublicSlug;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -58,7 +59,7 @@ class NewsController extends Controller
 
     public function show(string $slug): JsonResource
     {
-        $news = News::query()
+        $query = News::query()
             ->select([
                 'id',
                 'category_id',
@@ -74,12 +75,11 @@ class NewsController extends Controller
                 'seo',
             ])
             ->public()
-            ->with(['category:id,slug,name', 'media'])
-            ->where('slug', $slug);
+            ->with(['category:id,slug,name', 'media']);
 
-        PublicLocale::available($news, 'title');
+        PublicLocale::available($query, 'title');
 
-        $news = $news->firstOrFail();
+        $news = PublicSlug::find($query, $slug);
 
         return (new PublicNewsResource($news))->withBody();
     }

@@ -6,6 +6,7 @@ use App\Enums\AnnouncementKind;
 use App\Models\Announcement;
 use App\Rules\FilledInAnyLocale;
 use App\Rules\SafePublicUrl;
+use App\Support\Slug;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -43,7 +44,7 @@ class AnnouncementRequest extends FormRequest
             'project_id' => ['nullable', 'integer', Rule::exists('projects', 'id')->whereNull('deleted_at')],
             'deadline' => ['nullable', 'date'],
             'slug' => [
-                'nullable', 'string', 'max:255', 'alpha_dash',
+                'nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash',
                 Rule::unique('announcements', 'slug')->ignore($announcement?->id),
             ],
             'application_url' => ['nullable', 'string', 'max:2048', new SafePublicUrl],

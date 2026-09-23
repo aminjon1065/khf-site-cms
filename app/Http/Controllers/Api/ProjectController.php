@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicProjectResource;
 use App\Models\Project;
 use App\Support\PublicLocale;
+use App\Support\PublicSlug;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -72,12 +73,11 @@ class ProjectController extends Controller
                 ->where('kind', AnnouncementKind::Tender)
                 ->public()
                 ->ordered()
-                ->limit(5)])
-            ->where('slug', $slug);
+                ->limit(5)]);
 
         PublicLocale::available($query, 'title');
 
-        $project = $query->firstOrFail();
+        $project = PublicSlug::find($query, $slug);
 
         return (new PublicProjectResource($project))->withDetail();
     }

@@ -4,6 +4,7 @@ namespace App\Http\Requests\News;
 
 use App\Models\News;
 use App\Rules\FilledInAnyLocale;
+use App\Support\Slug;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -40,7 +41,7 @@ class NewsRequest extends FormRequest
             'body.en' => ['nullable', 'string', 'max:50000'],
 
             'slug' => [
-                'nullable', 'string', 'max:255', 'alpha_dash',
+                'nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash',
                 Rule::unique('news', 'slug')->ignore($news?->id),
             ],
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],

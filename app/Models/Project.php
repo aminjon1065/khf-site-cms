@@ -5,11 +5,13 @@ namespace App\Models;
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Concerns\ProtectsUnpublishedMedia;
+use App\Concerns\RemembersOldSlugs;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\ProjectStatus;
 use App\Models\Concerns\HasResponsiveThumbnails;
+use App\Support\Slug;
 use Database\Factories\ProjectFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -48,7 +50,7 @@ use Spatie\Translatable\HasTranslations;
 class Project extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<ProjectFactory> */
-    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
+    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 
@@ -128,21 +130,13 @@ class Project extends Model implements HasMedia, Workflowable
      */
     public static function uniqueSlug(string $source, ?int $ignoreId = null): string
     {
-        $base = Str::slug($source, '-', 'ru');
+        $base = Slug::fromTitle($source);
 
         if ($base === '') {
             $base = 'project-'.Str::lower(Str::random(6));
         }
 
-        $slug = $base;
-        $suffix = 2;
-
-        while (self::slugExists($slug, $ignoreId)) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
+        return Slug::unique($base, fn (string $slug): bool => self::slugExists($slug, $ignoreId));
     }
 
     private static function slugExists(string $slug, ?int $ignoreId): bool

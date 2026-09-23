@@ -6,10 +6,12 @@ use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasTags;
 use App\Concerns\HasWorkflow;
 use App\Concerns\ProtectsUnpublishedMedia;
+use App\Concerns\RemembersOldSlugs;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Models\Concerns\HasResponsiveThumbnails;
+use App\Support\Slug;
 use Database\Factories\NewsFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -45,7 +47,7 @@ use Spatie\Translatable\HasTranslations;
 class News extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<NewsFactory> */
-    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, SoftDeletes, TracksTranslationCompleteness {
+    use HasFactory, HasRegionalContentScope, HasResponsiveThumbnails, HasTags, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness {
         HasResponsiveThumbnails::registerMediaConversions insteadof InteractsWithMedia;
     }
 
@@ -170,21 +172,13 @@ class News extends Model implements HasMedia, Workflowable
      */
     public static function uniqueSlug(string $source, ?int $ignoreId = null): string
     {
-        $base = Str::slug($source, '-', 'ru');
+        $base = Slug::fromTitle($source);
 
         if ($base === '') {
             $base = 'news-'.Str::lower(Str::random(6));
         }
 
-        $slug = $base;
-        $suffix = 2;
-
-        while (self::slugExists($slug, $ignoreId)) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
+        return Slug::unique($base, fn (string $slug): bool => self::slugExists($slug, $ignoreId));
     }
 
     private static function slugExists(string $slug, ?int $ignoreId): bool

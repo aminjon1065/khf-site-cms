@@ -5,6 +5,7 @@ namespace App\Http\Requests\Project;
 use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Rules\FilledInAnyLocale;
+use App\Support\Slug;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -41,7 +42,7 @@ class ProjectRequest extends FormRequest
             'body.en' => ['nullable', 'string', 'max:20000'],
 
             'slug' => [
-                'nullable', 'string', 'max:255', 'alpha_dash',
+                'nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash',
                 Rule::unique('projects', 'slug')->ignore($project?->id),
             ],
             'lifecycle_status' => ['required', Rule::enum(ProjectStatus::class)],

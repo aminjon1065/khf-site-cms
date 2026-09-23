@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicPageResource;
 use App\Models\Page;
 use App\Support\PublicLocale;
+use App\Support\PublicSlug;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -45,12 +46,11 @@ class PageController extends Controller
                 'published_at',
                 'updated_at',
             ])
-            ->public()
-            ->where('slug', $slug);
+            ->public();
 
         PublicLocale::available($query, 'title');
 
-        $page = $query->firstOrFail();
+        $page = PublicSlug::find($query, $slug);
 
         return (new PublicPageResource($page))->withBody();
     }

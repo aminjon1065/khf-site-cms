@@ -8,6 +8,7 @@ use App\Jobs\RevalidateFrontend;
 use App\Models\Category;
 use App\Models\Tag;
 use App\Support\FrontendRevalidation;
+use App\Support\Slug;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -215,40 +216,24 @@ class TaxonomyController extends Controller
         $slug = is_string($row['slug'] ?? null) ? trim($row['slug']) : '';
         $source = $slug !== '' ? $slug : $ruName;
 
-        return Str::slug($source, '-', 'ru') ?: 'term-'.Str::lower(Str::random(6));
+        return Slug::fromTitle($source) ?: 'term-'.Str::lower(Str::random(6));
     }
 
     private function uniqueCategorySlug(string $base, ?int $ignoreId): string
     {
-        $slug = $base;
-        $suffix = 2;
-
-        while (Category::query()
+        return Slug::unique($base, fn (string $slug): bool => Category::query()
             ->where('type', self::CATEGORY_TYPE)
             ->where('slug', $slug)
             ->when($ignoreId !== null, fn ($q) => $q->whereKeyNot($ignoreId))
-            ->exists()) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
+            ->exists());
     }
 
     private function uniqueTagSlug(string $base, ?int $ignoreId): string
     {
-        $slug = $base;
-        $suffix = 2;
-
-        while (Tag::query()
+        return Slug::unique($base, fn (string $slug): bool => Tag::query()
             ->where('slug', $slug)
             ->when($ignoreId !== null, fn ($q) => $q->whereKeyNot($ignoreId))
-            ->exists()) {
-            $slug = $base.'-'.$suffix;
-            $suffix++;
-        }
-
-        return $slug;
+            ->exists());
     }
 
     /**

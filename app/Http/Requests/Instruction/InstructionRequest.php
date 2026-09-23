@@ -5,6 +5,7 @@ namespace App\Http\Requests\Instruction;
 use App\Enums\HazardType;
 use App\Models\Instruction;
 use App\Rules\FilledInAnyLocale;
+use App\Support\Slug;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -52,7 +53,7 @@ class InstructionRequest extends FormRequest
             'sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
 
             'slug' => [
-                'nullable', 'string', 'max:255', 'alpha_dash',
+                'nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash',
                 Rule::unique('instructions', 'slug')->ignore($instruction?->id),
             ],
 

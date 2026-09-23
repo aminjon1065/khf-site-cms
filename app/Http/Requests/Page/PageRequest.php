@@ -5,6 +5,7 @@ namespace App\Http\Requests\Page;
 use App\Models\Page;
 use App\Rules\FilledInAnyLocale;
 use App\Support\PublicSite;
+use App\Support\Slug;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -46,7 +47,7 @@ class PageRequest extends FormRequest
             'seo_description.en' => ['nullable', 'string', 'max:180'],
 
             'slug' => [
-                'nullable', 'string', 'max:255', 'alpha_dash',
+                'nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash',
                 Rule::unique('pages', 'slug')->ignore($page?->id),
             ],
             'parent_id' => [

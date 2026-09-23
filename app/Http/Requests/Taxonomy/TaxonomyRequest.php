@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Taxonomy;
 
+use App\Support\Slug;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
@@ -60,7 +61,7 @@ class TaxonomyRequest extends FormRequest
             'categories.*.name.ru' => ['nullable', 'string', 'max:255'],
             'categories.*.name.tg' => ['nullable', 'string', 'max:255'],
             'categories.*.name.en' => ['nullable', 'string', 'max:255'],
-            'categories.*.slug' => ['nullable', 'string', 'max:255', 'alpha_dash'],
+            'categories.*.slug' => ['nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash'],
             'categories.*.sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
 
             'tags' => ['array'],
@@ -69,7 +70,7 @@ class TaxonomyRequest extends FormRequest
             'tags.*.name.ru' => ['nullable', 'string', 'max:255'],
             'tags.*.name.tg' => ['nullable', 'string', 'max:255'],
             'tags.*.name.en' => ['nullable', 'string', 'max:255'],
-            'tags.*.slug' => ['nullable', 'string', 'max:255', 'alpha_dash'],
+            'tags.*.slug' => ['nullable', 'string', 'max:'.Slug::MAX_LENGTH, 'alpha_dash'],
         ];
     }
 }
