@@ -41,14 +41,16 @@ test('editor creates a news draft with a cover image via the form, then deletes 
     await page
         .getByRole('textbox', { name: 'Заголовок новости' })
         .fill(DRAFT_TITLE);
-    await page
-        // Именно поле обложки: рядом появилось поле вложений, и локатор без
-        // уточнения стал неоднозначным.
-        .locator('input[type="file"][accept*="image/"]')
+    // Именно поле обложки: рядом есть поля галереи и вложений.
+    const cover = page.locator('section', {
+        has: page.getByRole('heading', { name: 'Обложка' }),
+    });
+    await cover
+        .locator('input[type="file"]')
         .setInputFiles(path.join(DIRNAME, 'fixtures', 'cover.png'));
 
     // The cover preview <img> only appears once the file is picked up client-side.
-    await expect(page.locator("img[alt='']").first()).toBeVisible();
+    await expect(cover.locator('img').first()).toBeVisible();
 
     await page.getByRole('button', { name: 'Сохранить черновик' }).click();
 

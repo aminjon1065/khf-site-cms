@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { Sliders } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { useCan } from '@/lib/auth';
@@ -249,9 +249,27 @@ export default function NewsForm({
         onOpenPicker: () => setGalleryPicker(true),
     };
 
+    // Превью только что выбранного файла. Раньше его не было: после
+    // «Загрузить» в панели оставалась заглушка «Выбрать обложку», и загрузка
+    // выглядела неудавшейся.
+    const coverFileUrl = useMemo(
+        () => (data.cover ? URL.createObjectURL(data.cover) : null),
+        [data.cover],
+    );
+
+    useEffect(
+        () => () => {
+            if (coverFileUrl) {
+                URL.revokeObjectURL(coverFileUrl);
+            }
+        },
+        [coverFileUrl],
+    );
+
     // Что показать в превью обложки: свежий выбор (файл/медиатека) приоритетнее
     // существующей обложки; при отметке «убрать» превью скрывается.
     const coverSrc =
+        coverFileUrl ??
         coverPreview ??
         (news?.cover_url && !data.cover_remove ? news.cover_url : null);
 

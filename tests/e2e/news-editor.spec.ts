@@ -12,7 +12,7 @@ test('news editor opens a link dialog, counts words and enters focus mode', asyn
     await page.keyboard.type('КЧС провёл учения в Хатлонской области.');
     // Счётчик под редактором («6 слов»), а не строка чек-листа «Текст: 6 слов…».
     await expect(page.getByText(/^\d+ слов(о|а)?$/)).toBeVisible();
-    await expect(page.getByText(/знаков/)).toBeVisible();
+    await expect(page.getByText(/^\d+ знаков?$/)).toBeVisible();
 
     await page.getByRole('button', { name: 'Ссылка' }).first().click();
     const dialog = page.getByRole('dialog', { name: 'Ссылка' });
