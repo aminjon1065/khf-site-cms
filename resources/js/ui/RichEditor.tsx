@@ -42,4 +42,7 @@ export function RichEditor(props: Props) {
 }
 
 export type { ActiveBlockInfo, Editor, Props };
-export type { RichGalleryContextValue, RichGalleryItem } from './rich-gallery-context';
+export type {
+    RichGalleryContextValue,
+    RichGalleryItem,
+} from './rich-gallery-context';

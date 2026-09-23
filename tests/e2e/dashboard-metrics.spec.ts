@@ -7,7 +7,9 @@ test('dashboard metric cards open the matching filtered lists', async ({
 
     const main = page.getByRole('main');
 
-    await main.getByRole('link', { name: /^\d+ действующие предупреждения$/ }).click();
+    await main
+        .getByRole('link', { name: /^\d+ действующие предупреждения$/ })
+        .click();
     await expect(page).toHaveURL(/\/alerts\?view=active/);
     await expect(
         page.getByRole('heading', { name: 'Предупреждения' }),
@@ -33,7 +35,9 @@ test('dashboard metric cards open the matching filtered lists', async ({
     await expect(page.getByRole('heading').first()).toBeVisible();
 
     await page.goto('/dashboard');
-    await main.getByRole('link', { name: /^\d+ опубликовано за месяц$/ }).click();
+    await main
+        .getByRole('link', { name: /^\d+ опубликовано за месяц$/ })
+        .click();
     await expect(page).toHaveURL(/view=published|status=published/);
     await expect(page.getByRole('heading').first()).toBeVisible();
 

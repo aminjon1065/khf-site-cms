@@ -72,7 +72,9 @@ export function ReadinessWidget({
                         <AlertCircle size={14} strokeWidth={2.2} />
                     )}
                 </span>
-                <span className="wp-readiness-status-text">{displayStatus}</span>
+                <span className="wp-readiness-status-text">
+                    {displayStatus}
+                </span>
             </div>
 
             {/* Контрольный список обязательных и рекомендуемых пунктов */}

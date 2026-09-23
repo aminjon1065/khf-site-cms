@@ -117,16 +117,15 @@ test('news editor inserts a library photo, a youtube video and can delete a tabl
     await cell.click();
     await page.getByRole('button', { name: 'Заливка ячейки' }).click();
     await page.getByRole('button', { name: 'Синий КЧС' }).click();
-    await expect(cell).toHaveCSS(
-        'background-color',
-        'rgb(215, 226, 234)',
-    );
+    await expect(cell).toHaveCSS('background-color', 'rgb(215, 226, 234)');
 
     const edge = await cell.boundingBox();
 
     if (edge) {
         await page.mouse.move(edge.x + edge.width - 2, edge.y + 8);
-        await expect(page.locator('.column-resize-handle').first()).toBeAttached();
+        await expect(
+            page.locator('.column-resize-handle').first(),
+        ).toBeAttached();
     }
 
     await page.getByRole('button', { name: 'Удалить таблицу' }).click();
