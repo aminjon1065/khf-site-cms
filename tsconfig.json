@@ -118,6 +118,8 @@
         "resources/js/**/*.d.ts",
         "resources/js/**/*.tsx",
         "tests/e2e/**/*.ts",
-        "playwright.config.ts"
+        "tests/integration/**/*.ts",
+        "playwright.config.ts",
+        "playwright.integration.config.ts"
     ]
 }
