@@ -24,6 +24,7 @@ import {
 import { useClipboard } from '@/hooks/use-clipboard';
 import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { useCan } from '@/lib/auth';
+import { postForm } from '@/lib/http';
 import { acceptOf, uploadProblem } from '@/lib/uploads';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
@@ -33,6 +34,7 @@ import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
 import { FilterBar, SearchInput } from '@/ui/Filters';
 import { ConfirmDialog, Modal } from '@/ui/Overlay';
 import { PageHeader } from '@/ui/PageHeader';
+import { useToast } from '@/ui/Toast';
 
 interface MediaItem {
     id: number;
@@ -68,7 +70,14 @@ interface Props {
         next: string | null;
     };
     filters: { kind: string; search: string; status: 'active' | 'trash' };
-    stats: { total: number; images: number; library: number; trash: number };
+    stats: {
+        total: number;
+        images: number;
+        library: number;
+        trash: number;
+        /** Library photos without a description, not marked decorative. */
+        undescribed: number;
+    };
 }
 
 interface MediaUsage {
@@ -82,7 +91,12 @@ const KIND_OPTIONS = [
     { value: '', label: 'Все файлы' },
     { value: 'image', label: 'Изображения' },
     { value: 'file', label: 'Документы' },
+    { value: 'undescribed', label: 'Фото без описания' },
 ];
+
+/** Files dragged from the computer, not text or a link. */
+const draggingFiles = (e: React.DragEvent) =>
+    Array.from(e.dataTransfer.types).includes('Files');
 
 const STATUS_OPTIONS = [
     { value: 'active', label: 'Активные' },
@@ -94,8 +108,14 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
     const [, copyToClipboard] = useClipboard();
     const fileInput = useRef<HTMLInputElement>(null);
     const limits = useUploadLimits();
-    const [uploading, setUploading] = useState(false);
-    const [uploadError, setUploadError] = useState<string | null>(null);
+    const toast = useToast();
+    const [upload, setUpload] = useState<{
+        done: number;
+        total: number;
+    } | null>(null);
+    // Files that didn't go in, each with its reason.
+    const [uploadErrors, setUploadErrors] = useState<string[]>([]);
+    const [dragging, setDragging] = useState(false);
     const [copied, setCopied] = useState<number | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<MediaItem | null>(null);
     const [processing, setProcessing] = useState(false);
@@ -159,49 +179,84 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
 
     const pickFile = () => fileInput.current?.click();
 
-    const onFilePicked = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-
-        if (!file) {
+    /**
+     * Uploads files one by one, as WordPress does: each gets its own result,
+     * a file that fails doesn't stop the rest, and the list reloads once.
+     */
+    const uploadFiles = async (files: File[]) => {
+        if (files.length === 0 || upload !== null) {
             return;
         }
 
-        // An image goes by the photo limits, anything else as a document;
-        // what the server won't take is turned away before the upload.
-        const isImage = file.type.startsWith('image/');
-        const reason = uploadProblem(
-            file,
-            isImage ? limits.library_image : limits.file,
-            isImage ? 'image' : 'file',
-        );
+        const problems: string[] = [];
+        const accepted: File[] = [];
 
-        if (reason !== null) {
-            setUploadError(reason);
-            e.target.value = '';
+        for (const file of files) {
+            // An image goes by the photo limits, anything else as a document;
+            // what the server won't take is turned away before the upload.
+            const isImage = file.type.startsWith('image/');
+            const reason = uploadProblem(
+                file,
+                isImage ? limits.library_image : limits.file,
+                isImage ? 'image' : 'file',
+            );
 
-            return;
+            if (reason === null) {
+                accepted.push(file);
+            } else {
+                problems.push(reason);
+            }
         }
 
-        const fd = new FormData();
-        fd.append('file', file);
-        setUploadError(null);
-        setUploading(true);
+        setUploadErrors(problems);
 
-        router.post(store.url(), fd, {
-            forceFormData: true,
-            preserveScroll: true,
-            onError: (errs) =>
-                setUploadError(
-                    errs.file ?? errs.upload ?? 'Не удалось загрузить файл.',
-                ),
-            onFinish: () => {
-                setUploading(false);
+        let done = 0;
+        let undescribed = 0;
 
-                if (fileInput.current) {
-                    fileInput.current.value = '';
+        for (const [position, file] of accepted.entries()) {
+            setUpload({ done: position, total: accepted.length });
+
+            try {
+                const form = new FormData();
+                form.append('file', file);
+                const reply = await postForm<{ data: MediaItem }>(
+                    store.url(),
+                    form,
+                );
+                done += 1;
+
+                if (
+                    reply.data.kind === 'image' &&
+                    !reply.data.alt &&
+                    !reply.data.is_decorative
+                ) {
+                    undescribed += 1;
                 }
-            },
-        });
+            } catch (error) {
+                problems.push(
+                    `«${file.name}»: ${error instanceof Error ? error.message : 'не удалось загрузить.'}`,
+                );
+            }
+        }
+
+        setUpload(null);
+        setUploadErrors([...problems]);
+
+        if (done > 0) {
+            toast(
+                undescribed > 0
+                    ? `Загружено: ${done}. Фото без описания: ${undescribed} — добавьте описание, их покажет фильтр «Фото без описания».`
+                    : `Загружено: ${done}.`,
+                'success',
+            );
+            router.reload({ only: ['items', 'meta', 'stats'] });
+        }
+    };
+
+    const onFilesPicked = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const files = Array.from(e.target.files ?? []);
+        e.target.value = '';
+        void uploadFiles(files);
     };
 
     const openUsages = async (item: MediaItem) => {
@@ -241,20 +296,30 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
     };
 
     return (
-        <>
+        <div
+            onDragEnter={(e) => {
+                if (can('media.create') && draggingFiles(e)) {
+                    e.preventDefault();
+                    setDragging(true);
+                }
+            }}
+        >
             <Head title="Медиатека" />
             <PageHeader
                 title="Медиатека"
-                subtitle={`Всего файлов: ${stats.total} · изображений: ${stats.images} · в медиатеке: ${stats.library} · в корзине: ${stats.trash}`}
+                subtitle={`Всего файлов: ${stats.total} · изображений: ${stats.images} · в медиатеке: ${stats.library} · в корзине: ${stats.trash} · фото без описания: ${stats.undescribed}`}
                 actions={
                     can('media.create') && (
                         <Button
                             variant="primary"
                             icon={<Upload size={16} strokeWidth={1.75} />}
-                            loading={uploading}
+                            loading={upload !== null}
                             onClick={pickFile}
+                            title="Можно выбрать несколько файлов или перетащить их на страницу"
                         >
-                            Загрузить файл
+                            {upload !== null
+                                ? `Загрузка ${upload.done + 1} из ${upload.total}…`
+                                : 'Загрузить файлы'}
                         </Button>
                     )
                 }
@@ -264,11 +329,28 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                 ref={fileInput}
                 type="file"
                 hidden
+                multiple
                 accept={acceptOf(limits.library_image, limits.file)}
-                onChange={onFilePicked}
+                onChange={onFilesPicked}
             />
 
-            {uploadError && (
+            {dragging && (
+                <div
+                    className="media-drop-overlay"
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={(e) => {
+                        e.preventDefault();
+                        setDragging(false);
+                        void uploadFiles(Array.from(e.dataTransfer.files));
+                    }}
+                >
+                    <Upload size={32} strokeWidth={1.5} />
+                    <span>Отпустите файлы, чтобы загрузить их в медиатеку</span>
+                </div>
+            )}
+
+            {uploadErrors.length > 0 && (
                 <div
                     role="alert"
                     style={{
@@ -281,7 +363,18 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                         border: '1px solid var(--color-danger-200, #fecdca)',
                     }}
                 >
-                    {uploadError}
+                    <strong>Не загружено: {uploadErrors.length}</strong>
+                    <ul
+                        style={{
+                            margin: '4px 0 0',
+                            paddingLeft: 18,
+                            listStyle: 'disc',
+                        }}
+                    >
+                        {uploadErrors.map((problem) => (
+                            <li key={problem}>{problem}</li>
+                        ))}
+                    </ul>
                 </div>
             )}
 
@@ -860,6 +953,6 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                     </ul>
                 )}
             </Modal>
-        </>
+        </div>
     );
 }

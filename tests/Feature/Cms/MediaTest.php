@@ -46,6 +46,33 @@ it('uploads a reusable asset into the library', function () {
         ->and($asset->getFirstMedia('asset'))->not->toBeNull();
 });
 
+it('answers an upload from the library page with the new file as json', function () {
+    actingAs(mediaUser('editor'))
+        ->postJson('/media', ['file' => UploadedFile::fake()->image('drill.jpg')])
+        ->assertCreated()
+        ->assertJsonPath('data.kind', 'image')
+        ->assertJsonPath('data.owned', true);
+
+    expect(MediaAsset::query()->count())->toBe(1);
+});
+
+it('lists the library photos that have no description', function () {
+    $undescribed = MediaAsset::factory()->create();
+    $undescribed->addMedia(UploadedFile::fake()->image('IMG_1.jpg'))->toMediaCollection('asset');
+    $described = MediaAsset::factory()->create(['alt' => 'Спасатели на учениях']);
+    $described->addMedia(UploadedFile::fake()->image('IMG_2.jpg'))->toMediaCollection('asset');
+    $decorative = MediaAsset::factory()->create(['is_decorative' => true]);
+    $decorative->addMedia(UploadedFile::fake()->image('line.png'))->toMediaCollection('asset');
+
+    actingAs(mediaUser('editor'))
+        ->get('/media?kind=undescribed')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->has('items', 1)
+            ->where('items.0.file_name', 'IMG_1.jpg')
+            ->where('stats.undescribed', 1));
+});
+
 it('forbids a viewer from uploading', function () {
     actingAs(mediaUser('viewer'))->post('/media', [
         'file' => UploadedFile::fake()->image('photo.jpg'),

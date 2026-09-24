@@ -60,6 +60,10 @@ class MediaController extends Controller
             $query->where('mime_type', 'like', 'image/%');
         } elseif ($kind === 'file') {
             $query->where('mime_type', 'not like', 'image/%');
+        } elseif ($kind === 'undescribed') {
+            $query->where('mime_type', 'like', 'image/%')
+                ->where('model_type', MediaAsset::class)
+                ->whereIn('model_id', $this->undescribedAssets()->select('id'));
         }
         if ($search !== '') {
             $query->where(function (Builder $q) use ($search): void {
@@ -101,28 +105,29 @@ class MediaController extends Controller
                 'images' => Media::query()->where('mime_type', 'like', 'image/%')->count(),
                 'library' => MediaAsset::query()->count(),
                 'trash' => MediaAsset::onlyTrashed()->count(),
+                'undescribed' => Media::query()
+                    ->where('mime_type', 'like', 'image/%')
+                    ->where('model_type', MediaAsset::class)
+                    ->whereIn('model_id', $this->undescribedAssets()->select('id'))
+                    ->count(),
             ],
         ]);
     }
 
-    public function store(MediaUploadRequest $request): RedirectResponse
+    /**
+     * Upload to the library page. The page sends several files one by one
+     * and asks for JSON, so each file gets its own result and the list
+     * reloads once at the end.
+     */
+    public function store(MediaUploadRequest $request): RedirectResponse|JsonResponse
     {
         abort_unless((bool) $request->user()?->can('media.create'), 403);
 
-        $userId = $request->user()->id;
+        $media = $this->storeAsset($request);
 
-        // Transactional so a failed file attach rolls the holder row back
-        // instead of leaving an orphan media_assets record.
-        DB::transaction(function () use ($request, $userId): void {
-            $asset = new MediaAsset;
-            $asset->title = $request->input('title');
-            $asset->is_decorative = $request->boolean('is_decorative');
-            $asset->alt = $asset->is_decorative ? null : $request->input('alt');
-            $asset->uploaded_by = $userId;
-            $asset->save();
-
-            $asset->addMediaFromRequest('file')->toMediaCollection('asset');
-        });
+        if ($request->expectsJson()) {
+            return response()->json(['data' => $this->present($media)], 201);
+        }
 
         return back()->with('success', 'Файл загружен в медиабиблиотеку.');
     }
@@ -227,20 +232,7 @@ class MediaController extends Controller
     {
         abort_unless((bool) $request->user()?->can('media.create'), 403);
 
-        $userId = $request->user()->id;
-
-        $media = DB::transaction(function () use ($request, $userId): Media {
-            $asset = new MediaAsset;
-            $asset->title = $request->input('title');
-            $asset->is_decorative = $request->boolean('is_decorative');
-            $asset->alt = $asset->is_decorative ? null : $request->input('alt');
-            $asset->uploaded_by = $userId;
-            $asset->save();
-
-            return $asset->addMediaFromRequest('file')->toMediaCollection('asset');
-        });
-
-        return response()->json(['data' => $this->present($media)]);
+        return response()->json(['data' => $this->present($this->storeAsset($request))]);
     }
 
     /**
@@ -323,6 +315,40 @@ class MediaController extends Controller
     }
 
     // ---------------------------------------------------------------- helpers
+
+    /**
+     * A new library asset holding the uploaded file. Transactional so a
+     * failed file attach rolls the holder row back instead of leaving an
+     * orphan media_assets record.
+     */
+    private function storeAsset(MediaUploadRequest $request): Media
+    {
+        $userId = $request->user()?->id;
+
+        return DB::transaction(function () use ($request, $userId): Media {
+            $asset = new MediaAsset;
+            $asset->title = $request->input('title');
+            $asset->is_decorative = $request->boolean('is_decorative');
+            $asset->alt = $asset->is_decorative ? null : $request->input('alt');
+            $asset->uploaded_by = $userId;
+            $asset->save();
+
+            return $asset->addMediaFromRequest('file')->toMediaCollection('asset');
+        });
+    }
+
+    /**
+     * Library assets a reader who can't see them learns nothing about: no
+     * description and not marked decorative.
+     *
+     * @return Builder<MediaAsset>
+     */
+    private function undescribedAssets(): Builder
+    {
+        return MediaAsset::query()
+            ->where('is_decorative', false)
+            ->where(fn (Builder $alt) => $alt->whereNull('alt')->orWhere('alt', ''));
+    }
 
     /**
      * Ordering for the picker. Unknown values fall back to newest first, so a
