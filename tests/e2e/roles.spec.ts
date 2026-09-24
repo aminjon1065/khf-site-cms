@@ -95,6 +95,8 @@ test('the administrator builds a role, changes it and removes it', async ({
 test('an account is limited to a region only once a region is chosen', async ({
     browser,
 }) => {
+    // Signing in as the same person again waits for the next 2FA code.
+    test.setTimeout(90_000);
     const page = await asAdministrator(browser);
 
     await page.goto('/users/create');
