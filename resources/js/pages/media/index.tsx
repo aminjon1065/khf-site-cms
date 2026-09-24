@@ -172,7 +172,9 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
             forceFormData: true,
             preserveScroll: true,
             onError: (errs) =>
-                setUploadError(errs.file ?? 'Не удалось загрузить файл.'),
+                setUploadError(
+                    errs.file ?? errs.upload ?? 'Не удалось загрузить файл.',
+                ),
             onFinish: () => {
                 setUploading(false);
 

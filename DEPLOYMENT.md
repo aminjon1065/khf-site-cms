@@ -291,7 +291,7 @@ server {
         fastcgi_param HTTP_X_FORWARDED_PROTO $scheme;
     }
 
-    client_max_body_size 20M;   # загрузка медиа (лимит 15 МБ + запас)
+    client_max_body_size 128M;  # одно сохранение с фото и файлами (UploadLimits::REQUEST_MAX_MB)
     location ~ /\.(?!well-known).* { deny all; }
 }
 ```
@@ -302,6 +302,14 @@ CPU наугад:
 ```ini
 ; php.ini / conf.d/99-khf-production.ini
 expose_php=Off
+; Загрузки (App\Support\UploadLimits): документ или вложение — до 20 МБ;
+; одно сохранение новости с обложкой, галереей и вложениями — до 128 МБ и
+; 31 файла. С умолчаниями PHP (2 МБ, 8 МБ, 20 файлов) не загрузится даже фото
+; с телефона. Экран «Оперативная обстановка» предупреждает администратора,
+; если значения меньше нужных.
+upload_max_filesize=20M
+post_max_size=128M
+max_file_uploads=40
 opcache.enable=1
 opcache.memory_consumption=192
 opcache.interned_strings_buffer=24

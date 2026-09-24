@@ -46,6 +46,8 @@ interface Props {
     web_vitals: WebVitalsReport | null;
     operations: OperationalReport | null;
     pending_migrations: string[];
+    /** PHP settings that turn away uploads the CMS allows (UploadLimits). */
+    upload_problems: string[];
 }
 
 type VitalRating = 'good' | 'needs-improvement' | 'poor' | 'no-data';
@@ -171,6 +173,7 @@ export default function ControlCenter({
     web_vitals: webVitals,
     operations,
     pending_migrations: pendingMigrations,
+    upload_problems: uploadProblems,
 }: Props) {
     const cards = [
         {
@@ -234,6 +237,46 @@ export default function ControlCenter({
                         <code>php artisan migrate</code>, иначе часть функций
                         может падать с ошибкой 500.
                     </span>
+                </div>
+            )}
+
+            {uploadProblems.length > 0 && (
+                <div
+                    role="alert"
+                    className="mb-5"
+                    style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: 10,
+                        padding: '10px 14px',
+                        border: '1px solid var(--warn)',
+                        borderRadius: 'var(--radius-md)',
+                        background:
+                            'color-mix(in srgb, var(--warn) 10%, transparent)',
+                        fontSize: 13,
+                    }}
+                >
+                    <TriangleAlert
+                        size={16}
+                        strokeWidth={1.75}
+                        style={{
+                            color: 'var(--warn-text)',
+                            flex: 'none',
+                            marginTop: 2,
+                        }}
+                    />
+                    <div>
+                        <strong>Сервер не пропустит часть загрузок</strong>
+                        <ul style={{ margin: '4px 0', paddingLeft: 18 }}>
+                            {uploadProblems.map((problem) => (
+                                <li key={problem}>{problem}</li>
+                            ))}
+                        </ul>
+                        <span>
+                            Задайте значения в php.ini (DEPLOYMENT.md, раздел
+                            2.10) и перезапустите PHP-FPM.
+                        </span>
+                    </div>
                 </div>
             )}
 

@@ -9,6 +9,7 @@ use App\Services\AlertMapService;
 use App\Services\OperationalTelemetry;
 use App\Services\WebVitalsReportService;
 use App\Support\PendingMigrations;
+use App\Support\UploadLimits;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -60,6 +61,8 @@ class ControlController extends Controller
             'web_vitals' => $technical ? $this->webVitals->summary() : null,
             'operations' => $technical ? $this->telemetry->summary() : null,
             'pending_migrations' => $technical ? $this->pendingMigrations->names() : [],
+            // PHP settings that turn away uploads the CMS allows.
+            'upload_problems' => $technical ? UploadLimits::serverProblems() : [],
         ]);
     }
 }

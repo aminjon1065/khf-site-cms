@@ -8,10 +8,13 @@ use App\Http\Middleware\RequireTwoFactor;
 use App\Http\Middleware\ResolveApiLocale;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
+use Illuminate\Http\Middleware\ValidatePostSize;
 use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -30,11 +33,17 @@ return Application::configure(basePath: dirname(__DIR__))
         // exactly the kind of response an attacker gets to shape.
         $middleware->append(SecurityHeaders::class);
 
+        // A save heavier than php.ini `post_max_size` is answered with a
+        // form error (see withExceptions), which needs the session: the check
+        // runs inside the groups, after the session starts, not before them.
+        $middleware->remove(ValidatePostSize::class);
+
         $middleware->web(append: [
             HandleAppearance::class,
             SetLocale::class,
             HandleInertiaRequests::class,
             AddLinkHeadersForPreloadedAssets::class,
+            ValidatePostSize::class,
         ]);
 
         // Public read-only API: stateless, no session/CSRF, locale resolved per request.
@@ -43,6 +52,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
         $middleware->api(append: [
             PublicApiResponse::class,
+            ValidatePostSize::class,
         ]);
 
         $middleware->alias([
@@ -54,4 +64,21 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // A save heavier than php.ini `post_max_size` arrives empty. Instead
+        // of an error page, the editor stays with a form error: the typed
+        // text is kept in the browser and can be saved with fewer files.
+        $exceptions->render(function (PostTooLargeException $exception, Request $request) {
+            if ($request->expectsJson()) {
+                return null;
+            }
+
+            $limit = UploadLimits::requestLimitMegabytes();
+
+            return back()->withErrors([
+                'upload' => 'Файлы слишком большие для одного сохранения'
+                    .($limit !== null ? " (сервер принимает до {$limit} МБ за раз)" : '')
+                    .'. Сохраните материал с частью файлов, затем добавьте остальные.',
+            ]);
+        });
     })->create();

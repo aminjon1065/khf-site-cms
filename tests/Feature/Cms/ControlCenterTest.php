@@ -49,7 +49,8 @@ it('shows the technical state of the system to administrators only', function ()
         ->assertInertia(fn (Assert $page) => $page
             ->where('web_vitals', null)
             ->where('operations', null)
-            ->where('pending_migrations', []));
+            ->where('pending_migrations', [])
+            ->where('upload_problems', []));
 
     actingAs($admin)->get('/control')
         ->assertOk()
@@ -57,7 +58,8 @@ it('shows the technical state of the system to administrators only', function ()
             ->has('web_vitals.metrics', 3)
             ->where('web_vitals.total_samples', 0)
             ->has('operations.api')
-            ->has('operations.queue'));
+            ->has('operations.queue')
+            ->has('upload_problems'));
 });
 
 it('forbids the control center without alerts permission', function () {
