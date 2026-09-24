@@ -162,6 +162,11 @@ and fix the cause; disk fill takes down the whole service, not only logging.
   search terms, IP, user agent or session identifiers.
 - `/health` is liveness (DB); `/ready` additionally covers storage, scheduler,
   queue worker and failed-job count. Neither endpoint exposes secrets.
+- Every `critical` (and worse) log entry goes to the duty chat in Telegram
+  (`App\Services\TelegramAlerts`, once per kind in 10 minutes) when
+  `TELEGRAM_ALERTS_*` is set; `php artisan ops:alert-test` proves the path.
+  External uptime checks of `/health`, `/ready` and the public site write to
+  the same chat — DEPLOYMENT.md §2.12.
 
 ## Load probe
 

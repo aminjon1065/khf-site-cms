@@ -43,4 +43,10 @@ return [
         'rum_secret' => env('RUM_INGEST_SECRET'),
     ],
 
+    // Critical events of the CMS as Telegram messages (App\Services\TelegramAlerts).
+    'telegram_alerts' => [
+        'bot_token' => env('TELEGRAM_ALERTS_BOT_TOKEN'),
+        'chat_id' => env('TELEGRAM_ALERTS_CHAT_ID'),
+    ],
+
 ];
