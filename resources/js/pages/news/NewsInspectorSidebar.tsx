@@ -3,18 +3,16 @@ import {
     FileText,
     Heading,
     Image as ImageIcon,
-    Images,
     Plus,
     Sliders,
     Table as TableIcon,
-    Upload,
     Video,
     Wand2,
     X,
 } from 'lucide-react';
 import { useMemo, useState } from 'react';
-import type { RefObject } from 'react';
 import { quickCategory } from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
+import { CoverField } from '@/cms/EditorInspector';
 import { useCan } from '@/lib/auth';
 import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
@@ -62,13 +60,14 @@ interface Props {
         authors: Option[];
     };
     coverSrc: string | null;
-    coverFileRef: RefObject<HTMLInputElement | null>;
     setCoverPicker: (open: boolean) => void;
     setGalleryPicker: (open: boolean) => void;
     galleryPending: { id: number; title: string; url: string }[];
     news: any | null;
     toggleTag: (id: number) => void;
     setSeoField: (field: keyof SeoFields, value: string) => void;
+    /** The edit goes to approval: the cover, gallery and files can't change. */
+    mediaLocked: boolean;
 }
 
 export function NewsInspectorSidebar({
@@ -83,13 +82,13 @@ export function NewsInspectorSidebar({
     lang,
     reference,
     coverSrc,
-    coverFileRef,
     setCoverPicker,
     setGalleryPicker,
     galleryPending,
     news,
     toggleTag,
     setSeoField,
+    mediaLocked,
 }: Props) {
     const can = useCan();
     const publicSiteUrl = usePublicSiteUrl();
@@ -383,116 +382,57 @@ export function NewsInspectorSidebar({
                                 <span>Обложка</span>
                             </h4>
                             <div className="wp-inspector-section-content">
-                                {coverSrc ? (
-                                    <div className="wp-cover-preview-card">
-                                        <img
-                                            src={coverSrc}
-                                            alt={data.cover_alt || 'Обложка'}
-                                            className="wp-cover-img"
-                                        />
-                                        {news?.cover_url && (
-                                            <Checkbox
-                                                label="Удалить обложку"
-                                                checked={data.cover_remove}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        'cover_remove',
-                                                        e.target.checked,
-                                                    )
-                                                }
-                                                className="mt-2"
-                                            />
-                                        )}
-                                    </div>
-                                ) : (
-                                    <div
-                                        className="wp-cover-placeholder"
-                                        onClick={() => setCoverPicker(true)}
-                                    >
-                                        <ImageIcon
-                                            size={28}
-                                            strokeWidth={1.5}
-                                        />
-                                        <span>Выбрать обложку</span>
-                                    </div>
-                                )}
-
-                                <input
-                                    ref={coverFileRef as any}
-                                    type="file"
-                                    accept="image/png,image/jpeg,image/webp"
-                                    hidden
-                                    onChange={(e) => {
-                                        const file =
-                                            e.target.files?.[0] ?? null;
-
-                                        if (file) {
-                                            setData('cover', file);
-                                            setData('cover_media_id', null);
-                                            setData('cover_remove', false);
-                                        }
-
-                                        e.target.value = '';
+                                <CoverField
+                                    src={coverSrc}
+                                    alt={data.cover_alt}
+                                    removable={!!news?.cover_url}
+                                    removed={data.cover_remove}
+                                    onRemovedChange={(removed) =>
+                                        setData('cover_remove', removed)
+                                    }
+                                    onFile={(file) => {
+                                        setData('cover', file);
+                                        setData('cover_media_id', null);
+                                        setData('cover_remove', false);
                                     }}
-                                />
-
-                                <div className="wp-btn-row mt-2">
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        icon={<Upload size={14} />}
-                                        onClick={() =>
-                                            coverFileRef.current?.click()
-                                        }
-                                    >
-                                        Загрузить
-                                    </Button>
-                                    <Button
-                                        variant="secondary"
-                                        size="sm"
-                                        icon={<Images size={14} />}
-                                        onClick={() => setCoverPicker(true)}
-                                    >
-                                        Медиатека
-                                    </Button>
-                                </div>
-
-                                {fieldError('cover') && (
-                                    <div className="wp-field-error">
-                                        {fieldError('cover')}
-                                    </div>
-                                )}
-
-                                <Field
-                                    label="Описание обложки"
-                                    className="mt-3"
+                                    onOpenLibrary={() => setCoverPicker(true)}
+                                    locked={mediaLocked}
+                                    error={fieldError('cover')}
                                 >
-                                    <Input
-                                        value={data.cover_alt}
-                                        onChange={(e) =>
-                                            setData('cover_alt', e.target.value)
-                                        }
-                                        placeholder="Описание для незрячих читателей"
-                                    />
-                                </Field>
+                                    <Field
+                                        label="Описание обложки"
+                                        className="mt-3"
+                                    >
+                                        <Input
+                                            value={data.cover_alt}
+                                            onChange={(e) =>
+                                                setData(
+                                                    'cover_alt',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="Описание для незрячих читателей"
+                                        />
+                                    </Field>
 
-                                <Field
-                                    label="Подпись к фото"
-                                    hint="Отображается под снимком в материале."
-                                    className="mt-2"
-                                >
-                                    <Input
-                                        value={data.cover_caption}
-                                        onChange={(e) =>
-                                            setData(
-                                                'cover_caption',
-                                                e.target.value,
-                                            )
-                                        }
-                                        placeholder="Например: Фото пресс-службы КЧС"
-                                        maxLength={500}
-                                    />
-                                </Field>
+                                    <Field
+                                        label="Подпись к фото"
+                                        hint="Отображается под снимком в материале."
+                                        className="mt-2"
+                                    >
+                                        <Input
+                                            value={data.cover_caption}
+                                            onChange={(e) =>
+                                                setData(
+                                                    'cover_caption',
+                                                    e.target.value,
+                                                )
+                                            }
+                                            placeholder="Например: Фото пресс-службы КЧС"
+                                            maxLength={500}
+                                        />
+                                    </Field>
+                                </CoverField>
                             </div>
                         </section>
 
@@ -641,6 +581,7 @@ export function NewsInspectorSidebar({
                             </h4>
                             <div className="wp-inspector-section-content">
                                 <GalleryField
+                                    locked={mediaLocked}
                                     existing={news?.gallery ?? []}
                                     addedFiles={data.gallery}
                                     addedLibrary={galleryPending}
@@ -677,6 +618,7 @@ export function NewsInspectorSidebar({
                             </h4>
                             <div className="wp-inspector-section-content">
                                 <AttachmentsField
+                                    locked={mediaLocked}
                                     existing={news?.attachments ?? []}
                                     added={data.attachments}
                                     removed={data.attachments_remove}

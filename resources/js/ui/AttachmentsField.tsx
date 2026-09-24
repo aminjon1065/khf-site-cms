@@ -1,5 +1,6 @@
 import { Paperclip, Trash2, Upload } from 'lucide-react';
 import { useRef } from 'react';
+import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
 import { Field } from '@/ui/Field';
 
 /** Уже прикреплённое вложение, как его отдаёт форма редактора. */
@@ -17,6 +18,7 @@ export interface ExistingAttachment {
  *
  * Удаление помечает существующий файл, а не убирает его сразу: пока форма не
  * отправлена, редактор может передумать, и снятая пометка возвращает файл.
+ * Когда правка уйдёт на согласование (`locked`), файлы только показываются.
  */
 export function AttachmentsField({
     existing,
@@ -24,6 +26,7 @@ export function AttachmentsField({
     removed,
     onAdd,
     onToggleRemove,
+    locked = false,
     error,
 }: {
     existing: ExistingAttachment[];
@@ -31,6 +34,7 @@ export function AttachmentsField({
     removed: number[];
     onAdd: (files: File[]) => void;
     onToggleRemove: (id: number) => void;
+    locked?: boolean;
     error?: string;
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
@@ -38,7 +42,11 @@ export function AttachmentsField({
     return (
         <Field
             label="Материалы"
-            hint="PDF, DOC, XLS — до 20 МБ каждый. Показываются на странице списком со ссылкой на скачивание."
+            hint={
+                locked
+                    ? undefined
+                    : 'PDF, DOC, XLS — до 20 МБ каждый. Показываются на странице списком со ссылкой на скачивание.'
+            }
             error={error}
         >
             <div className="flex flex-col gap-2">
@@ -70,19 +78,21 @@ export function AttachmentsField({
                             >
                                 {file.size}
                             </span>
-                            <button
-                                type="button"
-                                className="btn btn-icon"
-                                aria-label={
-                                    isRemoved
-                                        ? `Вернуть «${file.title}»`
-                                        : `Удалить «${file.title}»`
-                                }
-                                aria-pressed={isRemoved}
-                                onClick={() => onToggleRemove(file.id)}
-                            >
-                                <Trash2 size={15} strokeWidth={1.5} />
-                            </button>
+                            {!locked && (
+                                <button
+                                    type="button"
+                                    className="btn btn-icon"
+                                    aria-label={
+                                        isRemoved
+                                            ? `Вернуть «${file.title}»`
+                                            : `Удалить «${file.title}»`
+                                    }
+                                    aria-pressed={isRemoved}
+                                    onClick={() => onToggleRemove(file.id)}
+                                >
+                                    <Trash2 size={15} strokeWidth={1.5} />
+                                </button>
+                            )}
                         </div>
                     );
                 })}
@@ -107,31 +117,35 @@ export function AttachmentsField({
                     </div>
                 ))}
 
-                <div>
-                    <button
-                        type="button"
-                        className="btn"
-                        onClick={() => fileRef.current?.click()}
-                    >
-                        <Upload
-                            size={15}
-                            strokeWidth={1.5}
-                            aria-hidden="true"
+                {locked ? (
+                    <p className="wp-locked-note">{MEDIA_LOCKED_NOTE}</p>
+                ) : (
+                    <div>
+                        <button
+                            type="button"
+                            className="btn"
+                            onClick={() => fileRef.current?.click()}
+                        >
+                            <Upload
+                                size={15}
+                                strokeWidth={1.5}
+                                aria-hidden="true"
+                            />
+                            Добавить файлы
+                        </button>
+                        <input
+                            ref={fileRef}
+                            type="file"
+                            multiple
+                            hidden
+                            accept=".pdf,.doc,.docx,.xls,.xlsx"
+                            onChange={(e) => {
+                                onAdd([...(e.target.files ?? [])]);
+                                e.target.value = '';
+                            }}
                         />
-                        Добавить файлы
-                    </button>
-                    <input
-                        ref={fileRef}
-                        type="file"
-                        multiple
-                        hidden
-                        accept=".pdf,.doc,.docx,.xls,.xlsx"
-                        onChange={(e) => {
-                            onAdd([...(e.target.files ?? [])]);
-                            e.target.value = '';
-                        }}
-                    />
-                </div>
+                    </div>
+                )}
             </div>
         </Field>
     );

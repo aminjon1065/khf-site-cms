@@ -3970,6 +3970,14 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     gap: 8px;
 }
 
+/* Photos and files of a live material, when the edit goes to approval. */
+.wp-locked-note {
+    margin: 0;
+    font-size: 12.5px;
+    line-height: 1.5;
+    color: var(--color-neutral-600);
+}
+
 /* A document's file in one language (documents/form.tsx). */
 .wp-language-file {
     display: flex;

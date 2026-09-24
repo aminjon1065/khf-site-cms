@@ -95,7 +95,6 @@ export default function NewsForm({
     // Превью обложки: для загрузки файла строим из File, для выбора из медиатеки
     // берём URL ассета; иначе показываем существующую news.cover_url.
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
-    const coverFileRef = useRef<HTMLInputElement>(null);
     const titleRef = useRef<HTMLTextAreaElement>(null);
     const summaryRef = useRef<HTMLTextAreaElement>(null);
 
@@ -248,6 +247,7 @@ export default function NewsForm({
         onAddLibrary: addGalleryFromLibrary,
         onToggleRemove: handleToggleGalleryRemove,
         onOpenPicker: () => setGalleryPicker(true),
+        locked: changes_need_approval,
     };
 
     // Превью только что выбранного файла. Раньше его не было: после
@@ -558,13 +558,13 @@ export default function NewsForm({
                     lang={lang}
                     reference={reference}
                     coverSrc={coverSrc}
-                    coverFileRef={coverFileRef}
                     setCoverPicker={setCoverPicker}
                     setGalleryPicker={setGalleryPicker}
                     galleryPending={galleryPending}
                     news={news}
                     toggleTag={toggleTag}
                     setSeoField={setSeoField}
+                    mediaLocked={changes_need_approval}
                 />
             </div>
 

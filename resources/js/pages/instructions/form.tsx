@@ -1,16 +1,9 @@
 import { useForm } from '@inertiajs/react';
-import {
-    ExternalLink,
-    Images,
-    Plus,
-    Sliders,
-    Sparkles,
-    Upload,
-    X,
-} from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { ExternalLink, Plus, Sliders, Sparkles, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
+import { CoverField } from '@/cms/EditorInspector';
 import { useInspectorOpen } from '@/hooks/use-inspector-open';
 import { useCan } from '@/lib/auth';
 import { localeShort } from '@/lib/domain';
@@ -100,8 +93,9 @@ export default function InstructionForm({
         'document',
     );
     const [imagePicker, setImagePicker] = useState(false);
+    // An illustration picked from the media library; a file from the
+    // computer is previewed from the form data below.
     const [imagePreview, setImagePreview] = useState<string | null>(null);
-    const imageFileRef = useRef<HTMLInputElement>(null);
     const nameRef = useRef<HTMLTextAreaElement>(null);
     // A new instruction's address follows its Russian name until the editor
     // types one (it used to stop after the first letter); an existing one
@@ -155,8 +149,33 @@ export default function InstructionForm({
         setImagePicker(false);
     };
 
+    const pickImageFile = (file: File) => {
+        setData((prev) => ({
+            ...prev,
+            image: file,
+            image_media_id: null,
+            image_remove: false,
+        }));
+        setImagePreview(null);
+    };
+
+    const imageFileUrl = useMemo(
+        () => (data.image ? URL.createObjectURL(data.image) : null),
+        [data.image],
+    );
+
+    useEffect(
+        () => () => {
+            if (imageFileUrl) {
+                URL.revokeObjectURL(imageFileUrl);
+            }
+        },
+        [imageFileUrl],
+    );
+
     // Превью: свежий выбор (файл/медиатека) приоритетнее существующего файла.
     const imageSrc =
+        imageFileUrl ??
         imagePreview ??
         (instruction?.image_url && !data.image_remove
             ? instruction.image_url
@@ -826,6 +845,7 @@ export default function InstructionForm({
                             }}
                         >
                             <AttachmentsField
+                                locked={changes_need_approval}
                                 existing={instruction?.attachments ?? []}
                                 added={data.attachments}
                                 removed={data.attachments_remove}
@@ -1038,109 +1058,26 @@ export default function InstructionForm({
                                     <div className="wp-inspector-section-title">
                                         Иллюстрация инструкции
                                     </div>
-                                    {imageSrc ? (
-                                        <div style={{ marginBottom: 12 }}>
-                                            <img
-                                                src={imageSrc}
-                                                alt="Иллюстрация"
-                                                style={{
-                                                    width: '100%',
-                                                    height: 180,
-                                                    objectFit: 'cover',
-                                                    borderRadius:
-                                                        'var(--radius-md)',
-                                                    border: '1px solid var(--color-divider)',
-                                                }}
-                                            />
-                                        </div>
-                                    ) : (
-                                        <div
-                                            style={{
-                                                padding: '24px 16px',
-                                                background:
-                                                    'var(--color-neutral-100)',
-                                                borderRadius:
-                                                    'var(--radius-md)',
-                                                border: '1px dashed var(--color-divider)',
-                                                textAlign: 'center',
-                                                fontSize: 12.5,
-                                                color: 'var(--color-neutral-500)',
-                                                marginBottom: 12,
-                                            }}
-                                        >
-                                            Иллюстрация не выбрана
-                                        </div>
-                                    )}
-
-                                    <input
-                                        ref={imageFileRef}
-                                        type="file"
-                                        accept="image/png,image/jpeg,image/webp"
-                                        hidden
-                                        onChange={(e) => {
-                                            const file =
-                                                e.target.files?.[0] ?? null;
-
-                                            if (file) {
-                                                setData('image', file);
-                                                setData('image_media_id', null);
-                                                setData('image_remove', false);
-                                                setImagePreview(
-                                                    URL.createObjectURL(file),
-                                                );
+                                    <div className="wp-inspector-section-content">
+                                        <CoverField
+                                            kind="illustration"
+                                            src={imageSrc}
+                                            removable={!!instruction?.image_url}
+                                            removed={data.image_remove}
+                                            onRemovedChange={(removed) =>
+                                                setData('image_remove', removed)
                                             }
-
-                                            e.target.value = '';
-                                        }}
-                                    />
-
-                                    <div
-                                        style={{
-                                            display: 'flex',
-                                            gap: 8,
-                                            flexWrap: 'wrap',
-                                        }}
-                                    >
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            icon={<Upload size={14} />}
-                                            onClick={() =>
-                                                imageFileRef.current?.click()
+                                            onFile={pickImageFile}
+                                            onOpenLibrary={() =>
+                                                setImagePicker(true)
                                             }
-                                        >
-                                            Загрузить файл
-                                        </Button>
-                                        <Button
-                                            variant="secondary"
-                                            size="sm"
-                                            icon={<Images size={14} />}
-                                            onClick={() => setImagePicker(true)}
-                                        >
-                                            Из медиатеки
-                                        </Button>
+                                            locked={changes_need_approval}
+                                            error={
+                                                fieldError('image') ??
+                                                fieldError('image_media_id')
+                                            }
+                                        />
                                     </div>
-
-                                    {fieldError('image') && (
-                                        <div className="wp-field-error">
-                                            {fieldError('image')}
-                                        </div>
-                                    )}
-
-                                    {instruction?.image_url && (
-                                        <div style={{ marginTop: 12 }}>
-                                            <Checkbox
-                                                label="Удалить текущее изображение"
-                                                checked={data.image_remove}
-                                                onChange={(e) =>
-                                                    setData(
-                                                        'image_remove',
-                                                        e.target.checked,
-                                                    )
-                                                }
-                                            />
-                                        </div>
-                                    )}
 
                                     <MediaPicker
                                         open={imagePicker}

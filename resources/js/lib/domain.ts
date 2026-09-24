@@ -32,6 +32,14 @@ export const LIVE_STATUSES: readonly ContentStatus[] = [
     'scheduled',
 ];
 
+/**
+ * Why photos and files of a live material can't be changed in its editor:
+ * the edit goes to approval, and the server turns media changes away
+ * (PendingChangeService::assertNoMediaChanges).
+ */
+export const MEDIA_LOCKED_NOTE =
+    'Фото и файлы опубликованного материала меняет сотрудник с правом публикации.';
+
 export const SEVERITY_ORDER: Severity[] = [
     'info',
     'attention',

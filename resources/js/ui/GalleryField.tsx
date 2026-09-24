@@ -1,5 +1,6 @@
 import { Images, Trash2, Upload } from 'lucide-react';
 import { useRef } from 'react';
+import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
 
@@ -21,7 +22,8 @@ export interface PendingLibraryItem {
  * Фотогалерея материала: несколько снимков каруселью на детальной странице.
  * Порядок — порядок добавления. Удаление помечает существующий файл, а не
  * убирает сразу: пока форма не отправлена, редактор может передумать (тот же
- * контракт, что у вложений).
+ * контракт, что у вложений). Когда правка уйдёт на согласование (`locked`),
+ * снимки только показываются.
  */
 export function GalleryField({
     existing,
@@ -31,6 +33,7 @@ export function GalleryField({
     onAddFiles,
     onToggleRemove,
     onOpenPicker,
+    locked = false,
     error,
 }: {
     existing: ExistingGalleryItem[];
@@ -40,9 +43,33 @@ export function GalleryField({
     onAddFiles: (files: File[]) => void;
     onToggleRemove: (id: number) => void;
     onOpenPicker: () => void;
+    locked?: boolean;
     error?: string;
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
+
+    if (locked) {
+        return (
+            <Field label="Фотогалерея" error={error}>
+                <div className="flex flex-col gap-3">
+                    {existing.length > 0 && (
+                        <div className="grid grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-2">
+                            {existing.map((item) => (
+                                <img
+                                    key={item.id}
+                                    src={item.preview_url}
+                                    alt={item.title}
+                                    loading="lazy"
+                                    className="block aspect-[4/3] w-full border border-[var(--color-divider)] object-cover"
+                                />
+                            ))}
+                        </div>
+                    )}
+                    <p className="wp-locked-note">{MEDIA_LOCKED_NOTE}</p>
+                </div>
+            </Field>
+        );
+    }
 
     return (
         <Field

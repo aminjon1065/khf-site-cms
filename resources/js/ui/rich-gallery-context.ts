@@ -17,6 +17,11 @@ export interface RichGalleryContextValue {
     onAddLibrary?: (items: MediaItem[]) => void;
     onToggleRemove?: (id: number | string) => void;
     onOpenPicker?: () => void;
+    /**
+     * The edit goes to approval: the gallery's photos are shown but can't be
+     * added or removed (PendingChangeService::assertNoMediaChanges).
+     */
+    locked?: boolean;
 }
 
 export const RichGalleryContext = createContext<RichGalleryContextValue | null>(

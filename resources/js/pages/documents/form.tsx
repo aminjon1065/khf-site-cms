@@ -7,7 +7,7 @@ import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { EditorInspector, InspectorSection } from '@/cms/EditorInspector';
 import { useInspectorOpen } from '@/hooks/use-inspector-open';
 import { useCan } from '@/lib/auth';
-import { localeShort } from '@/lib/domain';
+import { localeShort, MEDIA_LOCKED_NOTE } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { languageChecks } from '@/lib/publication-languages';
 import { index, store, unpublish, update } from '@/routes/documents';
@@ -301,9 +301,15 @@ export default function DocumentForm({
                             hint="PDF, DOC(X), XLS(X), PPT(X) · до 20 МБ на файл. На сайте у каждой языковой версии — свой файл."
                         >
                             <div className="wp-canvas-block-rows">
+                                {changes_need_approval && (
+                                    <p className="wp-locked-note">
+                                        {MEDIA_LOCKED_NOTE}
+                                    </p>
+                                )}
                                 {FILE_LOCALES.map(({ key, label }) => (
                                     <LanguageFile
                                         key={key}
+                                        locked={changes_need_approval}
                                         id={`document-file-${key}`}
                                         label={label}
                                         saved={document?.files?.[key] ?? null}
@@ -424,7 +430,8 @@ export default function DocumentForm({
 /**
  * The file of one language version: the saved one (a link), a freshly picked
  * one waiting for «Сохранить», a button to pick or replace it, and removal
- * of the saved file.
+ * of the saved file. Locked (the edit goes to approval), only the saved file
+ * is shown.
  */
 function LanguageFile({
     id,
@@ -434,6 +441,7 @@ function LanguageFile({
     removed,
     onPick,
     onRemovedChange,
+    locked,
     error,
 }: {
     id: string;
@@ -443,6 +451,7 @@ function LanguageFile({
     removed: boolean;
     onPick: (file: File) => void;
     onRemovedChange: (removed: boolean) => void;
+    locked: boolean;
     error?: string;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
@@ -470,46 +479,50 @@ function LanguageFile({
                 )}
             </div>
 
-            <input
-                ref={inputRef}
-                id={id}
-                type="file"
-                accept={FILE_ACCEPT}
-                hidden
-                onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    e.target.value = '';
+            {!locked && (
+                <>
+                    <input
+                        ref={inputRef}
+                        id={id}
+                        type="file"
+                        accept={FILE_ACCEPT}
+                        hidden
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = '';
 
-                    if (!file) {
-                        return;
-                    }
+                            if (!file) {
+                                return;
+                            }
 
-                    setTooLarge(file.size > FILE_MAX_BYTES);
+                            setTooLarge(file.size > FILE_MAX_BYTES);
 
-                    if (file.size <= FILE_MAX_BYTES) {
-                        onPick(file);
-                    }
-                }}
-            />
+                            if (file.size <= FILE_MAX_BYTES) {
+                                onPick(file);
+                            }
+                        }}
+                    />
 
-            <div className="wp-btn-row">
-                <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<Upload size={14} />}
-                    onClick={() => inputRef.current?.click()}
-                    aria-label={`${action}: ${label}`}
-                >
-                    {action}
-                </Button>
-            </div>
+                    <div className="wp-btn-row">
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            icon={<Upload size={14} />}
+                            onClick={() => inputRef.current?.click()}
+                            aria-label={`${action}: ${label}`}
+                        >
+                            {action}
+                        </Button>
+                    </div>
 
-            {saved && (
-                <Checkbox
-                    label="Удалить сохранённый файл"
-                    checked={removed}
-                    onChange={(e) => onRemovedChange(e.target.checked)}
-                />
+                    {saved && (
+                        <Checkbox
+                            label="Удалить сохранённый файл"
+                            checked={removed}
+                            onChange={(e) => onRemovedChange(e.target.checked)}
+                        />
+                    )}
+                </>
             )}
 
             {tooLarge ? (

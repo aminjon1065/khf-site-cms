@@ -13,6 +13,7 @@ import {
     X,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
+import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
 import { cn } from '@/lib/utils';
 import { Button } from '@/ui/Button';
 import { MediaPicker } from '@/ui/MediaPicker';
@@ -27,6 +28,7 @@ export function RichGalleryView({
     updateAttributes,
 }: ReactNodeViewProps) {
     const galleryCtx = useRichGallery();
+    const locked = galleryCtx?.locked ?? false;
     const [pickerOpen, setPickerOpen] = useState(false);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel');
@@ -196,24 +198,28 @@ export function RichGalleryView({
                         </div>
                     )}
 
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={<Upload size={13} />}
-                        onClick={() => fileInputRef.current?.click()}
-                        title="Загрузить фотографии с компьютера"
-                    >
-                        Загрузить
-                    </Button>
-                    <Button
-                        variant="secondary"
-                        size="sm"
-                        icon={<Plus size={13} />}
-                        onClick={() => setPickerOpen(true)}
-                        title="Выбрать снимки из медиатеки сайта"
-                    >
-                        Из медиатеки
-                    </Button>
+                    {!locked && (
+                        <>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={<Upload size={13} />}
+                                onClick={() => fileInputRef.current?.click()}
+                                title="Загрузить фотографии с компьютера"
+                            >
+                                Загрузить
+                            </Button>
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                icon={<Plus size={13} />}
+                                onClick={() => setPickerOpen(true)}
+                                title="Выбрать снимки из медиатеки сайта"
+                            >
+                                Из медиатеки
+                            </Button>
+                        </>
+                    )}
                     <button
                         type="button"
                         className="re-gallery-btn-delete"
@@ -242,7 +248,10 @@ export function RichGalleryView({
                     onDrop={(e) => {
                         e.preventDefault();
                         setIsDraggingOver(false);
-                        handleAddFiles(e.dataTransfer.files);
+
+                        if (!locked) {
+                            handleAddFiles(e.dataTransfer.files);
+                        }
                     }}
                 >
                     <div className="re-gallery-empty-icon">
@@ -251,28 +260,39 @@ export function RichGalleryView({
                     <div className="re-gallery-empty-title">
                         Фотогалерея материала
                     </div>
-                    <p className="re-gallery-empty-desc">
-                        Перетащите фотографии сюда или добавьте снимки кнопками
-                        ниже. На сайте они отобразятся интерактивной каруселью.
-                    </p>
-                    <div className="re-gallery-empty-buttons">
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            icon={<Upload size={14} />}
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            Загрузить снимки
-                        </Button>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            icon={<Images size={14} />}
-                            onClick={() => setPickerOpen(true)}
-                        >
-                            Выбрать из медиатеки
-                        </Button>
-                    </div>
+                    {locked ? (
+                        <p className="re-gallery-empty-desc">
+                            {MEDIA_LOCKED_NOTE}
+                        </p>
+                    ) : (
+                        <>
+                            <p className="re-gallery-empty-desc">
+                                Перетащите фотографии сюда или добавьте снимки
+                                кнопками ниже. На сайте они отобразятся
+                                интерактивной каруселью.
+                            </p>
+                            <div className="re-gallery-empty-buttons">
+                                <Button
+                                    variant="primary"
+                                    size="sm"
+                                    icon={<Upload size={14} />}
+                                    onClick={() =>
+                                        fileInputRef.current?.click()
+                                    }
+                                >
+                                    Загрузить снимки
+                                </Button>
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon={<Images size={14} />}
+                                    onClick={() => setPickerOpen(true)}
+                                >
+                                    Выбрать из медиатеки
+                                </Button>
+                            </div>
+                        </>
+                    )}
                 </div>
             ) : (
                 /* Gallery Body */
@@ -323,35 +343,37 @@ export function RichGalleryView({
                                         )}
 
                                         {/* Quick Actions (Remove / Restore) */}
-                                        <div className="re-gallery-carousel-actions">
-                                            {currentItem.isRemoved ? (
-                                                <button
-                                                    type="button"
-                                                    className="re-gallery-carousel-btn-action"
-                                                    onClick={() =>
-                                                        handleToggleRemove(
-                                                            currentItem.id,
-                                                        )
-                                                    }
-                                                    title="Восстановить снимок"
-                                                >
-                                                    <RotateCcw size={16} />
-                                                </button>
-                                            ) : (
-                                                <button
-                                                    type="button"
-                                                    className="re-gallery-carousel-btn-action"
-                                                    onClick={() =>
-                                                        handleToggleRemove(
-                                                            currentItem.id,
-                                                        )
-                                                    }
-                                                    title="Удалить этот снимок"
-                                                >
-                                                    <X size={16} />
-                                                </button>
-                                            )}
-                                        </div>
+                                        {!locked && (
+                                            <div className="re-gallery-carousel-actions">
+                                                {currentItem.isRemoved ? (
+                                                    <button
+                                                        type="button"
+                                                        className="re-gallery-carousel-btn-action"
+                                                        onClick={() =>
+                                                            handleToggleRemove(
+                                                                currentItem.id,
+                                                            )
+                                                        }
+                                                        title="Восстановить снимок"
+                                                    >
+                                                        <RotateCcw size={16} />
+                                                    </button>
+                                                ) : (
+                                                    <button
+                                                        type="button"
+                                                        className="re-gallery-carousel-btn-action"
+                                                        onClick={() =>
+                                                            handleToggleRemove(
+                                                                currentItem.id,
+                                                            )
+                                                        }
+                                                        title="Удалить этот снимок"
+                                                    >
+                                                        <X size={16} />
+                                                    </button>
+                                                )}
+                                            </div>
+                                        )}
 
                                         {/* Caption Overlay */}
                                         {currentItem.title && (
@@ -369,20 +391,24 @@ export function RichGalleryView({
                                                 <span className="text-sm font-semibold">
                                                     Снимок помечен на удаление
                                                 </span>
-                                                <Button
-                                                    variant="secondary"
-                                                    size="sm"
-                                                    icon={
-                                                        <RotateCcw size={14} />
-                                                    }
-                                                    onClick={() =>
-                                                        handleToggleRemove(
-                                                            currentItem.id,
-                                                        )
-                                                    }
-                                                >
-                                                    Восстановить
-                                                </Button>
+                                                {!locked && (
+                                                    <Button
+                                                        variant="secondary"
+                                                        size="sm"
+                                                        icon={
+                                                            <RotateCcw
+                                                                size={14}
+                                                            />
+                                                        }
+                                                        onClick={() =>
+                                                            handleToggleRemove(
+                                                                currentItem.id,
+                                                            )
+                                                        }
+                                                    >
+                                                        Восстановить
+                                                    </Button>
+                                                )}
                                             </div>
                                         )}
                                     </>
@@ -503,36 +529,40 @@ export function RichGalleryView({
                                             )}
 
                                             {/* Hover Overlay & Action */}
-                                            <div className="re-gallery-overlay">
-                                                {isRemoved ? (
-                                                    <button
-                                                        type="button"
-                                                        className="re-gallery-restore-btn"
-                                                        onClick={() =>
-                                                            handleToggleRemove(
-                                                                item.id,
-                                                            )
-                                                        }
-                                                        title="Вернуть снимок в галерею"
-                                                    >
-                                                        <RotateCcw size={14} />
-                                                        <span>Вернуть</span>
-                                                    </button>
-                                                ) : (
-                                                    <button
-                                                        type="button"
-                                                        className="re-gallery-remove-btn"
-                                                        onClick={() =>
-                                                            handleToggleRemove(
-                                                                item.id,
-                                                            )
-                                                        }
-                                                        title="Удалить этот снимок"
-                                                    >
-                                                        <X size={16} />
-                                                    </button>
-                                                )}
-                                            </div>
+                                            {!locked && (
+                                                <div className="re-gallery-overlay">
+                                                    {isRemoved ? (
+                                                        <button
+                                                            type="button"
+                                                            className="re-gallery-restore-btn"
+                                                            onClick={() =>
+                                                                handleToggleRemove(
+                                                                    item.id,
+                                                                )
+                                                            }
+                                                            title="Вернуть снимок в галерею"
+                                                        >
+                                                            <RotateCcw
+                                                                size={14}
+                                                            />
+                                                            <span>Вернуть</span>
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            className="re-gallery-remove-btn"
+                                                            onClick={() =>
+                                                                handleToggleRemove(
+                                                                    item.id,
+                                                                )
+                                                            }
+                                                            title="Удалить этот снимок"
+                                                        >
+                                                            <X size={16} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            )}
 
                                             {isRemoved && (
                                                 <div className="re-gallery-removed-dim">

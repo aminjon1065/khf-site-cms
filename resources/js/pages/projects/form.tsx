@@ -816,6 +816,7 @@ export default function ProjectForm({
                                 }
                                 onFile={pickCoverFile}
                                 onOpenLibrary={() => setCoverPicker(true)}
+                                locked={changes_need_approval}
                                 error={
                                     fieldError('cover') ??
                                     fieldError('cover_media_id')

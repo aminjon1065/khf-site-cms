@@ -1,6 +1,7 @@
 import { Image as ImageIcon, Images, Upload, Wand2, X } from 'lucide-react';
 import { useRef } from 'react';
 import type { ReactNode } from 'react';
+import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
 import { Button } from '@/ui/Button';
 import { Checkbox, Field, Input } from '@/ui/Field';
 
@@ -121,11 +122,28 @@ export function SlugField({
     );
 }
 
+const PICTURE_WORDS = {
+    cover: {
+        name: 'Обложка',
+        pick: 'Выбрать обложку',
+        none: 'Обложки нет.',
+        remove: 'Удалить сохранённую обложку',
+    },
+    illustration: {
+        name: 'Иллюстрация',
+        pick: 'Выбрать иллюстрацию',
+        none: 'Иллюстрации нет.',
+        remove: 'Удалить сохранённую иллюстрацию',
+    },
+} as const;
+
 /**
- * A material's cover: a preview, «Загрузить» from the computer and
- * «Медиатека». The form keeps the picked file and shows what `src` gives.
+ * A material's cover (or an instruction's illustration): a preview,
+ * «Загрузить» from the computer and «Медиатека». The form keeps the picked
+ * file and shows what `src` gives. Locked, it only shows the picture.
  */
 export function CoverField({
+    kind = 'cover',
     src,
     alt,
     removable,
@@ -133,23 +151,48 @@ export function CoverField({
     onRemovedChange,
     onFile,
     onOpenLibrary,
+    locked = false,
     error,
     children,
 }: {
-    /** What to show: the fresh pick, else the saved cover; null for none. */
+    kind?: keyof typeof PICTURE_WORDS;
+    /** What to show: the fresh pick, else the saved picture; null for none. */
     src: string | null;
     alt?: string;
-    /** The material has a saved cover that can be removed. */
+    /** The material has a saved picture that can be removed. */
     removable: boolean;
     removed: boolean;
     onRemovedChange: (removed: boolean) => void;
     onFile: (file: File) => void;
     onOpenLibrary: () => void;
+    /** The edit goes to approval: the picture can't be changed here. */
+    locked?: boolean;
     error?: string;
     /** Fields about the picture (its description, a caption). */
     children?: ReactNode;
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
+    const words = PICTURE_WORDS[kind];
+
+    if (locked) {
+        return (
+            <>
+                {src ? (
+                    <div className="wp-cover-preview-card">
+                        <img
+                            src={src}
+                            alt={alt || words.name}
+                            className="wp-cover-img"
+                        />
+                    </div>
+                ) : (
+                    <p className="wp-locked-note">{words.none}</p>
+                )}
+                <p className="wp-locked-note">{MEDIA_LOCKED_NOTE}</p>
+                {src && children}
+            </>
+        );
+    }
 
     return (
         <>
@@ -157,7 +200,7 @@ export function CoverField({
                 <div className="wp-cover-preview-card">
                     <img
                         src={src}
-                        alt={alt || 'Обложка'}
+                        alt={alt || words.name}
                         className="wp-cover-img"
                     />
                 </div>
@@ -168,7 +211,7 @@ export function CoverField({
                     onClick={onOpenLibrary}
                 >
                     <ImageIcon size={28} strokeWidth={1.5} />
-                    <span>Выбрать обложку</span>
+                    <span>{words.pick}</span>
                 </button>
             )}
 
@@ -211,7 +254,7 @@ export function CoverField({
                 choice must stay visible to be undone. */}
             {removable && (
                 <Checkbox
-                    label="Удалить сохранённую обложку"
+                    label={words.remove}
                     checked={removed}
                     onChange={(e) => onRemovedChange(e.target.checked)}
                 />
