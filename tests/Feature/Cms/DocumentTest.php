@@ -48,6 +48,29 @@ it('creates a draft document with its metadata', function () {
         ->and($document->section)->toBe('Приказы');
 });
 
+it('stays on the editor when saving a draft with the stay flag (Ctrl+S)', function () {
+    $editor = docUser('editor');
+
+    $created = actingAs($editor)->post('/documents', [
+        'name' => ['ru' => 'Приказ со stay', 'tg' => '', 'en' => ''],
+        'doc_type' => 'order',
+        'action' => 'draft',
+        'stay' => true,
+    ]);
+    $document = Document::query()->firstOrFail();
+    $created->assertRedirect("/documents/{$document->id}/edit");
+
+    actingAs($editor)->put("/documents/{$document->id}", [
+        'name' => ['ru' => 'Приказ со stay, правка', 'tg' => '', 'en' => ''],
+        'doc_type' => 'order',
+        'action' => 'draft',
+        'stay' => true,
+        '_editorial_version' => $document->updated_at?->toIso8601String(),
+    ])->assertRedirect("/documents/{$document->id}/edit");
+
+    expect($document->fresh()->getTranslation('name', 'ru'))->toBe('Приказ со stay, правка');
+});
+
 it('requires a name in at least one language and a document type', function () {
     actingAs(docUser('editor'))->post('/documents', [
         'name' => ['ru' => ''],
