@@ -6,6 +6,7 @@ use App\Enums\ProjectStatus;
 use App\Models\Project;
 use App\Rules\FilledInAnyLocale;
 use App\Support\Slug;
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -69,7 +70,7 @@ class ProjectRequest extends FormRequest
             'direction.phone' => ['nullable', 'string', 'max:100'],
             'direction.email' => ['nullable', 'string', 'max:255'],
 
-            'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'cover' => ['nullable', ...UploadLimits::imageRules()],
             'cover_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'cover_remove' => ['boolean'],
 
@@ -88,6 +89,7 @@ class ProjectRequest extends FormRequest
             'lifecycle_status.required' => 'Выберите статус проекта.',
             'slug.unique' => 'Такой адрес (slug) уже используется другим проектом.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',
+            ...UploadLimits::imageMessages('cover', 'Обложка'),
         ];
     }
 

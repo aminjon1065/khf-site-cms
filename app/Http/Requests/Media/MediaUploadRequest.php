@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests\Media;
 
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Http\UploadedFile;
 
 class MediaUploadRequest extends FormRequest
 {
@@ -17,18 +19,12 @@ class MediaUploadRequest extends FormRequest
      */
     public function rules(): array
     {
-        $fileRules = $this->routeIs('media.upload')
-            ? ['required', 'image', 'mimes:jpg,jpeg,png,webp,gif', 'max:10240']
-            : [
-                'required', 'file',
-                'mimes:jpg,jpeg,png,webp,gif,pdf,doc,docx,xls,xlsx',
-                'max:15360',
-            ];
-
         return [
-            // SVG is intentionally excluded because it can execute scripts when
-            // served inline. The rich-text picker additionally accepts images only.
-            'file' => $fileRules,
+            // SVG is left out on purpose (UploadLimits): served inline, it
+            // can run scripts. The rich-text picker takes images only.
+            'file' => ['required', ...($this->takesImage()
+                ? UploadLimits::imageRules(library: true)
+                : UploadLimits::fileRules())],
             'title' => ['nullable', 'string', 'max:255'],
             'alt' => ['nullable', 'string', 'max:255'],
             'is_decorative' => ['nullable', 'boolean'],
@@ -40,11 +36,36 @@ class MediaUploadRequest extends FormRequest
      */
     public function messages(): array
     {
+        $images = UploadLimits::describe(UploadLimits::LIBRARY_IMAGE_FORMATS);
+        $files = UploadLimits::describe(UploadLimits::FILE_FORMATS);
+        $formats = $this->routeIs('media.upload')
+            ? "В текст можно вставить изображение {$images}."
+            : "Подходят изображения {$images} и документы {$files}.";
+
         return [
             'file.required' => 'Выберите файл для загрузки.',
-            'file.mimes' => 'Недопустимый тип файла. Разрешены изображения и документы.',
-            'file.image' => 'В редактор можно загружать только изображения.',
-            'file.max' => 'Файл слишком большой (максимум 15 МБ).',
+            'file.image' => $formats,
+            'file.file' => $formats,
+            'file.mimes' => $formats,
+            'file.max' => $this->takesImage()
+                ? 'Изображение больше '.UploadLimits::IMAGE_MAX_MB.' МБ — уменьшите его.'
+                : 'Файл больше '.UploadLimits::FILE_MAX_MB.' МБ — сожмите его или разделите на части.',
         ];
+    }
+
+    /**
+     * The picker in the text editor takes only images; the media library
+     * page takes an image by the image rules and anything else as a document.
+     */
+    private function takesImage(): bool
+    {
+        if ($this->routeIs('media.upload')) {
+            return true;
+        }
+
+        $file = $this->file('file');
+
+        return $file instanceof UploadedFile
+            && str_starts_with((string) $file->getMimeType(), 'image/');
     }
 }

@@ -3,14 +3,40 @@
 namespace App\Support;
 
 /**
- * How large uploads the CMS takes, and whether PHP on this server lets them
- * through. PHP's defaults (2 MB per file, 8 MB per request, 20 files) are far
- * below what editors upload: a photo from a phone or a scanned order would
- * fail with no fault of theirs. DEPLOYMENT.md §2.10 sets php.ini to these
- * values; the control center warns administrators when it isn't.
+ * What the CMS takes as uploads — one set of formats and sizes for every
+ * cover, photo, attachment and document — and whether PHP on this server
+ * lets them through. PHP's defaults (2 MB per file, 8 MB per request, 20
+ * files) are far below what editors upload: a photo from a phone or a
+ * scanned order would fail with no fault of theirs. DEPLOYMENT.md §2.10 sets
+ * php.ini to these values; the control center warns administrators when it
+ * isn't.
  */
 final class UploadLimits
 {
+    /**
+     * Photos: covers, illustrations, gallery photos, portraits.
+     *
+     * @var list<string>
+     */
+    public const IMAGE_FORMATS = ['jpg', 'jpeg', 'png', 'webp'];
+
+    /**
+     * The media library also keeps GIF animations for texts. SVG is left out
+     * on purpose: served inline, it can run scripts.
+     *
+     * @var list<string>
+     */
+    public const LIBRARY_IMAGE_FORMATS = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+
+    public const IMAGE_MAX_MB = 10;
+
+    /**
+     * Documents and attachments.
+     *
+     * @var list<string>
+     */
+    public const FILE_FORMATS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'];
+
     /**
      * The largest file the CMS accepts: a document or an attachment.
      */
@@ -29,6 +55,118 @@ final class UploadLimits
     public const FILES_PER_REQUEST = 40;
 
     private const MB = 1024 * 1024;
+
+    /**
+     * @return list<string>
+     */
+    public static function imageRules(bool $library = false): array
+    {
+        return [
+            'image',
+            'mimes:'.implode(',', $library ? self::LIBRARY_IMAGE_FORMATS : self::IMAGE_FORMATS),
+            'max:'.self::IMAGE_MAX_MB * 1024,
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    public static function fileRules(): array
+    {
+        return [
+            'file',
+            'mimes:'.implode(',', self::FILE_FORMATS),
+            'max:'.self::FILE_MAX_MB * 1024,
+        ];
+    }
+
+    /**
+     * Messages for a photo field: `imageMessages('cover', 'Обложка')`.
+     *
+     * @return array<string, string>
+     */
+    public static function imageMessages(string $field, string $label, bool $library = false): array
+    {
+        $formats = self::describe($library ? self::LIBRARY_IMAGE_FORMATS : self::IMAGE_FORMATS);
+
+        return [
+            "{$field}.image" => "{$label}: нужно изображение {$formats}.",
+            "{$field}.mimes" => "{$label}: нужно изображение {$formats}.",
+            "{$field}.max" => "{$label} больше ".self::IMAGE_MAX_MB.' МБ — уменьшите изображение.',
+        ];
+    }
+
+    /**
+     * Messages for a document or attachment field.
+     *
+     * @return array<string, string>
+     */
+    public static function fileMessages(string $field, string $label): array
+    {
+        return [
+            "{$field}.file" => "{$label}: подходят файлы ".self::describe(self::FILE_FORMATS).'.',
+            "{$field}.mimes" => "{$label}: подходят файлы ".self::describe(self::FILE_FORMATS).'.',
+            "{$field}.max" => "{$label} больше ".self::FILE_MAX_MB.' МБ — сожмите файл или разделите его на части.',
+        ];
+    }
+
+    /**
+     * Formats as people read them: «JPG, PNG или WebP», «PDF, DOC(X) или
+     * XLS(X)». A format and its `x` version are one word, JPEG is JPG.
+     *
+     * @param  list<string>  $formats
+     */
+    public static function describe(array $formats): string
+    {
+        $names = [];
+
+        foreach ($formats as $format) {
+            if ($format === 'jpeg' && in_array('jpg', $formats, true)) {
+                continue;
+            }
+
+            if (str_ends_with($format, 'x') && in_array(substr($format, 0, -1), $formats, true)) {
+                continue;
+            }
+
+            $names[] = match (true) {
+                $format === 'webp' => 'WebP',
+                in_array($format.'x', $formats, true) => strtoupper($format).'(X)',
+                default => strtoupper($format),
+            };
+        }
+
+        $last = array_pop($names);
+
+        return $names === [] ? (string) $last : implode(', ', $names).' или '.$last;
+    }
+
+    /**
+     * The formats and sizes for the editors' pickers, hints and checks
+     * before an upload starts.
+     *
+     * @return array{image: array{formats: list<string>, label: string, max_mb: int}, library_image: array{formats: list<string>, label: string, max_mb: int}, file: array{formats: list<string>, label: string, max_mb: int}}
+     */
+    public static function forClient(): array
+    {
+        return [
+            'image' => [
+                'formats' => self::IMAGE_FORMATS,
+                'label' => self::describe(self::IMAGE_FORMATS),
+                'max_mb' => self::IMAGE_MAX_MB,
+            ],
+            'library_image' => [
+                'formats' => self::LIBRARY_IMAGE_FORMATS,
+                'label' => self::describe(self::LIBRARY_IMAGE_FORMATS),
+                'max_mb' => self::IMAGE_MAX_MB,
+            ],
+            'file' => [
+                'formats' => self::FILE_FORMATS,
+                'label' => self::describe(self::FILE_FORMATS),
+                'max_mb' => self::FILE_MAX_MB,
+            ],
+        ];
+    }
 
     /**
      * What stops uploads the CMS allows, in words for an administrator.

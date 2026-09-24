@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Leader;
 
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 
 class LeaderRequest extends FormRequest
@@ -41,7 +42,7 @@ class LeaderRequest extends FormRequest
             'is_chairman' => ['nullable', 'boolean'],
             'sort' => ['nullable', 'integer', 'min:0', 'max:9999'],
 
-            'photo' => ['nullable', 'image', 'max:5120'],
+            'photo' => ['nullable', ...UploadLimits::imageRules()],
             'photo_remove' => ['nullable', 'boolean'],
             'photo_media_id' => ['nullable', 'integer'],
         ];
@@ -55,8 +56,7 @@ class LeaderRequest extends FormRequest
         return [
             'role.ru.required' => 'Укажите должность на русском языке.',
             'name.ru.required' => 'Укажите ФИО на русском языке.',
-            'photo.image' => 'Файл должен быть изображением.',
-            'photo.max' => 'Изображение не должно превышать 5 МБ.',
+            ...UploadLimits::imageMessages('photo', 'Фотография'),
         ];
     }
 

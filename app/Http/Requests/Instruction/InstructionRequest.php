@@ -6,6 +6,7 @@ use App\Enums\HazardType;
 use App\Models\Instruction;
 use App\Rules\FilledInAnyLocale;
 use App\Support\Slug;
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -63,14 +64,14 @@ class InstructionRequest extends FormRequest
             'sections.*.*' => ['array'],
             'sections.*.*.*' => ['nullable', 'string', 'max:1000'],
 
-            'image' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'image' => ['nullable', ...UploadLimits::imageRules()],
             'image_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'image_remove' => ['boolean'],
 
             // Памятка к инструкции: PDF, который человек скачивает и держит
             // под рукой. Только документы — исполняемые файлы недопустимы.
             'attachments' => ['nullable', 'array', 'max:10'],
-            'attachments.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx', 'max:20480'],
+            'attachments.*' => UploadLimits::fileRules(),
             'attachments_remove' => ['nullable', 'array'],
             'attachments_remove.*' => ['integer'],
 
@@ -89,6 +90,9 @@ class InstructionRequest extends FormRequest
             'slug.unique' => 'Такой адрес (slug) уже используется другой инструкцией.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',
             'hazard_type.enum' => 'Выбран несуществующий тип события.',
+            ...UploadLimits::imageMessages('image', 'Иллюстрация'),
+            'attachments.max' => 'Не больше 10 вложений.',
+            ...UploadLimits::fileMessages('attachments.*', 'Вложение'),
         ];
     }
 

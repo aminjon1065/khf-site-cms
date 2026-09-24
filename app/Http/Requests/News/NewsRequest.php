@@ -5,6 +5,7 @@ namespace App\Http\Requests\News;
 use App\Models\News;
 use App\Rules\FilledInAnyLocale;
 use App\Support\Slug;
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -48,7 +49,7 @@ class NewsRequest extends FormRequest
             'tags' => ['array'],
             'tags.*' => ['integer', 'exists:tags,id'],
 
-            'cover' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'cover' => ['nullable', ...UploadLimits::imageRules()],
             'cover_media_id' => ['nullable', 'integer', 'exists:media,id'],
             'cover_remove' => ['boolean'],
 
@@ -56,7 +57,7 @@ class NewsRequest extends FormRequest
             // файлами или копией из медиатеки, удаление — по идентификаторам,
             // чтобы правка одного снимка не трогала остальные.
             'gallery' => ['nullable', 'array', 'max:20'],
-            'gallery.*' => ['image', 'mimes:jpg,jpeg,png,webp', 'max:5120'],
+            'gallery.*' => UploadLimits::imageRules(),
             'gallery_media_ids' => ['nullable', 'array', 'max:20'],
             'gallery_media_ids.*' => ['integer', 'exists:media,id'],
             'gallery_remove' => ['nullable', 'array'],
@@ -66,7 +67,7 @@ class NewsRequest extends FormRequest
             // этого есть обложка и медиатека, а исполняемые файлы на портале
             // ведомства недопустимы.
             'attachments' => ['nullable', 'array', 'max:10'],
-            'attachments.*' => ['file', 'mimes:pdf,doc,docx,xls,xlsx', 'max:20480'],
+            'attachments.*' => UploadLimits::fileRules(),
             'attachments_remove' => ['nullable', 'array'],
             'attachments_remove.*' => ['integer'],
             'cover_alt' => ['nullable', 'string', 'max:255'],
@@ -108,15 +109,11 @@ class NewsRequest extends FormRequest
             'slug.unique' => 'Такой адрес (slug) уже используется другой новостью.',
             'slug.alpha_dash' => 'Адрес может содержать только латинские буквы, цифры и дефисы.',
             'category_id.exists' => 'Выбрана несуществующая категория.',
-            'cover.image' => 'Обложка должна быть изображением.',
-            'cover.max' => 'Размер обложки не должен превышать 5 МБ.',
+            ...UploadLimits::imageMessages('cover', 'Обложка'),
             'gallery.max' => 'Не больше 20 снимков в галерее.',
-            'gallery.*.image' => 'Снимок галереи должен быть изображением.',
-            'gallery.*.mimes' => 'Снимок галереи: JPG, PNG или WebP.',
-            'gallery.*.max' => 'Размер снимка галереи не должен превышать 5 МБ.',
+            ...UploadLimits::imageMessages('gallery.*', 'Снимок галереи'),
             'attachments.max' => 'Не больше 10 вложений.',
-            'attachments.*.mimes' => 'Вложение должно быть документом: PDF, DOC, DOCX, XLS или XLSX.',
-            'attachments.*.max' => 'Размер вложения не должен превышать 20 МБ.',
+            ...UploadLimits::fileMessages('attachments.*', 'Вложение'),
             'scheduled_at.required' => 'Укажите дату плановой публикации.',
             'scheduled_at.after' => 'Дата плановой публикации должна быть в будущем.',
         ];

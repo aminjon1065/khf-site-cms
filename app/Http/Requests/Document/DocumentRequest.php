@@ -4,6 +4,7 @@ namespace App\Http\Requests\Document;
 
 use App\Enums\DocType;
 use App\Rules\FilledInAnyLocale;
+use App\Support\UploadLimits;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -20,7 +21,7 @@ class DocumentRequest extends FormRequest
      */
     public function rules(): array
     {
-        $file = ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx,ppt,pptx', 'max:20480'];
+        $file = ['nullable', ...UploadLimits::fileRules()];
 
         return [
             'name' => ['array', new FilledInAnyLocale('Укажите название документа хотя бы на одном языке.')],
@@ -53,12 +54,9 @@ class DocumentRequest extends FormRequest
     {
         return [
             'doc_type.required' => 'Выберите тип документа.',
-            'file_tg.mimes' => 'Недопустимый формат файла (тадж.). Разрешены PDF, DOC(X), XLS(X), PPT(X).',
-            'file_ru.mimes' => 'Недопустимый формат файла (рус.). Разрешены PDF, DOC(X), XLS(X), PPT(X).',
-            'file_en.mimes' => 'Недопустимый формат файла (англ.). Разрешены PDF, DOC(X), XLS(X), PPT(X).',
-            'file_tg.max' => 'Файл (тадж.) не должен превышать 20 МБ.',
-            'file_ru.max' => 'Файл (рус.) не должен превышать 20 МБ.',
-            'file_en.max' => 'Файл (англ.) не должен превышать 20 МБ.',
+            ...UploadLimits::fileMessages('file_tg', 'Файл (ТҶ)'),
+            ...UploadLimits::fileMessages('file_ru', 'Файл (РУ)'),
+            ...UploadLimits::fileMessages('file_en', 'Файл (EN)'),
         ];
     }
 
