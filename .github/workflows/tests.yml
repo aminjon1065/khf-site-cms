@@ -108,3 +108,116 @@ jobs:
         run: |
           php artisan config:clear --ansi
           php artisan test --compact
+
+  # E-1: the admin app in a real browser against real Laravel + MySQL, seeded
+  # from scratch the way a new installation is. Every scenario of
+  # tests/e2e — forms, bulk publishing, roles, media, 2FA — runs here; people
+  # sign in with a real TOTP code derived from DEMO_TWO_FACTOR_SECRET, the
+  # application's 2FA is never switched off. The queue runs inline (sync) so
+  # a scenario sees its media conversions and notifications at once.
+  e2e:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: khf_site_cms_e2e
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      CMS_E2E_BASE_URL: http://127.0.0.1:8848
+      CMS_E2E_TWO_FACTOR_SECRET: khf-e2e-ci
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '22'
+
+      - name: Install AVIF encoder (media derivatives)
+        run: sudo apt-get update -q && sudo apt-get install -y -q libavif-bin
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+
+      # `artisan serve` passes only a few environment variables to the
+      # application it starts, so the settings go into .env, not `env:`.
+      - name: Configure the application
+        run: |
+          cp .env.example .env
+          set_env() {
+            if grep -q "^$1=" .env; then
+              sed -i "s|^$1=.*|$1=$2|" .env
+            else
+              echo "$1=$2" >> .env
+            fi
+          }
+          set_env APP_URL "$CMS_E2E_BASE_URL"
+          set_env MEDIA_PUBLIC_URL "$CMS_E2E_BASE_URL"
+          set_env DB_CONNECTION mysql
+          set_env DB_HOST 127.0.0.1
+          set_env DB_PORT 3306
+          set_env DB_DATABASE khf_site_cms_e2e
+          set_env DB_USERNAME root
+          set_env DB_PASSWORD ''
+          set_env QUEUE_CONNECTION sync
+          set_env CACHE_STORE file
+          set_env FRONTEND_REVALIDATION_URL ''
+          set_env DEMO_TWO_FACTOR_SECRET "$CMS_E2E_TWO_FACTOR_SECRET"
+          set_env SEED_SOURCE_MEDIA false
+          php artisan key:generate --ansi
+
+      - name: Build the admin app
+        run: npm run build
+
+      - name: Create and seed the database
+        run: |
+          php artisan migrate --force --seed --no-interaction
+          php artisan storage:link
+
+      - name: Start the application
+        run: |
+          PHP_CLI_SERVER_WORKERS=4 nohup php artisan serve --no-reload --host=127.0.0.1 --port=8848 > storage/logs/serve.log 2>&1 &
+          for attempt in $(seq 1 30); do
+            curl --silent --fail --output /dev/null "$CMS_E2E_BASE_URL/login" && exit 0
+            sleep 1
+          done
+          echo "The application did not start" && cat storage/logs/serve.log && exit 1
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser scenarios
+        run: npx playwright test
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: cms-e2e-evidence
+          path: |
+            test-results/
+            storage/logs/
+          retention-days: 14
