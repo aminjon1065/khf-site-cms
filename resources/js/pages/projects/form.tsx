@@ -1,22 +1,27 @@
 import { useForm } from '@inertiajs/react';
-import { Images, Plus, Upload, X } from 'lucide-react';
-import { useRef, useState } from 'react';
+import { FolderKanban, Plus, Sliders, X } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { EditorCanvasBlock } from '@/cms/EditorCanvasBlock';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
+import {
+    CoverField,
+    EditorInspector,
+    InspectorSection,
+    SlugField,
+} from '@/cms/EditorInspector';
 import { useCan } from '@/lib/auth';
 import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
-import {
-    hasAnyTranslation,
-    hasRichText,
-    languageChecks,
-} from '@/lib/publication-languages';
+import { displayUrl, siteUrl, usePublicSiteUrl } from '@/lib/public-site';
+import { hasRichText, languageChecks } from '@/lib/publication-languages';
+import { slugify } from '@/lib/slugify';
 import { index, store, unpublish, update } from '@/routes/projects';
-import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
-import { Checkbox, Field, Input, Select, Textarea } from '@/ui/Field';
+import { Field, Input, Select, Textarea } from '@/ui/Field';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
+import { ReadinessWidget } from '@/ui/ReadinessWidget';
 import { RichEditor } from '@/ui/RichEditor';
 
 type LocaleMap = { ru: string; tg: string; en: string };
@@ -81,6 +86,14 @@ function emptyGoals(): GoalMap {
     return { ru: [], tg: [], en: [] };
 }
 
+/** Grows a textarea with its text, as the editor's title and lead do. */
+function fitHeight(element: HTMLTextAreaElement | null): void {
+    if (element) {
+        element.style.height = 'auto';
+        element.style.height = `${element.scrollHeight}px`;
+    }
+}
+
 export default function ProjectForm({
     project,
     reference,
@@ -89,10 +102,15 @@ export default function ProjectForm({
 }: Props) {
     const can = useCan();
     const isEdit = !!project;
+    const publicSiteUrl = usePublicSiteUrl();
     const [lang, setLang] = useState<ContentLocale>('ru');
+    const [sidebarOpen, setSidebarOpen] = useState(true);
     const [coverPicker, setCoverPicker] = useState(false);
+    // A cover picked from the media library; a file from the computer is
+    // previewed from the form data below.
     const [coverPreview, setCoverPreview] = useState<string | null>(null);
-    const coverFileRef = useRef<HTMLInputElement>(null);
+    const titleRef = useRef<HTMLTextAreaElement>(null);
+    const summaryRef = useRef<HTMLTextAreaElement>(null);
 
     const form = useForm({
         title: { ...EMPTY, ...project?.title } as LocaleMap,
@@ -125,18 +143,52 @@ export default function ProjectForm({
     const fieldError = (key: string): string | undefined =>
         (errors as Record<string, string | undefined>)[key];
 
+    useEffect(() => {
+        fitHeight(titleRef.current);
+        fitHeight(summaryRef.current);
+    }, [lang]);
+
+    const coverFileUrl = useMemo(
+        () => (data.cover ? URL.createObjectURL(data.cover) : null),
+        [data.cover],
+    );
+
+    useEffect(
+        () => () => {
+            if (coverFileUrl) {
+                URL.revokeObjectURL(coverFileUrl);
+            }
+        },
+        [coverFileUrl],
+    );
+
+    // The fresh pick (a file or the library) wins over the saved cover; a
+    // cover marked for removal isn't shown.
+    const coverSrc =
+        coverFileUrl ??
+        coverPreview ??
+        (project?.cover_url && !data.cover_remove ? project.cover_url : null);
+
     const pickCoverFromLibrary = (item: MediaItem) => {
-        setData('cover', null);
-        setData('cover_media_id', item.id);
-        setData('cover_remove', false);
+        setData((prev) => ({
+            ...prev,
+            cover: null,
+            cover_media_id: item.id,
+            cover_remove: false,
+        }));
         setCoverPreview(item.url);
         setCoverPicker(false);
     };
 
-    // Превью: свежий выбор (файл/медиатека) приоритетнее существующей обложки.
-    const coverSrc =
-        coverPreview ??
-        (project?.cover_url && !data.cover_remove ? project.cover_url : null);
+    const pickCoverFile = (file: File) => {
+        setData((prev) => ({
+            ...prev,
+            cover: file,
+            cover_media_id: null,
+            cover_remove: false,
+        }));
+        setCoverPreview(null);
+    };
 
     // A text cleared in the editor stays as `<p></p>`, which the server drops.
     const completeness = (locale: ContentLocale): number => {
@@ -175,6 +227,29 @@ export default function ProjectForm({
         value: string,
     ) => setData(field, { ...data[field], [lang]: value });
 
+    const handleCopyLocale = (from: ContentLocale, to: ContentLocale) => {
+        setData((prev) => ({
+            ...prev,
+            title: { ...prev.title, [to]: prev.title[from] },
+            summary: { ...prev.summary, [to]: prev.summary[from] },
+            body: { ...prev.body, [to]: prev.body[from] },
+            goals: { ...prev.goals, [to]: [...prev.goals[from]] },
+        }));
+    };
+
+    // The server makes the address from the title when it's left empty.
+    const titleForSlug =
+        data.title[lang]?.trim() ||
+        data.title.ru?.trim() ||
+        data.title.tg?.trim() ||
+        '';
+    const suggestedSlug = slugify(titleForSlug) || 'adres-proekta';
+    const generateSlug = () => {
+        if (titleForSlug) {
+            setData('slug', slugify(titleForSlug));
+        }
+    };
+
     // --- goals (per active language) ---
     const setGoals = (next: string[]) =>
         setData('goals', { ...data.goals, [lang]: next });
@@ -210,6 +285,47 @@ export default function ProjectForm({
     const setDirection = (key: keyof Direction, value: string) =>
         setData('direction', { ...data.direction, [key]: value });
 
+    // Readiness: what the project page needs before it goes out.
+    const hasTitle = data.title[lang].trim() !== '';
+    const hasSummary = data.summary[lang].trim() !== '';
+    const hasBody = hasRichText(data.body[lang]);
+    const hasYears = data.years.trim() !== '';
+    const hasCover = coverSrc !== null;
+    const hasBilingual =
+        data.title.tg.trim() !== '' && data.title.ru.trim() !== '';
+    const readinessItems = [
+        {
+            id: 'title',
+            label: `Название (${localeShort[lang]})`,
+            done: hasTitle,
+            weight: 25,
+        },
+        {
+            id: 'summary',
+            label: `Краткое описание (${localeShort[lang]})`,
+            done: hasSummary,
+            weight: 20,
+        },
+        {
+            id: 'body',
+            label: `Подробное описание (${localeShort[lang]})`,
+            done: hasBody,
+            weight: 20,
+        },
+        { id: 'years', label: 'Сроки проекта', done: hasYears, weight: 10 },
+        { id: 'cover', label: 'Обложка', done: hasCover, weight: 10 },
+        {
+            id: 'bilingual',
+            label: 'Заполнено на таджикском и русском',
+            done: hasBilingual,
+            weight: 15,
+        },
+    ];
+    const readinessScore = readinessItems.reduce(
+        (sum, item) => sum + (item.done ? item.weight : 0),
+        0,
+    );
+
     const submit = (
         action: 'draft' | 'submit',
         mode?: PublishMode,
@@ -244,6 +360,8 @@ export default function ProjectForm({
             pendingChange={pending_change}
             changesNeedApproval={changes_need_approval}
             canApprove={can('projects.approve')}
+            variant="gutenberg"
+            onCopyLocale={handleCopyLocale}
             title={isEdit ? 'Редактирование проекта' : 'Новый проект'}
             subtitle="Опишите проект, цели, ход реализации и контакты дирекции."
             backLabel="Проекты"
@@ -262,6 +380,20 @@ export default function ProjectForm({
             onSaveShortcut={() => submit('draft', undefined, true)}
             onSubmitReview={() => submit('submit', 'review')}
             onPublishNow={() => submit('submit', 'now')}
+            extraActions={
+                <Button
+                    variant={sidebarOpen ? 'primary' : 'secondary'}
+                    icon={<Sliders size={15} />}
+                    onClick={() => setSidebarOpen(!sidebarOpen)}
+                    title={
+                        sidebarOpen
+                            ? 'Скрыть панель настроек'
+                            : 'Показать панель настроек'
+                    }
+                >
+                    <span className="wp-topbar-label">Настройки</span>
+                </Button>
+            }
             autosave={{
                 contentType: 'projects',
                 contentId: project?.id ?? null,
@@ -284,81 +416,66 @@ export default function ProjectForm({
             }}
         >
             <div
-                className="cms-two-col"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1.7fr 1fr',
-                    gap: 16,
-                    alignItems: 'start',
-                }}
+                className={`wp-editor-layout ${sidebarOpen ? 'has-sidebar' : 'no-sidebar'}`}
             >
-                {/* ------------------------------------------------ main */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 14,
-                                flexWrap: 'wrap',
-                                gap: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Описание
-                            </h3>
-                        </div>
-
-                        <Field
-                            label="Название проекта"
-                            required={!hasAnyTranslation(data.title)}
-                            error={
-                                fieldError('title') ??
-                                fieldError(`title.${lang}`)
-                            }
-                        >
-                            <Input
+                {/* ------------------------------------------- Document Canvas */}
+                <main className="wp-editor-canvas-container" role="main">
+                    <div className="wp-editor-canvas">
+                        <div className="wp-title-wrapper">
+                            <textarea
+                                ref={titleRef}
+                                id={`project-title-${lang}`}
                                 value={data.title[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('title', e.target.value)
-                                }
-                                hasError={
-                                    !!(
-                                        fieldError('title') ??
-                                        fieldError(`title.${lang}`)
-                                    )
-                                }
+                                onChange={(e) => {
+                                    setLocaleField('title', e.target.value);
+                                    fitHeight(e.target);
+                                }}
                                 placeholder={
                                     lang === 'ru'
-                                        ? 'Например: Модернизация системы оповещения'
-                                        : 'Перевод названия'
+                                        ? 'Название проекта, например: Модернизация системы оповещения'
+                                        : lang === 'tg'
+                                          ? 'Название на таджикском…'
+                                          : 'Название на английском…'
                                 }
+                                className="wp-title-input"
+                                rows={1}
                                 maxLength={255}
+                                aria-label="Название проекта"
                             />
-                        </Field>
+                            {(fieldError('title') ??
+                                fieldError(`title.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('title') ??
+                                        fieldError(`title.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
-                        <Field
-                            label="Краткое описание"
-                            hint="Показывается в карточке проекта и как вступление."
-                        >
-                            <Textarea
+                        <div className="wp-lead-wrapper">
+                            <textarea
+                                ref={summaryRef}
+                                id={`project-summary-${lang}`}
                                 value={data.summary[lang]}
-                                onChange={(e) =>
-                                    setLocaleField('summary', e.target.value)
-                                }
-                                style={{ minHeight: 72 }}
+                                onChange={(e) => {
+                                    setLocaleField('summary', e.target.value);
+                                    fitHeight(e.target);
+                                }}
+                                placeholder="Краткое описание: показывается в карточке проекта и как вступление…"
+                                className="wp-lead-input"
+                                rows={2}
                                 maxLength={1000}
+                                aria-label="Краткое описание проекта"
                             />
-                        </Field>
+                            {(fieldError('summary') ??
+                                fieldError(`summary.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('summary') ??
+                                        fieldError(`summary.${lang}`)}
+                                </div>
+                            )}
+                        </div>
 
-                        <Field label="Подробное описание">
+                        <div className="wp-body-wrapper">
                             <RichEditor
                                 key={lang}
                                 value={data.body[lang]}
@@ -367,406 +484,352 @@ export default function ProjectForm({
                                 }
                                 placeholder="Подробно опишите проект…"
                             />
-                        </Field>
-                    </Blueprint>
-
-                    {/* ---------------------------------------- goals */}
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 10,
-                            }}
-                        >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Цели и задачи ({localeShort[lang]})
-                            </h3>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                icon={<Plus size={14} strokeWidth={2} />}
-                                onClick={addGoal}
-                            >
-                                Цель
-                            </Button>
+                            {(fieldError('body') ??
+                                fieldError(`body.${lang}`)) && (
+                                <div className="wp-field-error">
+                                    {fieldError('body') ??
+                                        fieldError(`body.${lang}`)}
+                                </div>
+                            )}
                         </div>
 
-                        {data.goals[lang].length === 0 ? (
-                            <p
-                                style={{
-                                    margin: 0,
-                                    fontSize: 12.5,
-                                    color: 'var(--color-neutral-500)',
-                                }}
-                            >
-                                Цели не добавлены.
-                            </p>
-                        ) : (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 6,
-                                }}
-                            >
-                                {data.goals[lang].map((goal, i) => (
-                                    <div
-                                        key={i}
-                                        style={{
-                                            display: 'flex',
-                                            gap: 6,
-                                            alignItems: 'flex-start',
-                                        }}
-                                    >
-                                        <span
-                                            className="ui-mono"
+                        <EditorCanvasBlock
+                            title={`Цели и задачи (${localeShort[lang]})`}
+                            hint="Список на выбранном языке: на сайте — отдельным блоком."
+                            action={
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon={<Plus size={14} strokeWidth={2} />}
+                                    onClick={addGoal}
+                                >
+                                    Добавить цель
+                                </Button>
+                            }
+                        >
+                            {data.goals[lang].length === 0 ? (
+                                <p className="wp-canvas-block-empty">
+                                    Цели не добавлены.
+                                </p>
+                            ) : (
+                                <div className="wp-canvas-block-rows">
+                                    {data.goals[lang].map((goal, i) => (
+                                        <div
+                                            key={i}
                                             style={{
-                                                width: 22,
-                                                paddingTop: 8,
-                                                fontSize: 12.5,
-                                                color: 'var(--color-neutral-500)',
+                                                display: 'flex',
+                                                gap: 6,
+                                                alignItems: 'flex-start',
                                             }}
                                         >
-                                            {String(i + 1).padStart(2, '0')}
-                                        </span>
-                                        <Textarea
-                                            aria-label={`Цель ${i + 1}`}
-                                            value={goal}
-                                            onChange={(e) =>
-                                                updateGoal(i, e.target.value)
-                                            }
-                                            style={{ minHeight: 40, flex: 1 }}
-                                            maxLength={1000}
-                                        />
-                                        <IconButton
-                                            label="Удалить цель"
-                                            variant="ghost"
-                                            onClick={() => removeGoal(i)}
-                                        >
-                                            <X size={15} strokeWidth={1.5} />
-                                        </IconButton>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Blueprint>
+                                            <span
+                                                className="ui-mono"
+                                                style={{
+                                                    width: 22,
+                                                    paddingTop: 8,
+                                                    fontSize: 12.5,
+                                                    color: 'var(--color-neutral-600)',
+                                                }}
+                                            >
+                                                {String(i + 1).padStart(2, '0')}
+                                            </span>
+                                            <Textarea
+                                                aria-label={`Цель ${i + 1}`}
+                                                value={goal}
+                                                onChange={(e) =>
+                                                    updateGoal(
+                                                        i,
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                style={{
+                                                    minHeight: 40,
+                                                    flex: 1,
+                                                }}
+                                                maxLength={1000}
+                                            />
+                                            <IconButton
+                                                label="Удалить цель"
+                                                variant="ghost"
+                                                onClick={() => removeGoal(i)}
+                                            >
+                                                <X
+                                                    size={15}
+                                                    strokeWidth={1.5}
+                                                />
+                                            </IconButton>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </EditorCanvasBlock>
 
-                    {/* ---------------------------------------- timeline */}
-                    <Blueprint style={{ padding: 20 }}>
-                        <div
-                            style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                alignItems: 'center',
-                                marginBottom: 4,
-                            }}
+                        <EditorCanvasBlock
+                            title="Ход реализации"
+                            hint="Этапы проекта — общие для всех языков."
+                            action={
+                                <Button
+                                    variant="secondary"
+                                    size="sm"
+                                    icon={<Plus size={14} strokeWidth={2} />}
+                                    onClick={addTimeline}
+                                >
+                                    Добавить этап
+                                </Button>
+                            }
                         >
-                            <h3 className="ui-card-title" style={{ margin: 0 }}>
-                                Ход реализации
-                            </h3>
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                icon={<Plus size={14} strokeWidth={2} />}
-                                onClick={addTimeline}
-                            >
-                                Этап
-                            </Button>
+                            {data.timeline.length === 0 ? (
+                                <p className="wp-canvas-block-empty">
+                                    Этапы не добавлены.
+                                </p>
+                            ) : (
+                                <div className="wp-canvas-block-rows">
+                                    {data.timeline.map((item, i) => (
+                                        <div
+                                            key={i}
+                                            className="cms-stack-narrow"
+                                            style={{
+                                                display: 'grid',
+                                                gridTemplateColumns:
+                                                    '150px 1fr 130px 34px',
+                                                gap: 6,
+                                                alignItems: 'start',
+                                            }}
+                                        >
+                                            <Input
+                                                aria-label={`Этап ${i + 1}: когда`}
+                                                value={item.date}
+                                                onChange={(e) =>
+                                                    updateTimeline(
+                                                        i,
+                                                        'date',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Июнь 2026"
+                                                maxLength={100}
+                                            />
+                                            <Textarea
+                                                aria-label={`Этап ${i + 1}: что сделано или запланировано`}
+                                                value={item.text}
+                                                onChange={(e) =>
+                                                    updateTimeline(
+                                                        i,
+                                                        'text',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                                placeholder="Что сделано / запланировано"
+                                                style={{ minHeight: 38 }}
+                                                maxLength={1000}
+                                            />
+                                            <Select
+                                                aria-label={`Этап ${i + 1}: состояние`}
+                                                value={item.tone}
+                                                options={TONE_OPTIONS}
+                                                onChange={(e) =>
+                                                    updateTimeline(
+                                                        i,
+                                                        'tone',
+                                                        e.target.value,
+                                                    )
+                                                }
+                                            />
+                                            <IconButton
+                                                label="Удалить этап"
+                                                variant="ghost"
+                                                onClick={() =>
+                                                    removeTimeline(i)
+                                                }
+                                            >
+                                                <X
+                                                    size={15}
+                                                    strokeWidth={1.5}
+                                                />
+                                            </IconButton>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </EditorCanvasBlock>
+                    </div>
+                </main>
+
+                {/* --------------------------------- Inspector Sidebar */}
+                {sidebarOpen && (
+                    <EditorInspector
+                        label="Настройки проекта"
+                        title={
+                            <>
+                                <FolderKanban size={15} />
+                                <span>Проект</span>
+                            </>
+                        }
+                        onClose={() => setSidebarOpen(false)}
+                    >
+                        <div className="wp-inspector-section">
+                            <ReadinessWidget
+                                title="Готовность проекта"
+                                score={readinessScore}
+                                items={readinessItems}
+                            />
                         </div>
-                        <p
-                            style={{
-                                margin: '0 0 12px',
-                                fontSize: 12.5,
-                                color: 'var(--color-neutral-600)',
-                            }}
-                        >
-                            Общая хронология проекта (единая для всех языков).
-                        </p>
 
-                        {data.timeline.length === 0 ? (
-                            <p
-                                style={{
-                                    margin: 0,
-                                    fontSize: 12.5,
-                                    color: 'var(--color-neutral-500)',
-                                }}
-                            >
-                                Этапы не добавлены.
-                            </p>
-                        ) : (
-                            <div
-                                style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    gap: 10,
-                                }}
-                            >
-                                {data.timeline.map((item, i) => (
-                                    <div
-                                        key={i}
-                                        className="cms-stack-narrow"
-                                        style={{
-                                            display: 'grid',
-                                            gridTemplateColumns:
-                                                '150px 1fr 130px 34px',
-                                            gap: 6,
-                                            alignItems: 'start',
-                                        }}
-                                    >
-                                        <Input
-                                            aria-label={`Этап ${i + 1}: когда`}
-                                            value={item.date}
-                                            onChange={(e) =>
-                                                updateTimeline(
-                                                    i,
-                                                    'date',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            placeholder="Июнь 2026"
-                                        />
-                                        <Textarea
-                                            aria-label={`Этап ${i + 1}: что сделано или запланировано`}
-                                            value={item.text}
-                                            onChange={(e) =>
-                                                updateTimeline(
-                                                    i,
-                                                    'text',
-                                                    e.target.value,
-                                                )
-                                            }
-                                            placeholder="Что сделано / запланировано"
-                                            style={{ minHeight: 38 }}
-                                        />
-                                        <Select
-                                            aria-label={`Этап ${i + 1}: состояние`}
-                                            value={item.tone}
-                                            options={TONE_OPTIONS}
-                                            onChange={(e) =>
-                                                updateTimeline(
-                                                    i,
-                                                    'tone',
-                                                    e.target.value,
-                                                )
-                                            }
-                                        />
-                                        <IconButton
-                                            label="Удалить этап"
-                                            variant="ghost"
-                                            onClick={() => removeTimeline(i)}
-                                        >
-                                            <X size={15} strokeWidth={1.5} />
-                                        </IconButton>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </Blueprint>
-                </div>
-
-                {/* --------------------------------------------- sidebar */}
-                <div
-                    style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: 16,
-                    }}
-                >
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Параметры
-                        </h3>
-
-                        <Field
-                            label="Статус проекта"
-                            required
-                            error={fieldError('lifecycle_status')}
-                        >
-                            <Select
-                                value={data.lifecycle_status}
-                                options={reference.lifecycles}
-                                onChange={(e) =>
-                                    setData('lifecycle_status', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Код проекта">
-                            <Input
-                                value={data.code}
-                                onChange={(e) =>
-                                    setData('code', e.target.value)
-                                }
-                                placeholder="Проект 01"
-                            />
-                        </Field>
-                        <Field label="Сроки">
-                            <Input
-                                value={data.years}
-                                onChange={(e) =>
-                                    setData('years', e.target.value)
-                                }
-                                placeholder="2026–2030"
-                            />
-                        </Field>
-                        <Field label="Заказчик">
-                            <Input
-                                value={data.customer}
-                                onChange={(e) =>
-                                    setData('customer', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Партнёры">
-                            <Input
-                                value={data.partner}
-                                onChange={(e) =>
-                                    setData('partner', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Бюджет">
-                            <Input
-                                value={data.budget}
-                                onChange={(e) =>
-                                    setData('budget', e.target.value)
-                                }
-                                placeholder="18,4 млн долл. США"
-                            />
-                        </Field>
-                        <Field
-                            label="Адрес ссылки"
-                            hint="Если пусто — составится из названия."
-                            error={fieldError('slug')}
-                        >
-                            <Input
+                        <InspectorSection title="Публикация">
+                            <SlugField
+                                id="project-slug"
                                 value={data.slug}
-                                onChange={(e) =>
-                                    setData('slug', e.target.value)
-                                }
-                                hasError={!!fieldError('slug')}
-                                placeholder="sistema-opoveshcheniya"
+                                onChange={(value) => setData('slug', value)}
+                                onGenerate={generateSlug}
+                                prefix={displayUrl(
+                                    siteUrl(publicSiteUrl, '/projects/', lang),
+                                )}
+                                placeholder={suggestedSlug}
+                                error={fieldError('slug')}
                             />
-                        </Field>
-                    </Blueprint>
+                        </InspectorSection>
 
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Дирекция проекта
-                        </h3>
-                        <Field label="Адрес">
-                            <Input
-                                value={data.direction.address}
-                                onChange={(e) =>
-                                    setDirection('address', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Телефон">
-                            <Input
-                                value={data.direction.phone}
-                                onChange={(e) =>
-                                    setDirection('phone', e.target.value)
-                                }
-                            />
-                        </Field>
-                        <Field label="Эл. почта">
-                            <Input
-                                value={data.direction.email}
-                                onChange={(e) =>
-                                    setDirection('email', e.target.value)
-                                }
-                            />
-                        </Field>
-                    </Blueprint>
+                        <InspectorSection title="Параметры проекта">
+                            <Field
+                                label="Статус проекта"
+                                required
+                                error={fieldError('lifecycle_status')}
+                            >
+                                <Select
+                                    value={data.lifecycle_status}
+                                    options={reference.lifecycles}
+                                    onChange={(e) =>
+                                        setData(
+                                            'lifecycle_status',
+                                            e.target.value,
+                                        )
+                                    }
+                                />
+                            </Field>
+                            <Field
+                                label="Код проекта"
+                                error={fieldError('code')}
+                            >
+                                <Input
+                                    value={data.code}
+                                    onChange={(e) =>
+                                        setData('code', e.target.value)
+                                    }
+                                    placeholder="Проект 01"
+                                    maxLength={100}
+                                />
+                            </Field>
+                            <Field label="Сроки" error={fieldError('years')}>
+                                <Input
+                                    value={data.years}
+                                    onChange={(e) =>
+                                        setData('years', e.target.value)
+                                    }
+                                    placeholder="2026–2030"
+                                    maxLength={100}
+                                />
+                            </Field>
+                            <Field
+                                label="Заказчик"
+                                error={fieldError('customer')}
+                            >
+                                <Input
+                                    value={data.customer}
+                                    onChange={(e) =>
+                                        setData('customer', e.target.value)
+                                    }
+                                    maxLength={255}
+                                />
+                            </Field>
+                            <Field
+                                label="Партнёры"
+                                error={fieldError('partner')}
+                            >
+                                <Input
+                                    value={data.partner}
+                                    onChange={(e) =>
+                                        setData('partner', e.target.value)
+                                    }
+                                    maxLength={255}
+                                />
+                            </Field>
+                            <Field label="Бюджет" error={fieldError('budget')}>
+                                <Input
+                                    value={data.budget}
+                                    onChange={(e) =>
+                                        setData('budget', e.target.value)
+                                    }
+                                    placeholder="18,4 млн долл. США"
+                                    maxLength={255}
+                                />
+                            </Field>
+                        </InspectorSection>
 
-                    <Blueprint style={{ padding: 20 }}>
-                        <h3
-                            className="ui-card-title"
-                            style={{ marginTop: 0, marginBottom: 14 }}
-                        >
-                            Обложка
-                        </h3>
-                        {coverSrc && (
-                            <img
+                        <InspectorSection title="Дирекция проекта">
+                            <Field
+                                label="Адрес"
+                                error={fieldError('direction.address')}
+                            >
+                                <Input
+                                    value={data.direction.address}
+                                    onChange={(e) =>
+                                        setDirection('address', e.target.value)
+                                    }
+                                    maxLength={255}
+                                />
+                            </Field>
+                            <Field
+                                label="Телефон"
+                                error={fieldError('direction.phone')}
+                            >
+                                <Input
+                                    value={data.direction.phone}
+                                    onChange={(e) =>
+                                        setDirection('phone', e.target.value)
+                                    }
+                                    maxLength={100}
+                                />
+                            </Field>
+                            <Field
+                                label="Эл. почта"
+                                error={fieldError('direction.email')}
+                            >
+                                <Input
+                                    value={data.direction.email}
+                                    onChange={(e) =>
+                                        setDirection('email', e.target.value)
+                                    }
+                                    type="email"
+                                    maxLength={255}
+                                />
+                            </Field>
+                        </InspectorSection>
+
+                        <InspectorSection title="Обложка">
+                            <CoverField
                                 src={coverSrc}
-                                alt=""
-                                style={{
-                                    width: '100%',
-                                    borderRadius: 6,
-                                    marginBottom: 10,
-                                    border: '1px solid var(--color-divider)',
-                                }}
-                            />
-                        )}
-
-                        <input
-                            ref={coverFileRef}
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            hidden
-                            onChange={(e) => {
-                                const file = e.target.files?.[0] ?? null;
-
-                                if (file) {
-                                    setData('cover', file);
-                                    setData('cover_media_id', null);
-                                    setData('cover_remove', false);
-                                    setCoverPreview(URL.createObjectURL(file));
+                                removable={!!project?.cover_url}
+                                removed={data.cover_remove}
+                                onRemovedChange={(removed) =>
+                                    setData('cover_remove', removed)
                                 }
-
-                                e.target.value = '';
-                            }}
-                        />
-                        <div
-                            style={{
-                                display: 'flex',
-                                gap: 8,
-                                flexWrap: 'wrap',
-                            }}
-                        >
-                            <Button
-                                variant="secondary"
-                                icon={<Upload size={15} strokeWidth={1.75} />}
-                                onClick={() => coverFileRef.current?.click()}
-                            >
-                                Загрузить
-                            </Button>
-                            <Button
-                                variant="secondary"
-                                icon={<Images size={15} strokeWidth={1.75} />}
-                                onClick={() => setCoverPicker(true)}
-                            >
-                                Из медиатеки
-                            </Button>
-                        </div>
-
-                        {project?.cover_url && (
-                            <Checkbox
-                                className="mt-2"
-                                label="Удалить текущую обложку"
-                                checked={data.cover_remove}
-                                onChange={(e) =>
-                                    setData('cover_remove', e.target.checked)
+                                onFile={pickCoverFile}
+                                onOpenLibrary={() => setCoverPicker(true)}
+                                error={
+                                    fieldError('cover') ??
+                                    fieldError('cover_media_id')
                                 }
                             />
-                        )}
-
-                        <MediaPicker
-                            open={coverPicker}
-                            onClose={() => setCoverPicker(false)}
-                            onSelect={pickCoverFromLibrary}
-                        />
-                    </Blueprint>
-                </div>
+                        </InspectorSection>
+                    </EditorInspector>
+                )}
             </div>
+
+            <MediaPicker
+                open={coverPicker}
+                onClose={() => setCoverPicker(false)}
+                onSelect={pickCoverFromLibrary}
+            />
         </EditorialFormShell>
     );
 }

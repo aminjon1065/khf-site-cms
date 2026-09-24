@@ -3934,6 +3934,42 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     color: var(--danger-text);
 }
 
+/* Structured content on the canvas, below the text (EditorCanvasBlock):
+   a project's goals and timeline, a document's files. */
+.wp-canvas-block {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--color-divider);
+}
+
+.wp-canvas-block-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.wp-canvas-block-title {
+    margin: 0;
+    font-family: var(--font-heading);
+    font-size: 16px;
+    font-weight: 700;
+}
+
+.wp-canvas-block-hint,
+.wp-canvas-block-empty {
+    margin: 2px 0 0;
+    font-size: 12.5px;
+    color: var(--color-neutral-600);
+}
+
+.wp-canvas-block-rows {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
 /* ==================== WordPress Inspector Sidebar ======================== */
 .wp-inspector {
     width: 360px;
@@ -3998,6 +4034,11 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
 .wp-inspector-tab:hover {
     color: var(--color-text);
     background: var(--color-surface);
+}
+
+/* The panel's name when it has no tabs (EditorInspector). */
+span.wp-inspector-tab {
+    cursor: default;
 }
 
 .wp-inspector-tab.is-active {
@@ -4093,6 +4134,8 @@ a.ui-metric-link[data-loading] .ui-metric.is-link {
     align-items: center;
     justify-content: center;
     gap: 8px;
+    width: 100%;
+    font: inherit;
     padding: 24px 16px;
     border: 1.5px dashed var(--color-divider-strong);
     border-radius: var(--radius-md);
