@@ -201,7 +201,10 @@ export default function RolesIndex({
                     >
                         <thead>
                             <tr>
-                                <th scope="col" style={headCell}>
+                                <th
+                                    scope="col"
+                                    style={{ ...headCell, ...stickyColumn }}
+                                >
                                     Раздел
                                 </th>
                                 {roles.map((role) => (
@@ -223,7 +226,14 @@ export default function RolesIndex({
                                         colSpan={roles.length + 1}
                                         style={groupCell}
                                     >
-                                        {group.label}
+                                        <span
+                                            style={{
+                                                position: 'sticky',
+                                                left: 18,
+                                            }}
+                                        >
+                                            {group.label}
+                                        </span>
                                     </th>
                                 </tr>
                                 {group.modules.map((value) => {
@@ -241,7 +251,13 @@ export default function RolesIndex({
                                                     '1px solid var(--color-divider)',
                                             }}
                                         >
-                                            <th scope="row" style={rowCell}>
+                                            <th
+                                                scope="row"
+                                                style={{
+                                                    ...rowCell,
+                                                    ...stickyColumn,
+                                                }}
+                                            >
                                                 {module.label}
                                             </th>
                                             {roles.map((role) => (
@@ -290,11 +306,21 @@ const rowCell = {
     textAlign: 'left',
     padding: '9px 18px',
     fontWeight: 500,
-    minWidth: 160,
+    minWidth: 140,
 } as const;
 
 const bodyCell = {
     padding: '9px 18px',
     color: 'var(--color-neutral-700)',
-    minWidth: 150,
+    minWidth: 210,
+} as const;
+
+/**
+ * On a phone the table scrolls sideways: the section names stay in view.
+ */
+const stickyColumn = {
+    position: 'sticky',
+    left: 0,
+    zIndex: 1,
+    background: 'var(--color-surface)',
 } as const;

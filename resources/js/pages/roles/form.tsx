@@ -217,7 +217,11 @@ export default function RoleForm({
                             <tr>
                                 <th
                                     scope="col"
-                                    style={{ ...headCell, textAlign: 'left' }}
+                                    style={{
+                                        ...headCell,
+                                        ...stickyColumn,
+                                        textAlign: 'left',
+                                    }}
                                 >
                                     Раздел
                                 </th>
@@ -240,7 +244,14 @@ export default function RoleForm({
                                         colSpan={actions.length + 1}
                                         style={groupCell}
                                     >
-                                        {group.label}
+                                        <span
+                                            style={{
+                                                position: 'sticky',
+                                                left: 18,
+                                            }}
+                                        >
+                                            {group.label}
+                                        </span>
                                     </th>
                                 </tr>
                                 {group.modules.map((value) => {
@@ -258,7 +269,13 @@ export default function RoleForm({
                                                     '1px solid var(--color-divider)',
                                             }}
                                         >
-                                            <th scope="row" style={rowCell}>
+                                            <th
+                                                scope="row"
+                                                style={{
+                                                    ...rowCell,
+                                                    ...stickyColumn,
+                                                }}
+                                            >
                                                 {module.label}
                                             </th>
                                             {actions.map((a) => {
@@ -295,6 +312,10 @@ export default function RoleForm({
                                                                 }
                                                                 color="var(--color-neutral-400)"
                                                                 aria-hidden
+                                                                style={{
+                                                                    // Tailwind makes svg a block: centre it in the cell.
+                                                                    margin: '0 auto',
+                                                                }}
                                                             />
                                                             <span className="sr-only">
                                                                 Только
@@ -466,4 +487,14 @@ const rowCell = {
 const cell = {
     textAlign: 'center',
     padding: '8px',
+} as const;
+
+/**
+ * On a phone the table scrolls sideways: the section names stay in view.
+ */
+const stickyColumn = {
+    position: 'sticky',
+    left: 0,
+    zIndex: 1,
+    background: 'var(--color-surface)',
 } as const;

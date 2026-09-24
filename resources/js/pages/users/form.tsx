@@ -239,7 +239,7 @@ export default function UserForm({ user, reference }: Props) {
                         />
                     </Field>
                     {data.role !== 'admin' && (
-                        <div style={{ margin: '-4px 0 12px' }}>
+                        <div style={{ margin: '8px 0 12px' }}>
                             <Checkbox
                                 label="Только свои материалы и предупреждения этого региона"
                                 checked={
