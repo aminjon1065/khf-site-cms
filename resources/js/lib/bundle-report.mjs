@@ -9,14 +9,31 @@ import { gzipSync } from 'node:zlib';
 // 537.2 KiB — редактор TipTap, CSS 130.3 KiB). Бюджеты подняты к факту
 // с небольшим запасом, чтобы гейт снова ловил рост, а не историю;
 // план по сокращению крупного чанка — отдельно.
+//
+// 2026-09-24: Rolldown вклеил рантайм (React, Inertia) в entry — теперь он
+// отдельной группой `framework` (vite.config.ts), entry снова 233 KiB.
+// Чтобы перекладывание кода между чанками не прятало рост, добавлен бюджет
+// начальной загрузки: entry со всеми статическими импортами — 542.8 KiB.
+// Редактор (566.6 KiB: меню «/», галереи, блоки) и CSS (161.6 KiB: стили
+// редактора wp-*/re-*) выросли вместе с редактором «как в WordPress»;
+// бюджеты подняты к факту с тем же небольшим запасом.
 export const CMS_BUNDLE_BUDGETS = {
     entryBytes: 240 * 1024,
-    largestJavaScriptBytes: 550 * 1024,
-    largestCssBytes: 132 * 1024,
-    totalJavaScriptBytes: 1650 * 1024,
+    initialJavaScriptBytes: 560 * 1024,
+    largestJavaScriptBytes: 580 * 1024,
+    largestCssBytes: 166 * 1024,
+    totalJavaScriptBytes: 1800 * 1024,
 };
 
-export function evaluateCmsBundle(files, entryFile) {
+/**
+ * @param initialFiles chunks the browser loads before the first page renders:
+ *   the entry and everything it imports statically.
+ */
+export function evaluateCmsBundle(
+    files,
+    entryFile,
+    initialFiles = [entryFile],
+) {
     const javascript = files.filter((file) => file.extension === '.js');
     const css = files.filter((file) => file.extension === '.css');
     const entry = files.find((file) => file.path === entryFile);
@@ -28,6 +45,9 @@ export function evaluateCmsBundle(files, entryFile) {
     )[0];
     const metrics = {
         entryBytes: entry?.bytes ?? 0,
+        initialJavaScriptBytes: javascript
+            .filter((file) => initialFiles.includes(file.path))
+            .reduce((total, file) => total + file.bytes, 0),
         largestJavaScriptBytes: largestJavaScript?.bytes ?? 0,
         largestCssBytes: largestCss?.bytes ?? 0,
         totalJavaScriptBytes: javascript.reduce(
@@ -51,6 +71,21 @@ export function evaluateCmsBundle(files, entryFile) {
             css: largestCss ?? null,
         },
     };
+}
+
+/**
+ * Manifest keys of the chunks `key` imports statically, transitively — what
+ * the browser has to load together with it (Laravel's @vite preloads them).
+ */
+export function staticImportsOf(manifest, key, found = new Set()) {
+    for (const imported of manifest[key]?.imports ?? []) {
+        if (!found.has(imported)) {
+            found.add(imported);
+            staticImportsOf(manifest, imported, found);
+        }
+    }
+
+    return found;
 }
 
 async function createCmsBundleReport(root) {
@@ -86,11 +121,19 @@ async function createCmsBundleReport(root) {
         );
     }
 
+    const initialFiles = [
+        entryFile,
+        ...[...staticImportsOf(manifest, 'resources/js/app.tsx')].map(
+            (key) => manifest[key].file,
+        ),
+    ];
+
     return {
         generatedAt: new Date().toISOString(),
         entryFile,
+        initialFiles,
         files: files.toSorted((left, right) => right.bytes - left.bytes),
-        ...evaluateCmsBundle(files, entryFile),
+        ...evaluateCmsBundle(files, entryFile, initialFiles),
     };
 }
 
@@ -114,6 +157,7 @@ Generated: ${report.generatedAt}
 | Budget | Current | Limit |
 | --- | ---: | ---: |
 | Entry JavaScript | ${formatBytes(report.metrics.entryBytes)} | ${formatBytes(report.budgets.entryBytes)} |
+| Initial JavaScript (entry + static imports) | ${formatBytes(report.metrics.initialJavaScriptBytes)} | ${formatBytes(report.budgets.initialJavaScriptBytes)} |
 | Largest JavaScript chunk | ${formatBytes(report.metrics.largestJavaScriptBytes)} | ${formatBytes(report.budgets.largestJavaScriptBytes)} |
 | Largest CSS asset | ${formatBytes(report.metrics.largestCssBytes)} | ${formatBytes(report.budgets.largestCssBytes)} |
 | Total JavaScript | ${formatBytes(report.metrics.totalJavaScriptBytes)} | ${formatBytes(report.budgets.totalJavaScriptBytes)} |
@@ -142,7 +186,7 @@ async function main() {
     ]);
 
     console.log(
-        `CMS bundle: entry ${formatBytes(report.metrics.entryBytes)}, largest JS ${formatBytes(report.metrics.largestJavaScriptBytes)}, total JS ${formatBytes(report.metrics.totalJavaScriptBytes)}.`,
+        `CMS bundle: entry ${formatBytes(report.metrics.entryBytes)}, initial JS ${formatBytes(report.metrics.initialJavaScriptBytes)}, largest JS ${formatBytes(report.metrics.largestJavaScriptBytes)}, total JS ${formatBytes(report.metrics.totalJavaScriptBytes)}.`,
     );
 
     if (report.violations.length > 0) {
