@@ -51,6 +51,10 @@ test('an undescribed photo is flagged, described on the spot or marked decorativ
 
     // The file name is not a description: describe the first photo.
     await flags.first().click();
+    // The flag opens the photo's description field and puts the cursor there.
+    await expect(
+        page.getByPlaceholder('Что на фото — для незрячих читателей'),
+    ).toBeFocused();
     await page.keyboard.type('Спасатели на учениях в Хатлоне');
     await expect(flags).toHaveCount(1);
 
