@@ -480,7 +480,10 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                                             flexDirection: 'column',
                                             alignItems: 'center',
                                             gap: 6,
-                                            color: 'var(--color-neutral-500)',
+                                            // 600, not 500: the file type must
+                                            // stay readable on the grey tile
+                                            // (WCAG 4.5:1) in both themes.
+                                            color: 'var(--color-neutral-600)',
                                         }}
                                     >
                                         <FileText size={34} strokeWidth={1.4} />
