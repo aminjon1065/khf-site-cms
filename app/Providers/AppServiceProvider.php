@@ -114,12 +114,13 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * Superadmins bypass every gate; everything else falls through to policies.
+     * The administrator passes every gate — even a right added in a release
+     * before the seeders ran; everyone else falls through to policies.
      */
     protected function configureAuthorization(): void
     {
         Gate::before(function (User $user, string $ability): ?bool {
-            return $user->hasRole(RoleName::Superadmin->value) ? true : null;
+            return $user->hasRole(RoleName::Admin->value) ? true : null;
         });
     }
 

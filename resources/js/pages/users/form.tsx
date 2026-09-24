@@ -21,6 +21,7 @@ interface UserData {
     email: string;
     role: string | null;
     region_id: number | null;
+    limited_to_region: boolean;
     position: string | null;
     department: string | null;
     is_active: boolean;
@@ -49,6 +50,7 @@ export default function UserForm({ user, reference }: Props) {
         // (the first option used to be «Суперадминистратор»).
         role: user?.role ?? '',
         region_id: (user?.region_id ?? '') as number | '',
+        limited_to_region: user?.limited_to_region ?? false,
         position: user?.position ?? '',
         department: user?.department ?? '',
         is_active: user?.is_active ?? true,
@@ -62,6 +64,8 @@ export default function UserForm({ user, reference }: Props) {
         form.transform((d) => ({
             ...d,
             region_id: d.region_id === '' ? null : d.region_id,
+            limited_to_region:
+                d.limited_to_region && d.region_id !== '' && d.role !== 'admin',
         }));
 
         if (isEdit && user) {
@@ -206,7 +210,11 @@ export default function UserForm({ user, reference }: Props) {
                             {roleDescription}
                         </p>
                     )}
-                    <Field label="Регион" hint="Для региональных ролей.">
+                    <Field
+                        label="Регион"
+                        hint="Где работает сотрудник."
+                        error={fieldError('region_id')}
+                    >
                         <Select
                             value={
                                 data.region_id === ''
@@ -230,6 +238,35 @@ export default function UserForm({ user, reference }: Props) {
                             }
                         />
                     </Field>
+                    {data.role !== 'admin' && (
+                        <div style={{ margin: '-4px 0 12px' }}>
+                            <Checkbox
+                                label="Только свои материалы и предупреждения этого региона"
+                                checked={
+                                    data.limited_to_region &&
+                                    data.region_id !== ''
+                                }
+                                disabled={data.region_id === ''}
+                                onChange={(e) =>
+                                    setData(
+                                        'limited_to_region',
+                                        e.target.checked,
+                                    )
+                                }
+                            />
+                            <p
+                                style={{
+                                    margin: '4px 0 0 26px',
+                                    fontSize: 12,
+                                    color: 'var(--color-neutral-500)',
+                                }}
+                            >
+                                {data.region_id === ''
+                                    ? 'Сначала выберите регион.'
+                                    : 'Для сотрудников региональных управлений: чужие материалы и предупреждения других регионов им не видны.'}
+                            </p>
+                        </div>
+                    )}
                     <div style={{ marginTop: 8 }}>
                         <Checkbox
                             label="Учётная запись активна"

@@ -10,8 +10,8 @@ export function useAuth(): AuthUser | null {
 }
 
 /**
- * Permission checker. Superadmins pass everything; otherwise the ability must
- * be present in the user's flattened permission list.
+ * Permission checker. The administrator passes everything; otherwise the
+ * ability must be present in the user's flattened permission list.
  */
 export function useCan(): (ability: string) => boolean {
     const user = useAuth();
@@ -21,6 +21,6 @@ export function useCan(): (ability: string) => boolean {
             return false;
         }
 
-        return user.is_super || user.permissions.includes(ability);
+        return user.is_admin || user.permissions.includes(ability);
     };
 }

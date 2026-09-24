@@ -3,11 +3,11 @@
 use App\Models\Alert;
 use App\Models\News;
 use App\Models\Page;
+use App\Models\Role;
 use App\Models\Submission;
 use App\Models\User;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\UserSeeder;
-use Spatie\Permission\Models\Role;
 
 beforeEach(function (): void {
     config()->set('seeding.source.path', base_path('tests/Fixtures/source'));
@@ -20,7 +20,7 @@ it('seeds only reference data in production — no demo accounts, no sample cont
     // operator runs.
     $this->artisan('db:seed', ['--class' => DatabaseSeeder::class, '--force' => true])->assertSuccessful();
 
-    expect(Role::query()->where('name', 'superadmin')->exists())->toBeTrue()
+    expect(Role::query()->orderBy('name')->pluck('name')->all())->toBe(['admin', 'chief_editor', 'editor'])
         ->and(Page::query()->where('slug', 'about')->exists())->toBeTrue()
         ->and(User::query()->count())->toBe(0)
         ->and(Alert::query()->count())->toBe(0)

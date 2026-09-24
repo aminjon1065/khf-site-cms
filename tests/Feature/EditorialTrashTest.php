@@ -76,11 +76,12 @@ it('restores a material without changing its workflow status', function () {
 });
 
 it('forbids restore without delete permission', function () {
-    $chiefEditor = editorialTrashUser('chief_editor');
+    // An editor sees instructions but may not delete them.
+    $editor = editorialTrashUser('editor');
     $instruction = Instruction::factory()->create();
     $instruction->delete();
 
-    actingAs($chiefEditor)
+    actingAs($editor)
         ->post("/editorial/trash/instructions/{$instruction->id}/restore")
         ->assertForbidden();
 

@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\User;
 
-use App\Enums\RoleName;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
@@ -36,8 +36,9 @@ class UserRequest extends FormRequest
                 'confirmed',
                 Password::default(),
             ],
-            'role' => ['required', Rule::in(array_map(fn (RoleName $r): string => $r->value, RoleName::cases()))],
-            'region_id' => ['nullable', 'integer', Rule::exists('regions', 'id')],
+            'role' => ['required', 'string', Rule::exists(Role::class, 'name')->where('guard_name', 'web')],
+            'region_id' => ['nullable', 'integer', Rule::exists('regions', 'id'), 'required_if_accepted:limited_to_region'],
+            'limited_to_region' => ['boolean'],
             'position' => ['nullable', 'string', 'max:255'],
             'department' => ['nullable', 'string', 'max:255'],
             'interface_locale' => ['nullable', Rule::in(['tg', 'ru'])],
@@ -57,6 +58,8 @@ class UserRequest extends FormRequest
             'password.required' => 'Задайте пароль.',
             'password.confirmed' => 'Пароли не совпадают.',
             'role.required' => 'Выберите роль.',
+            'role.exists' => 'Такой роли нет — выберите из списка.',
+            'region_id.required_if_accepted' => 'Чтобы ограничить сотрудника регионом, выберите регион.',
         ];
     }
 }

@@ -1,34 +1,41 @@
 import { Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Check, MapPin, Minus } from 'lucide-react';
-import { useState } from 'react';
+import { ArrowLeft, Pencil, Plus, ShieldCheck } from 'lucide-react';
+import RoleController from '@/actions/App/Http/Controllers/Cms/RoleController';
 import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
+import { plural } from '@/lib/plural';
+import { MODULE_GROUPS, rightsSummary } from '@/lib/roles';
+import type { RightsAction, RightsMatrix, RightsModule } from '@/lib/roles';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
+import { LinkButton } from '@/ui/Button';
 import { PageHeader } from '@/ui/PageHeader';
 
-interface Option {
-    value: string;
-    label: string;
-}
-
 interface Role {
+    id: number;
     value: string;
     label: string;
-    description: string;
-    region_scoped: boolean;
+    description: string | null;
+    is_administrator: boolean;
+    is_built_in: boolean;
     user_count: number;
-    matrix: Record<string, Record<string, boolean>>;
+    matrix: RightsMatrix;
+    needs_two_factor: boolean;
 }
 
 interface Props {
     roles: Role[];
-    modules: Option[];
-    actions: Option[];
+    modules: RightsModule[];
+    actions: RightsAction[];
+    can_manage: boolean;
 }
 
-export default function RolesIndex({ roles, modules, actions }: Props) {
-    const [active, setActive] = useState<string>(roles[0]?.value ?? '');
-    const role = roles.find((r) => r.value === active) ?? roles[0];
+export default function RolesIndex({
+    roles,
+    modules,
+    actions,
+    can_manage,
+}: Props) {
+    const moduleByValue = new Map(modules.map((m) => [m.value, m]));
 
     return (
         <>
@@ -49,208 +56,245 @@ export default function RolesIndex({ roles, modules, actions }: Props) {
                     </Link>
                 }
                 title="Роли и права"
-                subtitle="Таблица прав доступа. Роли заданы в системе и не редактируются вручную."
+                subtitle={
+                    can_manage
+                        ? 'Роль определяет, что сотрудник может делать в системе. Права ролей можно изменить, а для особых случаев — создать свою роль.'
+                        : 'Что может каждая роль. Роли и права настраивает администратор.'
+                }
+                actions={
+                    can_manage && (
+                        <LinkButton
+                            href={RoleController.create.url()}
+                            variant="primary"
+                            icon={<Plus size={16} strokeWidth={1.75} />}
+                        >
+                            Добавить роль
+                        </LinkButton>
+                    )
+                }
             />
 
             <div
-                className="cms-two-col"
                 style={{
                     display: 'grid',
-                    gridTemplateColumns: 'minmax(240px, 320px) 1fr',
-                    gap: 16,
-                    alignItems: 'start',
+                    gridTemplateColumns:
+                        'repeat(auto-fill, minmax(260px, 1fr))',
+                    gap: 12,
+                    marginBottom: 16,
                 }}
             >
-                {/* Список ролей */}
-                <div
-                    style={{ display: 'flex', flexDirection: 'column', gap: 8 }}
-                >
-                    {roles.map((r) => {
-                        const selected = r.value === role?.value;
-
-                        return (
-                            <button
-                                key={r.value}
-                                type="button"
-                                onClick={() => setActive(r.value)}
-                                style={{
-                                    textAlign: 'left',
-                                    cursor: 'pointer',
-                                    border: '1px solid var(--color-divider)',
-                                    borderLeft: selected
-                                        ? '3px solid var(--brand)'
-                                        : '3px solid transparent',
-                                    background: selected
-                                        ? 'var(--color-neutral-100)'
-                                        : 'var(--color-surface, transparent)',
-                                    borderRadius: 8,
-                                    padding: '10px 12px',
-                                    font: 'inherit',
-                                }}
-                            >
-                                <div
-                                    style={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 8,
-                                        justifyContent: 'space-between',
-                                    }}
-                                >
-                                    <span
-                                        style={{
-                                            fontWeight: 600,
-                                            fontSize: 13.5,
-                                        }}
-                                    >
-                                        {r.label}
-                                    </span>
-                                    <span
-                                        style={{
-                                            fontSize: 11.5,
-                                            color: 'var(--color-neutral-500)',
-                                        }}
-                                    >
-                                        {r.user_count}
-                                    </span>
-                                </div>
-                                <div
-                                    style={{
-                                        fontSize: 11.5,
-                                        color: 'var(--color-neutral-500)',
-                                        marginTop: 2,
-                                    }}
-                                >
-                                    {r.description}
-                                </div>
-                                {r.region_scoped && (
-                                    <span
-                                        style={{
-                                            display: 'inline-flex',
-                                            alignItems: 'center',
-                                            gap: 4,
-                                            marginTop: 6,
-                                            fontSize: 11,
-                                            color: 'var(--brand-700)',
-                                        }}
-                                    >
-                                        <MapPin size={12} strokeWidth={1.75} />{' '}
-                                        В пределах региона
-                                    </span>
-                                )}
-                            </button>
-                        );
-                    })}
-                </div>
-
-                {/* Матрица выбранной роли */}
-                <Blueprint style={{ padding: 0, overflow: 'hidden' }}>
-                    <div
+                {roles.map((role) => (
+                    <Blueprint
+                        key={role.value}
                         style={{
-                            padding: '14px 18px',
-                            borderBottom: '1px solid var(--color-divider)',
+                            padding: 16,
                             display: 'flex',
-                            alignItems: 'center',
-                            gap: 10,
+                            flexDirection: 'column',
+                            gap: 8,
                         }}
                     >
-                        <h3 className="ui-card-title" style={{ margin: 0 }}>
-                            {role?.label}
-                        </h3>
-                        <Tag tone="neutral">{role?.user_count} чел.</Tag>
-                    </div>
-
-                    <div style={{ overflowX: 'auto' }}>
-                        <table
+                        <div
                             style={{
-                                width: '100%',
-                                borderCollapse: 'collapse',
-                                fontSize: 12.5,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: 8,
+                                flexWrap: 'wrap',
                             }}
                         >
-                            <thead>
+                            <h3 className="ui-card-title" style={{ margin: 0 }}>
+                                {role.label}
+                            </h3>
+                            {role.is_administrator ? (
+                                <Tag tone="accent">Все права</Tag>
+                            ) : (
+                                role.is_built_in && (
+                                    <Tag tone="neutral">Основная</Tag>
+                                )
+                            )}
+                        </div>
+                        {role.description && (
+                            <p
+                                style={{
+                                    margin: 0,
+                                    fontSize: 12.5,
+                                    color: 'var(--color-neutral-600)',
+                                }}
+                            >
+                                {role.description}
+                            </p>
+                        )}
+                        {role.needs_two_factor && (
+                            <span
+                                style={{
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: 5,
+                                    fontSize: 11.5,
+                                    color: 'var(--color-neutral-500)',
+                                }}
+                            >
+                                <ShieldCheck size={13} strokeWidth={1.75} />
+                                Вход с кодом из приложения
+                            </span>
+                        )}
+                        <div
+                            style={{
+                                marginTop: 'auto',
+                                paddingTop: 4,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                            }}
+                        >
+                            <Link
+                                href={UserController.index.url({
+                                    query: { role: role.value },
+                                })}
+                                style={{ fontSize: 12.5 }}
+                            >
+                                {role.user_count}{' '}
+                                {plural(
+                                    role.user_count,
+                                    'сотрудник',
+                                    'сотрудника',
+                                    'сотрудников',
+                                )}
+                            </Link>
+                            {can_manage && !role.is_administrator && (
+                                <LinkButton
+                                    href={RoleController.edit.url(role.id)}
+                                    size="sm"
+                                    icon={
+                                        <Pencil size={14} strokeWidth={1.75} />
+                                    }
+                                >
+                                    Изменить
+                                    <span className="sr-only">
+                                        {` роль «${role.label}»`}
+                                    </span>
+                                </LinkButton>
+                            )}
+                        </div>
+                    </Blueprint>
+                ))}
+            </div>
+
+            <Blueprint style={{ padding: 0, overflow: 'hidden' }}>
+                <div
+                    style={{
+                        padding: '14px 18px',
+                        borderBottom: '1px solid var(--color-divider)',
+                    }}
+                >
+                    <h3 className="ui-card-title" style={{ margin: 0 }}>
+                        Что может каждая роль
+                    </h3>
+                </div>
+                <div style={{ overflowX: 'auto' }}>
+                    <table
+                        style={{
+                            width: '100%',
+                            borderCollapse: 'collapse',
+                            fontSize: 12.5,
+                        }}
+                    >
+                        <thead>
+                            <tr>
+                                <th scope="col" style={headCell}>
+                                    Раздел
+                                </th>
+                                {roles.map((role) => (
+                                    <th
+                                        key={role.value}
+                                        scope="col"
+                                        style={headCell}
+                                    >
+                                        {role.label}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        {MODULE_GROUPS.map((group) => (
+                            <tbody key={group.label}>
                                 <tr>
                                     <th
-                                        style={{
-                                            textAlign: 'left',
-                                            padding: '10px 18px',
-                                            color: 'var(--color-neutral-600)',
-                                            fontWeight: 600,
-                                        }}
+                                        scope="colgroup"
+                                        colSpan={roles.length + 1}
+                                        style={groupCell}
                                     >
-                                        Раздел
+                                        {group.label}
                                     </th>
-                                    {actions.map((a) => (
-                                        <th
-                                            key={a.value}
-                                            style={{
-                                                padding: '10px 8px',
-                                                textAlign: 'center',
-                                                color: 'var(--color-neutral-600)',
-                                                fontWeight: 600,
-                                                whiteSpace: 'nowrap',
-                                            }}
-                                        >
-                                            {a.label}
-                                        </th>
-                                    ))}
                                 </tr>
-                            </thead>
-                            <tbody>
-                                {modules.map((m) => (
-                                    <tr
-                                        key={m.value}
-                                        style={{
-                                            borderTop:
-                                                '1px solid var(--color-divider)',
-                                        }}
-                                    >
-                                        <td
+                                {group.modules.map((value) => {
+                                    const module = moduleByValue.get(value);
+
+                                    if (!module) {
+                                        return null;
+                                    }
+
+                                    return (
+                                        <tr
+                                            key={value}
                                             style={{
-                                                padding: '9px 18px',
-                                                fontWeight: 500,
+                                                borderTop:
+                                                    '1px solid var(--color-divider)',
                                             }}
                                         >
-                                            {m.label}
-                                        </td>
-                                        {actions.map((a) => {
-                                            const on =
-                                                role?.matrix[m.value]?.[
-                                                    a.value
-                                                ] ?? false;
-
-                                            return (
+                                            <th scope="row" style={rowCell}>
+                                                {module.label}
+                                            </th>
+                                            {roles.map((role) => (
                                                 <td
-                                                    key={a.value}
-                                                    style={{
-                                                        padding: '9px 8px',
-                                                        textAlign: 'center',
-                                                    }}
+                                                    key={role.value}
+                                                    style={bodyCell}
                                                 >
-                                                    {on ? (
-                                                        <Check
-                                                            size={16}
-                                                            strokeWidth={2}
-                                                            color="var(--color-success-600, #067647)"
-                                                            aria-label="Разрешено"
-                                                        />
-                                                    ) : (
-                                                        <Minus
-                                                            size={14}
-                                                            strokeWidth={1.5}
-                                                            color="var(--color-neutral-300)"
-                                                            aria-label="Нет доступа"
-                                                        />
+                                                    {rightsSummary(
+                                                        module,
+                                                        role.matrix[value],
+                                                        actions,
                                                     )}
                                                 </td>
-                                            );
-                                        })}
-                                    </tr>
-                                ))}
+                                            ))}
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
-                        </table>
-                    </div>
-                </Blueprint>
-            </div>
+                        ))}
+                    </table>
+                </div>
+            </Blueprint>
         </>
     );
 }
+
+const headCell = {
+    textAlign: 'left',
+    padding: '10px 18px',
+    color: 'var(--color-neutral-600)',
+    fontWeight: 600,
+    whiteSpace: 'nowrap',
+} as const;
+
+const groupCell = {
+    textAlign: 'left',
+    padding: '14px 18px 6px',
+    fontSize: 11,
+    fontWeight: 600,
+    textTransform: 'uppercase',
+    letterSpacing: '0.04em',
+    color: 'var(--color-neutral-500)',
+} as const;
+
+const rowCell = {
+    textAlign: 'left',
+    padding: '9px 18px',
+    fontWeight: 500,
+    minWidth: 160,
+} as const;
+
+const bodyCell = {
+    padding: '9px 18px',
+    color: 'var(--color-neutral-700)',
+    minWidth: 150,
+} as const;

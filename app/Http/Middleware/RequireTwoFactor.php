@@ -5,19 +5,14 @@ namespace App\Http\Middleware;
 use App\Enums\RoleName;
 use App\Models\Setting;
 use App\Models\User;
+use App\Support\PermissionMatrix;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
-use Spatie\Permission\Models\Permission;
 use Symfony\Component\HttpFoundation\Response;
 
 class RequireTwoFactor
 {
-    /**
-     * Rights over other people's access and the system itself.
-     */
-    private const ACCOUNT_PERMISSIONS = ['users.create', 'users.edit', 'users.delete', 'settings.edit'];
-
     /**
      * Handle an incoming request.
      *
@@ -54,22 +49,7 @@ class RequireTwoFactor
             return false;
         }
 
-        return $user->hasRole(RoleName::Admin->value) || $this->holdsSensitiveRights($user);
-    }
-
-    /**
-     * Anyone whose actions reach the site or other people's accounts signs
-     * in with a code: publishing or approving a material — an editor
-     * publishes official news (owner decision, 2026-09-23) — and managing
-     * users or settings. Read from rights, not role names, so a role the
-     * administrator builds is covered the moment it gains such a right.
-     */
-    private function holdsSensitiveRights(User $user): bool
-    {
-        return $user->getAllPermissions()->contains(
-            fn (Permission $permission): bool => str_ends_with($permission->name, '.publish')
-                || str_ends_with($permission->name, '.approve')
-                || in_array($permission->name, self::ACCOUNT_PERMISSIONS, true),
-        );
+        return $user->hasRole(RoleName::Admin->value)
+            || PermissionMatrix::needsTwoFactor($user->getAllPermissions()->pluck('name'));
     }
 }

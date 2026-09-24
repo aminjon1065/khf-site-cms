@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\RoleName;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -10,7 +11,6 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rules\Password;
-use Spatie\Permission\Models\Role;
 
 use function Laravel\Prompts\password;
 use function Laravel\Prompts\text;
@@ -23,12 +23,12 @@ use function Laravel\Prompts\text;
  * (roles and permissions) first.
  */
 #[Signature('cms:create-admin {--email= : Электронная почта} {--name= : Имя и фамилия}')]
-#[Description('Создать суперадминистратора CMS (первый вход в новой установке)')]
+#[Description('Создать администратора CMS (первый вход в новой установке)')]
 class CreateAdmin extends Command
 {
     public function handle(): int
     {
-        if (! Role::query()->where('name', RoleName::Superadmin->value)->exists()) {
+        if (! Role::query()->where('name', RoleName::Admin->value)->exists()) {
             $this->components->error('Роли ещё не созданы. Сначала выполните php artisan db:seed --force.');
 
             return self::FAILURE;
@@ -69,14 +69,14 @@ class CreateAdmin extends Command
             'interface_locale' => 'ru',
         ]);
         $user->forceFill(['email_verified_at' => now()])->save();
-        $user->assignRole(RoleName::Superadmin->value);
+        $user->assignRole(RoleName::Admin->value);
 
         activity('users')
             ->performedOn($user)
             ->event('created')
-            ->log('Суперадминистратор создан из консоли (cms:create-admin)');
+            ->log('Администратор создан из консоли (cms:create-admin)');
 
-        $this->components->info("Суперадминистратор {$email} создан. При первом входе система попросит настроить двухфакторную аутентификацию, если она обязательна.");
+        $this->components->info("Администратор {$email} создан. При первом входе система попросит настроить двухфакторную аутентификацию, если она обязательна.");
 
         return self::SUCCESS;
     }

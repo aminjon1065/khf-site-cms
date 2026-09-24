@@ -12,8 +12,10 @@ import { logIn } from './fixtures/login';
  */
 const ROLES = [
     { label: 'editor', email: 'd.sattorov@khf.tj' },
-    { label: 'translator', email: 'j.kholov@khf.tj' },
-    { label: 'regional_editor', email: 'n.odinaeva@khf.tj' },
+    // Редактор регионального управления: только свои материалы и
+    // предупреждения Согдийской области.
+    { label: 'editor, limited to a region', email: 'n.odinaeva@khf.tj' },
+    { label: 'chief_editor', email: 'f.nazarov@khf.tj' },
 ];
 
 test('каждый видимый пункт сайдбара открывается без 403', async ({

@@ -163,6 +163,7 @@ class ActivityController extends Controller
             'menu_items', 'menu' => 'Меню сайта',
             'home_blocks' => 'Главная страница',
             'users' => 'Пользователи',
+            'roles' => 'Роли и права',
             'settings' => 'Настройки',
             'home' => 'Главная страница',
             default => $logName ?? 'Система',

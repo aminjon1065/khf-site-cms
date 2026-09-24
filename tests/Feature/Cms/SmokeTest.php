@@ -15,7 +15,7 @@ beforeEach(function () {
 function admin(): User
 {
     $user = User::factory()->create();
-    $user->assignRole('superadmin');
+    $user->assignRole('admin');
 
     return $user;
 }

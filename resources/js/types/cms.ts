@@ -9,10 +9,11 @@ export interface AuthUser {
     position: string | null;
     department: string | null;
     region_id: number | null;
+    limited_to_region: boolean;
     role: string | null;
     role_label: string | null;
     permissions: string[];
-    is_super: boolean;
+    is_admin: boolean;
     two_factor_enabled: boolean;
 }
 

@@ -33,7 +33,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Системный администратор', 'email' => 'admin@khf.tj',
                 'position' => 'Администратор системы', 'department' => 'ИТ-отдел',
-                'role' => RoleName::Superadmin, 'region' => null,
+                'role' => RoleName::Admin, 'region' => null,
             ],
             [
                 'name' => 'Фаридун Назаров', 'email' => 'f.nazarov@khf.tj',
@@ -43,12 +43,12 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Шухрат Каримов', 'email' => 'sh.karimov@khf.tj',
                 'position' => 'Оператор', 'department' => 'Оперативная служба',
-                'role' => RoleName::AlertOperator, 'region' => null,
+                'role' => RoleName::ChiefEditor, 'region' => null,
             ],
             [
                 'name' => 'Мижгона Раҳимова', 'email' => 'm.rahimova@khf.tj',
                 'position' => 'Специалист', 'department' => 'Оперативная служба',
-                'role' => RoleName::AlertOperator, 'region' => 'khatlon',
+                'role' => RoleName::Editor, 'region' => 'khatlon', 'limited' => true,
             ],
             [
                 'name' => 'Далер Сатторов', 'email' => 'd.sattorov@khf.tj',
@@ -63,17 +63,17 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Джамшед Холов', 'email' => 'j.kholov@khf.tj',
                 'position' => 'Переводчик', 'department' => 'Отдел международных связей',
-                'role' => RoleName::Translator, 'region' => null,
+                'role' => RoleName::Editor, 'region' => null,
             ],
             [
                 'name' => 'Рустам Шарипов', 'email' => 'r.sharipov@khf.tj',
                 'position' => 'Руководитель пресс-службы', 'department' => 'Пресс-служба',
-                'role' => RoleName::Approver, 'region' => null,
+                'role' => RoleName::ChiefEditor, 'region' => null,
             ],
             [
                 'name' => 'Нигина Одинаева', 'email' => 'n.odinaeva@khf.tj',
                 'position' => 'Региональный редактор', 'department' => 'Согдийское управление',
-                'role' => RoleName::RegionalEditor, 'region' => 'sughd',
+                'role' => RoleName::Editor, 'region' => 'sughd', 'limited' => true,
             ],
             [
                 'name' => 'Азиз Усмонов', 'email' => 'a.usmonov@khf.tj',
@@ -98,6 +98,7 @@ class UserSeeder extends Seeder
                     'position' => $data['position'],
                     'department' => $data['department'],
                     'region_id' => $region ? ($regionIds[$region] ?? null) : null,
+                    'limited_to_region' => $data['limited'] ?? false,
                     'is_active' => true,
                     'email_verified_at' => now(),
                     'last_login_at' => now()->subHours(random_int(0, 48)),

@@ -1,6 +1,8 @@
 <?php
 
+use App\Enums\RegionType;
 use App\Models\Activity;
+use App\Models\Region;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Support\Facades\DB;
@@ -88,13 +90,13 @@ it('updates a user without changing the password when left blank', function () {
         'name' => 'Обновлённое имя',
         'email' => $user->email,
         'password' => '',
-        'role' => 'translator',
+        'role' => 'chief_editor',
     ])->assertRedirect('/users');
 
     $user->refresh();
 
     expect($user->name)->toBe('Обновлённое имя')
-        ->and($user->hasRole('translator'))->toBeTrue()
+        ->and($user->hasRole('chief_editor'))->toBeTrue()
         ->and($user->password)->toBe($original);
 });
 
@@ -106,33 +108,134 @@ it('forbids an admin from deleting their own account', function () {
     expect(User::query()->find($admin->id))->not->toBeNull();
 });
 
-it('forbids an admin from assigning the superadmin role', function () {
-    actingAs(asRole('admin'))->post('/users', [
+/**
+ * Someone who manages accounts without being an administrator. The role
+ * editor never grants these rights (PermissionMatrix::ADMINISTRATOR_ONLY);
+ * the guards hold even if the database says otherwise.
+ */
+function accountManager(): User
+{
+    return asRole(customRole('account_manager', ['users.view', 'users.create', 'users.edit', 'users.delete']));
+}
+
+it('lets only an administrator make an administrator', function () {
+    actingAs(accountManager())->post('/users', [
         'name' => 'Escalation', 'email' => 'esc@khf.tj',
         'password' => 'Secret12345', 'password_confirmation' => 'Secret12345',
-        'role' => 'superadmin',
+        'role' => 'admin',
     ])->assertForbidden();
 
     expect(User::query()->where('email', 'esc@khf.tj')->exists())->toBeFalse();
 });
 
-it('forbids an admin from editing or deleting a superadmin', function () {
-    $super = asRole('superadmin');
+it('keeps administrator accounts out of reach of anyone but an administrator', function () {
+    $admin = asRole('admin');
 
-    actingAs(asRole('admin'))->get("/users/{$super->id}/edit")->assertForbidden();
-    actingAs(asRole('admin'))->delete("/users/{$super->id}")->assertForbidden();
+    actingAs(accountManager())->get("/users/{$admin->id}/edit")->assertForbidden();
+    actingAs(accountManager())->delete("/users/{$admin->id}")->assertForbidden();
 
-    expect(User::query()->find($super->id))->not->toBeNull();
+    expect(User::query()->find($admin->id))->not->toBeNull();
 });
 
-it('lets a superadmin create another superadmin', function () {
-    actingAs(asRole('superadmin'))->post('/users', [
-        'name' => 'Second Super', 'email' => 'super2@khf.tj',
+it('lets an administrator make another administrator', function () {
+    actingAs(asRole('admin'))->post('/users', [
+        'name' => 'Second Admin', 'email' => 'admin2@khf.tj',
         'password' => 'Secret12345', 'password_confirmation' => 'Secret12345',
-        'role' => 'superadmin',
+        'role' => 'admin',
     ])->assertRedirect('/users');
 
-    expect(User::query()->where('email', 'super2@khf.tj')->first()?->hasRole('superadmin'))->toBeTrue();
+    expect(User::query()->where('email', 'admin2@khf.tj')->first()?->hasRole('admin'))->toBeTrue();
+});
+
+it('assigns a role the administrator built', function () {
+    $translator = customRole('translator', customTestRoles()['translator']);
+
+    actingAs(asRole('admin'))->post('/users', [
+        'name' => 'Переводчик', 'email' => 'translator@khf.tj',
+        'password' => 'Secret12345', 'password_confirmation' => 'Secret12345',
+        'role' => $translator,
+    ])->assertRedirect('/users');
+
+    expect(User::query()->where('email', 'translator@khf.tj')->sole()->hasRole('translator'))->toBeTrue();
+});
+
+it('rejects a role that does not exist', function () {
+    actingAs(asRole('admin'))->post('/users', [
+        'name' => 'X', 'email' => 'x@khf.tj',
+        'password' => 'Secret12345', 'password_confirmation' => 'Secret12345',
+        'role' => 'superadmin',
+    ])->assertSessionHasErrors(['role' => 'Такой роли нет — выберите из списка.']);
+});
+
+it('offers every role in the user form, the ones the administrator built included', function () {
+    customRole('translator', customTestRoles()['translator']);
+
+    actingAs(asRole('admin'))->get('/users/create')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('reference.roles.0.value', 'admin')
+            ->where('reference.roles.1.value', 'chief_editor')
+            ->where('reference.roles.2.value', 'editor')
+            ->where('reference.roles.3.value', 'translator')
+            ->where('reference.roles.2.label', 'Редактор'));
+});
+
+it('records every role change in the journal as a critical event', function () {
+    $user = asRole('editor');
+
+    actingAs(asRole('admin'))->put("/users/{$user->id}", [
+        'name' => $user->name,
+        'email' => $user->email,
+        'role' => 'chief_editor',
+    ])->assertRedirect('/users');
+
+    $entry = Activity::query()->where('event', 'role_changed')->sole();
+
+    expect($user->fresh()->hasRole('chief_editor'))->toBeTrue()
+        ->and($entry->description)->toBe('Роль изменена: «Редактор» → «Главный редактор»')
+        ->and($entry->is_critical)->toBeTrue()
+        ->and($entry->subject_id)->toBe($user->id);
+});
+
+it('does not log a role change when the role stays the same', function () {
+    $user = asRole('editor');
+
+    actingAs(asRole('admin'))->put("/users/{$user->id}", [
+        'name' => 'Новое имя',
+        'email' => $user->email,
+        'role' => 'editor',
+    ])->assertRedirect('/users');
+
+    expect(Activity::query()->where('event', 'role_changed')->exists())->toBeFalse();
+});
+
+it('limits an account to its region only when a region is chosen', function () {
+    $region = Region::query()->create([
+        'name' => ['ru' => 'Согдийская область', 'tg' => 'Вилояти Суғд', 'en' => 'Sughd'],
+        'code' => 'user-test-region',
+        'type' => RegionType::Oblast,
+        'districts_count' => 1,
+        'sort' => 1,
+    ]);
+    $admin = asRole('admin');
+    $account = fn (string $email, array $extra): array => [
+        'name' => 'Сотрудник', 'email' => $email,
+        'password' => 'Secret12345', 'password_confirmation' => 'Secret12345',
+        'role' => 'editor', ...$extra,
+    ];
+
+    actingAs($admin)->post('/users', $account('noregion@khf.tj', ['limited_to_region' => true]))
+        ->assertSessionHasErrors(['region_id' => 'Чтобы ограничить сотрудника регионом, выберите регион.']);
+
+    actingAs($admin)->post('/users', $account('regional@khf.tj', ['limited_to_region' => true, 'region_id' => $region->id]))
+        ->assertRedirect('/users');
+
+    actingAs($admin)->post('/users', $account('admin3@khf.tj', ['limited_to_region' => true, 'region_id' => $region->id, 'role' => 'admin']))
+        ->assertRedirect('/users');
+
+    expect(User::query()->where('email', 'regional@khf.tj')->sole()->isLimitedToRegion())->toBeTrue()
+        // The administrator works with everything.
+        ->and(User::query()->where('email', 'admin3@khf.tj')->sole()->isLimitedToRegion())->toBeFalse();
 });
 
 it('clamps an excessive per_page on the users list', function () {

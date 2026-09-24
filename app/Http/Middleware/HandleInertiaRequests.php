@@ -95,8 +95,6 @@ class HandleInertiaRequests extends Middleware
      */
     protected function userPayload(User $user): array
     {
-        $roleName = $user->getRoleNames()->first();
-
         return [
             'id' => $user->id,
             'name' => $user->name,
@@ -105,10 +103,11 @@ class HandleInertiaRequests extends Middleware
             'position' => $user->position,
             'department' => $user->department,
             'region_id' => $user->region_id,
-            'role' => $roleName,
-            'role_label' => $roleName ? RoleName::tryFrom($roleName)?->label() : null,
+            'limited_to_region' => $user->isLimitedToRegion(),
+            'role' => $user->getRoleNames()->first(),
+            'role_label' => $user->primaryRoleLabel(),
             'permissions' => $user->getAllPermissions()->pluck('name')->all(),
-            'is_super' => $user->hasRole(RoleName::Superadmin->value),
+            'is_admin' => $user->hasRole(RoleName::Admin->value),
             'two_factor_enabled' => $user->hasTwoFactorEnabled(),
         ];
     }

@@ -30,6 +30,7 @@ interface UserRow {
     role: string | null;
     role_value: string | null;
     region: string | null;
+    limited_to_region: boolean;
     is_active: boolean;
     two_factor: boolean;
     last_login_at: string | null;
@@ -149,7 +150,11 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                 <div
                     style={{ display: 'flex', flexDirection: 'column', gap: 2 }}
                 >
-                    <Tag tone="accent">{r.role ?? '—'}</Tag>
+                    {r.role ? (
+                        <Tag tone="accent">{r.role}</Tag>
+                    ) : (
+                        <Tag tone="warn">Без роли</Tag>
+                    )}
                     {r.region && (
                         <span
                             style={{
@@ -157,7 +162,9 @@ export default function UsersIndex({ users, meta, filters, options }: Props) {
                                 color: 'var(--color-neutral-500)',
                             }}
                         >
-                            {r.region}
+                            {r.limited_to_region
+                                ? `Только ${r.region}`
+                                : r.region}
                         </span>
                     )}
                 </div>

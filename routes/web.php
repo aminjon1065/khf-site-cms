@@ -222,6 +222,11 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
     Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
     Route::post('users/{user}/two-factor/reset', [UserController::class, 'resetTwoFactor'])->name('users.two-factor.reset');
     Route::get('roles', [RoleController::class, 'index'])->name('roles');
+    Route::get('roles/create', [RoleController::class, 'create'])->name('roles.create');
+    Route::post('roles', [RoleController::class, 'store'])->name('roles.store');
+    Route::get('roles/{role}/edit', [RoleController::class, 'edit'])->name('roles.edit');
+    Route::put('roles/{role}', [RoleController::class, 'update'])->name('roles.update');
+    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->name('roles.destroy');
     Route::get('usability', [UsabilityController::class, 'index'])->name('usability');
     Route::post('usability', [UsabilityController::class, 'store'])->name('usability.store');
 

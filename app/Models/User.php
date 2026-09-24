@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\RoleName;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -140,8 +139,8 @@ class User extends Authenticatable
 
     public function primaryRoleLabel(): ?string
     {
-        $roleName = $this->getRoleNames()->first();
+        $role = $this->roles->first();
 
-        return is_string($roleName) ? RoleName::tryFrom($roleName)?->label() : null;
+        return $role instanceof Role ? $role->displayName() : null;
     }
 }

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Hash;
 
 use function Pest\Laravel\seed;
 
-it('creates the first superadmin with a password only the operator knows', function () {
+it('creates the first administrator with a password only the operator knows', function () {
     seed(RolePermissionSeeder::class);
 
     $this->artisan('cms:create-admin', ['--email' => 'admin@khf.tj', '--name' => 'Администратор системы'])
@@ -16,7 +16,7 @@ it('creates the first superadmin with a password only the operator knows', funct
 
     $admin = User::query()->where('email', 'admin@khf.tj')->sole();
 
-    expect($admin->hasRole('superadmin'))->toBeTrue()
+    expect($admin->hasRole('admin'))->toBeTrue()
         ->and($admin->is_active)->toBeTrue()
         ->and($admin->email_verified_at)->not->toBeNull()
         ->and(Hash::check('Надёжный-пароль-2026', $admin->password))->toBeTrue();

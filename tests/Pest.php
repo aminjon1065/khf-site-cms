@@ -1,12 +1,12 @@
 <?php
 
 use App\Jobs\PerformMediaConversions;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Spatie\MediaLibrary\Conversions\ConversionCollection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 // Тесты медиаконверсий (`MediaConversionQueueTest`, `MediaTest`) реально

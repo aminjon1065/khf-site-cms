@@ -7,16 +7,56 @@ use App\Enums\PermissionAction;
 use App\Enums\RoleName;
 
 /**
- * Single source of truth for the module × action permission matrix and the
- * per-role grants. Consumed by the roles seeder, policies and the
- * "Роли и права" screen so backend and UI never drift.
+ * The module × action permissions: which exist, which mean something for a
+ * module, which only the administrator may hold, and what the built-in roles
+ * start with. Consumed by the roles seeder, the «Роли и права» screen and
+ * its editor, so the backend and the UI never drift.
  */
 class PermissionMatrix
 {
     /**
+     * Rights over people's access and over the system stay with the
+     * administrator: whoever could edit accounts could make themselves one.
+     */
+    public const ADMINISTRATOR_ONLY = [
+        'users.create',
+        'users.edit',
+        'users.delete',
+        'settings.view',
+        'settings.edit',
+    ];
+
+    /**
+     * Rights over other people's access and the system itself, on top of
+     * publishing and approving: whoever holds one signs in with a code.
+     */
+    private const TWO_FACTOR_ACCOUNT_RIGHTS = ['users.create', 'users.edit', 'users.delete', 'settings.edit'];
+
+    /**
+     * Whoever can put a material on the site — publish it or approve it (an
+     * editor publishes official news: owner decision, 2026-09-23) — or
+     * manage accounts or settings signs in with a code. Decided by rights,
+     * so a role the administrator builds is covered the moment it gains one.
+     *
+     * @param  iterable<string>  $permissionNames
+     */
+    public static function needsTwoFactor(iterable $permissionNames): bool
+    {
+        foreach ($permissionNames as $name) {
+            if (str_ends_with($name, '.publish')
+                || str_ends_with($name, '.approve')
+                || in_array($name, self::TWO_FACTOR_ACCOUNT_RIGHTS, true)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Every permission name in `module.action` form.
      *
-     * @return array<int, string>
+     * @return list<string>
      */
     public static function all(): array
     {
@@ -37,161 +77,121 @@ class PermissionMatrix
     }
 
     /**
-     * Grants per role as [module => [action => bool]].
-     * `superadmin` is intentionally omitted — it is granted every permission
-     * and additionally short-circuits every gate via Gate::before().
+     * The actions the code checks for a module — the cells of the role
+     * editor. Nothing ever asks, say, to publish a tag.
      *
-     * @return array<string, array<string, array<string, bool>>>
+     * @return list<PermissionAction>
      */
-    public static function grants(): array
+    public static function actionsOf(Module $module): array
     {
-        // action shortcuts
-        $v = PermissionAction::View->value;
-        $c = PermissionAction::Create->value;
-        $e = PermissionAction::Edit->value;
-        $d = PermissionAction::Delete->value;
-        $p = PermissionAction::Publish->value;
-        $a = PermissionAction::Approve->value;
-
-        $none = [];
-        $viewOnly = [$v => true];
-
-        return [
-            RoleName::Admin->value => self::fill(true),
-
-            RoleName::ChiefEditor->value => [
-                Module::Taxonomy->value => [$v => true, $c => true, $e => true, $d => true],
-                Module::Alerts->value => [$v => true, $c => true, $e => true, $p => true, $a => true],
-                Module::News->value => [$v => true, $c => true, $e => true, $d => true, $p => true, $a => true],
-                Module::Projects->value => [$v => true, $c => true, $e => true, $d => true, $p => true, $a => true],
-                Module::Announcements->value => [$v => true, $c => true, $e => true, $d => true, $p => true, $a => true],
-                Module::Pages->value => [$v => true, $c => true, $e => true, $d => true, $p => true, $a => true],
-                Module::Instructions->value => [$v => true, $c => true, $e => true, $p => true, $a => true],
-                Module::Documents->value => [$v => true, $c => true, $e => true, $d => true, $p => true],
-                Module::Media->value => [$v => true, $c => true, $e => true, $d => true],
-                Module::Home->value => [$v => true, $e => true, $p => true, $a => true],
-                Module::Regions->value => $viewOnly,
-                Module::Leadership->value => $viewOnly,
-                Module::Structure->value => $viewOnly,
-                Module::Submissions->value => [$v => true, $e => true, $d => true],
-                Module::Users->value => $viewOnly,
-                Module::Settings->value => $none,
+        return match ($module) {
+            Module::Alerts, Module::News, Module::Instructions, Module::Documents,
+            Module::Projects, Module::Announcements, Module::Pages => PermissionAction::cases(),
+            Module::Media, Module::Taxonomy, Module::Regions, Module::Leadership,
+            Module::Structure, Module::Users => [
+                PermissionAction::View,
+                PermissionAction::Create,
+                PermissionAction::Edit,
+                PermissionAction::Delete,
             ],
-
-            RoleName::Editor->value => [
-                Module::Taxonomy->value => [$v => true, $c => true, $e => true],
-                Module::Alerts->value => [$v => true, $c => true, $e => true],
-                Module::News->value => [$v => true, $c => true, $e => true, $p => true],
-                Module::Projects->value => [$v => true, $c => true, $e => true, $p => true],
-                Module::Announcements->value => [$v => true, $c => true, $e => true, $p => true],
-                Module::Pages->value => [$v => true, $c => true, $e => true, $p => true],
-                Module::Instructions->value => [$v => true, $c => true, $e => true],
-                Module::Documents->value => [$v => true, $c => true, $e => true],
-                Module::Media->value => [$v => true, $c => true, $e => true],
-                Module::Home->value => $viewOnly,
-                Module::Users->value => $none,
-                Module::Settings->value => $none,
-            ],
-
-            RoleName::AlertOperator->value => [
-                Module::Taxonomy->value => $viewOnly,
-                Module::Alerts->value => [$v => true, $c => true, $e => true, $d => true, $p => true, $a => true],
-                Module::News->value => $viewOnly,
-                Module::Projects->value => $viewOnly,
-                Module::Announcements->value => $viewOnly,
-                Module::Pages->value => $viewOnly,
-                Module::Instructions->value => [$v => true, $e => true],
-                Module::Documents->value => $viewOnly,
-                Module::Media->value => [$v => true, $c => true],
-                Module::Home->value => $viewOnly,
-                Module::Regions->value => $viewOnly,
-                Module::Users->value => $none,
-                Module::Settings->value => $none,
-            ],
-
-            RoleName::Translator->value => [
-                Module::Taxonomy->value => [$v => true, $e => true],
-                Module::Alerts->value => [$v => true, $e => true],
-                Module::News->value => [$v => true, $e => true],
-                Module::Projects->value => [$v => true, $e => true],
-                Module::Announcements->value => [$v => true, $e => true],
-                Module::Pages->value => [$v => true, $e => true],
-                Module::Instructions->value => [$v => true, $e => true],
-                Module::Documents->value => $viewOnly,
-                Module::Media->value => $viewOnly,
-                Module::Home->value => $none,
-                Module::Users->value => $none,
-                Module::Settings->value => $none,
-            ],
-
-            RoleName::RegionalEditor->value => [
-                Module::Taxonomy->value => [$v => true, $c => true, $e => true],
-                Module::Alerts->value => [$v => true, $c => true, $e => true],
-                Module::News->value => [$v => true, $c => true, $e => true],
-                Module::Projects->value => [$v => true, $c => true, $e => true],
-                Module::Announcements->value => [$v => true, $c => true, $e => true],
-                Module::Pages->value => [$v => true, $c => true, $e => true],
-                Module::Instructions->value => $viewOnly,
-                Module::Documents->value => [$v => true, $c => true],
-                Module::Media->value => [$v => true, $c => true],
-                Module::Home->value => $none,
-                Module::Users->value => $none,
-                Module::Settings->value => $none,
-            ],
-
-            RoleName::Approver->value => [
-                Module::Taxonomy->value => $viewOnly,
-                Module::Alerts->value => [$v => true, $p => true, $a => true],
-                Module::News->value => [$v => true, $p => true, $a => true],
-                Module::Projects->value => [$v => true, $p => true, $a => true],
-                Module::Announcements->value => [$v => true, $p => true, $a => true],
-                Module::Pages->value => [$v => true, $p => true, $a => true],
-                Module::Instructions->value => [$v => true, $p => true, $a => true],
-                Module::Documents->value => [$v => true, $a => true],
-                Module::Media->value => $viewOnly,
-                Module::Home->value => [$v => true, $a => true],
-                Module::Submissions->value => [$v => true, $e => true],
-                Module::Users->value => $none,
-                Module::Settings->value => $none,
-            ],
-
-            RoleName::Viewer->value => [
-                Module::Taxonomy->value => $viewOnly,
-                Module::Alerts->value => $viewOnly,
-                Module::News->value => $viewOnly,
-                Module::Projects->value => $viewOnly,
-                Module::Announcements->value => $viewOnly,
-                Module::Pages->value => $viewOnly,
-                Module::Instructions->value => $viewOnly,
-                Module::Documents->value => $viewOnly,
-                Module::Media->value => $viewOnly,
-                Module::Home->value => $viewOnly,
-                Module::Submissions->value => $viewOnly,
-                Module::Users->value => $none,
-                Module::Settings->value => $none,
-            ],
-        ];
+            Module::Submissions => [PermissionAction::View, PermissionAction::Edit, PermissionAction::Delete],
+            Module::Home, Module::Settings => [PermissionAction::View, PermissionAction::Edit],
+        };
     }
 
     /**
-     * The permission names granted to a role.
+     * What the administrator may put into a role.
      *
-     * @return array<int, string>
+     * @return list<string>
      */
-    public static function permissionsFor(RoleName $role): array
+    public static function grantable(): array
     {
-        if ($role === RoleName::Superadmin) {
+        $permissions = [];
+
+        foreach (Module::cases() as $module) {
+            foreach (self::actionsOf($module) as $action) {
+                $name = self::name($module, $action);
+
+                if (! in_array($name, self::ADMINISTRATOR_ONLY, true)) {
+                    $permissions[] = $name;
+                }
+            }
+        }
+
+        return $permissions;
+    }
+
+    /**
+     * A set picked in the role editor, made consistent: only what may be
+     * granted, and seeing a section comes with any other right in it.
+     *
+     * @param  array<int, string>  $permissions
+     * @return list<string>
+     */
+    public static function normalize(array $permissions): array
+    {
+        $picked = array_values(array_intersect(self::grantable(), $permissions));
+
+        foreach ($picked as $name) {
+            $view = explode('.', $name)[0].'.'.PermissionAction::View->value;
+
+            if (! in_array($view, $picked, true)) {
+                $picked[] = $view;
+            }
+        }
+
+        return array_values(array_intersect(self::grantable(), $picked));
+    }
+
+    /**
+     * The rights a built-in role starts with. The administrator's role always
+     * has every right; the other two are the administrator's to change.
+     *
+     * @return list<string>
+     */
+    public static function defaultsFor(RoleName $role): array
+    {
+        if ($role === RoleName::Admin) {
             return self::all();
         }
 
-        $grants = self::grants()[$role->value] ?? [];
+        $v = PermissionAction::View;
+        $c = PermissionAction::Create;
+        $e = PermissionAction::Edit;
+        $d = PermissionAction::Delete;
+        $p = PermissionAction::Publish;
+
+        $grants = match ($role) {
+            RoleName::ChiefEditor => [
+                ...array_fill_keys(self::materials(), PermissionAction::cases()),
+                Module::Media->value => [$v, $c, $e, $d],
+                Module::Taxonomy->value => [$v, $c, $e, $d],
+                Module::Home->value => [$v, $e],
+                Module::Regions->value => [$v],
+                Module::Leadership->value => [$v],
+                Module::Structure->value => [$v],
+                Module::Submissions->value => [$v, $e, $d],
+                Module::Users->value => [$v],
+            ],
+            RoleName::Editor => [
+                Module::News->value => [$v, $c, $e, $p],
+                Module::Projects->value => [$v, $c, $e, $p],
+                Module::Announcements->value => [$v, $c, $e, $p],
+                Module::Pages->value => [$v, $c, $e, $p],
+                Module::Alerts->value => [$v, $c, $e],
+                Module::Instructions->value => [$v, $c, $e],
+                Module::Documents->value => [$v, $c, $e],
+                Module::Media->value => [$v, $c, $e],
+                Module::Taxonomy->value => [$v, $c, $e],
+                Module::Home->value => [$v],
+            ],
+        };
+
         $names = [];
 
         foreach ($grants as $module => $actions) {
-            foreach ($actions as $action => $allowed) {
-                if ($allowed) {
-                    $names[] = $module.'.'.$action;
-                }
+            foreach ($actions as $action) {
+                $names[] = $module.'.'.$action->value;
             }
         }
 
@@ -199,21 +199,24 @@ class PermissionMatrix
     }
 
     /**
-     * A rectangular [module => [action => bool]] map for a role, with every
-     * cell present (defaults false). Used to render the UI matrix.
+     * [module => [action => bool]] over the meaningful cells, for a set of
+     * permission names.
      *
+     * @param  iterable<string>  $permissionNames
      * @return array<string, array<string, bool>>
      */
-    public static function matrixFor(RoleName $role): array
+    public static function matrixOf(iterable $permissionNames): array
     {
-        $granted = self::grants()[$role->value] ?? ($role === RoleName::Superadmin ? null : []);
+        $granted = [];
+        foreach ($permissionNames as $name) {
+            $granted[$name] = true;
+        }
+
         $matrix = [];
 
         foreach (Module::cases() as $module) {
-            foreach (PermissionAction::cases() as $action) {
-                $matrix[$module->value][$action->value] = $role === RoleName::Superadmin
-                    ? true
-                    : (bool) ($granted[$module->value][$action->value] ?? false);
+            foreach (self::actionsOf($module) as $action) {
+                $matrix[$module->value][$action->value] = isset($granted[self::name($module, $action)]);
             }
         }
 
@@ -221,20 +224,20 @@ class PermissionMatrix
     }
 
     /**
-     * Build a full grant map with every module/action set to a fixed value.
+     * Modules whose materials go through drafts, approval and publication.
      *
-     * @return array<string, array<string, bool>>
+     * @return list<string>
      */
-    private static function fill(bool $value): array
+    private static function materials(): array
     {
-        $map = [];
-
-        foreach (Module::cases() as $module) {
-            foreach (PermissionAction::cases() as $action) {
-                $map[$module->value][$action->value] = $value;
-            }
-        }
-
-        return $map;
+        return array_map(fn (Module $module): string => $module->value, [
+            Module::Alerts,
+            Module::News,
+            Module::Instructions,
+            Module::Documents,
+            Module::Projects,
+            Module::Announcements,
+            Module::Pages,
+        ]);
     }
 }
