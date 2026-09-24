@@ -17,7 +17,7 @@ beforeEach(function () {
 function editorialTrashUser(string $role): User
 {
     $user = User::factory()->create();
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }
@@ -89,6 +89,7 @@ it('forbids restore without delete permission', function () {
 
 it('limits regional editors to their own trashed content', function () {
     $regionalEditor = editorialTrashUser('regional_editor');
+    $regionalEditor->update(['limited_to_region' => true]);
     $otherEditor = editorialTrashUser('editor');
     $ownNews = News::factory()->create(['author_id' => $regionalEditor->id]);
     $otherNews = News::factory()->create(['author_id' => $otherEditor->id]);

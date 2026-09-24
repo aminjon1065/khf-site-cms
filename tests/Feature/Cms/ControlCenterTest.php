@@ -18,7 +18,7 @@ beforeEach(function () {
 function controlUser(string $role): User
 {
     $user = User::factory()->create();
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }
@@ -40,7 +40,7 @@ it('renders a live control center instead of a section stub', function () {
 
 it('shows the technical state of the system to administrators only', function () {
     $operator = User::factory()->withTwoFactor()->create();
-    $operator->assignRole('alert_operator');
+    giveRole($operator, 'alert_operator');
     $admin = User::factory()->withTwoFactor()->create();
     $admin->assignRole('admin');
 
@@ -70,7 +70,7 @@ it('limits the control center to the assigned region', function () {
     $assignedRegion = Region::query()->where('code', 'khatlon')->firstOrFail();
     $foreignRegion = Region::query()->where('code', 'sughd')->firstOrFail();
     $user = controlUser('regional_editor');
-    $user->update(['region_id' => $assignedRegion->id]);
+    $user->update(['region_id' => $assignedRegion->id, 'limited_to_region' => true]);
 
     $ownAlert = Alert::factory()->published()->create([
         'internal_title' => 'Своё предупреждение',

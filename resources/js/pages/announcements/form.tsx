@@ -43,7 +43,6 @@ interface Props {
     announcement: AnnouncementData | null;
     reference: {
         kinds: Option[];
-        authors: Option[];
         projects: Option[];
     };
     /** A proposal waiting for approval on this live material. */

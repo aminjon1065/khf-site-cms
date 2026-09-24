@@ -22,12 +22,13 @@ beforeEach(function () {
 
 function newsUser(string $role): User
 {
-    $user = User::factory()->create([
-        'region_id' => $role === 'regional_editor' ? Region::query()->value('id') : null,
-    ]);
-    $user->assignRole($role);
+    // Staff of a regional department: their accounts are limited to it.
+    $regional = $role === 'regional_editor';
 
-    return $user;
+    return giveRole(User::factory()->create([
+        'region_id' => $regional ? Region::query()->value('id') : null,
+        'limited_to_region' => $regional,
+    ]), $role);
 }
 
 it('lets an editor open the news create form', function () {

@@ -8,7 +8,6 @@ use App\Concerns\RemembersOldSlugs;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
-use App\Enums\RoleName;
 use App\Enums\Severity;
 use App\Support\Slug;
 use Database\Factories\AlertFactory;
@@ -185,14 +184,14 @@ class Alert extends Model implements HasMedia, Workflowable
     }
 
     /**
-     * Limit operational alert data to the region assigned to a regional editor.
+     * Limit operational alert data to the region of an account limited to it.
      *
      * @param  Builder<Alert>  $query
      * @return Builder<Alert>
      */
     public function scopeAccessibleTo(Builder $query, ?User $user): Builder
     {
-        if (! $user?->hasRole(RoleName::RegionalEditor->value)) {
+        if ($user?->isLimitedToRegion() !== true) {
             return $query;
         }
 

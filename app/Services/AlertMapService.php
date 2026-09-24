@@ -49,7 +49,7 @@ class AlertMapService
         $alerts = $alertsQuery->get();
         $regions = Region::query()
             ->when(
-                $user?->hasRole('regional_editor'),
+                $user?->isLimitedToRegion() === true,
                 fn ($query) => $query->whereKey($user->region_id ?? 0),
             )
             ->orderBy('sort')

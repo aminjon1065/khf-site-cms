@@ -14,6 +14,11 @@ use Symfony\Component\HttpFoundation\Response;
 class RequireTwoFactor
 {
     /**
+     * Rights over other people's access and the system itself.
+     */
+    private const ACCOUNT_PERMISSIONS = ['users.create', 'users.edit', 'users.delete', 'settings.edit'];
+
+    /**
      * Handle an incoming request.
      *
      * @param  Closure(Request): (Response)  $next
@@ -49,24 +54,22 @@ class RequireTwoFactor
             return false;
         }
 
-        return $user->hasAnyRole([
-            RoleName::Superadmin->value,
-            RoleName::Admin->value,
-            RoleName::ChiefEditor->value,
-            RoleName::AlertOperator->value,
-            RoleName::Approver->value,
-        ]) || $this->canPublish($user);
+        return $user->hasRole(RoleName::Admin->value) || $this->holdsSensitiveRights($user);
     }
 
     /**
-     * Anyone who may put a material on the site — an editor publishes
-     * official news — signs in with a code too (owner decision, 2026-09-23).
-     * Read from permissions, so a role that gains the right is covered.
+     * Anyone whose actions reach the site or other people's accounts signs
+     * in with a code: publishing or approving a material — an editor
+     * publishes official news (owner decision, 2026-09-23) — and managing
+     * users or settings. Read from rights, not role names, so a role the
+     * administrator builds is covered the moment it gains such a right.
      */
-    private function canPublish(User $user): bool
+    private function holdsSensitiveRights(User $user): bool
     {
         return $user->getAllPermissions()->contains(
-            fn (Permission $permission): bool => str_ends_with($permission->name, '.publish'),
+            fn (Permission $permission): bool => str_ends_with($permission->name, '.publish')
+                || str_ends_with($permission->name, '.approve')
+                || in_array($permission->name, self::ACCOUNT_PERMISSIONS, true),
         );
     }
 }

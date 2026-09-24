@@ -20,7 +20,7 @@ beforeEach(function () {
 function bulkUser(string $role, array $attributes = []): User
 {
     $user = User::factory()->create($attributes);
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }
@@ -90,7 +90,7 @@ it('keeps a regional editor to their own materials without revealing others', fu
         'districts_count' => 1,
         'sort' => 1,
     ]);
-    $regionalEditor = bulkUser('regional_editor', ['region_id' => $region->id]);
+    $regionalEditor = bulkUser('regional_editor', ['region_id' => $region->id, 'limited_to_region' => true]);
     $own = News::factory()->create(['author_id' => $regionalEditor->id]);
     $foreign = News::factory()->create([
         'author_id' => bulkUser('editor')->id,

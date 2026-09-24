@@ -6,7 +6,6 @@ use App\Concerns\HandlesPendingChanges;
 use App\Enums\Channel;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
-use App\Enums\RoleName;
 use App\Enums\Severity;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Alert\AlertRequest;
@@ -336,7 +335,7 @@ class AlertController extends Controller
                 ['value' => 'geo', 'label' => 'Геологический'],
                 ['value' => 'meteo', 'label' => 'Метеорологический'],
             ],
-            'approvers' => User::query()->role([RoleName::ChiefEditor->value, RoleName::Approver->value, RoleName::Admin->value])
+            'approvers' => User::query()->permission('alerts.approve')
                 ->get()->map(fn (User $u): array => ['id' => $u->id, 'name' => $u->name.' — '.($u->position ?? '')])->all(),
             'instructions' => Instruction::query()->get()->map(fn (Instruction $i): array => [
                 'id' => $i->id, 'name' => $i->getTranslation('name', 'ru'),
@@ -351,7 +350,7 @@ class AlertController extends Controller
     {
         return Region::query()
             ->when(
-                $user?->hasRole(RoleName::RegionalEditor->value),
+                $user?->isLimitedToRegion() === true,
                 fn (Builder $query): Builder => $query->whereKey($user?->region_id),
             )
             ->orderBy('sort');

@@ -23,6 +23,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string|null $position
  * @property string|null $department
  * @property int|null $region_id
+ * @property bool $limited_to_region
  * @property bool $is_active
  * @property string $interface_locale
  * @property Carbon|null $last_login_at
@@ -51,9 +52,17 @@ class User extends Authenticatable
         'position',
         'department',
         'region_id',
+        'limited_to_region',
         'is_active',
         'interface_locale',
         'last_login_at',
+    ];
+
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'limited_to_region' => false,
     ];
 
     /**
@@ -76,6 +85,7 @@ class User extends Authenticatable
             'two_factor_confirmed_at' => 'datetime',
             'last_login_at' => 'datetime',
             'is_active' => 'boolean',
+            'limited_to_region' => 'boolean',
             'password' => 'hashed',
         ];
     }
@@ -83,7 +93,7 @@ class User extends Authenticatable
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
-            ->logOnly(['name', 'email', 'position', 'department', 'region_id', 'is_active'])
+            ->logOnly(['name', 'email', 'position', 'department', 'region_id', 'limited_to_region', 'is_active'])
             ->logOnlyDirty()
             ->useLogName('users');
     }
@@ -102,6 +112,16 @@ class User extends Authenticatable
     public function facilitatedUsabilitySessions(): HasMany
     {
         return $this->hasMany(UsabilitySession::class, 'facilitator_id');
+    }
+
+    /**
+     * An employee of a regional department: sees and changes only their own
+     * materials and the alerts of their region. A setting of the account,
+     * not of the role — any role but the administrator's can carry it.
+     */
+    public function isLimitedToRegion(): bool
+    {
+        return $this->limited_to_region;
     }
 
     public function hasTwoFactorEnabled(): bool

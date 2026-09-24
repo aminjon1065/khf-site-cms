@@ -25,7 +25,7 @@ beforeEach(function () {
 function dashboardUser(string $role): User
 {
     $user = User::factory()->create();
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }
@@ -62,7 +62,7 @@ it('limits dashboard data to the assigned region and own editorial content', fun
     $assignedRegion = Region::query()->where('code', 'khatlon')->firstOrFail();
     $foreignRegion = Region::query()->where('code', 'sughd')->firstOrFail();
     $user = dashboardUser('regional_editor');
-    $user->update(['region_id' => $assignedRegion->id]);
+    $user->update(['region_id' => $assignedRegion->id, 'limited_to_region' => true]);
 
     $ownAlert = Alert::factory()->published()->create([
         'starts_at' => now()->subHour(),

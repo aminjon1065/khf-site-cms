@@ -59,7 +59,6 @@ interface Props {
     instruction: InstructionData | null;
     reference: {
         hazards: Option[];
-        authors: Option[];
         sectionKeys: { key: SectionKey; label: string }[];
     };
     /** A proposal waiting for approval on this live material. */

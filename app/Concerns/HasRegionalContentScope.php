@@ -2,22 +2,21 @@
 
 namespace App\Concerns;
 
-use App\Enums\RoleName;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 
 trait HasRegionalContentScope
 {
     /**
-     * Regionless editorial records are owned by their author. Regional
-     * editors may only browse records they created themselves.
+     * Regionless editorial records are owned by their author. An account
+     * limited to its region browses only the records it created.
      *
      * @param  Builder<static>  $query
      * @return Builder<static>
      */
     public function scopeAccessibleTo(Builder $query, ?User $user): Builder
     {
-        if (! $user?->hasRole(RoleName::RegionalEditor->value)) {
+        if ($user?->isLimitedToRegion() !== true) {
             return $query;
         }
 

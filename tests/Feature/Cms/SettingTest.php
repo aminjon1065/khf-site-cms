@@ -30,7 +30,7 @@ beforeEach(function () {
 function settingUser(string $role): User
 {
     $user = User::factory()->create(['two_factor_confirmed_at' => now()]);
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }

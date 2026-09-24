@@ -25,7 +25,7 @@ beforeEach(function () {
 function previewUser(string $role = 'editor'): User
 {
     $user = User::factory()->create();
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }

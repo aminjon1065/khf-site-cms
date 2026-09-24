@@ -3,7 +3,6 @@
 namespace App\Http\Requests\Alert;
 
 use App\Enums\HazardType;
-use App\Enums\RoleName;
 use App\Enums\Severity;
 use App\Models\Alert;
 use App\Models\District;
@@ -115,12 +114,12 @@ class AlertRequest extends FormRequest
                 }
 
                 $user = $this->user();
-                if (! $user?->hasRole(RoleName::RegionalEditor->value)) {
+                if ($user?->isLimitedToRegion() !== true) {
                     return;
                 }
 
                 if ($territoryType !== 'regions' || $user->region_id === null || $regionIds !== [$user->region_id]) {
-                    $validator->errors()->add('regions', 'Региональный редактор может публиковать материалы только для своего региона.');
+                    $validator->errors()->add('regions', 'Вам доступны предупреждения только для своего региона — выберите его.');
                 }
             },
         ];

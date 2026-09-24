@@ -86,7 +86,7 @@ class WorkflowService
         }
 
         // Scheduling a critical alert is publishing it later: the scheduler
-        // runs without a person, so the role check happens when it's planned.
+        // runs without a person, so the check happens when it's planned.
         if (in_array($to, [ContentStatus::Published, ContentStatus::Scheduled], true)
             && $subject instanceof Alert && $actor !== null) {
             $this->guardCriticalPublish($subject, $actor);
@@ -155,8 +155,9 @@ class WorkflowService
     }
 
     /**
-     * Critical (severity=critical) alerts may only be published by an
-     * alert_operator or higher.
+     * A critical (severity=critical) alert goes out only from someone trusted
+     * to approve alerts — publishing alone is not enough. A right, not a
+     * role name, so it holds for any role the administrator builds.
      *
      * @throws ValidationException
      */
@@ -166,9 +167,9 @@ class WorkflowService
             return;
         }
 
-        if (! $actor->hasAnyRole(['alert_operator', 'admin', 'superadmin', 'chief_editor'])) {
+        if (! $actor->can('alerts.approve')) {
             throw ValidationException::withMessages([
-                'severity' => 'Критическое предупреждение может публиковать только оператор предупреждений или выше.',
+                'severity' => 'Критическое предупреждение публикует только тот, у кого есть право согласовывать предупреждения.',
             ]);
         }
     }

@@ -57,7 +57,6 @@ interface Props {
     reference: {
         categories: Option[];
         tags: Option[];
-        authors: Option[];
     };
     coverSrc: string | null;
     setCoverPicker: (open: boolean) => void;

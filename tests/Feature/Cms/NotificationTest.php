@@ -79,7 +79,7 @@ it('sends approvers to the approval center and authors the reviewer comment', fu
     $author = User::factory()->create();
     $author->assignRole('editor');
     $approver = User::factory()->create();
-    $approver->assignRole('approver');
+    giveRole($approver, 'approver');
     $news = News::factory()->create([
         'author_id' => $author->id,
         'status' => ContentStatus::Draft,

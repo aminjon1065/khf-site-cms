@@ -34,7 +34,7 @@ class NavBadges
             $query = $modelClass::query()
                 ->whereIn('status', ['review', 'translation_check']);
 
-            if ($user->hasRole('regional_editor')) {
+            if ($user->isLimitedToRegion()) {
                 if ($user->region_id === null) {
                     $query->whereRaw('1 = 0');
                 } elseif ($modelClass === Alert::class) {

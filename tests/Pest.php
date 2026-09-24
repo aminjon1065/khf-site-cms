@@ -1,10 +1,12 @@
 <?php
 
 use App\Jobs\PerformMediaConversions;
+use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
 use Spatie\MediaLibrary\Conversions\ConversionCollection;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 // Тесты медиаконверсий (`MediaConversionQueueTest`, `MediaTest`) реально
@@ -90,6 +92,88 @@ expect()->extend('toBeOne', function () {
 function something()
 {
     // ..
+}
+
+/**
+ * Roles an administrator builds on the «Роли и права» screen, for tests about
+ * rights the three built-in roles don't combine — someone who only edits,
+ * only approves, only looks. These are the former fixed roles of the CMS:
+ * installations that had people in them keep them as roles of their own.
+ * The limit to a region is not part of any role — it is set on the account
+ * (`limited_to_region`).
+ *
+ * @return array<string, list<string>>
+ */
+function customTestRoles(): array
+{
+    $grants = [
+        'translator' => [
+            'taxonomy' => 'view,edit', 'alerts' => 'view,edit', 'news' => 'view,edit',
+            'projects' => 'view,edit', 'announcements' => 'view,edit', 'pages' => 'view,edit',
+            'instructions' => 'view,edit', 'documents' => 'view', 'media' => 'view',
+        ],
+        'regional_editor' => [
+            'taxonomy' => 'view,create,edit', 'alerts' => 'view,create,edit', 'news' => 'view,create,edit',
+            'projects' => 'view,create,edit', 'announcements' => 'view,create,edit', 'pages' => 'view,create,edit',
+            'instructions' => 'view', 'documents' => 'view,create', 'media' => 'view,create',
+        ],
+        'alert_operator' => [
+            'taxonomy' => 'view', 'alerts' => 'view,create,edit,delete,publish,approve', 'news' => 'view',
+            'projects' => 'view', 'announcements' => 'view', 'pages' => 'view', 'instructions' => 'view,edit',
+            'documents' => 'view', 'media' => 'view,create', 'home' => 'view', 'regions' => 'view',
+        ],
+        'approver' => [
+            'taxonomy' => 'view', 'alerts' => 'view,publish,approve', 'news' => 'view,publish,approve',
+            'projects' => 'view,publish,approve', 'announcements' => 'view,publish,approve',
+            'pages' => 'view,publish,approve', 'instructions' => 'view,publish,approve',
+            'documents' => 'view,approve', 'media' => 'view', 'home' => 'view,approve', 'submissions' => 'view,edit',
+        ],
+        'viewer' => [
+            'taxonomy' => 'view', 'alerts' => 'view', 'news' => 'view', 'projects' => 'view',
+            'announcements' => 'view', 'pages' => 'view', 'instructions' => 'view', 'documents' => 'view',
+            'media' => 'view', 'home' => 'view', 'submissions' => 'view',
+        ],
+    ];
+
+    return array_map(
+        fn (array $modules): array => array_merge(...array_map(
+            fn (string $module, string $actions): array => array_map(
+                fn (string $action): string => "{$module}.{$action}",
+                explode(',', $actions),
+            ),
+            array_keys($modules),
+            $modules,
+        )),
+        $grants,
+    );
+}
+
+/**
+ * A role with exactly these rights, as an administrator would build it.
+ *
+ * @param  list<string>  $permissions
+ */
+function customRole(string $name, array $permissions): string
+{
+    Role::findOrCreate($name, 'web')->syncPermissions($permissions);
+
+    return $name;
+}
+
+/**
+ * Give a test user a role: a built-in one, or one of customTestRoles().
+ */
+function giveRole(User $user, string $role): User
+{
+    $custom = customTestRoles();
+
+    if (array_key_exists($role, $custom)) {
+        customRole($role, $custom[$role]);
+    }
+
+    $user->assignRole($role);
+
+    return $user;
 }
 
 /**

@@ -62,7 +62,6 @@ interface Props {
     project: ProjectData | null;
     reference: {
         lifecycles: Option[];
-        authors: Option[];
     };
     /** A proposal waiting for approval on this live material. */
     pending_change?: PendingChangeInfo | null;

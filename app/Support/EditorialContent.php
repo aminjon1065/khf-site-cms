@@ -68,8 +68,8 @@ class EditorialContent
     }
 
     /**
-     * The trash of a type as this user sees it: a regional editor only their
-     * own materials. Shared by the trash page and the «Корзина (N)» link of
+     * The trash of a type as this user sees it: an account limited to its
+     * region only its own materials. Shared by the trash page and the «Корзина (N)» link of
      * each list, so the two never disagree.
      *
      * @return EloquentBuilder<covariant Model>
@@ -78,7 +78,7 @@ class EditorialContent
     {
         $query = $this->trashedQuery($type);
 
-        if ($user->hasRole('regional_editor')) {
+        if ($user->isLimitedToRegion()) {
             $query->where('author_id', $user->id);
         }
 

@@ -27,7 +27,7 @@ abstract class ModulePolicy
     public function create(User $user): bool
     {
         return $user->can($this->permission('create'))
-            && (! $user->hasRole('regional_editor') || $user->region_id !== null);
+            && (! $user->isLimitedToRegion() || $user->region_id !== null);
     }
 
     public function update(User $user, Model $model): bool
@@ -56,12 +56,12 @@ abstract class ModulePolicy
     }
 
     /**
-     * Regional editors are limited to content within their own region.
-     * Models without a region are always in scope; override to restrict.
+     * An account limited to its region works only within it: its own
+     * materials, the alerts of its region (AlertPolicy).
      */
     protected function inScope(User $user, Model $model): bool
     {
-        if (! $user->hasRole('regional_editor')) {
+        if (! $user->isLimitedToRegion()) {
             return true;
         }
 

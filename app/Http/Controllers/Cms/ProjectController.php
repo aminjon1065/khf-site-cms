@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Cms;
 use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Enums\ProjectStatus;
-use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Project\ProjectRequest;
 use App\Http\Resources\ProjectResource;
@@ -288,11 +287,6 @@ class ProjectController extends Controller
     {
         return [
             'lifecycles' => ProjectStatus::options(),
-            'authors' => User::query()->role([
-                RoleName::Editor->value,
-                RoleName::ChiefEditor->value,
-                RoleName::Admin->value,
-            ])->get()->map(fn (User $u): array => ['value' => $u->id, 'label' => $u->name])->all(),
         ];
     }
 

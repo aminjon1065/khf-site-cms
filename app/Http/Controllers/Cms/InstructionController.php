@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Cms;
 use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
-use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Instruction\InstructionRequest;
 use App\Http\Resources\InstructionResource;
@@ -296,11 +295,6 @@ class InstructionController extends Controller
     {
         return [
             'hazards' => HazardType::options(),
-            'authors' => User::query()->role([
-                RoleName::Editor->value,
-                RoleName::ChiefEditor->value,
-                RoleName::Admin->value,
-            ])->get()->map(fn (User $u): array => ['value' => $u->id, 'label' => $u->name])->all(),
             'sectionKeys' => [
                 ['key' => 'before', 'label' => 'До события'],
                 ['key' => 'during', 'label' => 'Во время события'],

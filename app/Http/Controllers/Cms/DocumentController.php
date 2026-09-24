@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Cms;
 use App\Concerns\HandlesPendingChanges;
 use App\Enums\ContentStatus;
 use App\Enums\DocType;
-use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Document\DocumentRequest;
 use App\Http\Resources\DocumentResource;
@@ -291,11 +290,6 @@ class DocumentController extends Controller
         return [
             'types' => DocType::options(),
             'sections' => $this->sections(),
-            'authors' => User::query()->role([
-                RoleName::Editor->value,
-                RoleName::ChiefEditor->value,
-                RoleName::Admin->value,
-            ])->get()->map(fn (User $u): array => ['value' => $u->id, 'label' => $u->name])->all(),
         ];
     }
 

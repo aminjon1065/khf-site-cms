@@ -4,6 +4,7 @@ use App\Enums\SubmissionStatus;
 use App\Models\Submission;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
+use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -15,7 +16,7 @@ beforeEach(function () {
 function subUser(string $role): User
 {
     $user = User::factory()->create();
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }
@@ -83,4 +84,19 @@ it('soft-deletes a submission for an authorized user', function () {
 
     expect(Submission::query()->find($submission->id))->toBeNull()
         ->and(Submission::withTrashed()->find($submission->id))->not->toBeNull();
+});
+
+it('offers an appeal to everyone who may work on appeals, whatever their role is called', function () {
+    $submission = Submission::factory()->create();
+    $chief = subUser('chief_editor');
+    $clerk = subUser(customRole('appeals_clerk', ['submissions.view', 'submissions.edit']));
+    subUser('editor');
+
+    actingAs($chief)->get("/submissions/{$submission->id}")
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where(
+            'reference.assignees',
+            fn ($assignees): bool => collect($assignees)->pluck('value')->sort()->values()->all()
+                === collect([$chief->id, $clerk->id])->sort()->values()->all(),
+        ));
 });

@@ -9,6 +9,7 @@ use App\Services\WorkflowService;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Validation\ValidationException;
+use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -17,12 +18,15 @@ beforeEach(function () {
     seed([RolePermissionSeeder::class, RegionSeeder::class]);
 });
 
-function userWithRole(string $role, ?int $regionId = null): User
+/**
+ * @param  int|null  $limitedTo  the region the account is limited to
+ */
+function userWithRole(string $role, ?int $limitedTo = null): User
 {
-    $user = User::factory()->create(['region_id' => $regionId]);
-    $user->assignRole($role);
-
-    return $user;
+    return giveRole(User::factory()->create([
+        'region_id' => $limitedTo,
+        'limited_to_region' => $limitedTo !== null,
+    ]), $role);
 }
 
 it('lets an editor open the alert wizard', function () {
@@ -56,11 +60,11 @@ it('lets a chief editor create an alert draft', function () {
     expect(Alert::query()->where('internal_title', 'Тестовое предупреждение')->exists())->toBeTrue();
 });
 
-it('confines a regional editor to alerts in their own region', function () {
+it('confines an editor limited to a region to its alerts', function () {
     $khatlon = Region::query()->where('code', 'khatlon')->first();
     $sughd = Region::query()->where('code', 'sughd')->first();
 
-    $regional = userWithRole('regional_editor', $khatlon->id);
+    $regional = userWithRole('editor', $khatlon->id);
 
     $inRegion = Alert::factory()->create();
     $inRegion->regions()->attach($khatlon->id);
@@ -78,10 +82,10 @@ it('confines a regional editor to alerts in their own region', function () {
     actingAs($regional)->get('/alerts')->assertOk();
 });
 
-it('rejects country-wide and foreign-region alerts from a regional editor', function () {
+it('rejects country-wide and foreign-region alerts from an editor limited to a region', function () {
     $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
     $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
-    $regional = userWithRole('regional_editor', $khatlon->id);
+    $regional = userWithRole('editor', $khatlon->id);
 
     actingAs($regional)->post('/alerts', [
         'internal_title' => 'Общенациональное предупреждение',
@@ -106,10 +110,10 @@ it('rejects country-wide and foreign-region alerts from a regional editor', func
     expect(Alert::query()->count())->toBe(0);
 });
 
-it('prevents a regional editor from moving an alert to another region', function () {
+it('prevents an editor limited to a region from moving an alert to another region', function () {
     $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
     $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
-    $regional = userWithRole('regional_editor', $khatlon->id);
+    $regional = userWithRole('editor', $khatlon->id);
     $alert = Alert::factory()->create(['author_id' => $regional->id]);
     $alert->regions()->attach($khatlon);
 
@@ -178,9 +182,49 @@ it('checks who may release a critical alert when it is scheduled', function () {
         'severity' => Severity::Critical,
         'status' => ContentStatus::Draft,
     ]);
+    // Publishes alerts, but isn't trusted to approve them.
+    $publisher = userWithRole(customRole('alert_publisher', [
+        'alerts.view', 'alerts.create', 'alerts.edit', 'alerts.publish',
+    ]));
 
-    expect(fn () => app(WorkflowService::class)->transition($alert, ContentStatus::Scheduled, userWithRole('approver')))
+    expect(fn () => app(WorkflowService::class)->transition($alert, ContentStatus::Scheduled, $publisher))
         ->toThrow(ValidationException::class);
 
     expect($alert->fresh()->status)->toBe(ContentStatus::Draft);
+});
+
+it('lets a chief editor release a critical alert', function () {
+    $alert = Alert::factory()->create([
+        'severity' => Severity::Critical,
+        'status' => ContentStatus::Draft,
+    ]);
+
+    app(WorkflowService::class)->transition($alert, ContentStatus::Scheduled, userWithRole('chief_editor'));
+
+    expect($alert->fresh()->status)->toBe(ContentStatus::Scheduled);
+});
+
+it('offers as approvers everyone who may approve alerts, whatever their role is called', function () {
+    $chief = userWithRole('chief_editor');
+    $dutyOfficer = userWithRole(customRole('duty_officer', ['alerts.view', 'alerts.approve']));
+    $editor = userWithRole('editor');
+
+    actingAs($editor)->get('/alerts/create')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page->where(
+            'reference.approvers',
+            fn ($approvers): bool => collect($approvers)->pluck('id')->sort()->values()->all()
+                === collect([$chief->id, $dutyOfficer->id])->sort()->values()->all(),
+        ));
+});
+
+it('does not limit an editor whose account only names a region', function () {
+    $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
+    $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
+    $editor = giveRole(User::factory()->create(['region_id' => $khatlon->id]), 'editor');
+    $alert = Alert::factory()->create();
+    $alert->regions()->attach($sughd);
+
+    expect($editor->isLimitedToRegion())->toBeFalse()
+        ->and($editor->can('update', $alert))->toBeTrue();
 });

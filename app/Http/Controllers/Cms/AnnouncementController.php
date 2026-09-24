@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Cms;
 use App\Concerns\HandlesPendingChanges;
 use App\Enums\AnnouncementKind;
 use App\Enums\ContentStatus;
-use App\Enums\RoleName;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Announcement\AnnouncementRequest;
 use App\Http\Resources\AnnouncementResource;
@@ -288,11 +287,6 @@ class AnnouncementController extends Controller
                     'value' => $project->id,
                     'label' => ContentTitle::of($project),
                 ])->all(),
-            'authors' => User::query()->role([
-                RoleName::Editor->value,
-                RoleName::ChiefEditor->value,
-                RoleName::Admin->value,
-            ])->get()->map(fn (User $u): array => ['value' => $u->id, 'label' => $u->name])->all(),
         ];
     }
 

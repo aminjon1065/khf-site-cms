@@ -24,7 +24,7 @@ function twoFactorPolicyUser(string $role, bool $enabled = false): User
     $user = User::factory()->create([
         'two_factor_confirmed_at' => $enabled ? now() : null,
     ]);
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }
@@ -57,4 +57,20 @@ it('requires 2FA from everyone who may publish, editors included', function () {
 it('does not require 2FA from roles that cannot publish', function () {
     actingAs(twoFactorPolicyUser('translator'))->get('/dashboard')->assertOk();
     actingAs(twoFactorPolicyUser('regional_editor'))->get('/dashboard')->assertOk();
+});
+
+it('requires 2FA from a role the administrator built with the right to approve', function () {
+    $approves = customRole('news_approver', ['news.view', 'news.approve']);
+
+    actingAs(twoFactorPolicyUser($approves))->get('/dashboard')
+        ->assertRedirect('/profile/security');
+});
+
+it('requires 2FA from whoever manages other people\'s accounts', function () {
+    $managesAccounts = customRole('staff_manager', ['users.view', 'users.edit']);
+    $looksAtStaff = customRole('staff_reader', ['users.view']);
+
+    actingAs(twoFactorPolicyUser($managesAccounts))->get('/dashboard')
+        ->assertRedirect('/profile/security');
+    actingAs(twoFactorPolicyUser($looksAtStaff))->get('/dashboard')->assertOk();
 });

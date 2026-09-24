@@ -19,7 +19,7 @@ beforeEach(function () {
 function projUser(string $role): User
 {
     $user = User::factory()->create();
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }

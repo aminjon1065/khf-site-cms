@@ -20,7 +20,7 @@ beforeEach(function () {
 function translationQueueUser(string $role, array $attributes = []): User
 {
     $user = User::factory()->create($attributes);
-    $user->assignRole($role);
+    giveRole($user, $role);
 
     return $user;
 }
@@ -143,6 +143,7 @@ it('limits regional editors to their own incomplete materials', function () {
     ]);
     $regionalEditor = translationQueueUser('regional_editor', [
         'region_id' => $region->id,
+        'limited_to_region' => true,
     ]);
     $otherEditor = translationQueueUser('editor');
     $tajikMissing = ['tg' => '', 'ru' => 'Текст', 'en' => ''];

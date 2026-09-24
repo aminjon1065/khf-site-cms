@@ -64,7 +64,7 @@ class DashboardController extends Controller
     private function regionStatuses(User $user, EloquentCollection $activeAlerts): array
     {
         $regions = Region::query()
-            ->when($user->hasRole('regional_editor'), fn (Builder $query) => $query->whereKey($user->region_id ?? 0))
+            ->when($user->isLimitedToRegion(), fn (Builder $query) => $query->whereKey($user->region_id ?? 0))
             ->orderBy('sort')
             ->get();
 

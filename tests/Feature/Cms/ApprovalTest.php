@@ -105,7 +105,7 @@ it('returns a material with a comment', function () {
 
 it('forbids a viewer from approving', function () {
     $viewer = User::factory()->create();
-    $viewer->assignRole('viewer');
+    giveRole($viewer, 'viewer');
     $alert = Alert::factory()->create(['status' => ContentStatus::Review]);
 
     actingAs($viewer)->post('/approvals/approve', ['type' => 'alert', 'id' => $alert->id])->assertForbidden();
@@ -113,7 +113,7 @@ it('forbids a viewer from approving', function () {
 
 it('forbids users without approval permissions from opening the approval center', function () {
     $viewer = User::factory()->create();
-    $viewer->assignRole('viewer');
+    giveRole($viewer, 'viewer');
 
     actingAs($viewer)->get('/approvals')->assertForbidden();
     actingAs(User::factory()->create())->get('/approvals')->assertForbidden();

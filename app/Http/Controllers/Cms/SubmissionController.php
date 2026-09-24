@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Cms;
 
-use App\Enums\RoleName;
 use App\Enums\SubmissionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Submission\SubmissionUpdateRequest;
@@ -181,14 +180,13 @@ class SubmissionController extends Controller
     }
 
     /**
+     * Who can take an appeal: everyone allowed to work on appeals.
+     *
      * @return array<int, array{value: int, label: string}>
      */
     private function assignees(): array
     {
-        return User::query()->role([
-            RoleName::Admin->value,
-            RoleName::ChiefEditor->value,
-            RoleName::Approver->value,
-        ])->get()->map(fn (User $u): array => ['value' => $u->id, 'label' => $u->name])->all();
+        return User::query()->permission('submissions.edit')
+            ->get()->map(fn (User $u): array => ['value' => $u->id, 'label' => $u->name])->all();
     }
 }
