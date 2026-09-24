@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Setting;
+use App\Support\SituationFreshness;
 
 /** Builds the whitelisted, locale-aware settings shared by public endpoints. */
 class PublicSettingsService
@@ -100,6 +101,11 @@ class PublicSettingsService
                     'units_count' => $get('structure', 'units_count'),
                 ],
                 'copyright' => $localized('footer', 'copyright'),
+                // How old the situation may be before the site says it may be
+                // out of date (SituationFreshness).
+                'situation' => [
+                    'stale_after_minutes' => SituationFreshness::minutes($get('situation', 'stale_after_minutes', null)),
+                ],
                 'seo' => [
                     'meta_title' => $exact('seo', 'meta_title'),
                     'meta_description' => $exact('seo', 'meta_description'),

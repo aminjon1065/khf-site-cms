@@ -2254,6 +2254,7 @@
           "emergency_services",
           "org",
           "seo",
+          "situation",
           "social",
           "structure"
         ],
@@ -2353,6 +2354,26 @@
           },
           "copyright": {
             "type": "string"
+          },
+          "situation": {
+            "type": "object",
+            "required": [
+              "stale_after_minutes"
+            ],
+            "properties": {
+              "stale_after_minutes": {
+                "type": "integer",
+                "enum": [
+                  30,
+                  60,
+                  180,
+                  360,
+                  720,
+                  1440
+                ],
+                "description": "How old the situation may be before the site says it may be out of date (minutes; the administrator's choice, a day by default)."
+              }
+            }
           },
           "seo": {
             "type": "object",

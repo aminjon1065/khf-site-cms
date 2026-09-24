@@ -5,7 +5,7 @@ import { useCan } from '@/lib/auth';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
 import { FormErrorSummary } from '@/ui/Feedback';
-import { Field, Input, Textarea } from '@/ui/Field';
+import { Field, Input, Select, Textarea } from '@/ui/Field';
 import { PageHeader } from '@/ui/PageHeader';
 
 interface FieldDef {
@@ -13,6 +13,8 @@ interface FieldDef {
     label: string;
     type: string;
     value: string;
+    hint?: string;
+    options?: { value: string; label: string }[];
 }
 
 interface Section {
@@ -96,9 +98,27 @@ export default function SettingsIndex({ sections }: Props) {
                             <Field
                                 key={field.key}
                                 label={field.label}
+                                hint={field.hint}
                                 error={fieldError(section.group, field.key)}
                             >
-                                {field.type === 'textarea' ? (
+                                {field.type === 'select' ? (
+                                    <Select
+                                        value={
+                                            data.settings[section.group]?.[
+                                                field.key
+                                            ] ?? ''
+                                        }
+                                        options={field.options ?? []}
+                                        onChange={(e) =>
+                                            update(
+                                                section.group,
+                                                field.key,
+                                                e.target.value,
+                                            )
+                                        }
+                                        disabled={!editable}
+                                    />
+                                ) : field.type === 'textarea' ? (
                                     <Textarea
                                         value={
                                             data.settings[section.group]?.[

@@ -81,3 +81,33 @@ it('forbids a non-admin from saving settings', function () {
         'settings' => ['org' => ['short_name_ru' => 'Взлом']],
     ])->assertForbidden();
 });
+
+it('lets the administrator choose how old the situation on the site may be', function () {
+    actingAs(settingUser('admin'))->get('/settings')
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page
+            ->where('sections.5.group', 'situation')
+            ->where('sections.5.fields.0.key', 'stale_after_minutes')
+            ->where('sections.5.fields.0.type', 'select')
+            // A day until the administrator chooses otherwise.
+            ->where('sections.5.fields.0.value', '1440')
+            ->has('sections.5.fields.0.options', 6)
+            ->where('sections.5.fields.0.options.5.label', 'Сутки (по умолчанию)'));
+
+    Queue::fake();
+
+    actingAs(settingUser('admin'))->put('/settings', [
+        'settings' => ['situation' => ['stale_after_minutes' => '180']],
+    ])->assertRedirect()->assertSessionHasNoErrors();
+
+    expect(Setting::query()->where('group', 'situation')->where('key', 'stale_after_minutes')->value('value'))
+        ->toBe('180');
+});
+
+it('takes only an age from the list', function () {
+    actingAs(settingUser('admin'))->put('/settings', [
+        'settings' => ['situation' => ['stale_after_minutes' => '5']],
+    ])->assertSessionHasErrors(['settings.situation.stale_after_minutes' => 'Выберите срок из списка.']);
+
+    expect(Setting::query()->where('group', 'situation')->exists())->toBeFalse();
+});

@@ -139,3 +139,16 @@ it('returns social links as a keyed map', function () {
     expect($data['social'])->toBeArray()
         ->and($data['social'])->toHaveKey('telegram');
 });
+
+it('tells the site how old the situation may be — a day unless the administrator chose otherwise', function () {
+    $this->getJson('/api/v1/settings')
+        ->assertOk()
+        ->assertJsonPath('data.situation.stale_after_minutes', 1440);
+
+    Setting::updateOrCreate(['group' => 'situation', 'key' => 'stale_after_minutes'], ['value' => '60']);
+    $this->getJson('/api/v1/settings')->assertJsonPath('data.situation.stale_after_minutes', 60);
+
+    // Anything but a listed age (a hand-edited row) falls back to a day.
+    Setting::updateOrCreate(['group' => 'situation', 'key' => 'stale_after_minutes'], ['value' => '7']);
+    $this->getJson('/api/v1/settings')->assertJsonPath('data.situation.stale_after_minutes', 1440);
+});
