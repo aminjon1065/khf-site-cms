@@ -10,6 +10,7 @@ import {
     Type,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import type { KeyboardEvent } from 'react';
 import { cn } from '@/lib/utils';
 import { ImageEditor } from './ImageEditor';
 import { MediaPicker } from './MediaPicker';
@@ -87,6 +88,18 @@ export function RichImageView({
         setReplacing(false);
         setCropping(false);
         select();
+    };
+
+    /**
+     * Keys typed in the photo's fields stay there — except Ctrl/Cmd+S,
+     * which saves the material (useSaveShortcut listens on the window).
+     */
+    const keepKeysInField = (e: KeyboardEvent<HTMLElement>) => {
+        if ((e.ctrlKey || e.metaKey) && e.code === 'KeyS') {
+            return;
+        }
+
+        e.stopPropagation();
     };
 
     const cropSource: MediaItem = {
@@ -251,7 +264,7 @@ export function RichImageView({
                             }
                             placeholder="Что на фото — для незрячих читателей"
                             onMouseDown={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
+                            onKeyDown={keepKeysInField}
                         />
                     </label>
                 )}
@@ -267,7 +280,7 @@ export function RichImageView({
                                 })
                             }
                             onMouseDown={(e) => e.stopPropagation()}
-                            onKeyDown={(e) => e.stopPropagation()}
+                            onKeyDown={keepKeysInField}
                         />
                         <span>Декоративное фото — описание не нужно</span>
                     </label>
@@ -289,7 +302,7 @@ export function RichImageView({
                         }
                         onMouseDown={(e) => e.stopPropagation()}
                         onKeyDown={(e) => {
-                            e.stopPropagation();
+                            keepKeysInField(e);
 
                             if (e.key === 'Enter') {
                                 e.preventDefault();

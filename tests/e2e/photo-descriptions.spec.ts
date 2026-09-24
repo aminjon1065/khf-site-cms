@@ -63,7 +63,14 @@ test('an undescribed photo is flagged, described on the spot or marked decorativ
         .check();
     await expect(flags).toHaveCount(0);
 
+    // Ctrl+S right from the photo's field: the save must go through.
+    const saving = page.waitForResponse(
+        (response) =>
+            response.request().method() === 'POST' &&
+            new URL(response.url()).pathname === `/news/${id}`,
+    );
     await page.keyboard.press('Control+s');
+    await saving;
     await expect(page).toHaveURL(new RegExp(`/news/${id}/edit$`));
 
     const saved = tinker(
