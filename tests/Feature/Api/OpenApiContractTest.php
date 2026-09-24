@@ -185,8 +185,9 @@ it('documents every public API operation exactly once', function () {
         ->and($documented)->toBe($registered)
         // 25 исходных операций + `/leadership` и `/structure`, появившиеся
         // вместе с переносом руководства и структуры Комитета в CMS (C-1),
-        // + `/slugs/{type}` для статической генерации и карты сайта.
-        ->and($documented)->toHaveCount(28);
+        // + `/slugs/{type}` для статической генерации, + `/sitemap` для
+        // sitemap.xml с датами изменений.
+        ->and($documented)->toHaveCount(29);
 });
 
 it('keeps successful responses for every operation inside the OpenAPI contract', function () {
@@ -232,6 +233,7 @@ it('keeps successful responses for every operation inside the OpenAPI contract',
         ['get', '/pages/{slug}', "/pages/{$slugs['page']}?locale=ru"],
         ['get', '/categories', '/categories?locale=ru'],
         ['get', '/slugs/{type}', '/slugs/news?locale=ru'],
+        ['get', '/sitemap', '/sitemap'],
         ['get', '/regions', '/regions?locale=ru'],
         ['get', '/regions/directory', '/regions/directory?locale=ru'],
         ['get', '/menu', '/menu?locale=ru'],

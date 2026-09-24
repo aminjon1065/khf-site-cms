@@ -670,7 +670,7 @@
       "get": {
         "operationId": "listSlugs",
         "summary": "Slugs of every publicly reachable material of one type",
-        "description": "Same rows as the matching list endpoint, one column. Serves the static-generation params and the sitemap of the public site, which need the URL segment only.",
+        "description": "Same rows as the matching list endpoint, one column. Serves the static-generation params of the public site and its check whether a language version is published; sitemap.xml reads /sitemap.",
         "parameters": [
           {
             "$ref": "#/components/parameters/SlugType"
@@ -686,6 +686,25 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/SlugListResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/sitemap": {
+      "get": {
+        "operationId": "listSitemapEntries",
+        "summary": "Every publicly reachable material for sitemap.xml",
+        "description": "One entry per material with a public address: its type, slug, the locales it is published in (same rule as /slugs/{type}) and when it last changed — the last real edit of the text, else the publication. The same materials and locales as the slug listings.",
+        "responses": {
+          "200": {
+            "description": "Materials of the sitemap, by type and slug",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SitemapResponse"
                 }
               }
             }
@@ -3301,6 +3320,76 @@
                 "type": "integer"
               }
             }
+          }
+        }
+      },
+      "SitemapResponse": {
+        "type": "object",
+        "required": [
+          "data",
+          "meta"
+        ],
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SitemapEntry"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "required": [
+              "total"
+            ],
+            "properties": {
+              "total": {
+                "type": "integer"
+              }
+            }
+          }
+        }
+      },
+      "SitemapEntry": {
+        "type": "object",
+        "required": [
+          "type",
+          "slug",
+          "locales",
+          "modified_at"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": [
+              "news",
+              "projects",
+              "announcements",
+              "instructions",
+              "pages",
+              "alerts"
+            ]
+          },
+          "slug": {
+            "type": "string"
+          },
+          "locales": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tg",
+                "ru",
+                "en"
+              ]
+            }
+          },
+          "modified_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Last real edit of the text, else the publication; the page's own modified time."
           }
         }
       }

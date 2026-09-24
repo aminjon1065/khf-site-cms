@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\ProjectController;
 use App\Http\Controllers\Api\RegionController;
 use App\Http\Controllers\Api\SearchController;
 use App\Http\Controllers\Api\SettingController;
+use App\Http\Controllers\Api\SitemapController;
 use App\Http\Controllers\Api\SlugController;
 use App\Http\Controllers\Api\StructureUnitController;
 use App\Http\Controllers\Api\SubmissionController;
@@ -59,6 +60,9 @@ Route::middleware('throttle:api-public')->group(function (): void {
     Route::get('slugs/{type}', SlugController::class)
         ->whereIn('type', SlugController::TYPES)
         ->name('api.slugs');
+
+    // Every material of sitemap.xml at once: address, languages, last change.
+    Route::get('sitemap', SitemapController::class)->name('api.sitemap');
 
     // Population safety instructions (guides).
     Route::get('instructions', [InstructionController::class, 'index'])->name('api.instructions.index');

@@ -3,19 +3,14 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Alert;
-use App\Models\Announcement;
-use App\Models\Instruction;
-use App\Models\News;
-use App\Models\Page;
-use App\Models\Project;
 use App\Services\PublicReadModelCache;
-use App\Support\PublicLocale;
+use App\Support\PublicAddresses;
 use Illuminate\Http\JsonResponse;
 
 /**
  * Slug-only listings for consumers that need nothing but the URL segment:
- * the Next.js `generateStaticParams` of every detail route and `sitemap.ts`.
+ * the Next.js `generateStaticParams` of every detail route and the check
+ * whether a language version is published (sitemap.xml reads /sitemap).
  *
  * Those consumers used to page through the regular list endpoints and throw
  * away the whole DTO, paying for body/media/labels of every record to read one
@@ -30,14 +25,7 @@ class SlugController extends Controller
      *
      * @var list<string>
      */
-    public const TYPES = [
-        'news',
-        'projects',
-        'announcements',
-        'instructions',
-        'pages',
-        'alerts',
-    ];
+    public const TYPES = PublicAddresses::TYPES;
 
     public function __construct(private readonly PublicReadModelCache $cache) {}
 
@@ -66,22 +54,10 @@ class SlugController extends Controller
      */
     private function slugs(string $type, string $locale): array
     {
-        // Each arm mirrors the visibility scope of that type's list endpoint,
-        // including the one asymmetry: alerts list only while active, whereas
-        // every other type lists everything public. Mirroring keeps this a pure
+        // The rows of the type's list endpoint (PublicAddresses): a pure
         // payload optimisation, with no drift in which pages get pre-rendered
         // or land in the sitemap.
-        $query = match ($type) {
-            'news' => PublicLocale::available(News::query()->public(), 'title', $locale),
-            'projects' => PublicLocale::available(Project::query()->public(), 'title', $locale),
-            'announcements' => PublicLocale::available(Announcement::query()->public(), 'title', $locale),
-            'instructions' => PublicLocale::available(Instruction::query()->public(), 'name', $locale),
-            'pages' => PublicLocale::available(Page::query()->public(), 'title', $locale),
-            'alerts' => PublicLocale::available(Alert::query()->active(), 'title', $locale),
-            // Unreachable through the constrained route; kept so a future edit
-            // to that constraint fails as a 404 rather than a 500.
-            default => abort(404),
-        };
+        $query = PublicAddresses::query($type, $locale);
 
         // The list endpoints order for display; slug consumers ignore order
         // entirely. Sorting by slug keeps the cached payload byte-stable, so an
