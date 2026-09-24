@@ -238,6 +238,7 @@ export function RichImageView({
                             're-figure-alt',
                             undescribed && 'is-missing',
                         )}
+                        data-re-image-ui=""
                     >
                         <span>Описание</span>
                         <input
@@ -255,7 +256,7 @@ export function RichImageView({
                     </label>
                 )}
                 {selected && (
-                    <label className="re-figure-decorative">
+                    <label className="re-figure-decorative" data-re-image-ui="">
                         <input
                             type="checkbox"
                             checked={decorative}
