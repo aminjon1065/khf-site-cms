@@ -60,7 +60,8 @@ test('a live document shows its files without offering to change them', async ({
 
     await page.goto(`/documents/${id}/edit`);
 
-    await expect(page.getByText(NOTE)).toBeVisible();
+    // Beside the files; the banner at the top says it within a longer text.
+    await expect(page.getByText(NOTE, { exact: true })).toBeVisible();
     await expect(
         page.getByRole('button', { name: /^(Выбрать|Заменить) файл/ }),
     ).toHaveCount(0);
@@ -92,7 +93,7 @@ test('a live instruction shows its illustration and files without offering to ch
     await page.getByRole('tab', { name: 'Иллюстрация' }).click();
 
     await expect(page.getByText('Иллюстрации нет.')).toBeVisible();
-    await expect(page.getByText(NOTE).first()).toBeVisible();
+    await expect(page.getByText(NOTE, { exact: true }).first()).toBeVisible();
     await expect(page.getByRole('button', { name: 'Загрузить' })).toHaveCount(
         0,
     );
