@@ -6,6 +6,7 @@ use App\Enums\RoleName;
 use App\Models\User;
 use App\Support\NavBadges;
 use App\Support\PublicSite;
+use App\Support\UploadLimits;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
@@ -69,6 +70,9 @@ class HandleInertiaRequests extends Middleware
                 : ['user' => null],
             'locale' => 'ru',
             'public_site_url' => PublicSite::baseUrl(),
+            // Formats and sizes every upload is checked against, so pickers
+            // and hints say the same as the server (UploadLimits).
+            'uploads' => Inertia::once(fn (): array => UploadLimits::forClient()),
             'flash' => [
                 'success' => $request->session()->get('success'),
                 'error' => $request->session()->get('error'),

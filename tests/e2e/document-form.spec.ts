@@ -69,3 +69,24 @@ test('editor adds a document with requisites and a Russian file, then saves with
         page.getByRole('button', { name: 'Выбрать файл: Таджикский (ТҶ)' }),
     ).toBeVisible();
 });
+
+test('a file the server would turn away is refused before the upload', async ({
+    page,
+}) => {
+    await page.goto('/documents/create');
+
+    await page.locator('#document-file-ru').setInputFiles({
+        name: 'setup.exe',
+        mimeType: 'application/x-msdownload',
+        buffer: Buffer.from('MZ'),
+    });
+
+    await expect(
+        page.getByText(
+            '«setup.exe»: подходят файлы PDF, DOC(X), XLS(X) или PPT(X).',
+        ),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: 'Выбрать файл: Русский (РУ)' }),
+    ).toBeVisible();
+});

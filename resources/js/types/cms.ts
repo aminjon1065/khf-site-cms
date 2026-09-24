@@ -1,4 +1,5 @@
 import type { Locale } from '@/lib/i18n';
+import type { UploadLimits } from '@/lib/uploads';
 
 export interface AuthUser {
     id: number;
@@ -51,6 +52,8 @@ export interface SharedProps {
     notifications?: { unread: number; items: AppNotification[] };
     /** Base URL of the public site (FRONTEND_URL), without a trailing slash. */
     public_site_url: string;
+    /** App\Support\UploadLimits::forClient(). */
+    uploads: UploadLimits;
     [key: string]: unknown;
 }
 

@@ -1,7 +1,9 @@
 import { Check, ImageOff, Pencil, Upload } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { getJson, postForm } from '@/lib/http';
+import { acceptOf, uploadProblem } from '@/lib/uploads';
 import { Button } from './Button';
 import { Input, Select } from './Field';
 import { ImageEditor } from './ImageEditor';
@@ -46,8 +48,6 @@ interface Props {
     onSelectMany?: (items: MediaItem[]) => void;
 }
 
-const ACCEPT = 'image/png,image/jpeg,image/webp,image/gif';
-
 const SORT_OPTIONS = [
     { value: 'newest', label: 'Сначала новые' },
     { value: 'oldest', label: 'Сначала старые' },
@@ -80,6 +80,7 @@ export function MediaPicker({
         new Map(),
     );
     const fileRef = useRef<HTMLInputElement>(null);
+    const limit = useUploadLimits().library_image;
 
     // Каждое закрытие окна начинает выбор заново: забытая отметка с
     // прошлого раза попала бы в галерею без ведома редактора. Сброс — в
@@ -159,6 +160,15 @@ export function MediaPicker({
     }, [open, search, sort, load]);
 
     const upload = async (file: File) => {
+        // Файл, который сервер не примет, отклоняется до долгой загрузки.
+        const reason = uploadProblem(file, limit, 'image');
+
+        if (reason !== null) {
+            setError(reason);
+
+            return;
+        }
+
         setUploading(true);
         setError(null);
 
@@ -202,7 +212,7 @@ export function MediaPicker({
                         <input
                             ref={fileRef}
                             type="file"
-                            accept={ACCEPT}
+                            accept={acceptOf(limit)}
                             hidden
                             onChange={(e) => {
                                 const file = e.target.files?.[0];

@@ -8,6 +8,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Testing\TestResponse;
+use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -99,4 +100,15 @@ it('describes formats the way people read them', function () {
         ->and(UploadLimits::describe(UploadLimits::LIBRARY_IMAGE_FORMATS))->toBe('JPG, PNG, WebP или GIF')
         ->and(UploadLimits::describe(UploadLimits::FILE_FORMATS))->toBe('PDF, DOC(X), XLS(X) или PPT(X)')
         ->and(UploadLimits::describe(['pdf']))->toBe('PDF');
+});
+
+it('shares the limits with the pages that upload', function () {
+    actingAs(uploadRulesEditor())
+        ->get('/news/create')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('uploads.image.max_mb', UploadLimits::IMAGE_MAX_MB)
+            ->where('uploads.image.label', 'JPG, PNG или WebP')
+            ->where('uploads.library_image.formats', UploadLimits::LIBRARY_IMAGE_FORMATS)
+            ->where('uploads.file.max_mb', UploadLimits::FILE_MAX_MB));
 });

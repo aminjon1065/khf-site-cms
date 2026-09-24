@@ -6,10 +6,12 @@ import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
 import { EditorInspector, InspectorSection } from '@/cms/EditorInspector';
 import { useInspectorOpen } from '@/hooks/use-inspector-open';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { useCan } from '@/lib/auth';
 import { localeShort, MEDIA_LOCKED_NOTE } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { languageChecks } from '@/lib/publication-languages';
+import { acceptOf, uploadProblem } from '@/lib/uploads';
 import { index, store, unpublish, update } from '@/routes/documents';
 import { Button } from '@/ui/Button';
 import { Checkbox, DatePicker, Field, Input, Select } from '@/ui/Field';
@@ -62,9 +64,6 @@ const FILE_LOCALES: { key: FileLocale; label: string }[] = [
     { key: 'ru', label: 'Русский (РУ)' },
     { key: 'en', label: 'Английский (EN)' },
 ];
-/** DocumentRequest: the formats and size the server accepts. */
-const FILE_ACCEPT = '.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx';
-const FILE_MAX_BYTES = 20 * 1024 * 1024;
 
 /** Grows a textarea with its text, as the editor's title does. */
 function fitHeight(element: HTMLTextAreaElement | null): void {
@@ -84,6 +83,7 @@ export default function DocumentForm({
     const isEdit = !!document;
     const [lang, setLang] = useState<ContentLocale>('ru');
     const [sidebarOpen, setSidebarOpen] = useInspectorOpen();
+    const fileLimit = useUploadLimits().file;
     const titleRef = useRef<HTMLTextAreaElement>(null);
 
     const form = useForm({
@@ -298,7 +298,7 @@ export default function DocumentForm({
 
                         <EditorCanvasBlock
                             title="Файлы по языкам"
-                            hint="PDF, DOC(X), XLS(X), PPT(X) · до 20 МБ на файл. На сайте у каждой языковой версии — свой файл."
+                            hint={`${fileLimit.label} · до ${fileLimit.max_mb} МБ на файл. На сайте у каждой языковой версии — свой файл.`}
                         >
                             <div className="wp-canvas-block-rows">
                                 {changes_need_approval && (
@@ -455,7 +455,9 @@ function LanguageFile({
     error?: string;
 }) {
     const inputRef = useRef<HTMLInputElement>(null);
-    const [tooLarge, setTooLarge] = useState(false);
+    const limit = useUploadLimits().file;
+    // A file turned away before the upload: the server's error comes later.
+    const [problem, setProblem] = useState<string | null>(null);
     const action = saved || picked ? 'Заменить файл' : 'Выбрать файл';
 
     return (
@@ -485,7 +487,7 @@ function LanguageFile({
                         ref={inputRef}
                         id={id}
                         type="file"
-                        accept={FILE_ACCEPT}
+                        accept={acceptOf(limit)}
                         hidden
                         onChange={(e) => {
                             const file = e.target.files?.[0];
@@ -495,9 +497,10 @@ function LanguageFile({
                                 return;
                             }
 
-                            setTooLarge(file.size > FILE_MAX_BYTES);
+                            const reason = uploadProblem(file, limit, 'file');
+                            setProblem(reason);
 
-                            if (file.size <= FILE_MAX_BYTES) {
+                            if (reason === null) {
                                 onPick(file);
                             }
                         }}
@@ -525,12 +528,8 @@ function LanguageFile({
                 </>
             )}
 
-            {tooLarge ? (
-                <div className="wp-field-error">
-                    Файл больше 20 МБ: сожмите его или разделите на части.
-                </div>
-            ) : (
-                error && <div className="wp-field-error">{error}</div>
+            {(problem ?? error) && (
+                <div className="wp-field-error">{problem ?? error}</div>
             )}
         </div>
     );

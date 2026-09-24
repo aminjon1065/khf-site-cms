@@ -100,3 +100,29 @@ test('on a phone the settings panel starts closed and opens with «Настро�
     await page.getByRole('button', { name: 'Настройки', exact: true }).click();
     await expect(panel).toBeVisible();
 });
+
+test('a photo in a format the server would turn away is refused before the upload', async ({
+    page,
+}) => {
+    await page.goto('/projects/create');
+
+    const cover = page
+        .getByRole('complementary', { name: 'Настройки проекта' })
+        .locator('section', {
+            has: page.getByRole('heading', { name: 'Обложка' }),
+        });
+    await expect(cover.getByText('JPG, PNG или WebP до 10 МБ')).toBeVisible();
+
+    await cover.locator('input[type="file"]').setInputFiles({
+        name: 'IMG_2034.HEIC',
+        mimeType: 'image/heic',
+        buffer: Buffer.from('heic'),
+    });
+
+    await expect(
+        cover.getByText(
+            '«IMG_2034.HEIC»: нужно изображение JPG, PNG или WebP.',
+        ),
+    ).toBeVisible();
+    await expect(cover.getByRole('img')).toHaveCount(0);
+});

@@ -22,7 +22,9 @@ import {
     usages,
 } from '@/actions/App/Http/Controllers/Cms/MediaController';
 import { useClipboard } from '@/hooks/use-clipboard';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { useCan } from '@/lib/auth';
+import { acceptOf, uploadProblem } from '@/lib/uploads';
 import { Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
@@ -91,6 +93,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
     const can = useCan();
     const [, copyToClipboard] = useClipboard();
     const fileInput = useRef<HTMLInputElement>(null);
+    const limits = useUploadLimits();
     const [uploading, setUploading] = useState(false);
     const [uploadError, setUploadError] = useState<string | null>(null);
     const [copied, setCopied] = useState<number | null>(null);
@@ -160,6 +163,22 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
         const file = e.target.files?.[0];
 
         if (!file) {
+            return;
+        }
+
+        // An image goes by the photo limits, anything else as a document;
+        // what the server won't take is turned away before the upload.
+        const isImage = file.type.startsWith('image/');
+        const reason = uploadProblem(
+            file,
+            isImage ? limits.library_image : limits.file,
+            isImage ? 'image' : 'file',
+        );
+
+        if (reason !== null) {
+            setUploadError(reason);
+            e.target.value = '';
+
             return;
         }
 
@@ -245,7 +264,7 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                 ref={fileInput}
                 type="file"
                 hidden
-                accept=".jpg,.jpeg,.png,.webp,.gif,.pdf,.doc,.docx,.xls,.xlsx"
+                accept={acceptOf(limits.library_image, limits.file)}
                 onChange={onFilePicked}
             />
 

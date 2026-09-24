@@ -1,7 +1,9 @@
 import { Image as ImageIcon, Images, Upload, Wand2, X } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
+import { acceptOf, limitHint, uploadProblem } from '@/lib/uploads';
 import { Button } from '@/ui/Button';
 import { Checkbox, Field, Input } from '@/ui/Field';
 
@@ -173,6 +175,9 @@ export function CoverField({
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
     const words = PICTURE_WORDS[kind];
+    const limit = useUploadLimits().image;
+    // A file turned away before the upload: the server's error comes later.
+    const [problem, setProblem] = useState<string | null>(null);
 
     if (locked) {
         return (
@@ -208,7 +213,10 @@ export function CoverField({
                 <button
                     type="button"
                     className="wp-cover-placeholder"
-                    onClick={onOpenLibrary}
+                    onClick={() => {
+                        setProblem(null);
+                        onOpenLibrary();
+                    }}
                 >
                     <ImageIcon size={28} strokeWidth={1.5} />
                     <span>{words.pick}</span>
@@ -218,16 +226,22 @@ export function CoverField({
             <input
                 ref={fileRef}
                 type="file"
-                accept="image/png,image/jpeg,image/webp"
+                accept={acceptOf(limit)}
                 hidden
                 onChange={(e) => {
                     const file = e.target.files?.[0];
+                    e.target.value = '';
 
-                    if (file) {
-                        onFile(file);
+                    if (!file) {
+                        return;
                     }
 
-                    e.target.value = '';
+                    const reason = uploadProblem(file, limit, 'image');
+                    setProblem(reason);
+
+                    if (reason === null) {
+                        onFile(file);
+                    }
                 }}
             />
 
@@ -244,11 +258,15 @@ export function CoverField({
                     variant="secondary"
                     size="sm"
                     icon={<Images size={14} />}
-                    onClick={onOpenLibrary}
+                    onClick={() => {
+                        setProblem(null);
+                        onOpenLibrary();
+                    }}
                 >
                     Медиатека
                 </Button>
             </div>
+            <span className="ui-hint">{limitHint(limit)}</span>
 
             {/* Outside the preview: once ticked, the preview goes away and the
                 choice must stay visible to be undone. */}
@@ -260,7 +278,9 @@ export function CoverField({
                 />
             )}
 
-            {error && <div className="wp-field-error">{error}</div>}
+            {(problem ?? error) && (
+                <div className="wp-field-error">{problem ?? error}</div>
+            )}
 
             {children}
         </>

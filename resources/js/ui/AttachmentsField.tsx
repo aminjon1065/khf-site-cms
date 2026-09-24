@@ -1,6 +1,8 @@
 import { Paperclip, Trash2, Upload } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
+import { acceptOf, uploadProblem } from '@/lib/uploads';
 import { Field } from '@/ui/Field';
 
 /** Уже прикреплённое вложение, как его отдаёт форма редактора. */
@@ -38,6 +40,9 @@ export function AttachmentsField({
     error?: string;
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
+    const limit = useUploadLimits().file;
+    // Files turned away before the upload, with the reason.
+    const [problems, setProblems] = useState<string[]>([]);
 
     return (
         <Field
@@ -45,7 +50,7 @@ export function AttachmentsField({
             hint={
                 locked
                     ? undefined
-                    : 'PDF, DOC, XLS — до 20 МБ каждый. Показываются на странице списком со ссылкой на скачивание.'
+                    : `${limit.label} — до ${limit.max_mb} МБ каждый. Показываются на странице списком со ссылкой на скачивание.`
             }
             error={error}
         >
@@ -138,12 +143,33 @@ export function AttachmentsField({
                             type="file"
                             multiple
                             hidden
-                            accept=".pdf,.doc,.docx,.xls,.xlsx"
+                            accept={acceptOf(limit)}
                             onChange={(e) => {
-                                onAdd([...(e.target.files ?? [])]);
+                                const files = [...(e.target.files ?? [])];
                                 e.target.value = '';
+                                const reasons = files.map((file) =>
+                                    uploadProblem(file, limit, 'file'),
+                                );
+                                setProblems(
+                                    reasons.filter(
+                                        (reason): reason is string =>
+                                            reason !== null,
+                                    ),
+                                );
+                                const accepted = files.filter(
+                                    (_, index) => reasons[index] === null,
+                                );
+
+                                if (accepted.length > 0) {
+                                    onAdd(accepted);
+                                }
                             }}
                         />
+                        {problems.map((problem) => (
+                            <div key={problem} className="wp-field-error">
+                                {problem}
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

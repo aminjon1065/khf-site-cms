@@ -20,8 +20,11 @@ import {
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import MediaController from '@/actions/App/Http/Controllers/Cms/MediaController';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { postForm } from '@/lib/http';
 import { plural } from '@/lib/plural';
+import { uploadProblem } from '@/lib/uploads';
+import type { UploadLimit } from '@/lib/uploads';
 import { cn } from '@/lib/utils';
 import { MediaPicker } from './MediaPicker';
 import type { MediaItem } from './MediaPicker';
@@ -213,6 +216,7 @@ async function uploadImagesAt(
     view: EditorView,
     files: File[],
     pos: number,
+    limit: UploadLimit,
     onError: (message: string) => void,
 ): Promise<void> {
     const imageType = view.state.schema.nodes.image;
@@ -224,6 +228,15 @@ async function uploadImagesAt(
     let at = pos;
 
     for (const file of files) {
+        // What the server won't take is turned away before the upload.
+        const reason = uploadProblem(file, limit, 'image');
+
+        if (reason !== null) {
+            onError(reason);
+
+            continue;
+        }
+
         try {
             const form = new FormData();
             form.append('file', file);
@@ -266,6 +279,7 @@ export function RichEditorField({
     onActiveBlockChange,
 }: Props) {
     const toast = useToast();
+    const imageLimit = useUploadLimits().library_image;
     const [pickerOpen, setPickerOpen] = useState(false);
     const [linkOpen, setLinkOpen] = useState(false);
     const [videoOpen, setVideoOpen] = useState(false);
@@ -366,6 +380,7 @@ export function RichEditorField({
                     view,
                     files,
                     coords?.pos ?? view.state.selection.from,
+                    imageLimit,
                     (message) => toast(message, 'error'),
                 );
 
@@ -385,6 +400,7 @@ export function RichEditorField({
                     view,
                     files,
                     view.state.selection.from,
+                    imageLimit,
                     (message) => toast(message, 'error'),
                 );
 

@@ -1,6 +1,8 @@
 import { Images, Trash2, Upload } from 'lucide-react';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
+import { acceptOf, uploadProblem } from '@/lib/uploads';
 import { Button } from '@/ui/Button';
 import { Field } from '@/ui/Field';
 
@@ -47,6 +49,9 @@ export function GalleryField({
     error?: string;
 }) {
     const fileRef = useRef<HTMLInputElement>(null);
+    const limit = useUploadLimits().image;
+    // Files turned away before the upload, with the reason.
+    const [problems, setProblems] = useState<string[]>([]);
 
     if (locked) {
         return (
@@ -74,7 +79,7 @@ export function GalleryField({
     return (
         <Field
             label="Фотогалерея"
-            hint="JPG, PNG, WebP — до 5 МБ каждый, до 20 снимков. Показываются каруселью на странице материала; порядок — порядок добавления."
+            hint={`${limit.label} — до ${limit.max_mb} МБ каждый, до 20 снимков. Показываются каруселью на странице материала; порядок — порядок добавления.`}
             error={error}
         >
             <div className="flex flex-col gap-3">
@@ -181,13 +186,34 @@ export function GalleryField({
                     ref={fileRef}
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png,image/webp"
+                    accept={acceptOf(limit)}
                     hidden
                     onChange={(e) => {
-                        onAddFiles(Array.from(e.target.files ?? []));
+                        const files = Array.from(e.target.files ?? []);
                         e.target.value = '';
+                        const reasons = files.map((file) =>
+                            uploadProblem(file, limit, 'image'),
+                        );
+                        setProblems(
+                            reasons.filter(
+                                (reason): reason is string => reason !== null,
+                            ),
+                        );
+                        const accepted = files.filter(
+                            (_, index) => reasons[index] === null,
+                        );
+
+                        if (accepted.length > 0) {
+                            onAddFiles(accepted);
+                        }
                     }}
                 />
+
+                {problems.map((problem) => (
+                    <div key={problem} className="wp-field-error">
+                        {problem}
+                    </div>
+                ))}
             </div>
         </Field>
     );

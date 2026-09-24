@@ -2,11 +2,13 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Images, Save, Upload } from 'lucide-react';
 import { useRef, useState } from 'react';
 import LeaderController from '@/actions/App/Http/Controllers/Cms/LeaderController';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { localeShort } from '@/lib/domain';
 import type { ContentLocale } from '@/lib/domain';
+import { acceptOf, limitHint, uploadProblem } from '@/lib/uploads';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
-import { Checkbox, Field, Input, Textarea } from '@/ui/Field';
+import { Checkbox, Field, Input, InputError, Textarea } from '@/ui/Field';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
 import { LanguageTabs } from '@/ui/Nav';
@@ -40,6 +42,9 @@ export default function LeadershipForm({ leader }: Props) {
     const [lang, setLang] = useState<ContentLocale>('ru');
     const [photoPicker, setPhotoPicker] = useState(false);
     const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+    const photoLimit = useUploadLimits().image;
+    // A photo turned away before the upload: the server's error comes later.
+    const [photoProblem, setPhotoProblem] = useState<string | null>(null);
     const photoFileRef = useRef<HTMLInputElement>(null);
 
     const form = useForm({
@@ -256,12 +261,26 @@ export default function LeadershipForm({ leader }: Props) {
                     <input
                         ref={photoFileRef}
                         type="file"
-                        accept="image/png,image/jpeg,image/webp"
+                        accept={acceptOf(photoLimit)}
                         hidden
                         onChange={(e) => {
                             const file = e.target.files?.[0] ?? null;
-                            onPhotoFileChange(file);
                             e.target.value = '';
+
+                            if (!file) {
+                                return;
+                            }
+
+                            const reason = uploadProblem(
+                                file,
+                                photoLimit,
+                                'image',
+                            );
+                            setPhotoProblem(reason);
+
+                            if (reason === null) {
+                                onPhotoFileChange(file);
+                            }
                         }}
                     />
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -275,11 +294,22 @@ export default function LeadershipForm({ leader }: Props) {
                         <Button
                             variant="secondary"
                             icon={<Images size={15} strokeWidth={1.75} />}
-                            onClick={() => setPhotoPicker(true)}
+                            onClick={() => {
+                                setPhotoProblem(null);
+                                setPhotoPicker(true);
+                            }}
                         >
                             Из медиатеки
                         </Button>
                     </div>
+                    <span className="ui-hint">{limitHint(photoLimit)}</span>
+                    <InputError
+                        message={
+                            photoProblem ??
+                            fieldError('photo') ??
+                            fieldError('photo_media_id')
+                        }
+                    />
 
                     {!!leader?.photo_url && (
                         <Checkbox

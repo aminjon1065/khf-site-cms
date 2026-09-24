@@ -13,13 +13,16 @@ import {
     X,
 } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
+import { useUploadLimits } from '@/hooks/use-upload-limits';
 import { MEDIA_LOCKED_NOTE } from '@/lib/domain';
+import { acceptOf, uploadProblem } from '@/lib/uploads';
 import { cn } from '@/lib/utils';
 import { Button } from '@/ui/Button';
 import { MediaPicker } from '@/ui/MediaPicker';
 import type { MediaItem } from '@/ui/MediaPicker';
 import { useRichGallery } from './rich-gallery-context';
 import type { RichGalleryItem } from './rich-gallery-context';
+import { useToast } from './Toast';
 
 export function RichGalleryView({
     node,
@@ -29,6 +32,8 @@ export function RichGalleryView({
 }: ReactNodeViewProps) {
     const galleryCtx = useRichGallery();
     const locked = galleryCtx?.locked ?? false;
+    const photoLimit = useUploadLimits().image;
+    const toast = useToast();
     const [pickerOpen, setPickerOpen] = useState(false);
     const [isDraggingOver, setIsDraggingOver] = useState(false);
     const [viewMode, setViewMode] = useState<'carousel' | 'grid'>('carousel');
@@ -64,7 +69,20 @@ export function RichGalleryView({
             return;
         }
 
-        const fileArr = Array.from(files);
+        // What the server won't take is turned away before the upload.
+        const fileArr = Array.from(files).filter((file) => {
+            const reason = uploadProblem(file, photoLimit, 'image');
+
+            if (reason !== null) {
+                toast(reason, 'error');
+            }
+
+            return reason === null;
+        });
+
+        if (fileArr.length === 0) {
+            return;
+        }
 
         if (galleryCtx?.onAddFiles) {
             galleryCtx.onAddFiles(fileArr);
@@ -132,7 +150,7 @@ export function RichGalleryView({
                 ref={fileInputRef}
                 type="file"
                 multiple
-                accept="image/png,image/jpeg,image/webp"
+                accept={acceptOf(photoLimit)}
                 style={{ display: 'none' }}
                 onChange={(e) => {
                     handleAddFiles(e.target.files);
