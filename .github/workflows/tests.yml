@@ -221,3 +221,173 @@ jobs:
             test-results/
             storage/logs/
           retention-days: 14
+
+  # E-1: the CMS and the public site together. The CMS runs the way it does
+  # in production — MySQL, a queue worker, the scheduler — and the site
+  # (khf-site-front) is built for production against it, readiness gate
+  # included. An editor publishes, edits and unpublishes a news item through
+  # the CMS; the site must show each change within seconds, which only the
+  # revalidation webhook can make happen (tests/integration).
+  integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: khf_site_cms_integration
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    env:
+      CMS_E2E_BASE_URL: http://127.0.0.1:8848
+      CMS_E2E_TWO_FACTOR_SECRET: khf-integration-ci
+      SITE_E2E_BASE_URL: http://127.0.0.1:3000
+      # Shared by the CMS webhook and the site; a CI-only value.
+      REVALIDATION_SECRET: khf-integration-webhook
+
+    steps:
+      - name: Checkout the CMS
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      # The two repositories change together on branches of the same name;
+      # without such a branch the site's main is the counterpart.
+      - name: Pick the site branch
+        id: site
+        run: |
+          branch="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          if git ls-remote --exit-code --heads https://github.com/aminjon1065/khf-site-front.git "$branch" > /dev/null; then
+            echo "ref=$branch" >> "$GITHUB_OUTPUT"
+          else
+            echo "ref=main" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout the site
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          repository: aminjon1065/khf-site-front
+          ref: ${{ steps.site.outputs.ref }}
+          path: site
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.5'
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          npm ci
+          npm ci --prefix site
+
+      # `artisan serve` passes only a few environment variables to the
+      # application it starts, so the settings go into .env, not `env:`.
+      - name: Configure the CMS
+        run: |
+          cp .env.example .env
+          set_env() {
+            if grep -q "^$1=" .env; then
+              sed -i "s|^$1=.*|$1=$2|" .env
+            else
+              echo "$1=$2" >> .env
+            fi
+          }
+          set_env APP_URL "$CMS_E2E_BASE_URL"
+          set_env MEDIA_PUBLIC_URL "$CMS_E2E_BASE_URL"
+          set_env DB_CONNECTION mysql
+          set_env DB_HOST 127.0.0.1
+          set_env DB_PORT 3306
+          set_env DB_DATABASE khf_site_cms_integration
+          set_env DB_USERNAME root
+          set_env DB_PASSWORD ''
+          set_env QUEUE_CONNECTION database
+          set_env CACHE_STORE file
+          set_env FRONTEND_URL "$SITE_E2E_BASE_URL"
+          set_env CORS_ALLOWED_ORIGINS "$SITE_E2E_BASE_URL"
+          set_env FRONTEND_REVALIDATION_URL "$SITE_E2E_BASE_URL/api/revalidate"
+          set_env FRONTEND_REVALIDATION_SECRET "$REVALIDATION_SECRET"
+          set_env DEMO_TWO_FACTOR_SECRET "$CMS_E2E_TWO_FACTOR_SECRET"
+          set_env SEED_SOURCE_MEDIA false
+          php artisan key:generate --ansi
+
+      - name: Build the admin app
+        run: npm run build
+
+      - name: Create and seed the database
+        run: |
+          php artisan migrate --force --seed --no-interaction
+          php artisan storage:link
+
+      - name: Start the CMS, its queue worker and scheduler
+        run: |
+          PHP_CLI_SERVER_WORKERS=6 nohup php artisan serve --no-reload --host=127.0.0.1 --port=8848 > storage/logs/serve.log 2>&1 &
+          nohup php artisan queue:work --queue=critical,revalidation,notifications,default,media --sleep=1 --tries=3 > storage/logs/worker.log 2>&1 &
+          nohup php artisan schedule:work > storage/logs/scheduler.log 2>&1 &
+          # The first heartbeats now, not at the next minute or five.
+          php artisan content:process-scheduled
+          php artisan tinker --execute 'dispatch(new App\Jobs\QueueHeartbeat);'
+          for attempt in $(seq 1 60); do
+            curl --silent --fail --output /dev/null "$CMS_E2E_BASE_URL/api/v1/ready" && exit 0
+            sleep 1
+          done
+          curl --silent "$CMS_E2E_BASE_URL/api/v1/ready"; echo
+          cat storage/logs/serve.log storage/logs/worker.log && exit 1
+
+      - name: Build the site against the CMS
+        working-directory: site
+        env:
+          API_URL: ${{ env.CMS_E2E_BASE_URL }}/api/v1
+          NEXT_PUBLIC_API_URL: ${{ env.CMS_E2E_BASE_URL }}/api/v1
+          NEXT_PUBLIC_SITE_URL: ${{ env.SITE_E2E_BASE_URL }}
+          # Built only to be tested here: localhost is fine in canonical URLs.
+          SITE_URL_ALLOW_LOCAL: '1'
+          CMS_BUILD_MODE: production
+          CMS_READINESS_TIMEOUT_MS: '10000'
+        run: npm run build
+
+      - name: Start the site
+        working-directory: site
+        env:
+          API_URL: ${{ env.CMS_E2E_BASE_URL }}/api/v1
+          NEXT_PUBLIC_API_URL: ${{ env.CMS_E2E_BASE_URL }}/api/v1
+        run: |
+          nohup npm run start -- -p 3000 -H 127.0.0.1 > "$RUNNER_TEMP/site.log" 2>&1 &
+          for attempt in $(seq 1 60); do
+            curl --silent --fail --output /dev/null "$SITE_E2E_BASE_URL/ru/news" && exit 0
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/site.log" && exit 1
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Publish, edit and unpublish through the CMS
+        run: npx playwright test -c playwright.integration.config.ts
+
+      - name: Upload failure evidence
+        if: failure()
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: integration-evidence
+          path: |
+            test-results/
+            storage/logs/
+            ${{ runner.temp }}/site.log
+          retention-days: 14
