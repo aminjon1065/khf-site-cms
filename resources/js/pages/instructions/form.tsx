@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
+import { useInspectorOpen } from '@/hooks/use-inspector-open';
 import { useCan } from '@/lib/auth';
 import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
@@ -94,7 +95,7 @@ export default function InstructionForm({
     const can = useCan();
     const isEdit = !!instruction;
     const [lang, setLang] = useState<ContentLocale>('ru');
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useInspectorOpen();
     const [sidebarTab, setSidebarTab] = useState<'document' | 'media'>(
         'document',
     );

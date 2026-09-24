@@ -10,6 +10,7 @@ import {
     InspectorSection,
     SlugField,
 } from '@/cms/EditorInspector';
+import { useInspectorOpen } from '@/hooks/use-inspector-open';
 import { useCan } from '@/lib/auth';
 import { localeShort } from '@/lib/domain';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
@@ -104,7 +105,7 @@ export default function ProjectForm({
     const isEdit = !!project;
     const publicSiteUrl = usePublicSiteUrl();
     const [lang, setLang] = useState<ContentLocale>('ru');
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useInspectorOpen();
     const [coverPicker, setCoverPicker] = useState(false);
     // A cover picked from the media library; a file from the computer is
     // previewed from the form data below.

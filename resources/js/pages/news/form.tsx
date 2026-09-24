@@ -3,6 +3,7 @@ import { Sliders } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { EditorialFormShell } from '@/cms/EditorialFormShell';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
+import { useInspectorOpen } from '@/hooks/use-inspector-open';
 import { useCan } from '@/lib/auth';
 import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { hasRichText, languageChecks } from '@/lib/publication-languages';
@@ -79,7 +80,7 @@ export default function NewsForm({
     const can = useCan();
     const isEdit = !!news;
     const [lang, setLang] = useState<ContentLocale>('ru');
-    const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [sidebarOpen, setSidebarOpen] = useInspectorOpen();
     const [sidebarTab, setSidebarTab] = useState<'post' | 'block'>('post');
     const [activeBlock, setActiveBlock] = useState<ActiveBlockInfo | null>(
         null,

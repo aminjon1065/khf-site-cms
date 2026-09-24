@@ -81,3 +81,22 @@ test('editor fills a project on the canvas and in the panel, then saves with Ctr
     );
     await expect(cover.getByRole('img', { name: 'Обложка' })).toBeVisible();
 });
+
+test('on a phone the settings panel starts closed and opens with «Настройки»', async ({
+    page,
+}) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto('/projects/create');
+
+    // Beside the canvas there is no room: an open panel would cover the text.
+    const panel = page.getByRole('complementary', {
+        name: 'Настройки проекта',
+    });
+    await expect(
+        page.getByRole('textbox', { name: 'Название проекта' }),
+    ).toBeVisible();
+    await expect(panel).toHaveCount(0);
+
+    await page.getByRole('button', { name: 'Настройки', exact: true }).click();
+    await expect(panel).toBeVisible();
+});
