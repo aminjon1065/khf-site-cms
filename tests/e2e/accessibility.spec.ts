@@ -130,6 +130,9 @@ test('editorial form reflows and exposes non-drag and live-region alternatives',
     await expect(
         page.getByRole('heading', { name: 'Новая новость' }),
     ).toBeVisible();
+    // A narrow screen opens with the settings panel closed: it would cover
+    // the text. The upload buttons are in it.
+    await page.getByRole('button', { name: 'Настройки', exact: true }).click();
     await expect(
         page.getByRole('button', { name: 'Загрузить', exact: true }),
     ).toBeVisible();
@@ -146,4 +149,10 @@ test('editorial form reflows and exposes non-drag and live-region alternatives',
     }));
 
     expect(viewport.scrollWidth).toBe(viewport.clientWidth);
+
+    // The open panel fits the screen instead of losing its left edge.
+    const panel = await page
+        .getByRole('complementary', { name: 'Панель настроек' })
+        .boundingBox();
+    expect(panel?.x).toBeGreaterThanOrEqual(0);
 });
