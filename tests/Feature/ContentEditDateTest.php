@@ -1,9 +1,12 @@
 <?php
 
 use App\Enums\ContentStatus;
+use App\Models\Alert;
+use App\Models\Announcement;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
+use App\Models\Region;
 
 // A-2 of the site contract: the date a published material's text last really
 // changed — NewsArticle.dateModified and the page's modified time. Anything
@@ -84,4 +87,54 @@ it('dates an edit of a project field that is not translatable', function () {
     $project->forceFill(['budget' => '2 млн долларов'])->save();
 
     expect($project->fresh()->content_updated_at)->not->toBeNull();
+});
+
+it('dates an edit of a published announcement, not a change of its status', function () {
+    $announcement = Announcement::factory()->published()->create(['published_at' => now()->subDays(2)]);
+
+    $announcement->forceFill(['status' => ContentStatus::Archived])->save();
+    $announcement->forceFill(['status' => ContentStatus::Published])->save();
+    expect($announcement->fresh()->content_updated_at)->toBeNull();
+
+    $announcement->forceFill(['deadline' => now()->addMonth()->toDateString()])->save();
+    expect($announcement->fresh()->content_updated_at)->not->toBeNull();
+});
+
+it('dates an edit of a live alert, its territory included', function () {
+    $alert = Alert::factory()->published()->create(['published_at' => now()->subHour()]);
+    $region = Region::query()->create([
+        'name' => ['ru' => 'Хатлон', 'tg' => 'Хатлон', 'en' => 'Khatlon'],
+        'code' => 'content-edit-region',
+        'type' => 'oblast',
+        'districts_count' => 1,
+        'sort' => 1,
+    ]);
+
+    // Nobody reads the «ends soon» notice or the internal title.
+    $alert->forceFill(['expiry_notified_at' => now(), 'internal_title' => 'Служебное'])->save();
+    expect($alert->fresh()->content_updated_at)->toBeNull();
+
+    $alert->syncRelation('regions', [$region->id]);
+    expect($alert->fresh()->content_updated_at?->toIso8601String())->toBe(now()->toIso8601String());
+
+    // Syncing the same territory again changes nothing.
+    $this->travel(1)->hours();
+    $alert->syncRelation('regions', [$region->id]);
+    expect($alert->fresh()->content_updated_at?->toIso8601String())->not->toBe(now()->toIso8601String());
+});
+
+it('does not date the territory of an alert that is not on the site yet', function () {
+    $alert = Alert::factory()->create(['status' => ContentStatus::Draft]);
+    $region = Region::query()->create([
+        'name' => ['ru' => 'Согд', 'tg' => 'Суғд', 'en' => 'Sughd'],
+        'code' => 'content-edit-draft-region',
+        'type' => 'oblast',
+        'districts_count' => 1,
+        'sort' => 1,
+    ]);
+
+    $alert->syncRelation('regions', [$region->id]);
+
+    expect($alert->fresh()->content_updated_at)->toBeNull()
+        ->and($alert->regions()->pluck('regions.id')->all())->toBe([$region->id]);
 });

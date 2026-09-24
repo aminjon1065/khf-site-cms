@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasRegionalContentScope;
 use App\Concerns\HasWorkflow;
 use App\Concerns\RemembersOldSlugs;
+use App\Concerns\TracksContentEdits;
 use App\Concerns\TracksTranslationCompleteness;
 use App\Contracts\Workflowable;
 use App\Enums\AnnouncementKind;
@@ -34,12 +35,13 @@ use Spatie\Translatable\HasTranslations;
  * @property string|null $application_url
  * @property ContentStatus $status
  * @property Carbon|null $published_at
+ * @property Carbon|null $content_updated_at
  * @property int|null $author_id
  */
 class Announcement extends Model implements Workflowable
 {
     /** @use HasFactory<AnnouncementFactory> */
-    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksTranslationCompleteness;
+    use HasFactory, HasRegionalContentScope, HasWorkflow, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksContentEdits, TracksTranslationCompleteness;
 
     use HasTranslations;
 
@@ -63,7 +65,18 @@ class Announcement extends Model implements Workflowable
             'status' => ContentStatus::class,
             'deadline' => 'date',
             'published_at' => 'datetime',
+            'content_updated_at' => 'datetime',
         ];
+    }
+
+    /**
+     * Fields whose edit is an edit of the material (TracksContentEdits).
+     *
+     * @return list<string>
+     */
+    protected function contentColumns(): array
+    {
+        return ['title', 'body', 'kind', 'org', 'project_id', 'deadline', 'application_url'];
     }
 
     protected static function booted(): void

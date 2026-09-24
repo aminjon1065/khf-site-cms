@@ -454,9 +454,9 @@ class AlertController extends Controller
 
     private function syncRelations(Alert $alert, AlertRequest $request): void
     {
-        $alert->regions()->sync($request->input('regions', []));
-        $alert->districts()->sync($request->input('districts', []));
-        $alert->relatedInstructions()->sync($request->input('related_instructions', []));
+        $alert->syncRelation('regions', $request->input('regions', []));
+        $alert->syncRelation('districts', $request->input('districts', []));
+        $alert->syncRelation('relatedInstructions', $request->input('related_instructions', []));
     }
 
     private function runPublishAction(Alert $alert, AlertRequest $request): void

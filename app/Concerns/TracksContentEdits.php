@@ -39,6 +39,35 @@ trait TracksContentEdits
         });
     }
 
+    /**
+     * Relations that are part of what the site shows — an alert's territory,
+     * say. A change there is an edit too, though saving the row doesn't see
+     * it: sync them through syncRelation().
+     *
+     * @return list<string>
+     */
+    protected function contentRelations(): array
+    {
+        return [];
+    }
+
+    /**
+     * Sync a relation and, when it is part of the content of a material on
+     * the site and really changed, date the edit like a changed column.
+     *
+     * @param  array<int, int|string>  $ids
+     */
+    public function syncRelation(string $relation, array $ids): void
+    {
+        $changes = $this->{$relation}()->sync($ids);
+
+        if (in_array($relation, $this->contentRelations(), true)
+            && array_filter($changes) !== []
+            && self::wasLive($this)) {
+            $this->forceFill(['content_updated_at' => now()])->saveQuietly();
+        }
+    }
+
     private static function wasLive(self $material): bool
     {
         $status = $material->getRawOriginal('status');

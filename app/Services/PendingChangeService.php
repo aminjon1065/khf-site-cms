@@ -203,7 +203,12 @@ class PendingChangeService
             $subject->save();
 
             foreach ($change->relations ?? [] as $relation => $ids) {
-                $subject->{$relation}()->sync($ids);
+                // A territory change on a live alert is an edit too (TracksContentEdits).
+                if (method_exists($subject, 'syncRelation')) {
+                    $subject->syncRelation($relation, $ids);
+                } else {
+                    $subject->{$relation}()->sync($ids);
+                }
             }
 
             $change->forceFill([

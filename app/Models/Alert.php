@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Concerns\HasWorkflow;
 use App\Concerns\ProtectsUnpublishedMedia;
 use App\Concerns\RemembersOldSlugs;
+use App\Concerns\TracksContentEdits;
 use App\Contracts\Workflowable;
 use App\Enums\ContentStatus;
 use App\Enums\HazardType;
@@ -47,6 +48,7 @@ use Spatie\Translatable\HasTranslations;
  * @property Carbon|null $ends_at
  * @property Carbon|null $scheduled_at
  * @property Carbon|null $published_at
+ * @property Carbon|null $content_updated_at
  * @property Carbon|null $expiry_notified_at
  * @property int|null $author_id
  * @property int|null $approver_id
@@ -56,7 +58,7 @@ use Spatie\Translatable\HasTranslations;
 class Alert extends Model implements HasMedia, Workflowable
 {
     /** @use HasFactory<AlertFactory> */
-    use HasFactory, HasTranslations, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes;
+    use HasFactory, HasTranslations, HasWorkflow, InteractsWithMedia, LogsActivity, RemembersOldSlugs, SoftDeletes, TracksContentEdits;
 
     use ProtectsUnpublishedMedia;
 
@@ -123,8 +125,34 @@ class Alert extends Model implements HasMedia, Workflowable
             'ends_at' => 'datetime',
             'scheduled_at' => 'datetime',
             'published_at' => 'datetime',
+            'content_updated_at' => 'datetime',
             'expiry_notified_at' => 'datetime',
         ];
+    }
+
+    /**
+     * What readers see of an alert (TracksContentEdits). Not its internal
+     * title, channels or the «ends soon» notice: those never reach the site.
+     *
+     * @return list<string>
+     */
+    protected function contentColumns(): array
+    {
+        return [
+            'title', 'summary', 'body', 'instructions', 'contacts', 'updates',
+            'severity', 'hazard_type', 'territory_type', 'territory_note',
+            'starts_at', 'ends_at', 'source',
+        ];
+    }
+
+    /**
+     * The territory and the linked instructions are shown with the alert.
+     *
+     * @return list<string>
+     */
+    protected function contentRelations(): array
+    {
+        return ['regions', 'districts', 'relatedInstructions'];
     }
 
     public function getActivitylogOptions(): LogOptions
