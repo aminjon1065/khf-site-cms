@@ -57,7 +57,9 @@ test('the administrator builds a role, changes it and removes it', async ({
     await expect(
         page.getByRole('heading', { name: 'Главный редактор' }),
     ).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'Редактор' })).toBeVisible();
+    await expect(
+        page.getByRole('heading', { name: 'Редактор', exact: true }),
+    ).toBeVisible();
 
     await page.getByRole('link', { name: 'Добавить роль' }).click();
     await page.getByLabel('Название').fill(LABEL);

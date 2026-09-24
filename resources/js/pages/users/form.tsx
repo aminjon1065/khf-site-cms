@@ -325,7 +325,7 @@ export default function UserForm({ user, reference }: Props) {
                     </Field>
                 </Blueprint>
 
-                {isEdit && !isSelf && can('users.edit') && (
+                {user && !isSelf && can('users.edit') && (
                     <Blueprint style={{ padding: 20 }}>
                         <h3 className="ui-card-title" style={{ marginTop: 0 }}>
                             Двухфакторная аутентификация
@@ -337,11 +337,11 @@ export default function UserForm({ user, reference }: Props) {
                                 color: 'var(--color-neutral-600)',
                             }}
                         >
-                            {user!.two_factor_enabled
-                                ? 'Включена. Если сотрудник потерял или сменил телефон, сбросьте её — при следующем входе он настроит её заново.'
+                            {user.two_factor_enabled
+                                ? 'Включена. Если сотрудник потерял или сменил телефон, сбросьте её — при следующем входе сотрудник настроит её заново.'
                                 : 'Не настроена.'}
                         </p>
-                        {user!.two_factor_enabled && (
+                        {user.two_factor_enabled && (
                             <Button
                                 variant="secondary"
                                 icon={
@@ -356,28 +356,30 @@ export default function UserForm({ user, reference }: Props) {
                 )}
             </div>
 
-            <ConfirmDialog
-                open={resetOpen}
-                onClose={() => setResetOpen(false)}
-                loading={resetting}
-                title="Сбросить двухфакторную аутентификацию?"
-                body={`Коды из приложения ${user?.name ?? ''} перестанут работать, все его сеансы завершатся. Действие попадёт в журнал.`}
-                confirmLabel="Сбросить"
-                onConfirm={() => {
-                    setResetting(true);
-                    router.post(
-                        UserController.resetTwoFactor.url(user!.id),
-                        {},
-                        {
-                            preserveScroll: true,
-                            onFinish: () => {
-                                setResetting(false);
-                                setResetOpen(false);
+            {user && (
+                <ConfirmDialog
+                    open={resetOpen}
+                    onClose={() => setResetOpen(false)}
+                    loading={resetting}
+                    title="Сбросить двухфакторную аутентификацию?"
+                    body={`Коды из приложения у сотрудника «${user.name}» перестанут работать, все сеансы сотрудника завершатся. Действие попадёт в журнал.`}
+                    confirmLabel="Сбросить"
+                    onConfirm={() => {
+                        setResetting(true);
+                        router.post(
+                            UserController.resetTwoFactor.url(user.id),
+                            {},
+                            {
+                                preserveScroll: true,
+                                onFinish: () => {
+                                    setResetting(false);
+                                    setResetOpen(false);
+                                },
                             },
-                        },
-                    );
-                }}
-            />
+                        );
+                    }}
+                />
+            )}
 
             <div className="news-form-actions">
                 <LinkButton href={UserController.index.url()} variant="ghost">
