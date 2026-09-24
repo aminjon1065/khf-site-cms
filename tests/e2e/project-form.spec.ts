@@ -124,5 +124,6 @@ test('a photo in a format the server would turn away is refused before the uploa
             '«IMG_2034.HEIC»: нужно изображение JPG, PNG или WebP.',
         ),
     ).toBeVisible();
-    await expect(cover.getByRole('img')).toHaveCount(0);
+    // No preview: the icons in the buttons are svg, the preview is <img>.
+    await expect(cover.locator('img')).toHaveCount(0);
 });
