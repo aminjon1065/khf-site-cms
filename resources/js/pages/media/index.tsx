@@ -422,7 +422,9 @@ export default function MediaIndex({ items, meta, filters, stats }: Props) {
                             color: 'var(--color-neutral-600)',
                         }}
                     >
-                        Файлы не найдены.
+                        {filters.kind === 'undescribed' && !filters.search
+                            ? 'У всех фото медиатеки есть описание.'
+                            : 'Файлы не найдены.'}
                     </p>
                 </Blueprint>
             ) : (
