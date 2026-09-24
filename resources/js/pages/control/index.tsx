@@ -267,7 +267,13 @@ export default function ControlCenter({
                     />
                     <div>
                         <strong>Сервер не пропустит часть загрузок</strong>
-                        <ul style={{ margin: '4px 0', paddingLeft: 18 }}>
+                        <ul
+                            style={{
+                                margin: '4px 0',
+                                paddingLeft: 18,
+                                listStyle: 'disc',
+                            }}
+                        >
                             {uploadProblems.map((problem) => (
                                 <li key={problem}>{problem}</li>
                             ))}

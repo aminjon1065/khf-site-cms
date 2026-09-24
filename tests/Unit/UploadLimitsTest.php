@@ -19,6 +19,7 @@ test('names each PHP default that turns uploads away', function () {
 
     expect($problems)->toHaveCount(3)
         ->and($problems[0])->toContain('до 2 МБ (upload_max_filesize = 2M)')
+        ->and($problems[0])->toContain('крупнее 2 МБ не загрузятся')
         ->and($problems[1])->toContain('до 8 МБ (post_max_size = 8M)')
         ->and($problems[2])->toContain('не больше 20 файлов');
 });

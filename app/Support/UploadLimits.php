@@ -50,7 +50,7 @@ final class UploadLimits
 
         if ($fileBytes < self::FILE_MAX_MB * self::MB) {
             $problems[] = sprintf(
-                'PHP принимает файлы до %s (upload_max_filesize = %s), а CMS разрешает до %d МБ: фото и документы крупнее не загрузятся.',
+                'PHP принимает файлы до %1$s (upload_max_filesize = %2$s), а CMS разрешает до %3$d МБ: фото и документы крупнее %1$s не загрузятся.',
                 self::megabytes($fileBytes),
                 $ini['upload_max_filesize'],
                 self::FILE_MAX_MB,
