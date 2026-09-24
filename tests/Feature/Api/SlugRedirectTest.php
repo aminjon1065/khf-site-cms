@@ -121,7 +121,10 @@ it('cuts an address made from a long title to what the site can hold', function 
 });
 
 it('shortens overlong addresses and keeps the full ones as redirects', function () {
-    $long = implode('-', array_fill(0, 25, 'zemletryasenie'));
+    // Longer than the site takes, yet within the 255-character column:
+    // MySQL refuses anything longer, so real data can't hold it.
+    $long = implode('-', array_fill(0, 16, 'zemletryasenie'));
+    expect(mb_strlen($long))->toBeGreaterThan(Slug::MAX_LENGTH)->toBeLessThanOrEqual(255);
     $news = News::factory()->published()->create(['slug' => 'vremennyj']);
     DB::table('news')->where('id', $news->id)->update(['slug' => $long, 'updated_at' => '2026-09-01 10:00:00']);
 

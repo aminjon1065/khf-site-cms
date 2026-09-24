@@ -318,7 +318,8 @@ it('seeds menu labels in every site language', function () {
 
     $news = MenuItem::query()->where('location', 'main')->where('url', '/news')->sole();
 
-    expect($news->getTranslations('label'))->toBe(['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News']);
+    // toEqual, not toBe: MySQL keeps JSON keys in its own order.
+    expect($news->getTranslations('label'))->toEqual(['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News']);
 });
 
 it('translates seeded menu labels without touching what editors typed', function () {
@@ -333,6 +334,6 @@ it('translates seeded menu labels without touching what editors typed', function
 
     (require database_path('migrations/2026_09_23_175404_translate_seeded_menu_labels.php'))->up();
 
-    expect($copied->fresh()->getTranslations('label'))->toBe(['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News'])
-        ->and($edited->fresh()->getTranslations('label'))->toBe(['ru' => 'Карта рисков', 'tg' => 'Харитаи хатар', 'en' => 'Hazard map']);
+    expect($copied->fresh()->getTranslations('label'))->toEqual(['ru' => 'Новости', 'tg' => 'Хабарҳо', 'en' => 'News'])
+        ->and($edited->fresh()->getTranslations('label'))->toEqual(['ru' => 'Карта рисков', 'tg' => 'Харитаи хатар', 'en' => 'Hazard map']);
 });
