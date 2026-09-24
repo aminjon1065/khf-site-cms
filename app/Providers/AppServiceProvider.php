@@ -3,8 +3,6 @@
 namespace App\Providers;
 
 use App\Enums\RoleName;
-use App\Listeners\CaptureImageDerivativeMetadata;
-use App\Listeners\CaptureOriginalImageMetadata;
 use App\Models\Alert;
 use App\Models\Announcement;
 use App\Models\Category;
@@ -50,8 +48,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
-use Spatie\MediaLibrary\Conversions\Events\ConversionHasBeenCompletedEvent;
-use Spatie\MediaLibrary\MediaCollections\Events\MediaHasBeenAddedEvent;
 use Spatie\MediaLibrary\MediaCollections\Models\Media;
 
 class AppServiceProvider extends ServiceProvider
@@ -76,7 +72,6 @@ class AppServiceProvider extends ServiceProvider
         $this->configureDefaults();
         $this->configureAuthorization();
         $this->configureAuthEvents();
-        $this->configureMediaEvents();
         $this->configureInfrastructureEvents();
         $this->configureSlowQueryLogging();
         $this->configureRateLimiting();
@@ -134,12 +129,6 @@ class AppServiceProvider extends ServiceProvider
                 $event->user->forceFill(['last_login_at' => now()])->saveQuietly();
             }
         });
-    }
-
-    protected function configureMediaEvents(): void
-    {
-        Event::listen(MediaHasBeenAddedEvent::class, CaptureOriginalImageMetadata::class);
-        Event::listen(ConversionHasBeenCompletedEvent::class, CaptureImageDerivativeMetadata::class);
     }
 
     protected function configureInfrastructureEvents(): void
