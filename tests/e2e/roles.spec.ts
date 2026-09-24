@@ -103,11 +103,11 @@ test('an account is limited to a region only once a region is chosen', async ({
     });
     await expect(limit).toBeDisabled();
 
-    await page.getByLabel('Регион').selectOption({ index: 1 });
+    await page.getByLabel('Регион', { exact: true }).selectOption({ index: 1 });
     await expect(limit).toBeEnabled();
 
     // The administrator works with everything: no limit to offer.
-    await page.getByLabel('Роль').selectOption('admin');
+    await page.getByLabel('Роль', { exact: true }).selectOption('admin');
     await expect(limit).toHaveCount(0);
 
     await page.context().close();
