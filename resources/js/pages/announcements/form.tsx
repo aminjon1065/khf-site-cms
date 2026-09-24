@@ -199,11 +199,16 @@ export default function AnnouncementForm({
         siteUrl(publicSiteUrl, '/announcements/', lang),
     );
 
-    const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
+    const submit = (
+        action: 'draft' | 'submit',
+        mode?: PublishMode,
+        stay = false,
+    ) => {
         form.transform((d) => ({
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
+            stay,
             ...(isEdit
                 ? {
                       _method: 'put',
@@ -215,6 +220,10 @@ export default function AnnouncementForm({
         form.post(isEdit ? update.url(announcement!.id) : store.url(), {
             forceFormData: true,
             preserveScroll: true,
+            // Keep what the editor typed when validation fails (the page
+            // would otherwise remount from server data and drop the errors);
+            // a successful save leaving the editor starts clean.
+            preserveState: stay ? true : 'errors',
         });
     };
 
@@ -241,6 +250,7 @@ export default function AnnouncementForm({
             processing={processing}
             canPublish={can('announcements.publish')}
             onSaveDraft={() => submit('draft')}
+            onSaveShortcut={() => submit('draft', undefined, true)}
             onSubmitReview={() => submit('submit', 'review')}
             onPublishNow={() => submit('submit', 'now')}
             extraActions={

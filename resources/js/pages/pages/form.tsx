@@ -180,11 +180,16 @@ export default function PageForm({
         : `/pages/${data.slug || '…'}`;
     const permalink = siteUrl(publicSiteUrl, publicPath, lang);
 
-    const submit = (action: 'draft' | 'submit', mode?: PublishMode) => {
+    const submit = (
+        action: 'draft' | 'submit',
+        mode?: PublishMode,
+        stay = false,
+    ) => {
         form.transform((d) => ({
             ...d,
             action,
             publish_mode: mode ?? d.publish_mode,
+            stay,
             ...(isEdit
                 ? {
                       _method: 'put',
@@ -195,6 +200,10 @@ export default function PageForm({
 
         form.post(isEdit ? update.url(page!.id) : store.url(), {
             preserveScroll: true,
+            // Keep what the editor typed when validation fails (the page
+            // would otherwise remount from server data and drop the errors);
+            // a successful save leaving the editor starts clean.
+            preserveState: stay ? true : 'errors',
         });
     };
 
@@ -221,6 +230,7 @@ export default function PageForm({
             processing={processing}
             canPublish={can('pages.publish')}
             onSaveDraft={() => submit('draft')}
+            onSaveShortcut={() => submit('draft', undefined, true)}
             onSubmitReview={() => submit('submit', 'review')}
             onPublishNow={() => submit('submit', 'now')}
             extraActions={
@@ -293,6 +303,7 @@ export default function PageForm({
                                 rows={1}
                                 className="wp-title-input"
                                 maxLength={255}
+                                aria-label="Заголовок страницы"
                             />
                             {(fieldError('title') ||
                                 fieldError(`title.${lang}`)) && (

@@ -39,6 +39,18 @@ it('forbids a viewer from creating a page', function () {
     ])->assertForbidden();
 });
 
+it('stays on the editor when saving a draft with the stay flag (Ctrl+S)', function () {
+    $response = actingAs(pageUser('editor'))->post('/pages', [
+        'title' => ['ru' => 'Страница со stay'],
+        'body' => ['ru' => 'Текст страницы.'],
+        'action' => 'draft',
+        'stay' => true,
+    ]);
+
+    $page = Page::query()->latest('id')->firstOrFail();
+    $response->assertRedirect("/pages/{$page->id}/edit");
+});
+
 it('creates a draft page and auto-generates a slug', function () {
     actingAs(pageUser('editor'))->post('/pages', [
         'title' => ['ru' => 'О Комитете', 'tg' => 'Дар бораи Кумита'],

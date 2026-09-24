@@ -121,7 +121,7 @@ class AnnouncementController extends Controller
             return $announcement;
         });
 
-        return redirect('/announcements')->with('success', $this->savedMessage($announcement, $request));
+        return $this->redirectAfterSave($announcement, $request);
     }
 
     public function update(AnnouncementRequest $request, Announcement $announcement): RedirectResponse
@@ -150,7 +150,7 @@ class AnnouncementController extends Controller
 
         $this->refreshSiteIfLive($announcement);
 
-        return redirect('/announcements')->with('success', $this->savedMessage($announcement, $request));
+        return $this->redirectAfterSave($announcement, $request);
     }
 
     public function destroy(Announcement $announcement): RedirectResponse
@@ -370,6 +370,20 @@ class AnnouncementController extends Controller
         } else {
             $this->workflow->transition($announcement, ContentStatus::Review, $user);
         }
+    }
+
+    /**
+     * After a save, stay on the editor (Ctrl+S / `stay` flag) or return to the
+     * list. A freshly created draft lands on its own edit page so subsequent
+     * saves update it instead of creating duplicates.
+     */
+    private function redirectAfterSave(Announcement $announcement, AnnouncementRequest $request): RedirectResponse
+    {
+        $message = $this->savedMessage($announcement, $request);
+
+        return $request->boolean('stay')
+            ? redirect("/announcements/{$announcement->id}/edit")->with('success', $message)
+            : redirect('/announcements')->with('success', $message);
     }
 
     private function savedMessage(Announcement $announcement, AnnouncementRequest $request): string

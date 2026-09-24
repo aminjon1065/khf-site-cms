@@ -51,6 +51,7 @@ class AnnouncementRequest extends FormRequest
 
             'publish_mode' => ['nullable', 'in:now,review'],
             'action' => ['nullable', 'in:draft,submit'],
+            'stay' => ['nullable', 'boolean'],
         ];
     }
 

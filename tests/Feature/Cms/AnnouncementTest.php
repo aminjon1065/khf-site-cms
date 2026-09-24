@@ -75,6 +75,18 @@ it('saves the project a tender belongs to', function () {
     expect(Announcement::query()->first()->project_id)->toBe($project->id);
 });
 
+it('stays on the editor when saving a draft with the stay flag (Ctrl+S)', function () {
+    $response = actingAs(annUser('editor'))->post('/announcements', [
+        'title' => ['ru' => 'Вакансия со stay', 'tg' => '', 'en' => ''],
+        'kind' => 'vacancy',
+        'action' => 'draft',
+        'stay' => true,
+    ]);
+
+    $announcement = Announcement::query()->firstOrFail();
+    $response->assertRedirect("/announcements/{$announcement->id}/edit");
+});
+
 it('clears the project when the editor picks «вне проекта»', function () {
     // Пустая строка из <select> — это отсутствие связи, а не проект с id 0.
     $project = Project::factory()->published()->create();

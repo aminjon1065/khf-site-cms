@@ -116,7 +116,7 @@ class PageController extends Controller
             return $page;
         });
 
-        return redirect('/pages')->with('success', $this->savedMessage($page, $request));
+        return $this->redirectAfterSave($page, $request);
     }
 
     public function update(PageRequest $request, Page $page): RedirectResponse
@@ -145,7 +145,7 @@ class PageController extends Controller
 
         $this->refreshSiteIfLive($page);
 
-        return redirect('/pages')->with('success', $this->savedMessage($page, $request));
+        return $this->redirectAfterSave($page, $request);
     }
 
     public function destroy(Page $page): RedirectResponse
@@ -344,6 +344,20 @@ class PageController extends Controller
         } else {
             $this->workflow->transition($page, ContentStatus::Review, $user);
         }
+    }
+
+    /**
+     * After a save, stay on the editor (Ctrl+S / `stay` flag) or return to the
+     * list. A freshly created draft lands on its own edit page so subsequent
+     * saves update it instead of creating duplicates.
+     */
+    private function redirectAfterSave(Page $page, PageRequest $request): RedirectResponse
+    {
+        $message = $this->savedMessage($page, $request);
+
+        return $request->boolean('stay')
+            ? redirect("/pages/{$page->id}/edit")->with('success', $message)
+            : redirect('/pages')->with('success', $message);
     }
 
     private function savedMessage(Page $page, PageRequest $request): string
