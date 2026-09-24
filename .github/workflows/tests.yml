@@ -335,10 +335,15 @@ jobs:
           php artisan migrate --force --seed --no-interaction
           php artisan storage:link
 
+      # The site's webhooks (queue `revalidation`) get their worker only once
+      # the site runs — see "Start the webhook worker". Sent now, before the
+      # site is even built, they would fail, and three failures trip the
+      # breaker of RevalidateFrontend (ThrottlesExceptions): every webhook,
+      # the ones under test included, would then wait up to five minutes.
       - name: Start the CMS, its queue worker and scheduler
         run: |
           PHP_CLI_SERVER_WORKERS=6 nohup php artisan serve --no-reload --host=127.0.0.1 --port=8848 > storage/logs/serve.log 2>&1 &
-          nohup php artisan queue:work --queue=critical,revalidation,notifications,default,media --sleep=1 --tries=3 > storage/logs/worker.log 2>&1 &
+          nohup php artisan queue:work --queue=critical,notifications,default,media --sleep=1 --tries=3 > storage/logs/worker.log 2>&1 &
           nohup php artisan schedule:work > storage/logs/scheduler.log 2>&1 &
           # The first heartbeats now, not at the next minute or five.
           php artisan content:process-scheduled
@@ -374,6 +379,11 @@ jobs:
             sleep 1
           done
           cat "$RUNNER_TEMP/site.log" && exit 1
+
+      # Webhooks queued so far (seeding, the first scheduled run) go out now,
+      # to a site that answers.
+      - name: Start the webhook worker
+        run: nohup php artisan queue:work --queue=revalidation --sleep=1 --tries=3 > storage/logs/revalidation-worker.log 2>&1 &
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
