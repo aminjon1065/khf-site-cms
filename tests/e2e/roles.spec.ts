@@ -76,18 +76,14 @@ test('the administrator builds a role, changes it and removes it', async ({
     await expect(page.getByRole('heading', { name: LABEL })).toBeVisible();
 
     // Without seeing a section, no other right in it stays.
-    await page
-        .getByRole('link', { name: `Изменить роль «${LABEL}»` })
-        .click();
+    await page.getByRole('link', { name: `Изменить роль «${LABEL}»` }).click();
     await right(page, 'Предупреждения: просмотр').locator('..').click();
     await expect(right(page, 'Предупреждения: публикация')).not.toBeChecked();
     await expect(page.getByText('будут входить с кодом из')).toHaveCount(0);
     await page.getByRole('button', { name: 'Сохранить' }).first().click();
     await expect(page).toHaveURL(/\/roles$/);
 
-    await page
-        .getByRole('link', { name: `Изменить роль «${LABEL}»` })
-        .click();
+    await page.getByRole('link', { name: `Изменить роль «${LABEL}»` }).click();
     await page.getByRole('button', { name: 'Удалить роль' }).click();
     await page.getByRole('button', { name: 'Удалить', exact: true }).click();
     await expect(page).toHaveURL(/\/roles$/);
