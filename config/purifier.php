@@ -38,7 +38,7 @@ return [
         // to YouTube/Vimeo embeds via URI.SafeIframeRegexp.
         'news' => [
             'HTML.Doctype' => 'HTML 4.01 Transitional',
-            'HTML.Allowed' => 'p[style],br,strong,b,em,i,u,s,span[style],h2[style],h3[style],h4[style],ul,ol,li,blockquote,hr,a[href|title|target|rel],img[src|alt|title|width|height|class|srcset|sizes|data-media-id],figure[class],figcaption,table[style],colgroup,col[span|style|width],thead,tbody,tr,th[colspan|rowspan|style|colwidth],td[colspan|rowspan|style|colwidth],div[data-youtube-video],iframe[src|width|height|frameborder|allowfullscreen],aside[class|data-callout-type]',
+            'HTML.Allowed' => 'p[style],br,strong,b,em,i,u,s,span[style],h2[style],h3[style],h4[style],ul,ol,li,blockquote,hr,a[href|title|target|rel],img[src|alt|title|width|height|class|srcset|sizes|data-media-id|data-decorative],figure[class],figcaption,table[style],colgroup,col[span|style|width],thead,tbody,tr,th[colspan|rowspan|style|colwidth],td[colspan|rowspan|style|colwidth],div[data-youtube-video],iframe[src|width|height|frameborder|allowfullscreen],aside[class|data-callout-type]',
             'CSS.AllowedProperties' => 'text-align,color,background-color,width,min-width',
             'AutoFormat.AutoParagraph' => false,
             'AutoFormat.RemoveEmpty' => true,
@@ -56,7 +56,7 @@ return [
         ],
         'custom_definition' => [
             'id' => 'html5-definitions',
-            'rev' => 4,
+            'rev' => 5,
             'debug' => false,
             'elements' => [
                 // http://developers.whatwg.org/sections.html
@@ -109,6 +109,7 @@ return [
                 ['img', 'srcset', 'Text'],
                 ['img', 'sizes', 'Text'],
                 ['img', 'data-media-id', 'Text'],
+                ['img', 'data-decorative', 'Text'],
                 ['table', 'height', 'Text'],
                 ['td', 'border', 'Text'],
                 ['td', 'colwidth', 'Text'],

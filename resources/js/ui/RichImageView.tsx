@@ -41,15 +41,19 @@ export function RichImageView({
     editor,
     getPos,
 }: ReactNodeViewProps) {
-    const { src, alt, caption, align, size, srcset, mediaId } = node.attrs as {
-        src: string;
-        alt: string | null;
-        caption: string | null;
-        align: ImageAlign;
-        size: ImageSize;
-        srcset: string | null;
-        mediaId: string | number | null;
-    };
+    const { src, alt, caption, align, size, srcset, mediaId, decorative } =
+        node.attrs as {
+            src: string;
+            alt: string | null;
+            caption: string | null;
+            align: ImageAlign;
+            size: ImageSize;
+            srcset: string | null;
+            mediaId: string | number | null;
+            decorative: boolean;
+        };
+    // Без описания незрячий читатель ничего не узнает о фото.
+    const undescribed = !decorative && (alt ?? '').trim() === '';
     const [replacing, setReplacing] = useState(false);
     const [cropping, setCropping] = useState(false);
     const altRef = useRef<HTMLInputElement>(null);
@@ -62,13 +66,22 @@ export function RichImageView({
         }
     };
 
-    const applyMedia = (item: MediaItem) => {
+    /**
+     * Ставит снимок из медиатеки. Кадрированная копия того же фото сохраняет
+     * описание; другое фото получает своё — из медиатеки, а не имя файла.
+     */
+    const applyMedia = (item: MediaItem, sameImage = false) => {
         updateAttributes({
             // Путь, а не абсолютный URL: контент не должен зависеть от хоста.
             src: item.path ?? item.url,
             srcset: item.srcset,
             mediaId: item.id,
-            alt: item.alt ?? item.name ?? alt,
+            alt: sameImage
+                ? (item.alt ?? alt)
+                : item.is_decorative
+                  ? ''
+                  : (item.alt ?? ''),
+            decorative: sameImage ? decorative : (item.is_decorative ?? false),
             caption: caption || item.caption,
         });
         setReplacing(false);
@@ -108,6 +121,24 @@ export function RichImageView({
                         draggable={false}
                         onClick={select}
                     />
+                    {undescribed && (
+                        <button
+                            type="button"
+                            className="re-figure-alt-missing"
+                            data-re-image-ui=""
+                            contentEditable={false}
+                            title="Опишите, что на фото, — это услышат незрячие читатели"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => {
+                                select();
+                                requestAnimationFrame(() =>
+                                    altRef.current?.focus(),
+                                );
+                            }}
+                        >
+                            Нет описания
+                        </button>
+                    )}
                     {selected && (
                         <div
                             className="re-figure-tools"
@@ -201,8 +232,13 @@ export function RichImageView({
                         </div>
                     )}
                 </div>
-                {selected && (
-                    <label className="re-figure-alt">
+                {selected && !decorative && (
+                    <label
+                        className={cn(
+                            're-figure-alt',
+                            undescribed && 'is-missing',
+                        )}
+                    >
                         <span>Описание</span>
                         <input
                             ref={altRef}
@@ -216,6 +252,23 @@ export function RichImageView({
                             onMouseDown={(e) => e.stopPropagation()}
                             onKeyDown={(e) => e.stopPropagation()}
                         />
+                    </label>
+                )}
+                {selected && (
+                    <label className="re-figure-decorative">
+                        <input
+                            type="checkbox"
+                            checked={decorative}
+                            onChange={(e) =>
+                                updateAttributes({
+                                    decorative: e.target.checked,
+                                    alt: e.target.checked ? '' : alt,
+                                })
+                            }
+                            onMouseDown={(e) => e.stopPropagation()}
+                            onKeyDown={(e) => e.stopPropagation()}
+                        />
+                        <span>Декоративное фото — описание не нужно</span>
                     </label>
                 )}
                 {(selected || Boolean(caption)) && (
@@ -248,13 +301,13 @@ export function RichImageView({
             <MediaPicker
                 open={replacing}
                 onClose={() => setReplacing(false)}
-                onSelect={applyMedia}
+                onSelect={(item) => applyMedia(item)}
             />
             <ImageEditor
                 open={cropping}
                 source={cropping ? cropSource : null}
                 onClose={() => setCropping(false)}
-                onSaved={applyMedia}
+                onSaved={(item) => applyMedia(item, true)}
             />
         </NodeViewWrapper>
     );

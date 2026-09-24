@@ -22,6 +22,8 @@ export interface MediaItem {
     srcset: string | null;
     alt: string | null;
     caption: string | null;
+    /** Marked decorative in the library: no description needed. */
+    is_decorative?: boolean;
 }
 
 interface LibraryResponse {

@@ -8,6 +8,7 @@ use App\Models\News;
 use App\Support\ContentLocales;
 use App\Support\ContentTitle;
 use App\Support\PublicLocale;
+use App\Support\RichTextMediaResolver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Validation\ValidationException;
 use Spatie\MediaLibrary\HasMedia;
@@ -25,6 +26,8 @@ class PublicationChecklist
         'ru' => ['Русская', 'русской'],
         'en' => ['Английская', 'английской'],
     ];
+
+    public function __construct(private readonly RichTextMediaResolver $richMedia) {}
 
     /**
      * @return list<array{key: string, label: string, ok: bool, blocking: bool, detail: string|null}>
@@ -44,6 +47,22 @@ class PublicationChecklist
                 'ok' => filled($subject->cover_alt),
                 'blocking' => true,
                 'detail' => filled($subject->cover_alt) ? null : 'Опишите изображение для людей, которые его не видят.',
+            ];
+        }
+
+        $pictures = $this->pictureDescriptions($subject);
+
+        if ($pictures['images'] > 0) {
+            $items[] = [
+                'key' => 'image_descriptions',
+                'label' => 'Фото в тексте описаны',
+                'ok' => $pictures['undescribed'] === 0,
+                // Not blocking: older texts hold photos without descriptions,
+                // and publishing a fix must stay possible.
+                'blocking' => false,
+                'detail' => $pictures['undescribed'] === 0
+                    ? null
+                    : "Без описания: {$pictures['undescribed']}. Опишите, что на фото, в тексте или в медиатеке — иначе незрячие читатели ничего о нём не узнают.",
             ];
         }
 
@@ -164,6 +183,35 @@ class PublicationChecklist
         }
 
         return $items;
+    }
+
+    /**
+     * Photos in the material's text, in every language, and how many say
+     * nothing to readers who can't see them (RichTextMediaResolver).
+     *
+     * @return array{images: int, undescribed: int}
+     */
+    private function pictureDescriptions(Model $subject): array
+    {
+        $total = ['images' => 0, 'undescribed' => 0];
+
+        if (! method_exists($subject, 'getTranslations')
+            || ! method_exists($subject, 'isTranslatableAttribute')
+            || ! $subject->isTranslatableAttribute('body')) {
+            return $total;
+        }
+
+        foreach ($subject->getTranslations('body') as $html) {
+            if (! is_string($html)) {
+                continue;
+            }
+
+            $found = $this->richMedia->descriptions($html);
+            $total['images'] += $found['images'];
+            $total['undescribed'] += $found['undescribed'];
+        }
+
+        return $total;
     }
 
     /**

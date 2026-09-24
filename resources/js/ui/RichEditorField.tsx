@@ -89,6 +89,7 @@ export interface Props {
 function imageAttrsFromMedia(item: MediaItem): {
     src: string;
     alt: string;
+    decorative: boolean;
     caption: string;
     srcset: string | null;
     mediaId: number;
@@ -99,7 +100,10 @@ function imageAttrsFromMedia(item: MediaItem): {
         // Относительный путь, если есть: абсолютный URL в сохранённом
         // HTML ломается при смене хоста/порта окружения.
         src: item.path ?? item.url,
-        alt: item.alt ?? item.name ?? '',
+        // Описание из медиатеки, а не имя файла: «IMG_2034.jpg» незрячему
+        // читателю ничего не говорит. Пустое описание редактор подсвечивает.
+        alt: item.is_decorative ? '' : (item.alt ?? ''),
+        decorative: item.is_decorative ?? false,
         caption: item.caption ?? '',
         srcset: item.srcset,
         mediaId: item.id,

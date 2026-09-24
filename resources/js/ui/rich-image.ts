@@ -32,6 +32,12 @@ function readClass(className: string, prefix: string): string | null {
     return match ? match[1] : null;
 }
 
+/**
+ * HTMLPurifier заполнял отсутствующее описание именем файла: «IMG_2034.jpg»
+ * ничего не описывает и в редакторе считается пустым описанием.
+ */
+const FILE_NAME = /\.(jpe?g|png|webp|gif|avif|heic|bmp|tiff?)$/i;
+
 /** Ищет <img>: либо сам элемент, либо вложенный (для <figure>). */
 function imgOf(el: HTMLElement): HTMLImageElement | null {
     return el instanceof HTMLImageElement ? el : el.querySelector('img');
@@ -62,8 +68,22 @@ export const RichImage = TiptapImage.extend({
             },
             alt: {
                 default: null,
+                parseHTML: (el) => {
+                    const alt =
+                        imgOf(el as HTMLElement)?.getAttribute('alt') ?? null;
+
+                    return alt !== null && FILE_NAME.test(alt.trim())
+                        ? null
+                        : alt;
+                },
+            },
+            /** Декоративное фото: описание не нужно (`data-decorative`). */
+            decorative: {
+                default: false,
+                renderHTML: () => ({}),
                 parseHTML: (el) =>
-                    imgOf(el as HTMLElement)?.getAttribute('alt') ?? null,
+                    imgOf(el as HTMLElement)?.hasAttribute('data-decorative') ??
+                    false,
             },
             title: {
                 default: null,
@@ -117,8 +137,17 @@ export const RichImage = TiptapImage.extend({
     },
 
     renderHTML({ node }) {
-        const { src, alt, title, align, size, caption, srcset, mediaId } =
-            node.attrs;
+        const {
+            src,
+            alt,
+            title,
+            align,
+            size,
+            caption,
+            srcset,
+            mediaId,
+            decorative,
+        } = node.attrs;
         const wrap = [
             're-figure',
             align && ALIGN_CLASS[align],
@@ -127,10 +156,14 @@ export const RichImage = TiptapImage.extend({
             .filter(Boolean)
             .join(' ');
 
-        const imgAttrs: Record<string, string> = { src: src ?? '' };
+        // alt пишется всегда: без него HTMLPurifier подставит имя файла.
+        const imgAttrs: Record<string, string> = {
+            src: src ?? '',
+            alt: decorative ? '' : (alt ?? ''),
+        };
 
-        if (alt) {
-            imgAttrs.alt = alt;
+        if (decorative) {
+            imgAttrs['data-decorative'] = 'true';
         }
 
         if (title) {
