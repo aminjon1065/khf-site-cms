@@ -4,6 +4,7 @@ import {
     restore,
     store,
 } from '@/actions/App/Http/Controllers/Cms/EditorialAutosaveController';
+import { conformToForm } from '@/lib/recovered-data';
 
 export interface EditorialAutosaveConfig<T extends object> {
     contentType:
@@ -151,9 +152,13 @@ export function useEditorialAutosave<T extends object>(
         return () => window.clearTimeout(timeout);
     }, [autosave, isDirty, saveLocalCopy]);
 
+    // Versions from the server are model snapshots, not form data.
+    const recover = (version: Partial<T>) =>
+        config.onRecover(conformToForm(config.data, version));
+
     const recoverLocal = () => {
         if (recovery) {
-            config.onRecover(recovery.data);
+            recover(recovery.data);
             setRecovery(null);
         }
     };
@@ -165,7 +170,7 @@ export function useEditorialAutosave<T extends object>(
 
     const useRemoteConflict = () => {
         if (conflict) {
-            config.onRecover(conflict.remote);
+            recover(conflict.remote);
             setConflict(null);
             setState('idle');
             openedAt.current = new Date().toISOString();
@@ -228,7 +233,7 @@ export function useEditorialAutosave<T extends object>(
 
         // The version only fills the form: it reaches the material when the
         // editor saves it, through the same checks and approval as any edit.
-        config.onRecover(result.data);
+        recover(result.data);
         setHistoryOpen(false);
         setRestored({
             savedAt: result.saved_at ?? null,
