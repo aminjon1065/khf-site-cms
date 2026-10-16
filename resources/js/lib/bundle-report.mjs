@@ -17,10 +17,14 @@ import { gzipSync } from 'node:zlib';
 // Редактор (566.6 KiB: меню «/», галереи, блоки) и CSS (161.6 KiB: стили
 // редактора wp-*/re-*) выросли вместе с редактором «как в WordPress»;
 // бюджеты подняты к факту с тем же небольшим запасом.
+//
+// 2026-10-16: Tiptap 3.28 → 3.32 (закрыты XSS при вставке в ProseMirror и
+// ReDoS в разборе атрибутов) добавил чанку редактора 24 KiB: 566.6 → 590.3
+// KiB. Чанк грузится только при открытии редактора, гражданам не уходит.
 export const CMS_BUNDLE_BUDGETS = {
     entryBytes: 240 * 1024,
     initialJavaScriptBytes: 560 * 1024,
-    largestJavaScriptBytes: 580 * 1024,
+    largestJavaScriptBytes: 600 * 1024,
     largestCssBytes: 166 * 1024,
     totalJavaScriptBytes: 1800 * 1024,
 };
