@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 use stdClass;
 
 class SearchController extends Controller
@@ -60,8 +61,8 @@ class SearchController extends Controller
         $results = DB::query()
             ->fromSub($union, 'search_results')
             ->orderByRaw(
-                "COALESCE(NULLIF(requested_title, ''), NULLIF(russian_title, ''), '') LIKE ? DESC",
-                ["%{$term}%"],
+                "COALESCE(NULLIF(requested_title, ''), NULLIF(russian_title, ''), '') LIKE ? ESCAPE '!' DESC",
+                [self::containsPattern($term)],
             )
             ->orderByRaw('published_at IS NULL')
             ->orderByDesc('published_at')
@@ -169,15 +170,61 @@ class SearchController extends Controller
 
         $query->where(function (Builder $where) use ($variants, $locale, $translatedFields, $plainFields): void {
             foreach ($variants as $variant) {
-                $pattern = "%{$variant}%";
+                $pattern = self::containsPattern($variant);
                 foreach ($translatedFields as $field) {
-                    $where->orWhere("{$field}->{$locale}", 'like', $pattern);
+                    $this->orWhereContains($where, $field, $locale, $pattern);
                 }
                 foreach ($plainFields as $field) {
-                    $where->orWhere($field, 'like', $pattern);
+                    $this->orWhereContains($where, $field, null, $pattern);
                 }
             }
         });
+    }
+
+    /**
+     * `column LIKE ? ESCAPE '!'` for one searched column. Laravel's 'like'
+     * has no ESCAPE, and raw SQL is built from literals only: the column is
+     * one of the searched names, the language goes in as a JSON-path binding.
+     *
+     * @template TModel of Model
+     *
+     * @param  Builder<TModel>  $where
+     */
+    private function orWhereContains(Builder $where, string $field, ?string $locale, string $pattern): void
+    {
+        $column = match ($field) {
+            'title' => 'title',
+            'summary' => 'summary',
+            'body' => 'body',
+            'name' => 'name',
+            'number' => 'number',
+            'org' => 'org',
+            default => throw new InvalidArgumentException("Column [{$field}] is not searchable."),
+        };
+
+        if ($locale === null) {
+            $where->orWhereRaw("{$column} like ? escape '!'", [$pattern]);
+
+            return;
+        }
+
+        // The same JSON value Laravel reads for `title->ru` on each driver.
+        $where->orWhereRaw(
+            $where->getModel()->getConnection()->getDriverName() === 'mysql'
+                ? "json_unquote(json_extract({$column}, ?)) like ? escape '!'"
+                : "json_extract({$column}, ?) like ? escape '!'",
+            ['$."'.$locale.'"', $pattern],
+        );
+    }
+
+    /**
+     * «Contains» as a LIKE pattern with the searched text taken literally:
+     * `%` and `_` typed by a citizen are characters, not wildcards (a query
+     * of `%%` used to match every public record of all seven types).
+     */
+    private static function containsPattern(string $term): string
+    {
+        return '%'.str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $term).'%';
     }
 
     /**

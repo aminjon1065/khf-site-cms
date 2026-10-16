@@ -74,3 +74,23 @@ it('searches only the requested locale fields', function () {
         ->assertOk()
         ->assertJsonPath('meta.total', 1);
 });
+
+it('takes % and _ in the query literally, not as wildcards', function () {
+    News::factory()->published()->create([
+        'title' => ['ru' => 'Скидка 50% на обучение спасателей', 'tg' => '', 'en' => ''],
+    ]);
+    News::factory()->published()->create([
+        'title' => ['ru' => 'Учения в Хатлоне', 'tg' => '', 'en' => ''],
+        'summary' => ['ru' => 'Код учений A1B', 'tg' => '', 'en' => ''],
+    ]);
+
+    // `%%` used to match every public record of all seven types.
+    $this->getJson('/api/v1/search?locale=ru&q=%25%25')->assertOk()->assertJsonPath('meta.total', 0);
+    $this->getJson('/api/v1/search?locale=ru&q=__')->assertOk()->assertJsonPath('meta.total', 0);
+    $this->getJson('/api/v1/search?locale=ru&q=A_B')->assertOk()->assertJsonPath('meta.total', 0);
+
+    $this->getJson('/api/v1/search?locale=ru&q=50%25')
+        ->assertOk()
+        ->assertJsonPath('meta.total', 1)
+        ->assertJsonPath('data.0.title', 'Скидка 50% на обучение спасателей');
+});
