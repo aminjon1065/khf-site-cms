@@ -1,6 +1,6 @@
 import { X } from 'lucide-react';
 import { Tag } from '@/ui/Badge';
-import { Field, Input, Select } from '@/ui/Field';
+import { Field, Select } from '@/ui/Field';
 import type { Reference } from './types';
 
 export function Step4({
@@ -30,25 +30,6 @@ export function Step4({
                 gap: 18,
             }}
         >
-            <div
-                className="cms-stack-narrow"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 16,
-                }}
-            >
-                <Field label="Изображение">
-                    <div className="ui-dropzone">
-                        Перетащите файл или выберите из медиатеки
-                    </div>
-                </Field>
-                <Field label="Документы">
-                    <div className="ui-dropzone">
-                        Прикрепите прогноз или официальный документ (PDF)
-                    </div>
-                </Field>
-            </div>
             <Field label="Связанные инструкции населению">
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {reference.instructions.map((i) => {
@@ -58,6 +39,7 @@ export function Step4({
                             <button
                                 key={i.id}
                                 type="button"
+                                aria-pressed={active}
                                 onClick={() => toggleInstruction(i.id)}
                                 style={{
                                     border: 0,
@@ -81,26 +63,7 @@ export function Step4({
                     })}
                 </div>
             </Field>
-            <div
-                className="cms-stack-narrow"
-                style={{
-                    display: 'grid',
-                    gridTemplateColumns: '1fr 1fr',
-                    gap: 16,
-                }}
-            >
-                <Field label="Экстренные номера">
-                    <Input
-                        value={data.contacts.ru ?? ''}
-                        onChange={(e) =>
-                            setData('contacts', {
-                                ...data.contacts,
-                                ru: e.target.value,
-                            })
-                        }
-                        placeholder="112 · +992 (37) 221-59-00"
-                    />
-                </Field>
+            <div style={{ maxWidth: 372 }}>
                 <Field label="Категория риска">
                     <Select
                         placeholder="Не указана"

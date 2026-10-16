@@ -91,6 +91,7 @@ class AlertRequest extends FormRequest
             'approver_id' => ['nullable', 'integer', 'exists:users,id'],
             'publish_mode' => ['nullable', 'in:now,schedule,review'],
             'action' => ['nullable', 'in:draft,submit'],
+            'stay' => ['nullable', 'boolean'],
         ];
     }
 

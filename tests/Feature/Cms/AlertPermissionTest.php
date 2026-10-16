@@ -242,3 +242,29 @@ it('sorts the alert list by escalation, not by the alphabet of the level code', 
     expect(array_column($order('desc'), 'severity'))->toBe(['critical', 'danger', 'warning', 'attention', 'info'])
         ->and(array_column($order('asc'), 'severity'))->toBe(['info', 'attention', 'warning', 'danger', 'critical']);
 });
+
+it('keeps the operator in the wizard when they save a draft', function () {
+    $region = Region::query()->where('code', 'khatlon')->first();
+    $operator = userWithRole('chief_editor');
+    $payload = [
+        'internal_title' => 'Черновик из мастера',
+        'hazard_type' => 'mudflow',
+        'severity' => 'warning',
+        'territory_type' => 'regions',
+        'regions' => [$region->id],
+        'title' => ['ru' => 'Заголовок'],
+        'action' => 'draft',
+        'stay' => true,
+    ];
+
+    $response = actingAs($operator)->post('/alerts', $payload);
+    $alert = Alert::query()->where('internal_title', 'Черновик из мастера')->firstOrFail();
+    $response->assertRedirect("/alerts/{$alert->id}/edit");
+
+    actingAs($operator)
+        ->put("/alerts/{$alert->id}", [...$payload, 'internal_title' => 'Черновик, шаг 3'])
+        ->assertRedirect("/alerts/{$alert->id}/edit");
+
+    expect($alert->fresh()->internal_title)->toBe('Черновик, шаг 3')
+        ->and($alert->fresh()->status)->toBe(ContentStatus::Draft);
+});

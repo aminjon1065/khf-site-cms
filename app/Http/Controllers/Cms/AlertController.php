@@ -122,7 +122,7 @@ class AlertController extends Controller
             return $alert;
         });
 
-        return redirect('/alerts')->with('success', $this->savedMessage($alert, $request));
+        return $this->redirectAfterSave($alert, $request);
     }
 
     public function update(AlertRequest $request, Alert $alert): RedirectResponse
@@ -155,7 +155,7 @@ class AlertController extends Controller
 
         $this->refreshSiteIfLive($alert);
 
-        return redirect('/alerts')->with('success', $this->savedMessage($alert, $request));
+        return $this->redirectAfterSave($alert, $request);
     }
 
     public function destroy(Alert $alert): RedirectResponse
@@ -487,6 +487,19 @@ class AlertController extends Controller
         } else {
             $this->workflow->transition($alert, ContentStatus::Review, $user);
         }
+    }
+
+    /**
+     * «Сохранить» keeps the operator on the wizard step they were on; the
+     * final publish or approval step returns to the list.
+     */
+    private function redirectAfterSave(Alert $alert, AlertRequest $request): RedirectResponse
+    {
+        $message = $this->savedMessage($alert, $request);
+
+        return $request->boolean('stay')
+            ? redirect("/alerts/{$alert->id}/edit")->with('success', $message)
+            : redirect('/alerts')->with('success', $message);
     }
 
     private function savedMessage(Alert $alert, AlertRequest $request): string

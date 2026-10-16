@@ -1,5 +1,5 @@
 import { useCan } from '@/lib/auth';
-import type { Severity } from '@/lib/domain';
+import type { ContentLocale, Severity } from '@/lib/domain';
 import { SeverityBadge } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import {
@@ -23,6 +23,7 @@ export function Step5({
     setPreview,
     toggleChannel,
     checklist,
+    lang,
 }: {
     data: any;
     setData: (k: string, v: unknown) => void;
@@ -33,6 +34,8 @@ export function Step5({
     setPreview: (p: 'desktop' | 'mobile') => void;
     toggleChannel: (v: string) => void;
     checklist: { label: string; ok: boolean }[];
+    /** The language picked on the «Содержание» step. */
+    lang: ContentLocale;
 }) {
     // Without the publish permission an alert can only go to approval: the
     // server would route «now» and «schedule» there anyway.
@@ -166,7 +169,7 @@ export function Step5({
                 <Blueprint
                     style={{
                         padding: 14,
-                        borderTop: '3px solid var(--sev-warning)',
+                        borderTop: `3px solid var(--sev-${data.severity})`,
                         maxWidth: preview === 'mobile' ? 320 : '100%',
                     }}
                 >
@@ -179,7 +182,7 @@ export function Step5({
                             marginTop: 8,
                         }}
                     >
-                        {data.title.ru || 'Заголовок предупреждения'}
+                        {data.title[lang] || 'Заголовок предупреждения'}
                     </div>
                     <div
                         style={{
@@ -193,7 +196,8 @@ export function Step5({
                             : 'Срок не задан'}
                     </div>
                     <p style={{ fontSize: 13, marginTop: 8, marginBottom: 0 }}>
-                        {data.summary.ru || 'Краткое описание появится здесь.'}
+                        {data.summary[lang] ||
+                            'Краткое описание появится здесь.'}
                     </p>
                 </Blueprint>
                 <div style={{ marginTop: 16 }}>

@@ -3,9 +3,10 @@ import { ArrowLeft } from 'lucide-react';
 import { useState } from 'react';
 import AlertController from '@/actions/App/Http/Controllers/Cms/AlertController';
 import type { PendingChangeInfo } from '@/cms/EditorialFormShell';
-import type { ContentLocale } from '@/lib/domain';
+import { useCan } from '@/lib/auth';
+import type { ContentLocale, ContentStatus } from '@/lib/domain';
 import { useT } from '@/lib/i18n';
-import { Tag } from '@/ui/Badge';
+import { StatusBadge, Tag } from '@/ui/Badge';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button, IconButton } from '@/ui/Button';
 import { FormErrorSummary } from '@/ui/Feedback';
@@ -22,6 +23,7 @@ interface WizardAlert {
     internal_title: string;
     hazard_type: string;
     severity: string;
+    status: ContentStatus;
     source: string | null;
     risk_category: string | null;
     territory_type: string;
@@ -123,10 +125,19 @@ export default function AlertWizard({
     // 30 seconds and, on a published alert, put half-edited text live.
     // Submitting through the form keeps validation errors and the busy state
     // (a second click can't create a duplicate alert).
+    // Saving keeps the operator on the current step of the wizard; only the
+    // final «Опубликовать» / «На согласование» goes back to the list.
     const submit = (action: 'draft' | 'submit') => {
-        form.transform((d) => ({ ...d, action, publish_mode: publishMode }));
+        const stay = action === 'draft';
+        form.transform((d) => ({
+            ...d,
+            action,
+            publish_mode: publishMode,
+            stay,
+        }));
         const opts = {
             preserveScroll: true,
+            preserveState: stay ? true : ('errors' as const),
             onSuccess: () =>
                 setSavedAt(
                     new Date().toLocaleTimeString('ru-RU', {
@@ -167,6 +178,24 @@ export default function AlertWizard({
                 : [...data.channels, v],
         );
     };
+    const canPublish = useCan()('alerts.publish');
+    const status = alert?.status;
+    // On the site already: saving changes the live alert (or, without the
+    // publish right, sends the changes to approval) — never «a draft».
+    const isLive =
+        status === 'published' ||
+        status === 'updated' ||
+        status === 'completed';
+    const saveLabel = changes_need_approval
+        ? 'Отправить изменения на согласование'
+        : isLive && canPublish
+          ? 'Обновить'
+          : status === 'scheduled' ||
+              status === 'review' ||
+              status === 'translation_check'
+            ? 'Сохранить'
+            : t('action.save_draft');
+
     const copyFromRu = () => {
         CONTENT_FIELDS.forEach((f) =>
             setData(f, { ...data[f], [lang]: data[f].ru }),
@@ -227,13 +256,11 @@ export default function AlertWizard({
                         Этап {step + 1} из 5 · {STEPS[step].label}
                     </div>
                 </div>
-                <Tag tone="neutral">
-                    {savedAt
-                        ? `Черновик · сохранено в ${savedAt}`
-                        : alert
-                          ? 'Черновик'
-                          : 'Не сохранён'}
-                </Tag>
+                {status ? (
+                    <StatusBadge status={status} />
+                ) : (
+                    <Tag tone="neutral">Не сохранено</Tag>
+                )}
             </div>
 
             {(pending_change || changes_need_approval) && (
@@ -300,6 +327,7 @@ export default function AlertWizard({
                             setPreview,
                             toggleChannel,
                             checklist,
+                            lang,
                         }}
                     />
                 )}
@@ -315,22 +343,24 @@ export default function AlertWizard({
                 >
                     {t('action.back')}
                 </Button>
+                {/* No autosave in the wizard (see submit): say how it saves. */}
                 <span
+                    aria-live="polite"
                     style={{ fontSize: 12, color: 'var(--color-neutral-500)' }}
                 >
-                    {alert
-                        ? 'Черновик сохраняется автоматически'
-                        : 'Сохраните черновик, чтобы включить автосохранение'}
+                    {savedAt
+                        ? `Сохранено в ${savedAt}`
+                        : `Сохраняется кнопкой «${saveLabel}»`}
                 </span>
                 <div style={{ display: 'flex', gap: 8 }}>
                     <Button
-                        variant="secondary"
+                        variant={step === 4 && isLive ? 'primary' : 'secondary'}
                         loading={processing}
                         onClick={() => submit('draft')}
                     >
-                        {t('action.save_draft')}
+                        {saveLabel}
                     </Button>
-                    {step < 4 ? (
+                    {isLive && step === 4 ? null : step < 4 ? (
                         <Button
                             variant="primary"
                             onClick={() => setStep((s) => Math.min(4, s + 1))}
