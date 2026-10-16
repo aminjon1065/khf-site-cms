@@ -122,3 +122,13 @@ it('filters appeals by the region the citizen picked', function () {
             ->where('filters.region', 'khatlon')
             ->has('options.regions', 5));
 });
+
+it('tells staff what the citizen sees for each status', function () {
+    $submission = Submission::factory()->create();
+
+    actingAs(subUser('chief_editor'))->get("/submissions/{$submission->id}")
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('reference.public_stages.new', 'Получено')
+            ->where('reference.public_stages.awaiting', 'На рассмотрении')
+            ->where('reference.public_stages.spam', 'Оставлено без рассмотрения'));
+});

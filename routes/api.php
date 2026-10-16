@@ -84,6 +84,10 @@ Route::middleware('throttle:api-public')->group(function (): void {
     Route::post('submissions', [SubmissionController::class, 'store'])
         ->middleware('throttle:10,1')
         ->name('api.submissions.store');
+    // Status of an appeal by its number and check code; ten tries a minute.
+    Route::post('submissions/status', [SubmissionController::class, 'status'])
+        ->middleware('throttle:10,1')
+        ->name('api.submissions.status');
 
     // Real-user Core Web Vitals ingestion (анонимные сэмплы с фронта).
     Route::post('vitals', WebVitalController::class)

@@ -187,8 +187,9 @@ it('documents every public API operation exactly once', function () {
         // вместе с переносом руководства и структуры Комитета в CMS (C-1),
         // + `/slugs/{type}` для статической генерации, + `/sitemap` для
         // sitemap.xml с датами изменений, + `/views` — просмотры страниц
-        // сайта для собственной статистики.
-        ->and($documented)->toHaveCount(30);
+        // сайта для собственной статистики, + `/submissions/status` —
+        // статус обращения по номеру и коду.
+        ->and($documented)->toHaveCount(31);
 });
 
 it('keeps successful responses for every operation inside the OpenAPI contract', function () {
@@ -213,6 +214,13 @@ it('keeps successful responses for every operation inside the OpenAPI contract',
     foreach ($slugs as $type => $slug) {
         expect($slug)->not->toBeNull("The seeded {$type} fixture must expose a published slug.");
     }
+
+    $appeal = $this->postJson('/api/v1/submissions', [
+        'name' => 'Контрактный тест статуса',
+        'phone' => '+992 93 000 00 00',
+        'message' => 'Обращение, статус которого проверяет контрактный тест.',
+        'consent' => true,
+    ])->assertCreated()->json();
 
     $requests = [
         ['get', '/health', '/health'],
@@ -256,6 +264,10 @@ it('keeps successful responses for every operation inside the OpenAPI contract',
             'device' => 'desktop',
             'navigation_type' => 'navigate',
         ], ['X-RUM-Key' => 'openapi-rum-secret']],
+        ['post', '/submissions/status', '/submissions/status', [
+            'tracking_number' => $appeal['tracking_number'],
+            'access_code' => $appeal['access_code'],
+        ]],
         ['post', '/views', '/views', [
             'views' => [['type' => 'news', 'slug' => $slugs['news'], 'locale' => 'ru', 'count' => 3]],
         ], ['X-RUM-Key' => 'openapi-rum-secret']],

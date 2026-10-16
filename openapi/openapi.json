@@ -773,6 +773,44 @@
         }
       }
     },
+    "/submissions/status": {
+      "post": {
+        "operationId": "submissionStatus",
+        "summary": "Status of an appeal by its number and check code",
+        "description": "The number alone never opens a status: numbers go in sequence. Unknown number and wrong code get the same 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SubmissionStatusRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Status of the appeal",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SubmissionStatusResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No appeal with this number and code"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
+    },
     "/vitals": {
       "post": {
         "operationId": "storeWebVital",
@@ -2902,11 +2940,80 @@
       "SubmissionResponse": {
         "type": "object",
         "required": [
-          "tracking_number"
+          "tracking_number",
+          "access_code"
         ],
         "properties": {
           "tracking_number": {
             "type": "string"
+          },
+          "access_code": {
+            "type": "string",
+            "description": "Check code (XXXX-XXXX), shown to the citizen once; with the number it opens the status. Stored only as a hash."
+          }
+        }
+      },
+      "SubmissionStatusRequest": {
+        "type": "object",
+        "required": [
+          "tracking_number",
+          "access_code"
+        ],
+        "properties": {
+          "tracking_number": {
+            "type": "string",
+            "description": "As typed: «КЧС-2026-00012», «2026-12» …"
+          },
+          "access_code": {
+            "type": "string",
+            "description": "Any case, with or without the dash."
+          }
+        }
+      },
+      "SubmissionStatusResponse": {
+        "type": "object",
+        "required": [
+          "data"
+        ],
+        "properties": {
+          "data": {
+            "type": "object",
+            "required": [
+              "tracking_number",
+              "status_code",
+              "status",
+              "received_at",
+              "updated_at"
+            ],
+            "properties": {
+              "tracking_number": {
+                "type": "string"
+              },
+              "status_code": {
+                "type": "string",
+                "enum": [
+                  "received",
+                  "in_review",
+                  "completed",
+                  "rejected"
+                ]
+              },
+              "status": {
+                "type": "string"
+              },
+              "received_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "updated_at": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           }
         }
       },

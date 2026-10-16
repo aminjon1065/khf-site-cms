@@ -17,6 +17,7 @@ use Spatie\Activitylog\Support\LogOptions;
 /**
  * @property int $id
  * @property string|null $tracking_number
+ * @property string|null $access_code_hash
  * @property string $name
  * @property string|null $email
  * @property string|null $phone
@@ -35,6 +36,11 @@ class Submission extends Model
 {
     /** @use HasFactory<SubmissionFactory> */
     use HasFactory, LogsActivity, SoftDeletes;
+
+    /**
+     * @var list<string>
+     */
+    protected $hidden = ['access_code_hash'];
 
     /**
      * @var list<string>

@@ -29,6 +29,23 @@ enum SubmissionStatus: string
     }
 
     /**
+     * What the citizen sees on the site: four plain stages instead of the
+     * staff's seven. Spam is shown as left without review, so an appeal
+     * marked by mistake is not told it was taken for spam.
+     *
+     * @return 'received'|'in_review'|'completed'|'rejected'
+     */
+    public function publicStage(): string
+    {
+        return match ($this) {
+            self::New => 'received',
+            self::Reviewed, self::InProgress, self::Awaiting => 'in_review',
+            self::Completed => 'completed',
+            self::Rejected, self::Spam => 'rejected',
+        };
+    }
+
+    /**
      * Dot colour role for the StatusBadge.
      */
     public function tone(): string

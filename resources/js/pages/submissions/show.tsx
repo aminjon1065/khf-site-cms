@@ -40,6 +40,8 @@ interface Props {
     submission: SubmissionData;
     reference: {
         statuses: { value: string; label: string }[];
+        /** Status → what the citizen sees on the site. */
+        public_stages: Record<string, string>;
         assignees: Option[];
     };
 }
@@ -272,7 +274,10 @@ export default function SubmissionShow({ submission, reference }: Props) {
                             Обработка
                         </h3>
 
-                        <Field label="Статус">
+                        <Field
+                            label="Статус"
+                            hint={`На сайте заявитель видит: «${reference.public_stages[status.data.status] ?? '—'}»`}
+                        >
                             <Select
                                 value={status.data.status}
                                 options={reference.statuses}

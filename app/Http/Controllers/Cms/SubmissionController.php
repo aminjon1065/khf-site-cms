@@ -10,6 +10,7 @@ use App\Models\Region;
 use App\Models\Submission;
 use App\Models\SubmissionComment;
 use App\Models\User;
+use App\Support\PublicApiLabels;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -92,6 +93,11 @@ class SubmissionController extends Controller
             ],
             'reference' => [
                 'statuses' => SubmissionStatus::options(),
+                // What the citizen sees for each status when checking it on
+                // the site by number and code.
+                'public_stages' => collect(SubmissionStatus::cases())->mapWithKeys(
+                    fn (SubmissionStatus $s): array => [$s->value => PublicApiLabels::get('submission_status', $s->publicStage(), 'ru')],
+                )->all(),
                 'assignees' => $this->assignees(),
             ],
         ]);

@@ -70,6 +70,12 @@ final class PublicApiLabels
             'danger' => ['tg' => 'Вазъияти хатарнок', 'ru' => 'Опасная обстановка', 'en' => 'Dangerous conditions'],
             'critical' => ['tg' => 'Вазъияти фавқулода', 'ru' => 'Критическая ситуация', 'en' => 'Critical situation'],
         ],
+        'submission_status' => [
+            'received' => ['tg' => 'Қабул шуд', 'ru' => 'Получено', 'en' => 'Received'],
+            'in_review' => ['tg' => 'Дар баррасӣ', 'ru' => 'На рассмотрении', 'en' => 'Under review'],
+            'completed' => ['tg' => 'Баррасӣ шуд', 'ru' => 'Рассмотрено', 'en' => 'Reviewed'],
+            'rejected' => ['tg' => 'Бе баррасӣ гузошта шуд', 'ru' => 'Оставлено без рассмотрения', 'en' => 'Left without review'],
+        ],
         'alert_meta' => [
             'published' => ['tg' => 'Нашр шуд', 'ru' => 'Опубликовано', 'en' => 'Published'],
             'active_from' => ['tg' => 'Амал мекунад аз', 'ru' => 'Действует с', 'en' => 'In effect from'],
