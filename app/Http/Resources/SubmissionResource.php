@@ -23,6 +23,8 @@ class SubmissionResource extends JsonResource
             'tracking_number' => $this->tracking_number,
             'name' => $this->name,
             'email' => $this->email,
+            'phone' => $this->phone,
+            'region' => $this->whenLoaded('region', fn () => $this->region?->getTranslation('name', 'ru')),
             'topic' => $this->topic,
             'status' => $this->status->value,
             'status_label' => $this->status->label(),

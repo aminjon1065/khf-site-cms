@@ -24,7 +24,7 @@ interface SubmissionData {
     id: number;
     tracking_number: string | null;
     name: string;
-    email: string;
+    email: string | null;
     phone: string | null;
     topic: string | null;
     message: string;
@@ -80,8 +80,8 @@ export default function SubmissionShow({ submission, reference }: Props) {
 
     const info: { label: string; value: string }[] = [
         { label: 'Заявитель', value: submission.name },
-        { label: 'Эл. почта', value: submission.email },
         { label: 'Телефон', value: submission.phone ?? '—' },
+        { label: 'Эл. почта', value: submission.email ?? '—' },
         { label: 'Тема', value: submission.topic ?? '—' },
         { label: 'Регион', value: submission.region ?? '—' },
         { label: 'Получено', value: fmt(submission.created_at) },
@@ -351,12 +351,23 @@ export default function SubmissionShow({ submission, reference }: Props) {
                                 </div>
                             ))}
                         </div>
-                        <a
-                            className="ui-btn ui-btn-secondary ui-btn-block mt-3"
-                            href={`mailto:${submission.email}`}
-                        >
-                            Ответить письмом
-                        </a>
+                        {/* A citizen leaves a phone, an email or both. */}
+                        {submission.phone && (
+                            <a
+                                className="ui-btn ui-btn-secondary ui-btn-block mt-3"
+                                href={`tel:${submission.phone.replace(/[^+\d]/g, '')}`}
+                            >
+                                Позвонить
+                            </a>
+                        )}
+                        {submission.email && (
+                            <a
+                                className="ui-btn ui-btn-secondary ui-btn-block mt-3"
+                                href={`mailto:${submission.email}`}
+                            >
+                                Ответить письмом
+                            </a>
+                        )}
                     </Blueprint>
                 </div>
             </div>

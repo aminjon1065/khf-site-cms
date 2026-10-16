@@ -1298,16 +1298,20 @@ components:
     # ---------------------------------------------------------------------
     SubmissionRequestBody:
       type: object
+      description: A phone number or an email is required — at least one of the two (the error is on phone).
       properties:
         name:
           type: string
-        email:
-          type: string
-          format: email
         phone:
           type: [string, "null"]
+        email:
+          type: [string, "null"]
+          format: email
         topic:
           type: [string, "null"]
+        region:
+          type: [string, "null"]
+          description: Region code (dushanbe, sughd, khatlon, gbao, rrp).
         region_id:
           type: [integer, "null"]
         message:
@@ -1318,7 +1322,7 @@ components:
         website:
           type: string
           description: Leave empty; anti-spam honeypot field.
-      required: [name, email, message, consent]
+      required: [name, message, consent]
     SubmissionResponse:
       type: object
       properties:

@@ -64,9 +64,52 @@ it('validates and stores the selected region', function () {
 });
 
 it('validates the required fields', function () {
-    $this->postJson('/api/v1/submissions', [])
+    $this->postJson('/api/v1/submissions?locale=ru', [])
         ->assertStatus(422)
-        ->assertJsonValidationErrors(['name', 'email', 'message', 'consent']);
+        ->assertJsonValidationErrors(['name', 'phone', 'message', 'consent'])
+        ->assertJsonMissingValidationErrors('email')
+        ->assertJsonPath('errors.phone.0', 'Укажите телефон или электронную почту.');
+});
+
+it('takes a phone number instead of an email', function () {
+    // Most people in the regions answer the phone, not mail.
+    $this->postJson('/api/v1/submissions', validPayload(['email' => '', 'phone' => '+992 93 123 45 67']))
+        ->assertCreated();
+
+    $submission = Submission::query()->firstOrFail();
+    expect($submission->phone)->toBe('+992 93 123 45 67')
+        ->and($submission->email)->toBeNull();
+});
+
+it('asks for a phone or an email in the language of the page', function () {
+    $payload = validPayload(['email' => '', 'phone' => '']);
+
+    $this->postJson('/api/v1/submissions?locale=tg', $payload)
+        ->assertUnprocessable()
+        ->assertJsonPath('errors.phone.0', 'Телефон ё почтаи электрониро нишон диҳед.');
+
+    $this->postJson('/api/v1/submissions', validPayload(['phone' => 'позвоните мне']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('phone');
+});
+
+it('stores the region the citizen picked by its code', function () {
+    $region = Region::query()->create([
+        'name' => ['ru' => 'Хатлонская область'],
+        'code' => 'khatlon-submission',
+        'type' => RegionType::Oblast,
+        'districts_count' => 24,
+        'sort' => 1,
+    ]);
+
+    $this->postJson('/api/v1/submissions', validPayload(['region' => 'khatlon-submission']))
+        ->assertCreated();
+
+    expect(Submission::query()->first()->region_id)->toBe($region->id);
+
+    $this->postJson('/api/v1/submissions', validPayload(['region' => 'atlantis']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('region');
 });
 
 it('localizes public validation errors', function () {

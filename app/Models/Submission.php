@@ -18,7 +18,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property int $id
  * @property string|null $tracking_number
  * @property string $name
- * @property string $email
+ * @property string|null $email
  * @property string|null $phone
  * @property string|null $topic
  * @property string $message

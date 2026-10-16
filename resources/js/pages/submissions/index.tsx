@@ -19,7 +19,9 @@ interface SubmissionRow {
     id: number;
     tracking_number: string | null;
     name: string;
-    email: string;
+    email: string | null;
+    phone: string | null;
+    region: string | null;
     topic: string | null;
     status: string;
     status_label: string;
@@ -43,9 +45,9 @@ interface Props {
         prev: string | null;
         next: string | null;
     };
-    filters: { view: string; search: string; status: string };
+    filters: { view: string; search: string; status: string; region: string };
     savedViews: { key: string; label: string; count: number }[];
-    options: { statuses: Option[] };
+    options: { statuses: Option[]; regions: Option[] };
 }
 
 function fmt(date: string | null): string {
@@ -113,7 +115,9 @@ export default function SubmissionsIndex({
                             color: 'var(--color-neutral-500)',
                         }}
                     >
-                        {r.email}
+                        {[r.phone, r.email, r.region]
+                            .filter(Boolean)
+                            .join(' · ')}
                     </div>
                 </div>
             ),
@@ -217,7 +221,7 @@ export default function SubmissionsIndex({
 
             <FilterBar>
                 <SearchInput
-                    placeholder="Имя, эл. почта, номер…"
+                    placeholder="Имя, телефон, эл. почта, номер…"
                     defaultValue={filters.search}
                     onChange={(e) => reload({ search: e.target.value })}
                 />
@@ -226,6 +230,13 @@ export default function SubmissionsIndex({
                     value={filters.status}
                     options={options.statuses}
                     onChange={(e) => reload({ status: e.target.value })}
+                    style={{ width: 'auto' }}
+                />
+                <Select
+                    placeholder="Регион: все"
+                    value={filters.region}
+                    options={options.regions}
+                    onChange={(e) => reload({ region: e.target.value })}
                     style={{ width: 'auto' }}
                 />
                 <span

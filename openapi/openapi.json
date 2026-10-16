@@ -2796,7 +2796,6 @@
         "type": "object",
         "required": [
           "name",
-          "email",
           "message",
           "consent"
         ],
@@ -2804,10 +2803,14 @@
           "name": {
             "type": "string"
           },
-          "email": {
-            "type": "string"
-          },
           "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Цифры, пробелы, скобки, дефис и + в начале; 7–25 символов."
+          },
+          "email": {
             "type": [
               "string",
               "null"
@@ -2822,6 +2825,13 @@
           "message": {
             "type": "string"
           },
+          "region": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Код региона (dushanbe, sughd, khatlon, gbao, rrp)."
+          },
           "region_id": {
             "type": [
               "integer",
@@ -2831,7 +2841,8 @@
           "consent": {
             "type": "boolean"
           }
-        }
+        },
+        "description": "Нужен телефон или электронная почта — хотя бы одно из двух (ошибка — у поля phone)."
       },
       "SubmissionResponse": {
         "type": "object",

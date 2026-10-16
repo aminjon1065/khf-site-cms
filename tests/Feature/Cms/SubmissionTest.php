@@ -1,8 +1,10 @@
 <?php
 
 use App\Enums\SubmissionStatus;
+use App\Models\Region;
 use App\Models\Submission;
 use App\Models\User;
+use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -99,4 +101,24 @@ it('offers an appeal to everyone who may work on appeals, whatever their role is
             fn ($assignees): bool => collect($assignees)->pluck('value')->sort()->values()->all()
                 === collect([$chief->id, $clerk->id])->sort()->values()->all(),
         ));
+});
+
+it('filters appeals by the region the citizen picked', function () {
+    seed(RegionSeeder::class);
+    $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
+    $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
+
+    Submission::factory()->create(['region_id' => $khatlon->id, 'phone' => '+992 93 000 00 01', 'email' => null]);
+    Submission::factory()->create(['region_id' => $sughd->id]);
+    Submission::factory()->create(['region_id' => null]);
+
+    actingAs(subUser('chief_editor'))->get('/submissions?region=khatlon')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('submissions', 1)
+            ->where('submissions.0.region', 'Хатлонская область')
+            ->where('submissions.0.phone', '+992 93 000 00 01')
+            ->where('submissions.0.email', null)
+            ->where('filters.region', 'khatlon')
+            ->has('options.regions', 5));
 });

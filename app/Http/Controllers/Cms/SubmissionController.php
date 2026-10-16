@@ -6,6 +6,7 @@ use App\Enums\SubmissionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Submission\SubmissionUpdateRequest;
 use App\Http\Resources\SubmissionResource;
+use App\Models\Region;
 use App\Models\Submission;
 use App\Models\SubmissionComment;
 use App\Models\User;
@@ -24,7 +25,7 @@ class SubmissionController extends Controller
         $view = $request->string('view', 'all')->toString();
         $perPage = min(max((int) $request->integer('per_page', 25), 1), 100);
 
-        $query = Submission::query()->with('assignee');
+        $query = Submission::query()->with(['assignee', 'region']);
         $this->applyView($query, $view, $request->user());
         $this->applyFilters($query, $request);
         $query->orderByDesc('created_at');
@@ -47,9 +48,17 @@ class SubmissionController extends Controller
                 'view' => $view,
                 'search' => $request->string('search')->toString(),
                 'status' => $request->string('status')->toString(),
+                'region' => $request->string('region')->toString(),
             ],
             'savedViews' => $this->savedViewCounts($request),
-            'options' => ['statuses' => SubmissionStatus::options()],
+            'options' => [
+                'statuses' => SubmissionStatus::options(),
+                'regions' => Region::query()->orderBy('sort')->get(['code', 'name'])
+                    ->map(fn (Region $region): array => [
+                        'value' => $region->code,
+                        'label' => $region->getTranslation('name', 'ru'),
+                    ])->all(),
+            ],
         ]);
     }
 
@@ -148,12 +157,18 @@ class SubmissionController extends Controller
             $query->where(function (Builder $q) use ($search): void {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhere('tracking_number', 'like', "%{$search}%")
                     ->orWhere('message', 'like', "%{$search}%");
             });
         }
         if ($status = $request->string('status')->toString()) {
             $query->where('status', $status);
+        }
+        // The region the citizen chose in the form: a regional office sees
+        // the appeals of its area.
+        if ($region = $request->string('region')->toString()) {
+            $query->whereHas('region', fn (Builder $q) => $q->where('code', $region));
         }
     }
 

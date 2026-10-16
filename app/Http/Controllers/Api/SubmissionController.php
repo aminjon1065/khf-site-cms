@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\SubmissionStatus;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Submission\SubmissionRequest;
+use App\Models\Region;
 use App\Models\Submission;
 use Illuminate\Http\JsonResponse;
 
@@ -24,6 +25,10 @@ class SubmissionController extends Controller
 
         /** @var array<string, mixed> $data */
         $data = $request->safe()->only(['name', 'email', 'phone', 'topic', 'message', 'region_id']);
+
+        if ($request->filled('region')) {
+            $data['region_id'] = Region::query()->where('code', $request->string('region')->toString())->value('id');
+        }
 
         $submission = Submission::create([
             ...$data,
