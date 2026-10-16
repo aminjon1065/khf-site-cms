@@ -726,6 +726,30 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/AlertMetaEntry'
+            districts:
+              type: array
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  region_code:
+                    type: string
+                required: [name, region_code]
+            related_instructions:
+              type: array
+              items:
+                type: object
+                properties:
+                  slug:
+                    type: string
+                  title:
+                    type: string
+                  summary:
+                    type: string
+                  hazard_label:
+                    type: [string, "null"]
+                required: [slug, title, summary, hazard_label]
           required: [body, instructions, contacts, source, territory_type, regions, meta]
     AlertActiveSnapshot:
       type: object

@@ -2041,6 +2041,55 @@
                 "text"
               ]
             }
+          },
+          "districts": {
+            "type": "array",
+            "description": "Районы, которые оператор указал внутри затронутых регионов, — с кодом своего региона. Только на детальной странице; у общенационального предупреждения пусто; район без названия на языке запроса пропускается.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "region_code": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "region_code"
+              ]
+            }
+          },
+          "related_instructions": {
+            "type": "array",
+            "description": "Инструкции населению, которые оператор связал с предупреждением. Только на детальной странице и только опубликованные на языке запроса (есть название и текст).",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slug": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "string"
+                },
+                "hazard_label": {
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                }
+              },
+              "required": [
+                "slug",
+                "title",
+                "summary",
+                "hazard_label"
+              ]
+            }
           }
         }
       },

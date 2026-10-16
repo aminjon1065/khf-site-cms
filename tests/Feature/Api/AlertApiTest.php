@@ -4,6 +4,8 @@ use App\Enums\ContentStatus;
 use App\Enums\HazardType;
 use App\Enums\Severity;
 use App\Models\Alert;
+use App\Models\District;
+use App\Models\Instruction;
 use App\Models\Region;
 use App\Services\AlertMapService;
 use Carbon\CarbonImmutable;
@@ -247,4 +249,64 @@ it('reports an alert past its end time as completed', function () {
 
     expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=ru")->json('data.status_code'))
         ->toBe('completed');
+});
+
+it('lists the districts named inside the affected regions, under their region', function () {
+    $khatlon = Region::query()->where('code', 'khatlon')->firstOrFail();
+    $sughd = Region::query()->where('code', 'sughd')->firstOrFail();
+    $first = District::query()->create(['region_id' => $khatlon->id, 'name' => ['ru' => 'Дангара', 'tg' => 'Данғара', 'en' => 'Dangara'], 'sort' => 900]);
+    $second = District::query()->create(['region_id' => $khatlon->id, 'name' => ['ru' => 'Фархор', 'tg' => 'Фархор', 'en' => ''], 'sort' => 901]);
+
+    $alert = Alert::factory()->published()->create([
+        'territory_type' => 'regions',
+        'title' => ['ru' => 'Сель', 'tg' => 'Сел', 'en' => 'Mudflow'],
+    ]);
+    $alert->regions()->attach([$khatlon->id, $sughd->id]);
+    $alert->districts()->attach([$second->id, $first->id]);
+
+    $ru = $this->getJson("/api/v1/alerts/{$alert->slug}?locale=ru")->assertOk()->json('data.districts');
+    expect($ru)->toBe([
+        ['name' => 'Дангара', 'region_code' => 'khatlon'],
+        ['name' => 'Фархор', 'region_code' => 'khatlon'],
+    ]);
+
+    expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=tg")->json('data.districts.0.name'))->toBe('Данғара');
+
+    // A district without a name in the page language is left out, never
+    // shown in another language.
+    expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=en")->json('data.districts'))
+        ->toBe([['name' => 'Dangara', 'region_code' => 'khatlon']]);
+});
+
+it('links only the safety guides a citizen can open on this language version', function () {
+    $alert = Alert::factory()->published()->create([
+        'territory_type' => 'country',
+        'title' => ['ru' => 'Землетрясение', 'tg' => 'Заминларза', 'en' => 'Earthquake'],
+    ]);
+    $guide = Instruction::factory()->published()->create([
+        'name' => ['ru' => 'При землетрясении', 'tg' => 'Ҳангоми заминларза', 'en' => ''],
+        'summary' => ['ru' => 'Что делать до, во время и после', 'tg' => 'Чӣ бояд кард', 'en' => ''],
+        'hazard_type' => HazardType::Earthquake,
+        'is_priority' => false,
+    ]);
+    $priority = Instruction::factory()->published()->create([
+        'name' => ['ru' => 'Тревожный чемоданчик', 'tg' => 'Ҷомадони изтирорӣ', 'en' => ''],
+        'is_priority' => true,
+    ]);
+    $draft = Instruction::factory()->create(['name' => ['ru' => 'Черновик инструкции', 'tg' => '', 'en' => '']]);
+    $alert->relatedInstructions()->attach([$guide->id, $priority->id, $draft->id]);
+
+    $ru = $this->getJson("/api/v1/alerts/{$alert->slug}?locale=ru")->assertOk()->json('data.related_instructions');
+
+    expect(array_column($ru, 'slug'))->toBe([$priority->slug, $guide->slug])
+        ->and($ru[1])->toBe([
+            'slug' => $guide->slug,
+            'title' => 'При землетрясении',
+            'summary' => 'Что делать до, во время и после',
+            'hazard_label' => 'Землетрясение',
+        ])
+        ->and($this->getJson("/api/v1/alerts/{$alert->slug}?locale=ru")->json('data.districts'))->toBe([]);
+
+    // No English version of the guides: no links on /en.
+    expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=en")->json('data.related_instructions'))->toBe([]);
 });

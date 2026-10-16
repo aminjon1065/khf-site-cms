@@ -89,7 +89,30 @@ class AlertController extends Controller
         PublicLocale::available($query, 'title');
 
         $alert = PublicSlug::find($query, $slug);
+        $this->loadDetailRelations($alert);
 
         return (new PublicAlertResource($alert))->withDetail();
+    }
+
+    /**
+     * The districts named inside the affected regions and the safety guides
+     * the operator linked. Only guides a citizen can open on this language
+     * version: a link must not lead to a 404 or to another language.
+     */
+    private function loadDetailRelations(Alert $alert): void
+    {
+        $alert->setRelation('districts', $alert->districts()
+            ->select(['districts.id', 'districts.region_id', 'districts.name'])
+            ->orderBy('districts.sort')
+            ->orderBy('districts.id')
+            ->get());
+
+        $instructions = $alert->relatedInstructions()
+            ->select(['instructions.id', 'instructions.slug', 'instructions.name', 'instructions.summary', 'instructions.hazard_type'])
+            ->public()
+            ->ordered();
+        PublicLocale::available($instructions->getQuery(), 'name');
+
+        $alert->setRelation('relatedInstructions', $instructions->get());
     }
 }

@@ -3,6 +3,7 @@
 namespace App\Http\Resources\Api;
 
 use App\Models\Alert;
+use App\Models\Instruction;
 use App\Support\PublicApiLabels;
 use App\Support\PublicLocale;
 use App\Support\RichTextMediaResolver;
@@ -12,7 +13,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * Public DTO for an emergency alert. `level` is the 5-point public scale mapped
  * from the CMS severity; the structured detail (instructions, official text,
- * affected regions, contacts) is attached on the detail view.
+ * affected regions and districts, related safety guides, contacts) is attached
+ * on the detail view.
  *
  * @mixin Alert
  */
@@ -78,6 +80,18 @@ class PublicAlertResource extends JsonResource
             $data['regions'] = $this->whenLoaded('regions', fn () => $this->regions
                 ->map(fn ($r): array => ['code' => $r->code, 'name' => $r->getTranslation('name', $locale, false)])
                 ->all(), []);
+            $data['districts'] = $this->localizedDistricts($locale);
+            $data['related_instructions'] = $this->whenLoaded('relatedInstructions', fn () => $this->relatedInstructions
+                ->map(fn (Instruction $instruction): array => [
+                    'slug' => $instruction->slug,
+                    'title' => (string) $instruction->getTranslation('name', $locale, false),
+                    'summary' => (string) $instruction->getTranslation('summary', $locale, false),
+                    'hazard_label' => $instruction->hazard_type
+                        ? PublicApiLabels::get('hazard', $instruction->hazard_type->value, $locale)
+                        : null,
+                ])
+                ->values()
+                ->all(), []);
             $data['meta'] = $this->metaItems($locale, $state);
             $data['updates'] = $this->localizedUpdates($locale);
         }
@@ -119,6 +133,35 @@ class PublicAlertResource extends JsonResource
         }
 
         usort($items, static fn (array $a, array $b): int => strcmp($b['at'], $a['at']));
+
+        return $items;
+    }
+
+    /**
+     * The districts the operator named inside the affected regions, each with
+     * its region's code so the site can list them under the region. A
+     * district without a name in this language is left out rather than shown
+     * in another one.
+     *
+     * @return list<array{name: string, region_code: string}>
+     */
+    private function localizedDistricts(string $locale): array
+    {
+        if ($this->territory_type === 'country' || ! $this->relationLoaded('districts') || ! $this->relationLoaded('regions')) {
+            return [];
+        }
+
+        $regionCodes = $this->regions->pluck('code', 'id');
+        $items = [];
+
+        foreach ($this->districts as $district) {
+            $name = trim((string) $district->getTranslation('name', $locale, false));
+            $regionCode = $regionCodes->get($district->region_id);
+
+            if ($name !== '' && is_string($regionCode)) {
+                $items[] = ['name' => $name, 'region_code' => $regionCode];
+            }
+        }
 
         return $items;
     }
