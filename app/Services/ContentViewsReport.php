@@ -27,6 +27,20 @@ class ContentViewsReport
     public const PERIODS = [7, 30, 90];
 
     /**
+     * Section names as the site menu calls them.
+     *
+     * @var array<string, string>
+     */
+    private const SECTIONS = [
+        'news' => 'Новости',
+        'alert' => 'Предупреждения',
+        'instruction' => 'Инструкции населению',
+        'project' => 'Проекты',
+        'announcement' => 'Объявления',
+        'page' => 'Страницы',
+    ];
+
+    /**
      * @return array{
      *     days: int,
      *     total: int,
@@ -66,7 +80,7 @@ class ContentViewsReport
             ],
             'by_type' => array_map(fn (string $type): array => [
                 'type' => $type,
-                'label' => ContentTypes::META[$type]['label'],
+                'label' => self::SECTIONS[$type] ?? ContentTypes::META[$type]['label'],
                 'views' => (int) ($byType[$type] ?? 0),
             ], $types),
             'top' => $this->top($query()),

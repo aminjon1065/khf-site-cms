@@ -46,6 +46,7 @@ it('shows how often the site was read, by day, language, section and material', 
             ->has('report.daily', 7)
             ->where('report.daily.6.views', 30)
             ->where('report.by_locale', ['tj' => 90, 'ru' => 10, 'en' => 0])
+            ->where('report.by_type.0', ['type' => 'news', 'label' => 'Новости', 'views' => 40])
             ->where('report.top.0.title', 'Сель')
             ->where('report.top.0.views', 60)
             ->where('report.top.0.edit_url', "/alerts/{$alert->id}/edit")
