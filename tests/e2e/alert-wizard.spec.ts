@@ -46,7 +46,8 @@ test('saving a draft keeps the operator on the current wizard step', async ({
         .getByPlaceholder(/Селевая опасность/)
         .fill('E2E-wizard: черновик');
     await page.getByRole('button', { name: 'Далее' }).click();
-    await page.getByLabel('Вся страна').check();
+    // The radio itself is hidden behind its styled dot: click the label.
+    await page.getByText('Вся страна', { exact: true }).click();
 
     await page.getByRole('button', { name: 'Сохранить черновик' }).click();
 
