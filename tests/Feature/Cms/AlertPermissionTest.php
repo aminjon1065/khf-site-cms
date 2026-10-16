@@ -303,3 +303,28 @@ it('still asks for a region when the alert covers separate regions', function ()
         ])
         ->assertSessionHasErrors('regions');
 });
+
+it('saves an alert with languages left empty, as the wizard sends them', function () {
+    // The wizard sends every language of every text field; an empty one
+    // arrives as null (ConvertEmptyStringsToNull) and used to crash the save.
+    actingAs(userWithRole('chief_editor'))
+        ->post('/alerts', [
+            'internal_title' => 'Только русский и таджикский',
+            'hazard_type' => 'flood',
+            'severity' => 'warning',
+            'territory_type' => 'country',
+            'regions' => [],
+            'title' => ['ru' => 'Паводок', 'tg' => 'Обхезӣ', 'en' => ''],
+            'summary' => ['ru' => '', 'tg' => '', 'en' => ''],
+            'contacts' => ['ru' => '112', 'tg' => '', 'en' => ''],
+            'action' => 'draft',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/alerts');
+
+    $alert = Alert::query()->where('internal_title', 'Только русский и таджикский')->firstOrFail();
+
+    expect($alert->getTranslations('title'))->toEqual(['ru' => 'Паводок', 'tg' => 'Обхезӣ'])
+        ->and($alert->getTranslations('summary'))->toBe([])
+        ->and($alert->getTranslations('contacts'))->toEqual(['ru' => '112']);
+});

@@ -445,10 +445,15 @@ class AlertController extends Controller
             'updates' => $this->cleanUpdates($request->input('updates')),
         ]);
 
+        // The wizard sends every language; an empty one arrives as null
+        // (ConvertEmptyStringsToNull) and is simply not stored.
         foreach (['title', 'summary', 'body', 'instructions', 'contacts'] as $field) {
-            /** @var array<string, string> $values */
+            /** @var array<string, string|null> $values */
             $values = $request->input($field, []);
-            $alert->setTranslations($field, array_filter($values, fn (string $v): bool => trim($v) !== ''));
+            $alert->setTranslations($field, array_filter(
+                $values,
+                fn (?string $v): bool => $v !== null && trim($v) !== '',
+            ));
         }
     }
 
