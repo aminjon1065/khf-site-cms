@@ -10,10 +10,12 @@ use App\Models\Region;
 use App\Models\Submission;
 use App\Models\SubmissionComment;
 use App\Models\User;
+use App\Notifications\SubmissionStatusChanged;
 use App\Support\PublicApiLabels;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -107,11 +109,34 @@ class SubmissionController extends Controller
     {
         $this->authorize('update', $submission);
 
+        $stageBefore = $submission->status->publicStage();
         $submission->status = SubmissionStatus::from($request->string('status')->toString());
         $submission->assigned_to = $request->input('assigned_to');
         $submission->save();
 
+        if ($this->tellsCitizen($submission, $stageBefore)) {
+            Notification::route('mail', $submission->email)->notify(
+                (new SubmissionStatusChanged($submission))->locale($submission->locale ?? 'ru'),
+            );
+
+            return back()->with('success', 'Обращение обновлено. Заявителю отправлено письмо о новом статусе.');
+        }
+
         return back()->with('success', 'Обращение обновлено.');
+    }
+
+    /**
+     * The citizen gets an email when the appeal moves to another stage they
+     * see on the site, and only if they left an email. Not for spam: its
+     * address is usually not a person's, and a mistake is better fixed
+     * quietly.
+     */
+    private function tellsCitizen(Submission $submission, string $stageBefore): bool
+    {
+        return filled($submission->email)
+            && $submission->status !== SubmissionStatus::Spam
+            && $submission->status->publicStage() !== $stageBefore
+            && $submission->status->publicStage() !== 'received';
     }
 
     public function comment(Request $request, Submission $submission): RedirectResponse

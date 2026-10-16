@@ -4,8 +4,11 @@ use App\Enums\SubmissionStatus;
 use App\Models\Region;
 use App\Models\Submission;
 use App\Models\User;
+use App\Notifications\SubmissionStatusChanged;
+use App\Support\PublicSite;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 
 use function Pest\Laravel\actingAs;
@@ -131,4 +134,59 @@ it('tells staff what the citizen sees for each status', function () {
             ->where('reference.public_stages.new', 'Получено')
             ->where('reference.public_stages.awaiting', 'На рассмотрении')
             ->where('reference.public_stages.spam', 'Оставлено без рассмотрения'));
+});
+
+it('emails the citizen when the appeal moves to another stage', function () {
+    Notification::fake();
+    $submission = Submission::factory()->create(['email' => 'citizen@example.tj', 'locale' => 'tg']);
+
+    actingAs(subUser('chief_editor'))
+        ->put("/submissions/{$submission->id}", ['status' => 'in_progress', 'assigned_to' => null])
+        ->assertSessionHas('success', 'Обращение обновлено. Заявителю отправлено письмо о новом статусе.');
+
+    Notification::assertSentOnDemand(
+        SubmissionStatusChanged::class,
+        fn (SubmissionStatusChanged $notification, array $channels, object $notifiable): bool => $notifiable->routes['mail'] === 'citizen@example.tj'
+            && $notification->locale === 'tg',
+    );
+});
+
+it('writes the email in the appeal\'s language, with only the stage and where to check it', function () {
+    $submission = Submission::factory()->create([
+        'name' => 'Фарид Каримов',
+        'locale' => 'tg',
+        'status' => SubmissionStatus::Completed,
+        'message' => 'Матни махфии муроҷиат',
+    ]);
+
+    $mail = (new SubmissionStatusChanged($submission))->toMail(new stdClass);
+    $html = (string) $mail->render();
+
+    expect($mail->subject)->toBe("Муроҷиати {$submission->tracking_number}: Баррасӣ шуд")
+        ->and($html)->toContain('Ассалому алайкум, Фарид Каримов!')
+        ->toContain('Баррасӣ анҷом ёфт.')
+        ->toContain(PublicSite::url('/contacts', 'tg').'#status')
+        ->toContain('/tj/contacts')
+        ->toContain('Кумитаи ҳолатҳои фавқулода')
+        ->not->toContain('Матни махфии муроҷиат')
+        ->not->toContain((string) config('app.url').'/login');
+});
+
+it('does not email within the same stage, for spam or without an email', function () {
+    Notification::fake();
+    $editor = subUser('chief_editor');
+
+    // «Просмотрено» → «В работе»: for the citizen both are «На рассмотрении».
+    $reviewed = Submission::factory()->create(['status' => SubmissionStatus::Reviewed]);
+    actingAs($editor)->put("/submissions/{$reviewed->id}", ['status' => 'in_progress', 'assigned_to' => null]);
+
+    $spam = Submission::factory()->create();
+    actingAs($editor)->put("/submissions/{$spam->id}", ['status' => 'spam', 'assigned_to' => null]);
+
+    $phoneOnly = Submission::factory()->create(['email' => null, 'phone' => '+992 93 000 00 00']);
+    actingAs($editor)
+        ->put("/submissions/{$phoneOnly->id}", ['status' => 'completed', 'assigned_to' => null])
+        ->assertSessionHas('success', 'Обращение обновлено.');
+
+    Notification::assertNothingSent();
 });

@@ -47,6 +47,8 @@ class SubmissionController extends Controller
 
         $submission = new Submission([
             ...$data,
+            // The status email goes out in the language of the page.
+            'locale' => app()->getLocale(),
             'consent' => true,
             'status' => SubmissionStatus::New,
             'ip_address' => $request->ip(),

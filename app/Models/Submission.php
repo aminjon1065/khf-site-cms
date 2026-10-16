@@ -24,6 +24,7 @@ use Spatie\Activitylog\Support\LogOptions;
  * @property string|null $topic
  * @property string $message
  * @property int|null $region_id
+ * @property string|null $locale
  * @property bool $consent
  * @property SubmissionStatus $status
  * @property int|null $assigned_to
@@ -53,6 +54,7 @@ class Submission extends Model
         'topic',
         'message',
         'region_id',
+        'locale',
         'consent',
         'status',
         'assigned_to',

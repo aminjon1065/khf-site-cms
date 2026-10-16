@@ -215,3 +215,9 @@ it('limits status checks to ten a minute', function () {
         'access_code' => 'AAAA-AAAB',
     ])->assertTooManyRequests();
 });
+
+it('remembers the language the appeal was written in', function () {
+    $this->postJson('/api/v1/submissions?locale=tg', validPayload())->assertCreated();
+
+    expect(Submission::query()->firstOrFail()->locale)->toBe('tg');
+});

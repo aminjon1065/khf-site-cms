@@ -276,7 +276,11 @@ export default function SubmissionShow({ submission, reference }: Props) {
 
                         <Field
                             label="Статус"
-                            hint={`На сайте заявитель видит: «${reference.public_stages[status.data.status] ?? '—'}»`}
+                            hint={`На сайте заявитель видит: «${reference.public_stages[status.data.status] ?? '—'}». ${
+                                submission.email
+                                    ? 'О новом этапе ему придёт письмо на почту.'
+                                    : 'Почты нет — о новом этапе сообщите по телефону.'
+                            }`}
                         >
                             <Select
                                 value={status.data.status}

@@ -125,7 +125,10 @@ FRONTEND_URL=https://khf.tj
 FRONTEND_REVALIDATION_URL=https://khf.tj/api/revalidate
 FRONTEND_REVALIDATION_SECRET=«тот же секрет, что и REVALIDATION_SECRET фронта»
 
-# Почта (уведомления о согласовании, сброс пароля)
+# Почта: сброс пароля сотрудников и письмо гражданину о новом этапе его
+# обращения (только если он указал почту). Почтовый сервер домена khf.tj —
+# бесплатно; SMS не используются (платные, решение владельца 2026-10-16).
+# Письма уходят через очередь notifications — нужен её воркер (§2.8).
 MAIL_MAILER=smtp
 MAIL_HOST=«smtp-хост»
 MAIL_PORT=587
