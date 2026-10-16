@@ -16,8 +16,11 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Publish scheduled material, auto-complete expired alerts and send expiry notices.
-Schedule::command(ProcessScheduledContent::class)->everyFiveMinutes()->withoutOverlapping();
+// Publish scheduled material, auto-complete expired alerts and send expiry
+// notices. Every minute: an alert planned for 14:00 must not appear at 14:04.
+// The overlap lock expires in 10 minutes, not the default day: a killed run
+// would otherwise stop publishing until tomorrow.
+Schedule::command(ProcessScheduledContent::class)->everyMinute()->withoutOverlapping(10);
 Schedule::job(new QueueHeartbeat)->everyMinute();
 Schedule::command(PruneWebVitals::class)->dailyAt('03:15')->withoutOverlapping();
 Schedule::command(CreateOperationalBackup::class)

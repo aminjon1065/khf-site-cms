@@ -17,7 +17,7 @@
 - **Слой данных практически завершён.** 17 моделей Eloquent с JSON-переводами (`spatie/laravel-translatable`), 18 миграций, все pivot/morph-связи, soft delete на 4 workflow-моделях (`alerts`, `news`, `instructions`, `documents`).
 - **Исчерпывающие enum'ы**, общие с UI: `ContentStatus` (11 статусов), `RoleName` (9 ролей), `Severity`, `HazardType`, `Channel`, `DocType`, `RegionType`, `Module`, `PermissionAction`.
 - **Движок редакционного workflow** — `App\Services\WorkflowService`: конечный автомат из 11 статусов, запись каждого перехода в `workflow_transitions`, журнал действий с флагом `is_critical`, уведомления `WorkflowNotification`, защита критической публикации `guardCriticalPublish`.
-- **Планировщик** — `Console\Commands\ProcessScheduledContent` каждые 5 минут публикует запланированное, завершает истёкшие предупреждения, рассылает уведомления об истечении.
+- **Планировщик** — `Console\Commands\ProcessScheduledContent` каждую минуту публикует запланированное, завершает истёкшие предупреждения, рассылает уведомления об истечении.
 - **RBAC** — `app/Support/PermissionMatrix.php` как единый источник правды (9 ролей × 8 модулей × 6 действий), потребляется сидером, `ModulePolicy` и (ещё не построенным) экраном ролей. Superadmin — через `Gate::before`.
 - **Модуль «Предупреждения» (Alerts) полностью реализован** (контроллер + маршруты + `pages/alerts/index.tsx` + `pages/alerts/wizard.tsx`) — эталонная реализация. Также готовы: **Согласование, Журнал действий, Дашборд, Аутентификация (Fortify), Настройки профиля/безопасности**.
 - **Кросс-функциональная инфраструктура:** медиатека (`spatie/laravel-medialibrary`), журнал действий (расширен IP/UA/критичностью), уведомления в БД, сидеры на все таблицы, health-endpoint `/up`.

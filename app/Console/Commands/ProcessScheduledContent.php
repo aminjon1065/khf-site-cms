@@ -9,8 +9,13 @@ use App\Models\User;
 use App\Notifications\WorkflowNotification;
 use App\Services\AlertMapService;
 use App\Services\WorkflowService;
+use App\Support\ContentTitle;
 use Illuminate\Console\Command;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
+use Throwable;
 
 class ProcessScheduledContent extends Command
 {
@@ -25,9 +30,10 @@ class ProcessScheduledContent extends Command
         $notified = $this->notifyExpiring();
 
         // Отметка ставится последней строкой намеренно: она означает «цикл
-        // планировщика дошёл до конца», а не «планировщик запустился». Если
-        // публикация упадёт на середине, `/ready` перестанет отвечать
-        // «готов» — и это правильный сигнал, а не ложная бодрость.
+        // планировщика дошёл до конца», а не «планировщик запустился». Сбой
+        // одного материала изолирован (attempt), а если падает весь цикл —
+        // например, недоступна база, — `/ready` перестанет отвечать «готов»,
+        // и это правильный сигнал, а не ложная бодрость.
         Cache::put('health.scheduler.last_run', now()->toIso8601String(), now()->addHour());
         Cache::forever(AlertMapService::RECONCILED_AT_KEY, now()->toIso8601String());
 
@@ -40,14 +46,15 @@ class ProcessScheduledContent extends Command
     {
         $count = 0;
 
-        foreach (Alert::query()->where('status', ContentStatus::Scheduled->value)->where('scheduled_at', '<=', now())->get() as $alert) {
-            $workflow->transition($alert, ContentStatus::Published);
-            $count++;
-        }
+        $due = [
+            ...Alert::query()->where('status', ContentStatus::Scheduled->value)->where('scheduled_at', '<=', now())->get()->all(),
+            ...News::query()->where('status', ContentStatus::Scheduled->value)->where('scheduled_at', '<=', now())->get()->all(),
+        ];
 
-        foreach (News::query()->where('status', ContentStatus::Scheduled->value)->where('scheduled_at', '<=', now())->get() as $news) {
-            $workflow->transition($news, ContentStatus::Published);
-            $count++;
+        foreach ($due as $item) {
+            if ($this->attempt('publish', $item, fn () => $workflow->transition($item, ContentStatus::Published))) {
+                $count++;
+            }
         }
 
         return $count;
@@ -64,11 +71,75 @@ class ProcessScheduledContent extends Command
             ->get();
 
         foreach ($alerts as $alert) {
-            $workflow->transition($alert, ContentStatus::Completed);
-            $count++;
+            if ($this->attempt('complete', $alert, fn () => $workflow->transition($alert, ContentStatus::Completed))) {
+                $count++;
+            }
         }
 
         return $count;
+    }
+
+    /**
+     * One material that can't be published or completed must not stop the
+     * rest: the alerts after it would stay unpublished, and the run would
+     * never reach its end mark, so the site would call all its data stale.
+     * The material stays as it is and is tried again on the next run; the
+     * failure is logged as critical (forwarded to Telegram) and the author is
+     * told, both at most once a day per material.
+     *
+     * @param  'publish'|'complete'  $action
+     * @param  callable(): mixed  $step
+     */
+    private function attempt(string $action, Alert|News $item, callable $step): bool
+    {
+        try {
+            $step();
+
+            return true;
+        } catch (Throwable $exception) {
+            $this->reportFailure($action, $item, $exception);
+
+            return false;
+        }
+    }
+
+    /**
+     * @param  'publish'|'complete'  $action
+     */
+    private function reportFailure(string $action, Alert|News $item, Throwable $exception): void
+    {
+        if (! $exception instanceof ValidationException) {
+            report($exception);
+        }
+
+        if (! Cache::add("scheduler.failed.{$action}.{$item->getMorphClass()}.{$item->getKey()}", true, now()->addDay())) {
+            return;
+        }
+
+        $reason = $exception instanceof ValidationException
+            ? implode(' ', Arr::flatten($exception->errors()))
+            : $exception->getMessage();
+
+        Log::critical('scheduled_content_failed', [
+            'event' => 'scheduled_content_failed',
+            'action' => $action,
+            'type' => $item->getMorphClass(),
+            'id' => $item->getKey(),
+            'error' => $reason,
+        ]);
+
+        $author = $item->author_id ? User::find($item->author_id) : null;
+
+        if ($author instanceof User) {
+            $title = ContentTitle::of($item) ?: (string) ($item->internal_title ?? '');
+
+            $author->notify(new WorkflowNotification(
+                $item,
+                $action === 'publish' ? 'Публикация по расписанию не состоялась' : 'Предупреждение не завершилось по сроку',
+                "«{$title}»: {$reason} Система повторит попытку через минуту.",
+                'warn',
+            ));
+        }
     }
 
     private function notifyExpiring(): int
