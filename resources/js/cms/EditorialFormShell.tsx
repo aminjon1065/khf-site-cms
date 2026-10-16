@@ -390,6 +390,28 @@ export function EditorialFormShell<T extends object>({
                 </div>
             )}
 
+            {autosaveState.restoredFrom !== null && (
+                <div className="editorial-recovery" role="status">
+                    <div>
+                        <strong>Версия загружена в редактор</strong>
+                        <span>
+                            {autosaveState.restoredFrom
+                                ? `Версия от ${formatSavedAt(autosaveState.restoredFrom)} — в полях ниже. `
+                                : 'Версия — в полях ниже. '}
+                            Проверьте текст и сохраните материал: до этого на
+                            сайте остаётся прежняя версия.
+                        </span>
+                    </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={autosaveState.dismissRestored}
+                    >
+                        Понятно
+                    </Button>
+                </div>
+            )}
+
             {autosaveState.conflict && (
                 <div className="editorial-conflict" role="alert">
                     <div>

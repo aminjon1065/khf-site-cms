@@ -153,7 +153,7 @@ it('captures manual revisions and lists them newest first', function () {
         ->assertJsonPath('data.0.saved_by', $editor->name);
 });
 
-it('restores editorial fields while preserving workflow status', function () {
+it('loads a revision into the editor without changing the material', function () {
     $chiefEditor = editorialUser('chief_editor');
     $news = News::factory()->published()->create([
         'title' => ['ru' => 'Текущая версия', 'tg' => '', 'en' => ''],
@@ -172,14 +172,64 @@ it('restores editorial fields while preserving workflow status', function () {
     actingAs($chiefEditor)
         ->postJson("/editorial/revisions/{$revision->id}/restore")
         ->assertOk()
-        ->assertJsonPath('data.title.ru', 'Восстановленная версия');
+        ->assertJsonPath('data.title.ru', 'Восстановленная версия')
+        ->assertJsonPath('saved_at', $revision->created_at->toIso8601String());
+
+    // The version reaches the material only through a regular save.
+    expect($news->fresh()->getTranslation('title', 'ru'))->toBe('Текущая версия')
+        ->and($news->fresh()->status)->toBe(ContentStatus::Published);
+});
+
+it('never writes an autosave into a live material on restore', function () {
+    // An editor may write any JSON into an autosave. Restoring it used to
+    // force-fill the published material directly: no approval, no HTML
+    // cleaning, no site refresh.
+    $editor = editorialUser('editor');
+    $news = News::factory()->published()->create([
+        'title' => ['ru' => 'Опубликованный заголовок', 'tg' => '', 'en' => ''],
+    ]);
+
+    actingAs($editor)
+        ->postJson('/editorial/autosave', [
+            ...autosavePayload($news, (string) Str::uuid()),
+            'data' => [
+                'title' => ['ru' => 'Подмена'],
+                'body' => ['ru' => '<script>alert(1)</script>'],
+                'status' => 'draft',
+                'author_id' => 999,
+            ],
+        ])
+        ->assertCreated();
+
+    $revision = EditorialRevision::query()->latest('id')->firstOrFail();
+
+    actingAs($editor)
+        ->postJson("/editorial/revisions/{$revision->id}/restore")
+        ->assertOk()
+        ->assertJsonPath('data.title.ru', 'Подмена')
+        ->assertJsonMissingPath('data.status')
+        ->assertJsonMissingPath('data.author_id');
 
     $news->refresh();
 
-    expect($news->getTranslation('title', 'ru'))->toBe('Восстановленная версия')
-        ->and($news->status)->toBe(ContentStatus::Published)
-        ->and(EditorialRevision::query()->where('source', 'before_restore')->exists())
-        ->toBeTrue();
+    expect($news->getTranslation('title', 'ru'))->toBe('Опубликованный заголовок')
+        ->and($news->getTranslation('body', 'ru', false))->not->toContain('<script>')
+        ->and($news->status)->toBe(ContentStatus::Published);
+});
+
+it('forbids loading a revision without edit access', function () {
+    $viewer = editorialUser('viewer');
+    $news = News::factory()->create();
+    $revision = EditorialRevision::factory()->create([
+        'content_type' => 'news',
+        'content_id' => $news->id,
+        'data' => ['title' => ['ru' => 'X', 'tg' => '', 'en' => '']],
+        'source' => 'manual',
+    ]);
+
+    actingAs($viewer)
+        ->postJson("/editorial/revisions/{$revision->id}/restore")
+        ->assertForbidden();
 });
 
 it('forbids users without edit access from autosaving content', function () {

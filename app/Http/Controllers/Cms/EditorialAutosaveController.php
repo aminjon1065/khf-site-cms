@@ -12,7 +12,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class EditorialAutosaveController extends Controller
 {
@@ -125,32 +124,27 @@ class EditorialAutosaveController extends Controller
         ]);
     }
 
+    /**
+     * «Восстановить» загружает версию в редактор и ничего не сохраняет:
+     * дальше сотрудник сохраняет форму обычным путём. Так версия проходит
+     * те же правила, что и любая правка, — проверку полей и адреса, очистку
+     * текста, согласование изменений опубликованного материала и обновление
+     * сайта. Прямая запись ревизии в материал обходила их все, а данные
+     * автосохранения присылает сам браузер.
+     */
     public function restore(Request $request, EditorialRevision $revision): JsonResponse
     {
         abort_if($revision->content_id === null, 422, 'Нельзя восстановить несвязанный черновик.');
 
-        $model = $this->authorizedModel(
+        $this->authorizedModel(
             $request,
             $revision->content_type,
             (int) $revision->content_id,
         );
 
-        DB::transaction(function () use ($revision, $request): void {
-            $lockedModel = $this->content->resolve(
-                $revision->content_type,
-                (int) $revision->content_id,
-                lockForUpdate: true,
-            );
-            $this->revisions->capture($lockedModel, $request->user(), 'before_restore');
-            $this->content->restore($lockedModel, $revision->data);
-            $lockedModel->save();
-        });
-
-        $model->refresh();
-
         return response()->json([
-            'data' => $this->content->snapshot($model),
-            'server_version' => $this->content->version($model),
+            'data' => $this->content->restorable($revision->content_type, $revision->data),
+            'saved_at' => $revision->created_at->toIso8601String(),
         ]);
     }
 

@@ -59,6 +59,12 @@ export function useEditorialAutosave<T extends object>(
     const [history, setHistory] = useState<EditorialRevisionItem[]>([]);
     const [historyOpen, setHistoryOpen] = useState(false);
     const [historyLoading, setHistoryLoading] = useState(false);
+    // The loaded version and the material version it was loaded over: once
+    // the material is saved, the notice no longer applies.
+    const [restored, setRestored] = useState<{
+        savedAt: string | null;
+        over: string | null;
+    } | null>(null);
 
     const saveLocalCopy = useCallback(() => {
         const copy: RecoveryCopy<T> = {
@@ -213,23 +219,33 @@ export function useEditorialAutosave<T extends object>(
         });
         const result = (await response.json()) as {
             data?: Partial<T>;
-            server_version?: string | null;
+            saved_at?: string;
         };
 
         if (!response.ok || !result.data) {
             return;
         }
 
-        serverVersion.current = result.server_version ?? serverVersion.current;
+        // The version only fills the form: it reaches the material when the
+        // editor saves it, through the same checks and approval as any edit.
         config.onRecover(result.data);
         setHistoryOpen(false);
-        setState('saved');
-        setSavedAt(new Date().toISOString());
+        setRestored({
+            savedAt: result.saved_at ?? null,
+            over: config.baseVersion,
+        });
     };
+
+    const restoredFrom =
+        restored !== null && restored.over === config.baseVersion
+            ? (restored.savedAt ?? '')
+            : null;
+    const dismissRestored = () => setRestored(null);
 
     return {
         conflict,
         discardRecovery,
+        dismissRestored,
         history,
         historyLoading,
         historyOpen,
@@ -237,6 +253,7 @@ export function useEditorialAutosave<T extends object>(
         loadHistory,
         recoverLocal,
         recovery,
+        restoredFrom,
         restoreRevision,
         savedAt,
         setHistoryOpen,

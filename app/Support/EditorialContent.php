@@ -209,13 +209,15 @@ class EditorialContent
     }
 
     /**
+     * The editorial fields of a revision, ready to load into the editor.
+     *
      * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
      */
-    public function restore(Model $model, array $data): void
+    public function restorable(string $type, array $data): array
     {
-        $type = $this->typeFor($model)
-            ?? throw new InvalidArgumentException('Unsupported editorial model.');
+        $this->modelClass($type);
 
-        $model->forceFill(Arr::only($data, self::FIELDS[$type]));
+        return Arr::only($data, self::FIELDS[$type]);
     }
 }
