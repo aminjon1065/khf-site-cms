@@ -1,7 +1,9 @@
 import { useState } from 'react';
+import type { ContentLocale } from '@/lib/domain';
 import { Blueprint } from '@/ui/Blueprint';
 import { Button } from '@/ui/Button';
 import { Checkbox, Field, Radio, Textarea } from '@/ui/Field';
+import { LanguageTabs } from '@/ui/Nav';
 import type { Reference } from './types';
 
 export function Step2({
@@ -10,14 +12,21 @@ export function Step2({
     reference,
     toggleRegion,
     toggleDistrict,
+    lang,
+    setLang,
 }: {
     data: any;
     setData: (k: string, v: unknown) => void;
     reference: Reference;
     toggleRegion: (id: number) => void;
     toggleDistrict: (id: number) => void;
+    /** Shared with «Содержание»: the language picked here opens there too. */
+    lang: ContentLocale;
+    setLang: (l: ContentLocale) => void;
 }) {
     const [expanded, setExpanded] = useState<number | null>(null);
+    const noteFilled = (locale: ContentLocale): boolean =>
+        (data.territory_note[locale] ?? '').trim() !== '';
 
     return (
         <div
@@ -143,11 +152,30 @@ export function Step2({
                     </div>
                 )}
 
-                <Field label="Текстовое описание территории">
+                {/* Shown on the site under the map, on each language
+                    version that has it. */}
+                <Field
+                    label="Текстовое описание территории"
+                    hint="Видно на сайте под картой — на каждом языке, где заполнено."
+                >
+                    <div style={{ marginBottom: 8 }}>
+                        <LanguageTabs
+                            active={lang}
+                            onChange={setLang}
+                            completeness={{
+                                tg: noteFilled('tg') ? 100 : 0,
+                                ru: noteFilled('ru') ? 100 : 0,
+                                en: noteFilled('en') ? 100 : 0,
+                            }}
+                        />
+                    </div>
                     <Textarea
-                        value={data.territory_note}
+                        value={data.territory_note[lang] ?? ''}
                         onChange={(e) =>
-                            setData('territory_note', e.target.value)
+                            setData('territory_note', {
+                                ...data.territory_note,
+                                [lang]: e.target.value,
+                            })
                         }
                         placeholder="Например: предгорные районы Хатлонской области — Дангара, Фархор, Восе…"
                     />

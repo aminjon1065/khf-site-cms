@@ -736,6 +736,8 @@ components:
                   region_code:
                     type: string
                 required: [name, region_code]
+            territory_note:
+              type: [string, "null"]
             related_instructions:
               type: array
               items:

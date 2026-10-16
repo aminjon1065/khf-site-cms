@@ -370,7 +370,7 @@ class AlertController extends Controller
             'source' => $alert->source,
             'risk_category' => $alert->risk_category,
             'territory_type' => $alert->territory_type,
-            'territory_note' => $alert->territory_note,
+            'territory_note' => $alert->getTranslations('territory_note'),
             'starts_at' => $alert->starts_at?->format('Y-m-d\TH:i'),
             'ends_at' => $alert->ends_at?->format('Y-m-d\TH:i'),
             'scheduled_at' => $alert->scheduled_at?->format('Y-m-d\TH:i'),
@@ -436,7 +436,6 @@ class AlertController extends Controller
             'source' => $request->input('source'),
             'risk_category' => $request->input('risk_category'),
             'territory_type' => $request->input('territory_type'),
-            'territory_note' => $request->input('territory_note'),
             'starts_at' => $request->input('starts_at'),
             'ends_at' => $request->input('ends_at'),
             'scheduled_at' => $request->input('scheduled_at'),
@@ -447,7 +446,7 @@ class AlertController extends Controller
 
         // The wizard sends every language; an empty one arrives as null
         // (ConvertEmptyStringsToNull) and is simply not stored.
-        foreach (['title', 'summary', 'body', 'instructions', 'contacts'] as $field) {
+        foreach (['title', 'summary', 'body', 'instructions', 'contacts', 'territory_note'] as $field) {
             /** @var array<string, string|null> $values */
             $values = $request->input($field, []);
             $alert->setTranslations($field, array_filter(

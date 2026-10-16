@@ -328,3 +328,23 @@ it('saves an alert with languages left empty, as the wizard sends them', functio
         ->and($alert->getTranslations('summary'))->toBe([])
         ->and($alert->getTranslations('contacts'))->toEqual(['ru' => '112']);
 });
+
+it('saves the description of the area in each language', function () {
+    $region = Region::query()->where('code', 'rrp')->firstOrFail();
+
+    actingAs(userWithRole('chief_editor'))
+        ->post('/alerts', [
+            'internal_title' => 'Лавина на трассе',
+            'hazard_type' => 'avalanche',
+            'severity' => 'danger',
+            'territory_type' => 'regions',
+            'regions' => [$region->id],
+            'territory_note' => ['ru' => 'Трасса Душанбе — Чанак, 45–72 км', 'tg' => '', 'en' => ''],
+            'title' => ['ru' => 'Лавинная опасность'],
+            'action' => 'draft',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(Alert::query()->where('internal_title', 'Лавина на трассе')->firstOrFail()->getTranslations('territory_note'))
+        ->toEqual(['ru' => 'Трасса Душанбе — Чанак, 45–72 км']);
+});

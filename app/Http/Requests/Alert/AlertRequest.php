@@ -47,7 +47,10 @@ class AlertRequest extends FormRequest
             ],
 
             'territory_type' => ['required', 'in:country,regions'],
-            'territory_note' => ['nullable', 'string', 'max:2000'],
+            'territory_note' => ['nullable', 'array'],
+            'territory_note.ru' => ['nullable', 'string', 'max:2000'],
+            'territory_note.tg' => ['nullable', 'string', 'max:2000'],
+            'territory_note.en' => ['nullable', 'string', 'max:2000'],
             // The wizard always sends the list, empty for the whole country:
             // at least one region only when the alert covers separate ones.
             'regions' => [

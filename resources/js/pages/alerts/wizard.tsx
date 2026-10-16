@@ -27,7 +27,7 @@ interface WizardAlert {
     source: string | null;
     risk_category: string | null;
     territory_type: string;
-    territory_note: string | null;
+    territory_note: Localized;
     starts_at: string | null;
     ends_at: string | null;
     scheduled_at: string | null;
@@ -87,7 +87,7 @@ export default function AlertWizard({
         source: alert?.source ?? '',
         risk_category: alert?.risk_category ?? '',
         territory_type: alert?.territory_type ?? 'regions',
-        territory_note: alert?.territory_note ?? '',
+        territory_note: { ...emptyLoc, ...alert?.territory_note },
         starts_at: alert?.starts_at ?? '',
         ends_at: alert?.ends_at ?? '',
         scheduled_at: alert?.scheduled_at ?? '',
@@ -207,6 +207,10 @@ export default function AlertWizard({
             setData(f, { ...data[f], [lang]: data[f].ru }),
         );
         setData('contacts', { ...data.contacts, [lang]: data.contacts.ru });
+        setData('territory_note', {
+            ...data.territory_note,
+            [lang]: data.territory_note.ru,
+        });
     };
 
     const checklist = [
@@ -304,6 +308,8 @@ export default function AlertWizard({
                             reference,
                             toggleRegion,
                             toggleDistrict,
+                            lang,
+                            setLang,
                         }}
                     />
                 )}

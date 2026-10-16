@@ -87,6 +87,7 @@ class PendingChangeService
         'doc_date' => 'Дата документа',
         'section' => 'Раздел',
         'tags' => 'Метки',
+        'territory_note' => 'Описание территории',
         'regions' => 'Регионы',
         'districts' => 'Районы',
         'relatedInstructions' => 'Связанные инструкции',

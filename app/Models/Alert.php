@@ -40,7 +40,7 @@ use Spatie\Translatable\HasTranslations;
  * @property Severity $severity
  * @property ContentStatus $status
  * @property string $territory_type
- * @property string|null $territory_note
+ * @property array<string, string>|null $territory_note
  * @property string|null $risk_category
  * @property string|null $source
  * @property array<int, string> $channels
@@ -65,7 +65,7 @@ class Alert extends Model implements HasMedia, Workflowable
     /**
      * @var list<string>
      */
-    public array $translatable = ['title', 'summary', 'body', 'instructions', 'contacts'];
+    public array $translatable = ['title', 'summary', 'body', 'instructions', 'contacts', 'territory_note'];
 
     /**
      * Locales that count toward translation completeness.

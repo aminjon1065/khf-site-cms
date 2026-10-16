@@ -11,6 +11,7 @@ use App\Services\AlertMapService;
 use Carbon\CarbonImmutable;
 use Database\Seeders\RegionSeeder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 use function Pest\Laravel\seed;
 
@@ -309,4 +310,47 @@ it('links only the safety guides a citizen can open on this language version', f
 
     // No English version of the guides: no links on /en.
     expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=en")->json('data.related_instructions'))->toBe([]);
+});
+
+it('gives the operator\'s description of the area in the language of the page only', function () {
+    $alert = Alert::factory()->published()->create([
+        'territory_type' => 'regions',
+        'title' => ['ru' => 'Лавина', 'tg' => 'Тарма', 'en' => 'Avalanche'],
+        'territory_note' => ['ru' => 'Трасса Душанбе — Чанак, 45–72 км', 'tg' => 'Роҳи Душанбе — Чанок, 45–72 км'],
+    ]);
+    $alert->regions()->attach(Region::query()->where('code', 'rrp')->value('id'));
+
+    expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=ru")->json('data.territory_note'))
+        ->toBe('Трасса Душанбе — Чанак, 45–72 км')
+        ->and($this->getJson("/api/v1/alerts/{$alert->slug}?locale=tg")->json('data.territory_note'))
+        ->toBe('Роҳи Душанбе — Чанок, 45–72 км')
+        // No English version: nothing, rather than the Russian text.
+        ->and($this->getJson("/api/v1/alerts/{$alert->slug}?locale=en")->json('data.territory_note'))
+        ->toBeNull();
+});
+
+it('turns the notes written so far into the Russian version of the description', function () {
+    $migration = require database_path('migrations/2026_10_16_133928_make_alert_territory_note_translatable.php');
+    $migration->down();
+
+    $id = DB::table('alerts')->insertGetId([
+        'internal_title' => 'Старое предупреждение',
+        'slug' => 'staroe-preduprezhdenie',
+        'hazard_type' => 'avalanche',
+        'severity' => 'warning',
+        'status' => 'draft',
+        'territory_type' => 'regions',
+        'territory_note' => 'Предгорные районы',
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    $migration->up();
+
+    expect(Alert::query()->findOrFail($id)->getTranslations('territory_note'))
+        ->toEqual(['ru' => 'Предгорные районы']);
+
+    // On MySQL the migration's DDL commits the test transaction, so the row
+    // would outlive the test and show up in other tests' counts.
+    Alert::query()->whereKey($id)->forceDelete();
 });

@@ -81,6 +81,10 @@ class PublicAlertResource extends JsonResource
                 ->map(fn ($r): array => ['code' => $r->code, 'name' => $r->getTranslation('name', $locale, false)])
                 ->all(), []);
             $data['districts'] = $this->localizedDistricts($locale);
+            // The operator's own words about the area («трасса Душанбе — Чанак,
+            // 45–72 км»), in this language only.
+            $note = trim($this->tr('territory_note', $locale));
+            $data['territory_note'] = $note !== '' ? $note : null;
             $data['related_instructions'] = $this->whenLoaded('relatedInstructions', fn () => $this->relatedInstructions
                 ->map(fn (Instruction $instruction): array => [
                     'slug' => $instruction->slug,
@@ -198,7 +202,7 @@ class PublicAlertResource extends JsonResource
         }
 
         if (! $this->relationLoaded('regions')) {
-            return $this->territory_note ?? '';
+            return $this->tr('territory_note', $locale);
         }
 
         $names = $this->regions
@@ -206,7 +210,7 @@ class PublicAlertResource extends JsonResource
             ->filter(fn (string $name): bool => trim($name) !== '')
             ->all();
 
-        return $names !== [] ? implode(', ', $names) : ($this->territory_note ?? '');
+        return $names !== [] ? implode(', ', $names) : $this->tr('territory_note', $locale);
     }
 
     /**
