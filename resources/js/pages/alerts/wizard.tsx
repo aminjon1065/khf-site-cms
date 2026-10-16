@@ -131,6 +131,12 @@ export default function AlertWizard({
         const stay = action === 'draft';
         form.transform((d) => ({
             ...d,
+            // Regions picked before switching to «Вся страна» are hidden
+            // on the step; sending them would fail with an error about a
+            // choice the operator can't see.
+            ...(d.territory_type === 'country'
+                ? { regions: [], districts: [] }
+                : {}),
             action,
             publish_mode: publishMode,
             stay,

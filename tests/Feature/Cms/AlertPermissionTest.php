@@ -268,3 +268,38 @@ it('keeps the operator in the wizard when they save a draft', function () {
     expect($alert->fresh()->internal_title)->toBe('Черновик, шаг 3')
         ->and($alert->fresh()->status)->toBe(ContentStatus::Draft);
 });
+
+it('saves a country-wide alert the way the wizard sends it', function () {
+    // The wizard always sends the regions list, empty for the whole country.
+    // `min:1` on it rejected every country-wide alert.
+    actingAs(userWithRole('chief_editor'))
+        ->post('/alerts', [
+            'internal_title' => 'Общенациональное предупреждение',
+            'hazard_type' => 'earthquake',
+            'severity' => 'danger',
+            'territory_type' => 'country',
+            'regions' => [],
+            'districts' => [],
+            'title' => ['ru' => 'Заголовок'],
+            'action' => 'draft',
+        ])
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/alerts');
+
+    expect(Alert::query()->where('internal_title', 'Общенациональное предупреждение')->value('territory_type'))
+        ->toBe('country');
+});
+
+it('still asks for a region when the alert covers separate regions', function () {
+    actingAs(userWithRole('chief_editor'))
+        ->post('/alerts', [
+            'internal_title' => 'Без регионов',
+            'hazard_type' => 'mudflow',
+            'severity' => 'warning',
+            'territory_type' => 'regions',
+            'regions' => [],
+            'title' => ['ru' => 'Заголовок'],
+            'action' => 'draft',
+        ])
+        ->assertSessionHasErrors('regions');
+});

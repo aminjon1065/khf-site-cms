@@ -48,7 +48,13 @@ class AlertRequest extends FormRequest
 
             'territory_type' => ['required', 'in:country,regions'],
             'territory_note' => ['nullable', 'string', 'max:2000'],
-            'regions' => [Rule::requiredIf(fn (): bool => $this->input('territory_type') === 'regions'), 'array', 'min:1'],
+            // The wizard always sends the list, empty for the whole country:
+            // at least one region only when the alert covers separate ones.
+            'regions' => [
+                Rule::requiredIf(fn (): bool => $this->input('territory_type') === 'regions'),
+                'array',
+                Rule::when($this->input('territory_type') === 'regions', ['min:1']),
+            ],
             'regions.*' => ['integer', 'distinct', 'exists:regions,id'],
             'districts' => ['array'],
             'districts.*' => ['integer', 'distinct', 'exists:districts,id'],
