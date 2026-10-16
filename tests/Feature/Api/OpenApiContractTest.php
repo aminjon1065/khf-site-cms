@@ -186,8 +186,9 @@ it('documents every public API operation exactly once', function () {
         // 25 исходных операций + `/leadership` и `/structure`, появившиеся
         // вместе с переносом руководства и структуры Комитета в CMS (C-1),
         // + `/slugs/{type}` для статической генерации, + `/sitemap` для
-        // sitemap.xml с датами изменений.
-        ->and($documented)->toHaveCount(29);
+        // sitemap.xml с датами изменений, + `/views` — просмотры страниц
+        // сайта для собственной статистики.
+        ->and($documented)->toHaveCount(30);
 });
 
 it('keeps successful responses for every operation inside the OpenAPI contract', function () {
@@ -254,6 +255,9 @@ it('keeps successful responses for every operation inside the OpenAPI contract',
             'locale' => 'ru',
             'device' => 'desktop',
             'navigation_type' => 'navigate',
+        ], ['X-RUM-Key' => 'openapi-rum-secret']],
+        ['post', '/views', '/views', [
+            'views' => [['type' => 'news', 'slug' => $slugs['news'], 'locale' => 'ru', 'count' => 3]],
         ], ['X-RUM-Key' => 'openapi-rum-secret']],
     ];
     $document = khfOpenApiDocument();

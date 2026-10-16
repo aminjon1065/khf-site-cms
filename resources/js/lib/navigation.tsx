@@ -1,5 +1,6 @@
 import {
     Activity,
+    BarChart3,
     BookOpen,
     Building2,
     ClipboardCheck,
@@ -48,7 +49,7 @@ import SubmissionController from '@/actions/App/Http/Controllers/Cms/SubmissionC
 import TaxonomyController from '@/actions/App/Http/Controllers/Cms/TaxonomyController';
 import TranslationQueueController from '@/actions/App/Http/Controllers/Cms/TranslationQueueController';
 import UserController from '@/actions/App/Http/Controllers/Cms/UserController';
-import { control, dashboard, usability } from '@/routes';
+import { control, dashboard, statistics, usability } from '@/routes';
 
 export interface NavItem {
     key: string;
@@ -192,6 +193,17 @@ export const NAV: NavGroup[] = [
                 href: TranslationQueueController.index.url(),
                 icon: Languages,
                 permission: CONTENT_MODULES.map((m) => `${m}.edit`),
+            },
+            {
+                // Our own count of the site's readers (owner decision,
+                // 2026-10-16): anyone who sees the materials.
+                key: 'statistics',
+                labelKey: 'Статистика просмотров',
+                href: statistics.url(),
+                icon: BarChart3,
+                permission: CONTENT_MODULES.filter(
+                    (m) => m !== 'documents',
+                ).map((m) => `${m}.view`),
             },
             {
                 key: 'editorial-trash',

@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\AlertController;
 use App\Http\Controllers\Api\AnnouncementController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ContentViewController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HomeController;
@@ -88,6 +89,11 @@ Route::middleware('throttle:api-public')->group(function (): void {
     Route::post('vitals', WebVitalController::class)
         ->middleware('throttle:rum')
         ->name('api.vitals.store');
+
+    // Page views from the site's server, summed for half a minute.
+    Route::post('views', ContentViewController::class)
+        ->middleware('throttle:rum')
+        ->name('api.views.store');
 
     // Emergency alerts + region map status. `active` before `{slug}`.
     Route::get('alerts', [AlertController::class, 'index'])->name('api.alerts.index');

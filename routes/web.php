@@ -24,6 +24,7 @@ use App\Http\Controllers\Cms\ProjectController;
 use App\Http\Controllers\Cms\RegionController;
 use App\Http\Controllers\Cms\RoleController;
 use App\Http\Controllers\Cms\SettingController;
+use App\Http\Controllers\Cms\StatisticsController;
 use App\Http\Controllers\Cms\StructureUnitController;
 use App\Http\Controllers\Cms\SubmissionController;
 use App\Http\Controllers\Cms\TaxonomyController;
@@ -75,6 +76,7 @@ Route::middleware(['auth', '2fa.required'])->group(function () {
 
     Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('control', [ControlController::class, 'index'])->name('control');
+    Route::get('statistics', [StatisticsController::class, 'index'])->name('statistics');
 
     // Alerts — the reference module.
     Route::get('alerts', [AlertController::class, 'index'])->name('alerts.index');

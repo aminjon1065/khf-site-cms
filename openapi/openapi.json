@@ -819,6 +819,54 @@
           }
         }
       }
+    },
+    "/views": {
+      "post": {
+        "operationId": "storeContentViews",
+        "summary": "Accept page views summed by the site's server",
+        "description": "The site counts a page once per reader session and sends the sums every half minute with the Web Vitals key. Views of unknown or unpublished addresses are dropped. Stored as daily sums per material and site language; nothing about the reader.",
+        "parameters": [
+          {
+            "name": "X-RUM-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ContentViewsRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "Views accepted",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ContentViewsResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Invalid ingestion secret"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -2932,6 +2980,69 @@
           "accepted": {
             "type": "boolean",
             "const": true
+          }
+        }
+      },
+      "ContentViewsRequest": {
+        "type": "object",
+        "required": [
+          "views"
+        ],
+        "properties": {
+          "views": {
+            "type": "array",
+            "minItems": 1,
+            "maxItems": 500,
+            "items": {
+              "type": "object",
+              "required": [
+                "type",
+                "slug",
+                "locale",
+                "count"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "news",
+                    "alert",
+                    "instruction",
+                    "project",
+                    "announcement",
+                    "page"
+                  ]
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "locale": {
+                  "type": "string",
+                  "enum": [
+                    "ru",
+                    "tj",
+                    "en"
+                  ],
+                  "description": "Site locale of the page (tj, not tg)."
+                },
+                "count": {
+                  "type": "integer",
+                  "minimum": 1
+                }
+              }
+            }
+          }
+        }
+      },
+      "ContentViewsResponse": {
+        "type": "object",
+        "required": [
+          "recorded"
+        ],
+        "properties": {
+          "recorded": {
+            "type": "integer",
+            "description": "Views counted (of public materials)."
           }
         }
       },
