@@ -34,11 +34,11 @@ class CreateAdmin extends Command
             return self::FAILURE;
         }
 
-        $email = (string) ($this->option('email') ?: text(
+        $email = $this->filledOption('email') ?? text(
             label: 'Электронная почта',
             required: true,
             validate: fn (string $value): ?string => $this->emailError($value),
-        ));
+        );
 
         if (($error = $this->emailError($email)) !== null) {
             $this->components->error($error);
@@ -46,7 +46,7 @@ class CreateAdmin extends Command
             return self::FAILURE;
         }
 
-        $name = (string) ($this->option('name') ?: text(label: 'Имя и фамилия', required: true));
+        $name = $this->filledOption('name') ?? text(label: 'Имя и фамилия', required: true);
 
         $plainPassword = password(
             label: 'Пароль',
@@ -79,6 +79,17 @@ class CreateAdmin extends Command
         $this->components->info("Администратор {$email} создан. При первом входе система попросит настроить двухфакторную аутентификацию, если она обязательна.");
 
         return self::SUCCESS;
+    }
+
+    /**
+     * The option's value when it was passed and is not empty; otherwise the
+     * command asks for it interactively.
+     */
+    private function filledOption(string $name): ?string
+    {
+        $value = $this->option($name);
+
+        return is_string($value) && $value !== '' ? $value : null;
     }
 
     private function emailError(string $email): ?string

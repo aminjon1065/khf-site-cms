@@ -15,7 +15,8 @@ class RestoreBackupDrill extends Command
 {
     public function handle(OperationalBackup $backup): int
     {
-        $directory = (string) ($this->argument('backup') ?: $this->latestBackup());
+        $argument = $this->argument('backup');
+        $directory = is_string($argument) && $argument !== '' ? $argument : $this->latestBackup();
         $result = $backup->drill($directory);
 
         $this->components->info(
