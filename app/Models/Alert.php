@@ -75,6 +75,11 @@ class Alert extends Model implements HasMedia, Workflowable
     public const LOCALES = ['tg', 'ru', 'en'];
 
     /**
+     * SQL weight of a level for ordering, see scopeOrderBySeverity().
+     */
+    private const SEVERITY_WEIGHT = "CASE severity WHEN 'info' THEN 1 WHEN 'attention' THEN 2 WHEN 'warning' THEN 3 WHEN 'danger' THEN 4 WHEN 'critical' THEN 5 ELSE 0 END";
+
+    /**
      * Fields required for a locale to be 100% complete.
      *
      * @var list<string>
@@ -297,10 +302,45 @@ class Alert extends Model implements HasMedia, Workflowable
             });
     }
 
+    /**
+     * Most or least severe first. The column holds the level's code, and the
+     * codes sort alphabetically as warning > info > danger > critical, so a
+     * plain ORDER BY severity would put a critical alert below a warning.
+     * The weights are Severity::weight(); a test over every level keeps the
+     * two in step.
+     *
+     * @param  Builder<Alert>  $query
+     * @param  'asc'|'desc'  $direction
+     */
+    public function scopeOrderBySeverity(Builder $query, string $direction = 'desc'): void
+    {
+        $query->orderByRaw($direction === 'asc' ? self::SEVERITY_WEIGHT.' ASC' : self::SEVERITY_WEIGHT.' DESC');
+    }
+
+    /**
+     * In effect right now — the same rule as scopeActive().
+     */
     public function isActive(): bool
     {
-        return in_array($this->status, [ContentStatus::Published, ContentStatus::Updated], true)
+        return $this->isLive()
+            && ($this->starts_at === null || ! $this->starts_at->isFuture())
             && ($this->ends_at === null || $this->ends_at->isFuture());
+    }
+
+    /**
+     * Published ahead of time: on the site, but not in effect yet.
+     */
+    public function isUpcoming(): bool
+    {
+        return $this->isLive()
+            && $this->starts_at !== null
+            && $this->starts_at->isFuture()
+            && ($this->ends_at === null || $this->ends_at->isFuture());
+    }
+
+    private function isLive(): bool
+    {
+        return in_array($this->status, [ContentStatus::Published, ContentStatus::Updated], true);
     }
 
     /**

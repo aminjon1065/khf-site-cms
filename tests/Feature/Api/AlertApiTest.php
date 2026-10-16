@@ -205,3 +205,46 @@ it('keeps the state current between the five-minute scheduler runs', function ()
     $this->getJson('/api/v1/alerts/active?locale=ru')
         ->assertJsonPath('data.updated_at', '2026-09-16T10:07:00+05:00');
 });
+
+it('tells a citizen that an alert published ahead of time is not in effect yet', function () {
+    // Published now, in effect from tomorrow: it is not on the list or the
+    // map, and its page must not say «Действует» either.
+    $startsAt = now()->addDay()->startOfMinute();
+    $alert = Alert::factory()->published()->create([
+        'territory_type' => 'country',
+        'starts_at' => $startsAt,
+        'ends_at' => $startsAt->copy()->addDay(),
+        'title' => ['ru' => 'Штормовое предупреждение', 'tg' => 'Огоҳии тӯфон', 'en' => 'Storm warning'],
+    ]);
+
+    expect($alert->isActive())->toBeFalse()
+        ->and($alert->isUpcoming())->toBeTrue();
+
+    $ru = $this->getJson("/api/v1/alerts/{$alert->slug}?locale=ru")->assertOk()->json('data');
+
+    expect($ru['status_code'])->toBe('upcoming')
+        ->and($ru['status'])->toBe('Ещё не действует')
+        ->and($ru['is_active'])->toBeFalse()
+        ->and(collect($ru['meta'])->pluck('value', 'label')->all())
+        ->toMatchArray([
+            'Действует с' => $startsAt->format('d.m.Y, H:i'),
+            'Действует до' => $startsAt->copy()->addDay()->format('d.m.Y, H:i'),
+        ]);
+
+    expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=tg")->json('data.status'))
+        ->toBe('Ҳанӯз амал намекунад');
+
+    $this->getJson('/api/v1/alerts?locale=ru')->assertOk()->assertJsonCount(0, 'data');
+});
+
+it('reports an alert past its end time as completed', function () {
+    $alert = Alert::factory()->published()->create([
+        'territory_type' => 'country',
+        'starts_at' => now()->subDays(2),
+        'ends_at' => now()->subDay(),
+        'title' => ['ru' => 'Паводок', 'tg' => 'Обхезӣ', 'en' => 'Flood'],
+    ]);
+
+    expect($this->getJson("/api/v1/alerts/{$alert->slug}?locale=ru")->json('data.status_code'))
+        ->toBe('completed');
+});

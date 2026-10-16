@@ -1924,6 +1924,7 @@
             "type": "string",
             "enum": [
               "active",
+              "upcoming",
               "completed"
             ]
           },

@@ -669,7 +669,7 @@ components:
           type: string
         status_code:
           type: string
-          enum: [active, completed]
+          enum: [active, upcoming, completed]
         is_active:
           type: boolean
         hazard:

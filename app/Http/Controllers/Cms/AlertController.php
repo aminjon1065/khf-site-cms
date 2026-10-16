@@ -266,7 +266,7 @@ class AlertController extends Controller
         $dir = $request->string('dir', 'desc')->toString() === 'asc' ? 'asc' : 'desc';
 
         match ($sort) {
-            'severity' => $query->orderBy('severity', $dir),
+            'severity' => $query->orderBySeverity($dir),
             'status' => $query->orderBy('status', $dir),
             'published' => $query->orderBy('published_at', $dir),
             'ends' => $query->orderBy('ends_at', $dir),

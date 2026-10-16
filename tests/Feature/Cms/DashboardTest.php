@@ -285,3 +285,22 @@ it('counts only recent materials that still lack a required language', function 
             ->where('metrics.5.value', 1)
             ->where('metrics.5.label', 'без перевода за 30 дней'));
 });
+
+it('keeps a critical alert among the four shown, however many warnings are active', function () {
+    // Severity codes sort alphabetically as warning > info > danger >
+    // critical: ordering by the column dropped the critical one from the block.
+    foreach (range(1, 4) as $i) {
+        Alert::factory()->published()->create(['severity' => 'warning', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHour()]);
+    }
+    Alert::factory()->published()->create(['severity' => 'info', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHour()]);
+    Alert::factory()->published()->create(['severity' => 'critical', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHour()]);
+    Alert::factory()->published()->create(['severity' => 'danger', 'starts_at' => now()->subHour(), 'ends_at' => now()->addHour()]);
+
+    actingAs(dashboardUser('chief_editor'))->get('/dashboard')
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->has('activeAlerts', 4)
+            ->where('activeAlerts.0.severity', 'critical')
+            ->where('activeAlerts.1.severity', 'danger')
+            ->where('activeAlerts.2.severity', 'warning'));
+});

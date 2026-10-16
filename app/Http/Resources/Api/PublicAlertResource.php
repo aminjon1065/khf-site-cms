@@ -42,14 +42,15 @@ class PublicAlertResource extends JsonResource
         $locale = app()->getLocale();
         $level = $this->severity->level();
         $active = $this->isActive();
+        $state = $active ? 'active' : ($this->isUpcoming() ? 'upcoming' : 'completed');
 
         $data = [
             'slug' => $this->slug,
             'level' => $level,
             'level_label' => PublicApiLabels::get('alert_level', $level, $locale),
             'severity' => $this->severity->value,
-            'status' => PublicApiLabels::get('alert_status', $active ? 'active' : 'completed', $locale),
-            'status_code' => $active ? 'active' : 'completed',
+            'status' => PublicApiLabels::get('alert_status', $state, $locale),
+            'status_code' => $state,
             'is_active' => $active,
             'hazard' => $this->hazard_type->value,
             'hazard_label' => PublicApiLabels::get('hazard', $this->hazard_type->value, $locale),
@@ -77,7 +78,7 @@ class PublicAlertResource extends JsonResource
             $data['regions'] = $this->whenLoaded('regions', fn () => $this->regions
                 ->map(fn ($r): array => ['code' => $r->code, 'name' => $r->getTranslation('name', $locale, false)])
                 ->all(), []);
-            $data['meta'] = $this->metaItems($locale, $active);
+            $data['meta'] = $this->metaItems($locale, $state);
             $data['updates'] = $this->localizedUpdates($locale);
         }
 
@@ -185,17 +186,21 @@ class PublicAlertResource extends JsonResource
     }
 
     /**
+     * @param  'active'|'upcoming'|'completed'  $state
      * @return list<array{label: string, value: string}>
      */
-    private function metaItems(string $locale, bool $active): array
+    private function metaItems(string $locale, string $state): array
     {
         $items = [];
 
         if ($this->published_at) {
             $items[] = ['label' => PublicApiLabels::get('alert_meta', 'published', $locale), 'value' => $this->published_at->format('d.m.Y, H:i')];
         }
+        if ($state === 'upcoming' && $this->starts_at) {
+            $items[] = ['label' => PublicApiLabels::get('alert_meta', 'active_from', $locale), 'value' => $this->starts_at->format('d.m.Y, H:i')];
+        }
         if ($this->ends_at) {
-            $items[] = ['label' => PublicApiLabels::get('alert_meta', $active ? 'active_until' : 'ended_at', $locale), 'value' => $this->ends_at->format('d.m.Y, H:i')];
+            $items[] = ['label' => PublicApiLabels::get('alert_meta', $state === 'completed' ? 'ended_at' : 'active_until', $locale), 'value' => $this->ends_at->format('d.m.Y, H:i')];
         }
         $items[] = ['label' => PublicApiLabels::get('alert_meta', 'regions', $locale), 'value' => $this->regionLabel($locale)];
         if ($this->source) {

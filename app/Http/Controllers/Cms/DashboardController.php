@@ -37,7 +37,7 @@ class DashboardController extends Controller
         $user = $request->user();
         abort_unless($user instanceof User && $user->getAllPermissions()->isNotEmpty(), 403);
 
-        $activeAlerts = $this->alertQuery($user)->active()->with(['regions', 'author'])->orderByDesc('severity')->get();
+        $activeAlerts = $this->alertQuery($user)->active()->with(['regions', 'author'])->orderBySeverity()->latest('published_at')->get();
 
         return Inertia::render('dashboard', [
             'metrics' => $this->metrics($user),

@@ -14,6 +14,7 @@ final class PublicApiLabels
         ],
         'alert_status' => [
             'active' => ['tg' => 'Амал мекунад', 'ru' => 'Действует', 'en' => 'Active'],
+            'upcoming' => ['tg' => 'Ҳанӯз амал намекунад', 'ru' => 'Ещё не действует', 'en' => 'Not yet in effect'],
             'completed' => ['tg' => 'Анҷом ёфт', 'ru' => 'Завершено', 'en' => 'Ended'],
         ],
         'hazard' => [
@@ -71,6 +72,7 @@ final class PublicApiLabels
         ],
         'alert_meta' => [
             'published' => ['tg' => 'Нашр шуд', 'ru' => 'Опубликовано', 'en' => 'Published'],
+            'active_from' => ['tg' => 'Амал мекунад аз', 'ru' => 'Действует с', 'en' => 'In effect from'],
             'active_until' => ['tg' => 'Амал мекунад то', 'ru' => 'Действует до', 'en' => 'Active until'],
             'ended_at' => ['tg' => 'Амал мекард то', 'ru' => 'Действовало до', 'en' => 'Ended at'],
             'regions' => ['tg' => 'Минтақаҳо', 'ru' => 'Регионы', 'en' => 'Regions'],

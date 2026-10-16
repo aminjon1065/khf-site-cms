@@ -228,3 +228,17 @@ it('does not limit an editor whose account only names a region', function () {
     expect($editor->isLimitedToRegion())->toBeFalse()
         ->and($editor->can('update', $alert))->toBeTrue();
 });
+
+it('sorts the alert list by escalation, not by the alphabet of the level code', function () {
+    foreach (['warning', 'critical', 'info', 'danger', 'attention'] as $severity) {
+        Alert::factory()->create(['severity' => $severity]);
+    }
+
+    $order = fn (string $dir): array => actingAs(userWithRole('chief_editor'))
+        ->get("/alerts?view=all&sort=severity&dir={$dir}")
+        ->assertOk()
+        ->inertiaProps('alerts');
+
+    expect(array_column($order('desc'), 'severity'))->toBe(['critical', 'danger', 'warning', 'attention', 'info'])
+        ->and(array_column($order('asc'), 'severity'))->toBe(['info', 'attention', 'warning', 'danger', 'critical']);
+});
