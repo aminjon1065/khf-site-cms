@@ -357,7 +357,7 @@ class ApprovalController extends Controller
             $model->loadMissing('regions');
             $meta[] = ['label' => 'Действие', 'value' => ($model->starts_at?->isoFormat('D.MM') ?? '—').' — '.($model->ends_at?->isoFormat('D.MM, HH:mm') ?? '—')];
             $meta[] = ['label' => 'Регионы', 'value' => $model->regions->map(fn ($r) => $r->getTranslation('name', 'ru'))->implode(', ') ?: 'Вся страна'];
-            $meta[] = ['label' => 'Каналы', 'value' => collect($model->channels ?? [])->map(fn (string $c) => Channel::from($c)->label())->implode(', ')];
+            $meta[] = ['label' => 'Каналы', 'value' => collect($model->channels ?? [])->map(fn (string $c) => Channel::tryFrom($c)?->label())->filter()->implode(', ')];
         }
 
         if ($model instanceof Document) {

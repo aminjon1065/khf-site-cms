@@ -103,7 +103,6 @@ class SettingSeeder extends Seeder
             'integrations' => [
                 'sos_app_gateway' => 'https://sos.khf.tj/api',
                 'rss_enabled' => true,
-                'sms_gateway_status' => 'degraded',
             ],
             'backup' => [
                 'schedule' => 'daily',

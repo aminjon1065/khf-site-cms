@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Alert;
 
+use App\Enums\Channel;
 use App\Enums\HazardType;
 use App\Enums\Severity;
 use App\Models\Alert;
@@ -95,7 +96,7 @@ class AlertRequest extends FormRequest
             'contacts.en' => ['nullable', 'string', 'max:10000'],
 
             'channels' => ['array'],
-            'channels.*' => ['in:site,sos_app,rss,sms'],
+            'channels.*' => [Rule::enum(Channel::class)],
 
             'approver_id' => ['nullable', 'integer', 'exists:users,id'],
             'publish_mode' => ['nullable', 'in:now,schedule,review'],

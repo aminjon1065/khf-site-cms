@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Channel;
 use App\Enums\ContentStatus;
 use App\Enums\Severity;
 use App\Models\Alert;
@@ -8,6 +9,7 @@ use App\Models\User;
 use App\Services\WorkflowService;
 use Database\Seeders\RegionSeeder;
 use Database\Seeders\RolePermissionSeeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -347,4 +349,33 @@ it('saves the description of the area in each language', function () {
 
     expect(Alert::query()->where('internal_title', 'Лавина на трассе')->firstOrFail()->getTranslations('territory_note'))
         ->toEqual(['ru' => 'Трасса Душанбе — Чанак, 45–72 км']);
+});
+
+it('no longer offers or accepts an SMS channel', function () {
+    // SMS cost money and the Committee has no budget for them (2026-10-16).
+    expect(array_column(Channel::options(), 'value'))->toBe(['site', 'sos_app', 'rss']);
+
+    actingAs(userWithRole('chief_editor'))
+        ->post('/alerts', [
+            'internal_title' => 'С SMS',
+            'hazard_type' => 'flood',
+            'severity' => 'warning',
+            'territory_type' => 'country',
+            'regions' => [],
+            'channels' => ['site', 'sms'],
+            'title' => ['ru' => 'Паводок'],
+            'action' => 'draft',
+        ])
+        ->assertSessionHasErrors('channels.1');
+});
+
+it('takes SMS out of alerts saved with it, so they can be saved again', function () {
+    $alert = Alert::factory()->create();
+    DB::table('alerts')->where('id', $alert->id)->update(['channels' => json_encode(['site', 'sms', 'sos_app'])]);
+    DB::table('settings')->insert(['group' => 'integrations', 'key' => 'sms_gateway_status', 'value' => json_encode('degraded'), 'created_at' => now(), 'updated_at' => now()]);
+
+    (require database_path('migrations/'.basename(glob(database_path('migrations/*_remove_sms_from_alerts_and_settings.php'))[0])))->up();
+
+    expect($alert->fresh()->channels)->toBe(['site', 'sos_app'])
+        ->and(DB::table('settings')->where('key', 'sms_gateway_status')->exists())->toBeFalse();
 });

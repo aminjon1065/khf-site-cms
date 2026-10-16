@@ -131,16 +131,14 @@ export function Step5({
                             gap: 8,
                         }}
                     >
-                        {reference.channels
-                            .filter((c) => c.value !== 'sms')
-                            .map((c) => (
-                                <Checkbox
-                                    key={c.value}
-                                    label={c.label}
-                                    checked={data.channels.includes(c.value)}
-                                    onChange={() => toggleChannel(c.value)}
-                                />
-                            ))}
+                        {reference.channels.map((c) => (
+                            <Checkbox
+                                key={c.value}
+                                label={c.label}
+                                checked={data.channels.includes(c.value)}
+                                onChange={() => toggleChannel(c.value)}
+                            />
+                        ))}
                     </div>
                 </Field>
             </div>

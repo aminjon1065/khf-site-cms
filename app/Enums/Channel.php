@@ -3,14 +3,14 @@
 namespace App\Enums;
 
 /**
- * Publication / dissemination channels for alerts.
+ * Publication / dissemination channels for alerts. No SMS: messages cost
+ * money and the Committee has no budget for them (owner decision, 2026-10-16).
  */
 enum Channel: string
 {
     case Site = 'site';
     case SosApp = 'sos_app';
     case Rss = 'rss';
-    case Sms = 'sms';
 
     public function label(): string
     {
@@ -18,7 +18,6 @@ enum Channel: string
             self::Site => 'Официальный сайт khf.tj',
             self::SosApp => 'Мобильное приложение SOS',
             self::Rss => 'Лента для СМИ (RSS)',
-            self::Sms => 'SMS-шлюз оповещения',
         };
     }
 

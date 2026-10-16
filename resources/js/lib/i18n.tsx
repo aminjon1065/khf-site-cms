@@ -186,7 +186,6 @@ const ru: Record<string, string> = {
     'channel.site': 'Сайт',
     'channel.sos_app': 'Приложение SOS',
     'channel.rss': 'RSS',
-    'channel.sms': 'СМС',
 
     // languages
     'lang.tg': 'ТҶ',
