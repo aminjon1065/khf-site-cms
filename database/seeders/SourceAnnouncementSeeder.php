@@ -88,6 +88,8 @@ class SourceAnnouncementSeeder extends Seeder
             'published_at' => $position === 3 ? null : $publishedAt,
             'author_id' => $authorId,
         ])->save();
+
+        $this->rememberSourceAddresses($announcement, $record['sources']);
     }
 
     /**
@@ -114,6 +116,7 @@ class SourceAnnouncementSeeder extends Seeder
                 'en' => '',
             ],
             'published_at' => (string) ($primary['published_at'] ?? ''),
+            'sources' => ['ru' => $russian['source_url'] ?? null, 'tg' => $tajik['source_url'] ?? null],
         ];
     }
 

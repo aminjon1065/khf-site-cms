@@ -115,6 +115,7 @@ class SourceNewsSeeder extends Seeder
         }
 
         $this->attachSourceImage($news, $item['cover'], 'cover');
+        $this->rememberSourceAddresses($news, $item['sources']);
     }
 
     /**
@@ -195,6 +196,7 @@ class SourceNewsSeeder extends Seeder
             'cover' => is_string($primary['cover'] ?? null) ? $primary['cover'] : null,
             'views' => max((int) ($russian['views'] ?? 0), (int) ($tajik['views'] ?? 0)),
             'published_at' => (string) ($primary['published_at'] ?? ''),
+            'sources' => ['ru' => $russian['source_url'] ?? null, 'tg' => $tajik['source_url'] ?? null],
         ];
     }
 

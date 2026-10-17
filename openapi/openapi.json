@@ -919,6 +919,46 @@
           }
         }
       }
+    },
+    "/redirects/legacy": {
+      "get": {
+        "operationId": "getLegacyRedirect",
+        "summary": "Resolve an address of the previous sites",
+        "description": "Where an address of the previous Drupal sites (khf.tj in Tajik, kchs.tj in Russian) leads now. The site answers an old link with a permanent redirect to `path`. `source` is a host with a path, with or without scheme, `www.` or query string.",
+        "parameters": [
+          {
+            "name": "source",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "maxLength": 2048
+            },
+            "example": "khf.tj/node/6112"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The material's current page",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LegacyRedirectResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "No current page for this address"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          },
+          "429": {
+            "description": "Rate limited"
+          }
+        }
+      }
     }
   },
   "components": {
@@ -3713,6 +3753,26 @@
             "description": "Last real edit of the text, else the publication; the page's own modified time."
           }
         }
+      },
+      "LegacyRedirectResponse": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Site path with the locale segment, e.g. /tj/news/sel-v-varzobe"
+              }
+            },
+            "required": [
+              "path"
+            ]
+          }
+        },
+        "required": [
+          "data"
+        ]
       }
     }
   }

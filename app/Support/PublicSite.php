@@ -134,6 +134,17 @@ final class PublicSite
      */
     public static function urlFor(Model&Workflowable $subject, ?string $contentLocale = null): ?string
     {
+        $path = self::localizedPathFor($subject, $contentLocale);
+
+        return $path !== null ? self::baseUrl().$path : null;
+    }
+
+    /**
+     * The same address as urlFor() without the site's origin
+     * (`/tj/news/sel-v-varzobe`) — what the site itself redirects to.
+     */
+    public static function localizedPathFor(Model&Workflowable $subject, ?string $contentLocale = null): ?string
+    {
         if (! $subject->getWorkflowStatus()->isPublic()) {
             return null;
         }
@@ -148,6 +159,6 @@ final class PublicSite
             return null;
         }
 
-        return self::url($path, $contentLocale);
+        return '/'.self::localeSegment($contentLocale).$path;
     }
 }

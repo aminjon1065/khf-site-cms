@@ -2,7 +2,9 @@
 
 namespace Database\Seeders\Concerns;
 
+use App\Models\LegacyRedirect;
 use App\Support\PublicLocale;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
@@ -158,6 +160,22 @@ trait SeedsFromSource
      * `_web` and duplicate suffixes. Names too short to be distinctive are
      * rejected, so unrelated files never pair up.
      */
+    /**
+     * Old addresses of the material on the previous sites (kchs.tj for the
+     * Russian text, khf.tj for the Tajik one) now lead to it: the site
+     * answers them with a permanent redirect (LegacyRedirectController).
+     *
+     * @param  array{ru: mixed, tg: mixed}  $sources
+     */
+    protected function rememberSourceAddresses(Model $material, array $sources): void
+    {
+        foreach ($sources as $locale => $url) {
+            if (is_string($url) && $url !== '') {
+                LegacyRedirect::remember($url, $material, $locale);
+            }
+        }
+    }
+
     protected function coverFingerprint(?string $url): ?string
     {
         if ($url === null || $url === '') {

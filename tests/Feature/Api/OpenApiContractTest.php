@@ -4,6 +4,7 @@ use App\Enums\ContentStatus;
 use App\Models\Alert;
 use App\Models\Announcement;
 use App\Models\Instruction;
+use App\Models\LegacyRedirect;
 use App\Models\News;
 use App\Models\Page;
 use App\Models\Project;
@@ -188,8 +189,9 @@ it('documents every public API operation exactly once', function () {
         // + `/slugs/{type}` для статической генерации, + `/sitemap` для
         // sitemap.xml с датами изменений, + `/views` — просмотры страниц
         // сайта для собственной статистики, + `/submissions/status` —
-        // статус обращения по номеру и коду.
-        ->and($documented)->toHaveCount(31);
+        // статус обращения по номеру и коду, + `/redirects/legacy` — куда
+        // теперь ведут адреса прежних сайтов khf.tj и kchs.tj.
+        ->and($documented)->toHaveCount(32);
 });
 
 it('keeps successful responses for every operation inside the OpenAPI contract', function () {
@@ -214,6 +216,12 @@ it('keeps successful responses for every operation inside the OpenAPI contract',
     foreach ($slugs as $type => $slug) {
         expect($slug)->not->toBeNull("The seeded {$type} fixture must expose a published slug.");
     }
+
+    LegacyRedirect::remember(
+        'khf.tj/node/6112',
+        News::query()->where('slug', $slugs['news'])->firstOrFail(),
+        'ru',
+    );
 
     $appeal = $this->postJson('/api/v1/submissions', [
         'name' => 'Контрактный тест статуса',
@@ -248,6 +256,7 @@ it('keeps successful responses for every operation inside the OpenAPI contract',
         ['get', '/menu', '/menu?locale=ru'],
         ['get', '/settings', '/settings?locale=ru'],
         ['get', '/search', '/search?q=пожар&locale=ru'],
+        ['get', '/redirects/legacy', '/redirects/legacy?source=khf.tj/node/6112'],
         ['post', '/submissions', '/submissions', [
             'name' => 'Контрактный тест',
             'email' => 'contract@example.com',

@@ -9,6 +9,7 @@ use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\HomeController;
 use App\Http\Controllers\Api\InstructionController;
 use App\Http\Controllers\Api\LeaderController;
+use App\Http\Controllers\Api\LegacyRedirectController;
 use App\Http\Controllers\Api\MenuController;
 use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\PageController;
@@ -111,4 +112,7 @@ Route::middleware('throttle:api-public')->group(function (): void {
 
     // Structure units (specialised departments).
     Route::get('structure', [StructureUnitController::class, 'index'])->name('api.structure.index');
+
+    // Old addresses of the previous Drupal sites → the material's page now.
+    Route::get('redirects/legacy', LegacyRedirectController::class)->name('api.redirects.legacy');
 });

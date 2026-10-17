@@ -3,6 +3,7 @@
 use App\Enums\AnnouncementKind;
 use App\Enums\ContentStatus;
 use App\Models\Announcement;
+use App\Models\LegacyRedirect;
 use App\Models\News;
 use Database\Seeders\RolePermissionSeeder;
 use Database\Seeders\SourceAnnouncementSeeder;
@@ -113,4 +114,33 @@ it('seeds nothing when the fixtures are missing, instead of failing', function (
     $this->seed([RolePermissionSeeder::class, UserSeeder::class, TaxonomySeeder::class, SourceNewsSeeder::class]);
 
     expect(News::query()->count())->toBe(0);
+});
+
+it('remembers the old addresses of every imported material on both former sites', function (): void {
+    // Ссылки на kchs.tj/node/… и khf.tj/node/… живут в документах и поиске:
+    // после переключения khf.tj на новый сайт они должны вести к материалу.
+    $this->seed([RolePermissionSeeder::class, UserSeeder::class, TaxonomySeeder::class, SourceNewsSeeder::class]);
+
+    $paired = News::query()->where('title->ru', 'like', 'КЧС Хатлон:%')->sole();
+
+    expect(LegacyRedirect::query()->where('source', 'kchs.tj/node/4163')->sole())
+        ->redirectable_id->toBe($paired->id)
+        ->locale->toBe('ru')
+        ->and(LegacyRedirect::query()->where('source', 'khf.tj/node/6100')->sole())
+        ->redirectable_id->toBe($paired->id)
+        ->locale->toBe('tg')
+        // 2 русских адреса + 2 таджикских, по одному на исходную страницу.
+        ->and(LegacyRedirect::query()->count())->toBe(4);
+
+    // Повторный импорт не плодит записи.
+    $this->seed(SourceNewsSeeder::class);
+    expect(LegacyRedirect::query()->count())->toBe(4);
+});
+
+it('remembers the old addresses of imported announcements', function (): void {
+    $this->seed([RolePermissionSeeder::class, UserSeeder::class, SourceAnnouncementSeeder::class]);
+
+    expect(LegacyRedirect::query()->where('source', 'kchs.tj/node/3686')->sole()->redirectable_type)
+        ->toBe((new Announcement)->getMorphClass())
+        ->and(LegacyRedirect::query()->where('source', 'khf.tj/node/5900')->exists())->toBeTrue();
 });
