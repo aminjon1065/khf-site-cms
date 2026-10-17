@@ -1,0 +1,275 @@
+# Стек КЧС на одном сервере: сайт, CMS, MySQL, Redis, воркеры, планировщик,
+# HTTPS. Запуск и обновление — deploy/docker/deploy.sh; порядок и настройка —
+# DEPLOYMENT.md §8.
+#
+# На сервере репозитории лежат рядом:
+#   /srv/khf/khf-site-cms   ← этот файл: deploy/docker/compose.yml
+#   /srv/khf/khf-site-front
+# Все настройки — в deploy/docker/.env (образец: env.example). Наружу открыт
+# только Caddy (80/443); MySQL и Redis доступны лишь внутри стека.
+
+name: khf
+
+x-cms-image: &cms-image
+  image: khf-cms:${RELEASE:-latest}
+
+x-cms-environment: &cms-environment
+  APP_NAME: "КЧС Республики Таджикистан"
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_KEY: ${APP_KEY:?APP_KEY не задан — см. env.example}
+  APP_URL: https://${CMS_DOMAIN}
+  APP_TIMEZONE: Asia/Dushanbe
+  APP_LOCALE: ru
+  APP_FALLBACK_LOCALE: ru
+  # Журнал — в stderr, его ротирует Docker (logging ниже). Критические
+  # записи уходят в Telegram независимо от канала.
+  LOG_CHANNEL: stderr
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  DB_CONNECTION: mysql
+  DB_HOST: mysql
+  DB_PORT: "3306"
+  DB_DATABASE: khf_site_cms
+  DB_USERNAME: khf
+  DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD не задан}
+  SESSION_DRIVER: database
+  SESSION_SECURE_COOKIE: "true"
+  SESSION_LIFETIME: "120"
+  CACHE_STORE: failover
+  QUEUE_CONNECTION: failover
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: redis
+  REDIS_PORT: "6379"
+  REDIS_PASSWORD: ${REDIS_PASSWORD:?REDIS_PASSWORD не задан}
+  REDIS_DB: "0"
+  REDIS_CACHE_DB: "1"
+  REDIS_CONNECT_TIMEOUT: "1"
+  REDIS_READ_TIMEOUT: "1"
+  REDIS_RETRY_INTERVAL: "100"
+  REDIS_MAX_RETRIES: "3"
+  REDIS_QUEUE_RETRY_AFTER: "180"
+  REDIS_QUEUE_BLOCK_FOR: "5"
+  QUEUE_CRITICAL: critical
+  QUEUE_NOTIFICATIONS: notifications
+  QUEUE_REVALIDATION: revalidation
+  QUEUE_MONITOR_MAX: "100"
+  MEDIA_DISK: public
+  MEDIA_QUEUE: media
+  # Медиатека отдаётся с домена CMS (nginx → том storage).
+  MEDIA_PUBLIC_URL: https://${CMS_DOMAIN}
+  AVIFENC_BINARY: avifenc
+  PHP_FPM_MAX_CHILDREN: ${PHP_FPM_MAX_CHILDREN:-8}
+  OPCACHE_MEMORY_CONSUMPTION: "192"
+  OPCACHE_MAX_ACCELERATED_FILES: "20000"
+  BACKUP_ENABLED: "true"
+  BACKUP_PATH: /var/backups/khf-cms
+  BACKUP_KEEP: ${BACKUP_KEEP:-7}
+  MYSQLDUMP_BINARY: /usr/local/bin/mysqldump
+  MYSQL_BINARY: /usr/local/bin/mysql
+  CORS_ALLOWED_ORIGINS: https://${SITE_DOMAIN}
+  # Доверяем только подсети стека: Caddy и nginx — внутри неё.
+  TRUSTED_PROXIES: ${STACK_SUBNET:-172.30.0.0/24}
+  FRONTEND_URL: https://${SITE_DOMAIN}
+  # Вебхук идёт внутри стека, мимо интернета и TLS.
+  FRONTEND_REVALIDATION_URL: http://front:3000/api/revalidate
+  FRONTEND_REVALIDATION_SECRET: ${REVALIDATION_SECRET:?REVALIDATION_SECRET не задан}
+  RUM_INGEST_SECRET: ${RUM_INGEST_SECRET:?RUM_INGEST_SECRET не задан}
+  # Ключ сервера сайта: его запросы не считаются лимитом по IP.
+  SITE_API_KEY: ${SITE_API_KEY:?SITE_API_KEY не задан}
+  MAIL_MAILER: ${MAIL_MAILER:-smtp}
+  MAIL_HOST: ${MAIL_HOST:-}
+  MAIL_PORT: ${MAIL_PORT:-587}
+  MAIL_USERNAME: ${MAIL_USERNAME:-}
+  MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+  MAIL_SCHEME: ${MAIL_SCHEME:-}
+  MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-noreply@khf.tj}
+  MAIL_FROM_NAME: "КЧС Республики Таджикистан"
+  TELEGRAM_ALERTS_BOT_TOKEN: ${TELEGRAM_ALERTS_BOT_TOKEN:-}
+  TELEGRAM_ALERTS_CHAT_ID: ${TELEGRAM_ALERTS_CHAT_ID:-}
+
+x-cms-service: &cms-service
+  <<: *cms-image
+  environment: *cms-environment
+  volumes:
+    - cms-storage:/var/www/html/storage
+    - ${BACKUP_DIR:-/srv/khf/backups}:/var/backups/khf-cms
+  depends_on:
+    mysql:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
+  logging: &logging
+    driver: json-file
+    options:
+      max-size: 20m
+      max-file: "5"
+
+# Воркеры очередей (deploy/supervisor/khf-cms-workers.conf): основные читают
+# Redis, резервные забирают задания, сохранённые в БД, пока Redis лежал.
+x-cms-worker: &cms-worker
+  <<: *cms-service
+  user: www-data
+  stop_grace_period: 200s
+
+services:
+  caddy:
+    image: caddy:2.10-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?SITE_DOMAIN не задан}
+      CMS_DOMAIN: ${CMS_DOMAIN:?CMS_DOMAIN не задан}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL не задан}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - cms-web
+    restart: unless-stopped
+    logging: *logging
+
+  cms-web:
+    image: khf-cms-web:${RELEASE:-latest}
+    build:
+      context: ../..
+      dockerfile: deploy/docker/cms.Dockerfile
+      target: web
+    volumes:
+      - cms-storage:/var/www/html/storage:ro
+    depends_on:
+      - cms-app
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    restart: unless-stopped
+    logging: *logging
+
+  cms-app:
+    <<: *cms-service
+    build:
+      context: ../..
+      dockerfile: deploy/docker/cms.Dockerfile
+      target: app
+
+  cms-worker:
+    <<: *cms-worker
+    command: php artisan queue:work redis --queue=critical,notifications,revalidation,default --sleep=1 --tries=3 --timeout=60 --max-time=3600
+
+  cms-worker-media:
+    <<: *cms-worker
+    command: php artisan queue:work redis --queue=media --sleep=1 --tries=3 --timeout=150 --max-time=3600
+
+  cms-worker-db:
+    <<: *cms-worker
+    command: php artisan queue:work database --queue=critical,notifications,revalidation,default --sleep=3 --tries=3 --timeout=60 --max-time=3600
+
+  cms-worker-db-media:
+    <<: *cms-worker
+    command: php artisan queue:work database --queue=media --sleep=3 --tries=3 --timeout=150 --max-time=3600
+
+  # Планировщик (DEPLOYMENT.md §2.7): публикации по расписанию, heartbeat
+  # очередей, ежедневный backup и еженедельное контрольное восстановление.
+  cms-scheduler:
+    <<: *cms-service
+    user: www-data
+    command: php artisan schedule:work
+
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: khf_site_cms
+      MYSQL_USER: khf
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:?DB_ROOT_PASSWORD не задан}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --innodb-buffer-pool-size=${MYSQL_BUFFER_POOL:-512M}
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/10-khf.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p\"$$MYSQL_ROOT_PASSWORD\" --silent"]
+      interval: 10s
+      timeout: 5s
+      start_period: 60s
+      retries: 10
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:7.4-alpine
+    # Кэш и очереди в одном Redis. volatile-lru вытесняет только ключи со
+    # сроком жизни (кэш), задания очередей срока не имеют и не теряются.
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD}
+      - --appendonly
+      - "yes"
+      - --maxmemory
+      - ${REDIS_MAXMEMORY:-256mb}
+      - --maxmemory-policy
+      - volatile-lru
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$$REDIS_PASSWORD\" --no-auth-warning ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    restart: unless-stopped
+    logging: *logging
+
+  front:
+    image: khf-front:${RELEASE:-latest}
+    build:
+      context: ${FRONT_SRC:-../../../khf-site-front}
+      args:
+        # Сборка пререндерит страницы с данными CMS по её публичному адресу:
+        # во время `docker build` сети стека нет (см. Dockerfile сайта).
+        API_URL: https://${CMS_DOMAIN}/api/v1
+        NEXT_PUBLIC_API_URL: https://${CMS_DOMAIN}/api/v1
+        NEXT_PUBLIC_SITE_URL: https://${SITE_DOMAIN}
+        NEXT_PUBLIC_RUM_SAMPLE_RATE: ${RUM_SAMPLE_RATE:-0.1}
+      secrets:
+        - site_api_key
+    environment:
+      # Во время работы сайт ходит в CMS внутри стека: быстрее и не зависит
+      # от DNS и внешнего канала.
+      API_URL: http://cms-web/api/v1
+      REVALIDATION_SECRET: ${REVALIDATION_SECRET}
+      RUM_INGEST_SECRET: ${RUM_INGEST_SECRET}
+      SITE_API_KEY: ${SITE_API_KEY}
+    depends_on:
+      - cms-web
+    restart: unless-stopped
+    logging: *logging
+
+# Ключ сервера сайта нужен и сборке (пререндер тысяч страниц не должен
+# упереться в лимит по IP), но в слоях образа ему не место — BuildKit secret.
+secrets:
+  site_api_key:
+    environment: SITE_API_KEY
+
+volumes:
+  cms-storage:
+  mysql-data:
+  redis-data:
+  caddy-data:
+  caddy-config:
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${STACK_SUBNET:-172.30.0.0/24}

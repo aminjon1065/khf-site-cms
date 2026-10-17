@@ -1,0 +1,55 @@
+# Вход стека (deploy/docker/compose.yml): HTTPS с автоматическими
+# сертификатами Let's Encrypt для обоих доменов, редирект с http, сжатие.
+# Домены — только из .env стека (SITE_DOMAIN, CMS_DOMAIN): поначалу они
+# временные, и смена домена — правка одного файла, а не конфигурации.
+#
+# Сертификат выдаётся, когда DNS обоих доменов уже указывает на сервер и
+# снаружи открыты порты 80 и 443.
+
+{
+	email {$ACME_EMAIL}
+}
+
+(common) {
+	# zstd и gzip; Brotli в стандартной сборке Caddy нет. Сжатие — здесь, а
+	# не в Next/nginx, чтобы одинаково сжимались и HTML, и статика, и
+	# sitemap.xml (его сам Next не сжимает).
+	encode zstd gzip
+	header -Server
+}
+
+{$SITE_DOMAIN} {
+	import common
+	reverse_proxy front:3000 {
+		# Сжимает Caddy; Next не должен сжимать повторно.
+		header_up -Accept-Encoding
+	}
+}
+
+{$CMS_DOMAIN} {
+	import common
+	request_body {
+		max_size 130MB
+	}
+	# HSTS на ответах PHP ставит middleware SecurityHeaders; `?` — только
+	# если его нет: статика и медиа отдаются nginx мимо PHP. У сайта HSTS
+	# ставит сам Next.
+	header ?Strict-Transport-Security "max-age=63072000; includeSubDomains"
+	reverse_proxy cms-web:80
+}
+
+# Прежний русский сайт. Раскомментируйте, когда DNS kchs.tj (и www) будет
+# указывать на этот сервер: старые адреса уходят на новый сайт под /ru, а
+# /ru/node/… сайт сам переадресует на материал (GET /redirects/legacy CMS).
+# Пока DNS не переключён, блок не включать: Caddy будет безуспешно
+# запрашивать сертификат и упрётся в лимиты Let's Encrypt.
+#
+# kchs.tj, www.kchs.tj {
+# 	redir https://{$SITE_DOMAIN}/ru{uri} permanent
+# }
+#
+# Когда сайт переедет на khf.tj, www.khf.tj — на основной адрес:
+#
+# www.{$SITE_DOMAIN} {
+# 	redir https://{$SITE_DOMAIN}{uri} permanent
+# }

@@ -5,7 +5,7 @@
 | Приложение | Репозиторий | Роль | Технологии |
 |---|---|---|---|
 | **CMS / API** | `khf-site-cms` (Laravel) | Панель управления + публичный API `/api/v1` | PHP 8.5, Laravel 13, MySQL, Inertia/React, Fortify |
-| **Публичный сайт** | `khf-site-front` (Next.js) | Сайт для граждан (SSR/ISR) | Node 20+, Next.js 16, React 19 |
+| **Публичный сайт** | `khf-site-front` (Next.js) | Сайт для граждан (SSR/ISR) | Node 22 LTS, Next.js 16, React 19 |
 
 Публичный сайт получает данные только через API CMS. Схема:
 
@@ -13,6 +13,10 @@
 Браузер посетителя ──▶ Next.js (SSR/ISR) ──▶ CMS API (/api/v1) ──▶ MySQL
 Браузер сотрудника ──▶ CMS (панель, Inertia) ──┘
 ```
+
+Два способа развёртывания: на сервер без контейнеров (§2–4) и **на одном
+сервере в Docker** (§8) — его выбрал владелец (2026-10-16). Настройки обоих
+одинаковы по смыслу; в Docker они собраны в одном файле `deploy/docker/.env`.
 
 ---
 
@@ -48,6 +52,11 @@ APP_DEBUG=false
 APP_URL=https://cms.khf.tj
 APP_TIMEZONE=Asia/Dushanbe
 
+# Журнал: daily-файлы (OPS_RUNBOOK.md «Logs»). Без LOG_LEVEL уровень — debug,
+# и журнал production пухнет от отладочных записей.
+LOG_CHANNEL=daily
+LOG_LEVEL=info
+
 # Язык интерфейса и контента по умолчанию — русский
 APP_LOCALE=ru
 APP_FALLBACK_LOCALE=ru
@@ -72,6 +81,9 @@ REDIS_PORT=6379
 REDIS_DB=0
 REDIS_CACHE_DB=1
 REDIS_CONNECT_TIMEOUT=1
+# Короткий таймаут — для кэша (быстрый отказ на запасной). Соединению
+# очереди CMS сама ставит не меньше REDIS_QUEUE_BLOCK_FOR + 1 секунды:
+# иначе каждое ожидание воркера обрывалось бы «read error on connection».
 REDIS_READ_TIMEOUT=1
 REDIS_RETRY_INTERVAL=100
 REDIS_MAX_RETRIES=3
@@ -125,6 +137,15 @@ FRONTEND_URL=https://khf.tj
 FRONTEND_REVALIDATION_URL=https://khf.tj/api/revalidate
 FRONTEND_REVALIDATION_SECRET=«тот же секрет, что и REVALIDATION_SECRET фронта»
 
+# Сайт → CMS: просмотры для «Статистики просмотров» и Web Vitals. Тот же
+# секрет — в RUM_INGEST_SECRET сайта; без него статистика пуста.
+RUM_INGEST_SECRET=«openssl rand -hex 32, тот же на сайте»
+
+# Ключ сервера сайта (заголовок X-Site-Key): его запросы не считаются
+# лимитом публичного API 600/мин по IP — рендер и `next build` идут с одного
+# адреса. Тот же ключ — в SITE_API_KEY сайта.
+SITE_API_KEY=«openssl rand -hex 32, тот же на сайте»
+
 # Почта: сброс пароля сотрудников и письмо гражданину о новом этапе его
 # обращения (только если он указал почту). Почтовый сервер домена khf.tj —
 # бесплатно; SMS не используются (платные, решение владельца 2026-10-16).
@@ -147,11 +168,13 @@ php artisan key:generate
 php artisan migrate --force
 ```
 
-**Заполнение справочных данных.** Минимальный набор для production (роли, регионы, настройки, меню, блоки главной, категории, страницы):
+**Заполнение справочных данных.** Минимальный набор для production (роли, регионы, руководство и структура Комитета, настройки, меню, блоки главной, категории, страницы):
 
 ```bash
 php artisan db:seed --class=RolePermissionSeeder --force
 php artisan db:seed --class=RegionSeeder --force
+php artisan db:seed --class=LeaderSeeder --force
+php artisan db:seed --class=StructureUnitSeeder --force
 php artisan db:seed --class=TaxonomySeeder --force
 php artisan db:seed --class=SettingSeeder --force
 php artisan db:seed --class=MenuSeeder --force
@@ -452,11 +475,27 @@ NEXT_PUBLIC_SITE_URL=https://khf.tj
 # §2.2) — сгенерируйте один раз: openssl rand -hex 32. Пусто ⇒ вебхук
 # выключен (503), сайт обновляется только по истечении ISR (60 сек).
 REVALIDATION_SECRET=«тот же секрет, что и FRONTEND_REVALIDATION_SECRET CMS»
+
+# Просмотры для «Статистики просмотров» и Web Vitals — тот же секрет, что
+# RUM_INGEST_SECRET CMS. Пусто ⇒ сайт ничего не отправляет.
+RUM_INGEST_SECRET=«тот же секрет, что и RUM_INGEST_SECRET CMS»
+
+# Ключ сервера сайта для API CMS — тот же, что SITE_API_KEY CMS. Нужен и
+# при сборке: пререндер тысяч страниц без него упирается в лимит по IP.
+SITE_API_KEY=«тот же ключ, что и SITE_API_KEY CMS»
 ```
+
+При отказе CMS сайт отдаёт последний удачный ответ по каждому адресу
+(`lib/cms-fetch.ts`, копии — в `.next/cache/cms-last-known-good`; их
+наполняет уже `next build`), а страницы обстановки сразу предупреждают, что
+сведения могли устареть. Каталог можно вынести переменной
+`CMS_LAST_KNOWN_GOOD_DIR`.
 
 ### 3.2. Изображения из CMS
 
-Если где-либо используется `next/image`, добавьте хост CMS в `next.config` → `images.remotePatterns` (например, `{ protocol: 'https', hostname: 'cms.khf.tj' }`), чтобы разрешить медиа с `/storage/...`.
+Домен CMS (из `NEXT_PUBLIC_API_URL`) добавляется в `images.remotePatterns`
+сам — медиатека отдаёт файлы с него. Отдельный домен медиа (CDN) вписывается
+в `next.config.ts` вручную.
 
 ### 3.3. Сборка и запуск
 
@@ -629,6 +668,8 @@ systemctl restart khf-front
 - [ ] Загрузка файла в медиабиблиотеку и `php artisan storage:link` работают (файл доступен по URL).
 - [ ] Cron `schedule:run` активен (`php artisan schedule:list`).
 - [ ] Queue worker активен и перезапущен после deploy (`php artisan queue:restart`).
+- [ ] RSS-лента `https://khf.tj/ru/alerts/rss.xml` отдаёт XML; предупреждение с каналом «RSS» в ней появляется.
+- [ ] Старый адрес `https://khf.tj/node/<номер>` перенесённого материала отвечает 301 на его страницу (если архив переносили).
 - [ ] Ревалидация сайта: опубликуйте тестовую новость в CMS, страница `/ru/news` на публичном сайте должна показать её при следующем заходе за секунды, не за 60 сек (проверяет, что `FRONTEND_REVALIDATION_SECRET`/`REVALIDATION_SECRET` реально совпадают, а не просто оба заполнены).
 
 ---
@@ -690,3 +731,101 @@ CMS_E2E_BASE_URL=https://e2e-stand.khf-site-cms.test node node_modules/@playwrig
 
 Обновить код стенда: `git -C ../khf-site-cms-e2e merge --ff-only <ветка>`.
 Убрать стенд: `lerd worktree remove ../khf-site-cms-e2e` (спросит, удалить ли его БД).
+
+---
+
+## 8. Один сервер в Docker
+
+Стек — `deploy/docker/compose.yml`: Caddy (HTTPS с автоматическими
+сертификатами Let's Encrypt), сайт, nginx и PHP-FPM CMS, четыре воркера
+очередей, планировщик, MySQL 8.4, Redis. Наружу открыты только 80 и 443.
+
+### 8.1. Сервер
+
+- Linux x86_64 или arm64, Docker Engine 24+ с `docker compose` v2.
+- Не меньше 2 vCPU, 4 ГБ памяти и 40 ГБ диска (медиатека и резервные копии
+  растут — следите за местом).
+- Порты 80 и 443 открыты снаружи. DNS домена сайта и домена CMS указывает на
+  сервер **до** первого запуска — иначе Caddy не получит сертификаты.
+
+### 8.2. Первый запуск
+
+```bash
+mkdir -p /srv/khf && cd /srv/khf
+git clone git@github.com:aminjon1065/khf-site-cms.git
+git clone git@github.com:aminjon1065/khf-site-front.git
+
+cd khf-site-cms/deploy/docker
+cp env.example .env && chmod 600 .env
+# Заполните .env: домены, почта Let's Encrypt, секреты. Секреты — новые,
+# на этом сервере, не с компьютера разработчика:
+#   APP_KEY:  echo "base64:$(openssl rand -base64 32)"
+#   пароли и ключи:  openssl rand -hex 24
+
+sudo ./deploy.sh --init
+docker compose exec -u www-data cms-app php artisan cms:create-admin --email=… --name=…
+```
+
+`deploy.sh --init` собирает образы, поднимает MySQL и Redis, выполняет
+миграции и справочники (только справочники — демо-учётки и тестовые
+материалы в production не создаются), запускает CMS, проверяет её по домену,
+собирает сайт (пререндер с данными CMS) и в конце запускает
+`ops:production-check`. Его предупреждения (почта в режиме `log`, нет
+Telegram) запуск не останавливают, но без них часть системы молча не
+работает.
+
+### 8.3. Обновление и откат
+
+```bash
+cd /srv/khf/khf-site-cms && git pull
+cd /srv/khf/khf-site-front && git pull
+cd /srv/khf/khf-site-cms/deploy/docker && sudo ./deploy.sh
+```
+
+Образы помечаются коммитами обоих репозиториев (`docker image ls khf-cms`).
+Пока собирается новый образ, работает старый; простой — секунды на
+пересоздание контейнеров. Откат кода:
+
+```bash
+RELEASE=<прежний тег> docker compose up -d
+```
+
+Схему БД откат не возвращает — правило §4 о совместимых миграциях действует
+и здесь.
+
+### 8.4. Смена домена
+
+Домен меняется только в `.env` (`SITE_DOMAIN`, `CMS_DOMAIN`), после чего
+`./deploy.sh`: адреса вшиваются в сборку сайта, поэтому он пересобирается.
+Когда сайт переедет на khf.tj, раскомментируйте в `Caddyfile` блоки
+`kchs.tj` (старые русские адреса → `/ru/…`) и `www.` — после того как их DNS
+укажет на сервер.
+
+### 8.5. Резервные копии — увозить с сервера
+
+Планировщик каждую ночь кладёт копию БД и оригиналов медиа в `BACKUP_DIR`
+(по умолчанию `/srv/khf/backups`), раз в неделю проверяет восстановление.
+Копия на том же сервере — не копия: при потере сервера пропадёт вместе с
+ним. Увозите каталог на другую площадку cron-задачей хоста, например:
+
+```cron
+30 3 * * * root rsync -a --delete /srv/khf/backups/ backup@<другой-сервер>:/backups/khf/
+```
+
+Раз в квартал восстанавливайте копию на отдельной машине по
+`OPS_RUNBOOK.md` «Backup and restore» — только так известно, что она
+рабочая.
+
+### 8.6. Журналы и состояние
+
+```bash
+docker compose ps                         # здоровье контейнеров
+docker compose logs -f --tail=100 cms-app # журнал CMS (JSON в stderr)
+docker compose logs -f front caddy
+docker compose exec -u www-data cms-app php artisan queue:failed
+```
+
+Docker хранит до 5 файлов по 20 МБ на контейнер. Критические ошибки CMS
+уходят в Telegram (§2.12), внешний мониторинг `/api/v1/health` и
+`/api/v1/ready` — так же, как в §2.12.
+
