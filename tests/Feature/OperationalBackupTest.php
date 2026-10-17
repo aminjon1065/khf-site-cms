@@ -229,6 +229,7 @@ it('drives the MySQL dump and restore commands correctly', function () {
 
         expect($result['manifest']['driver'])->toBe('mysql')
             ->and(File::get($dump))->toContain('--single-transaction')
+            ->and(File::get($dump))->toContain('--no-tablespaces')
             ->and(File::get($dump))->toContain('--host=db.internal')
             // Контрольная сумма манифеста обязана относиться к тому же файлу.
             ->and($result['manifest']['database_sha256'])->toBe(hash_file('sha256', $dump));

@@ -140,6 +140,10 @@ final class OperationalBackup
             (string) config('operations.backups.mysql_dump_binary'),
             '--single-transaction',
             '--skip-lock-tables',
+            // Без глобального права PROCESS MySQL 8 отказывает в выгрузке
+            // сведений о tablespaces; для логической копии одной базы они не
+            // нужны, а давать приложению PROCESS ради них незачем.
+            '--no-tablespaces',
             '--routines',
             '--events',
             '--host='.(string) ($config['host'] ?? '127.0.0.1'),
