@@ -161,7 +161,15 @@ return [
             'port' => env('REDIS_PORT', '6379'),
             'database' => env('REDIS_DB', '0'),
             'timeout' => (float) env('REDIS_CONNECT_TIMEOUT', 1.0),
-            'read_timeout' => (float) env('REDIS_READ_TIMEOUT', 1.0),
+            // Queue workers wait on this connection for up to `block_for`
+            // seconds (BLPOP). A shorter read timeout breaks every idle wait
+            // with «read error on connection», floods the log (audit G-1)
+            // and trips the queue over to the database fallback. The cache
+            // connection below keeps the short timeout for fast failover.
+            'read_timeout' => max(
+                (float) env('REDIS_READ_TIMEOUT', 1.0),
+                (float) env('REDIS_QUEUE_BLOCK_FOR', 5) + 1.0,
+            ),
             'retry_interval' => (int) env('REDIS_RETRY_INTERVAL', 100),
             'max_retries' => env('REDIS_MAX_RETRIES', 3),
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),

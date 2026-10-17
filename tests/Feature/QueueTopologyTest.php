@@ -175,3 +175,35 @@ it('raises an alert when a scheduled task fails or keeps being skipped', functio
             && $context['task'] === 'php artisan ops:backup',
     )->once();
 });
+
+it('waits for queue jobs no longer than the redis read timeout allows', function () {
+    // Шаблон production ставил REDIS_READ_TIMEOUT=1 при block_for=5: каждое
+    // простое ожидание воркера обрывалось «read error on connection», лог
+    // рос на десятки тысяч строк, а очередь уходила на запасную в БД.
+    // Конфиг перечитывается с тем самым значением из шаблона.
+    $saved = [$_SERVER['REDIS_READ_TIMEOUT'] ?? null, $_ENV['REDIS_READ_TIMEOUT'] ?? null];
+    $_SERVER['REDIS_READ_TIMEOUT'] = $_ENV['REDIS_READ_TIMEOUT'] = '1';
+
+    try {
+        $redis = (require config_path('database.php'))['redis'];
+    } finally {
+        [$server, $env] = $saved;
+        if ($server === null) {
+            unset($_SERVER['REDIS_READ_TIMEOUT']);
+        } else {
+            $_SERVER['REDIS_READ_TIMEOUT'] = $server;
+        }
+        if ($env === null) {
+            unset($_ENV['REDIS_READ_TIMEOUT']);
+        } else {
+            $_ENV['REDIS_READ_TIMEOUT'] = $env;
+        }
+    }
+
+    $connection = config('queue.connections.redis.connection');
+
+    expect($redis[$connection]['read_timeout'])
+        ->toBeGreaterThan((float) config('queue.connections.redis.block_for'))
+        // Кэш по-прежнему отказывает быстро — ради него и стоит короткий таймаут.
+        ->and($redis['cache']['read_timeout'])->toBe(1.0);
+});
