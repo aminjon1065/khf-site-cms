@@ -41,6 +41,10 @@ return [
         'revalidation_url' => env('FRONTEND_REVALIDATION_URL'),
         'revalidation_secret' => env('FRONTEND_REVALIDATION_SECRET'),
         'rum_secret' => env('RUM_INGEST_SECRET'),
+        // The site server's key (X-Site-Key): its server-side rendering
+        // requests all come from one address and must not share the per-IP
+        // public API limit with visitors (AppServiceProvider, api-public).
+        'site_api_key' => env('SITE_API_KEY'),
     ],
 
     // Critical events of the CMS as Telegram messages (App\Services\TelegramAlerts).

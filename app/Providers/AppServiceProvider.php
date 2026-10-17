@@ -23,6 +23,7 @@ use App\Observers\CaptureEditorialRevision;
 use App\Observers\InvalidatePublicReadModels;
 use App\Services\OperationalTelemetry;
 use App\Services\PublicReadModelCache;
+use App\Support\SiteServerRequest;
 use Carbon\Carbon;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
@@ -268,9 +269,13 @@ class AppServiceProvider extends ServiceProvider
      */
     protected function configureRateLimiting(): void
     {
+        // The site's own server is exempt: its rendering requests all share
+        // one address (SiteServerRequest).
         RateLimiter::for(
             'api-public',
-            fn (Request $request): Limit => Limit::perMinute(600)->by($request->ip()),
+            fn (Request $request): Limit => SiteServerRequest::matches($request)
+                ? Limit::none()
+                : Limit::perMinute(600)->by($request->ip()),
         );
 
         RateLimiter::for(
