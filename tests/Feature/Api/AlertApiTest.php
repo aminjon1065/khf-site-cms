@@ -354,3 +354,37 @@ it('turns the notes written so far into the Russian version of the description',
     // would outlive the test and show up in other tests' counts.
     Alert::query()->whereKey($id)->forceDelete();
 });
+
+it('narrows the list to the alerts the operator sent to a channel', function () {
+    // Галочки каналов в мастере ничего не значили: публичный API их не
+    // отдавал и не фильтровал. Приложение SOS читает ?channel=sos_app,
+    // RSS-лента сайта — ?channel=rss.
+    Alert::factory()->published()->create([
+        'territory_type' => 'country',
+        'channels' => ['site', 'sos_app', 'rss'],
+        'title' => ['ru' => 'Во все каналы'],
+    ]);
+    Alert::factory()->published()->create([
+        'territory_type' => 'country',
+        'channels' => ['site'],
+        'title' => ['ru' => 'Только на сайте'],
+    ]);
+
+    $this->getJson('/api/v1/alerts?locale=ru&channel=sos_app')
+        ->assertOk()
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.title', 'Во все каналы');
+    $this->getJson('/api/v1/alerts?locale=ru&channel=rss')
+        ->assertOk()
+        ->assertJsonCount(1, 'data');
+    $this->getJson('/api/v1/alerts?locale=ru')
+        ->assertOk()
+        ->assertJsonCount(2, 'data');
+});
+
+it('rejects a channel the CMS does not have', function () {
+    // SMS убраны (решение владельца, 2026-10-16) — такого канала больше нет.
+    $this->getJson('/api/v1/alerts?locale=ru&channel=sms')
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('channel');
+});

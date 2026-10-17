@@ -390,9 +390,19 @@ paths:
     get:
       operationId: getAlerts
       summary: List active and recent alerts
-      description: Not paginated.
+      description: |
+        Not paginated. `channel` keeps only the alerts the operator sent to
+        that channel in the CMS wizard: the SOS mobile app reads
+        `?channel=sos_app`, the site's RSS feed `?channel=rss`. Without it the
+        list holds every active alert, as the site shows them.
       parameters:
         - $ref: '#/components/parameters/LocaleParam'
+        - name: channel
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [site, sos_app, rss]
       responses:
         '200':
           description: List of alerts

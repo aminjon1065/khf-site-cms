@@ -2,15 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Enums\Channel;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Api\PublicAlertResource;
 use App\Models\Alert;
 use App\Services\AlertMapService;
 use App\Support\PublicLocale;
 use App\Support\PublicSlug;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Validation\Rule;
 
 /**
  * Public emergency alerts for the Next.js /alerts pages, plus the aggregate
@@ -22,9 +26,18 @@ class AlertController extends Controller
 
     /**
      * Currently-active alerts, most severe first.
+     *
+     * `channel` narrows them to the alerts the operator sent to that channel
+     * in the wizard: the SOS app reads `?channel=sos_app`, the site's RSS feed
+     * `?channel=rss`. Without it the list is every active alert, as on the
+     * site itself.
      */
-    public function index(): AnonymousResourceCollection
+    public function index(Request $request): AnonymousResourceCollection
     {
+        $channel = $request->validate([
+            'channel' => ['nullable', Rule::enum(Channel::class)],
+        ])['channel'] ?? null;
+
         $query = Alert::query()
             ->select([
                 'id',
@@ -41,6 +54,10 @@ class AlertController extends Controller
                 'ends_at',
             ])
             ->active()
+            ->when(
+                is_string($channel),
+                fn (Builder $alerts): Builder => $alerts->whereJsonContains('channels', $channel),
+            )
             ->with('regions:id,code,name');
 
         PublicLocale::available($query, 'title');
